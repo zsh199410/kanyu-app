@@ -1757,6 +1757,16 @@ struct AnalysisView: View {
     @State private var annualYear = 2026
     @State private var savedTip = false
 
+    // 命卦行拆成子表达式（整段插值曾让 Swift 6 类型推断超时，build-22 实测）
+    private func residentGuaRow(_ r: Resident, gua g: String) -> some View {
+        let grp = FengshuiEngine.group(of: g)
+        let match = grp == FengshuiEngine.group(of: sitPalace)
+        let who = r.label.isEmpty ? "住户" : r.label
+        let verdict = match ? "相配" : "不配——床位优先取其命卦四吉方"
+        let line = who + "：命卦 " + g + "（" + grp + "命），与宅 " + verdict
+        return Text(line).font(.caption).foregroundStyle(match ? Color.secondary : Color.orange)
+    }
+
     private var sitReading: HeadingReading? { draft.headings.last(where: { $0.pointName == "大门外朝内" && $0.trueNorth >= 0 }) }
     private var sitMountain: String {
         if let r = sitReading { return CompassMath.mountain(for: r.trueNorth) }
@@ -1815,10 +1825,7 @@ struct AnalysisView: View {
                 }
                 ForEach(draft.surveyCase.residents, id: \.id) { r in
                     if let y = Int(r.birthYear) {
-                        let g = FengshuiEngine.mingGua(birthYear: y, gender: r.gender)
-                        let match = FengshuiEngine.group(of: g) == FengshuiEngine.group(of: sitPalace)
-                        Text("\(r.label.isEmpty ? "住户" : r.label)：命卦 \(g)（\(FengshuiEngine.group(of: g))命），与宅 \(match ? "相配" : "不配——床位优先取其命卦四吉方")")
-                            .font(.caption).foregroundStyle(match ? .secondary : .orange)
+                        residentGuaRow(r, gua: FengshuiEngine.mingGua(birthYear: y, gender: r.gender))
                     }
                 }
             }
@@ -2211,7 +2218,13 @@ struct ShaJudgeView: View {
         }
     }
     private var judgeLine: String {
-        "【实景判定】\(shaName)：对位\( ["不对位","斜对","正对"][align] )、距离\( ["远","中","近"][dist] )、遮挡\( ["完全","部分","无"][shield] )、体量\( ["小于宅","相当","远大于宅"][volume] )、受体\( ["空墙过道","大门主窗","久留位"][receptor] )、实害\(harm ? "有" : "无") → 定级「\(level)」。\(advice)"
+        let a = ["不对位", "斜对", "正对"][align]
+        let di = ["远", "中", "近"][dist]
+        let sh = ["完全", "部分", "无"][shield]
+        let vo = ["小于宅", "相当", "远大于宅"][volume]
+        let re = ["空墙过道", "大门主窗", "久留位"][receptor]
+        let h = harm ? "有" : "无"
+        return "【实景判定】\(shaName)：对位\(a)、距离\(di)、遮挡\(sh)、体量\(vo)、受体\(re)、实害\(h) → 定级「\(level)」。\(advice)"
     }
 
     var body: some View {
