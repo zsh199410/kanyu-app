@@ -525,26 +525,36 @@ final class MotionManager: ObservableObject {
     @Published var horizonTilt: Double = 0
     @Published var bubbleX: Double = 0
     @Published var bubbleY: Double = 0
+    @Published var fieldMicroTesla: Double = -1   // 总磁场强度 µT（地磁场正常 25–65）
 
     private let motion = CMMotionManager()
     var isLevelForCompass: Bool { flatTilt <= 3 }
     var isLevelForCamera: Bool { abs(horizonTilt) <= 2 }
+    // 磁场强度明显超出地磁场范围＝附近有磁干扰（汽车/钢筋/磁吸壳/电器）
+    var fieldAbnormal: Bool { fieldMicroTesla >= 0 && (fieldMicroTesla < 20 || fieldMicroTesla > 80) }
 
     func start() {
         guard motion.isDeviceMotionAvailable, !motion.isDeviceMotionActive else { return }
         motion.deviceMotionUpdateInterval = 0.1
-        motion.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] dm, _ in
-            guard let g = dm?.gravity else { return }
+        // 用真北参考系（重力读数与参考系无关，另可拿到校准磁场强度做干扰检测）
+        let frames = CMMotionManager.availableAttitudeReferenceFrames()
+        let frame: CMAttitudeReferenceFrame = frames.contains(.xTrueNorthZVertical) ? .xTrueNorthZVertical : .xArbitraryZVertical
+        motion.startDeviceMotionUpdates(using: frame, to: .main) { [weak self] dm, _ in
+            guard let dm else { return }
+            let g = dm.gravity
             let len = (g.x * g.x + g.y * g.y + g.z * g.z).squareRoot()
             guard len > 0 else { return }
             let gx = g.x / len, gy = g.y / len, gz = g.z / len
             let flat = acos(min(1, max(-1, -gz))) * 180 / .pi
             let horizon = atan2(gx, -gy) * 180 / .pi
+            let f = dm.magneticField.field
+            let mag = (f.x * f.x + f.y * f.y + f.z * f.z).squareRoot()
             Task { @MainActor in
                 self?.flatTilt = flat
                 self?.horizonTilt = horizon
                 self?.bubbleX = gx
                 self?.bubbleY = gy
+                if dm.magneticField.accuracy != .invalid { self?.fieldMicroTesla = mag }
             }
         }
     }
@@ -1087,6 +1097,8 @@ struct CompassView: View {
     @State private var collecting = false
     @State private var trueSamples: [Double] = []
     @State private var magSamples: [Double] = []
+    @State private var weakTrue: [Double] = []
+    @State private var weakMag: [Double] = []
     @State private var collectTicks = 0
     @State private var collectHint = ""
     @State private var collectTask: Task<Void, Never>? = nil
@@ -1128,6 +1140,22 @@ struct CompassView: View {
                     if let warn = location.accuracyWarning {
                         Text(warn).font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
                     }
+                    if motion.fieldMicroTesla >= 0 {
+                        Text("磁场强度 \(String(format: "%.0f", motion.fieldMicroTesla)) µT（地磁场正常 25–65）\(motion.fieldAbnormal ? "：异常，附近有磁干扰" : "")")
+                            .font(.caption)
+                            .foregroundStyle(motion.fieldAbnormal ? .red : .secondary)
+                    }
+                }
+                if location.accuracyWarning != nil || motion.fieldAbnormal {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("精度自检（校准好后可达 ±5° 左右）").font(.caption).fontWeight(.semibold)
+                        Text("1. 摘掉磁吸手机壳、磁吸支架（能让读数偏几十度）\n2. 离汽车、钢筋、电器 2 米以上\n3. 手腕画 8 字三圈校准\n4. 设置 → 隐私与安全性 → 定位服务 → 系统服务：打开「指南针校准」和「运动校准与距离」")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Color.orange.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 Picker("测点", selection: $pointName) {
                     ForEach(presetPoints, id: \.self) { Text($0).tag($0) }
@@ -1167,28 +1195,55 @@ struct CompassView: View {
     }
 
     // 采样循环用 Task 驱动（v1.3 用视图层 Timer 发布者，真机上不触发导致永远 0/8，已改）
+    // 采样门控：精度 ±20° 以内才算正式样本；±20–35° 只进备选桶；磁场异常/精度更差不采。
     private func startCollect() {
-        collecting = true; trueSamples = []; magSamples = []; collectTicks = 0
+        collecting = true; trueSamples = []; magSamples = []; weakTrue = []; weakMag = []; collectTicks = 0
         collectHint = "采样中：把气泡稳在绿圈里…"
         collectTask?.cancel()
         collectTask = Task { @MainActor in
-            while collecting && trueSamples.count < 8 && collectTicks < 80 {
-                if motion.isLevelForCompass && location.displayTrueHeading >= 0 {
-                    trueSamples.append(location.displayTrueHeading)
-                    magSamples.append(location.displayMagneticHeading)
-                    collectHint = "采样中：已采 \(trueSamples.count)/8，保持放平…"
-                } else {
+            while collecting && trueSamples.count < 8 && collectTicks < 90 {
+                let acc = location.headingAccuracy
+                if motion.fieldAbnormal {
+                    collectHint = "磁场异常（\(String(format: "%.0f", motion.fieldMicroTesla)) µT）：附近有磁干扰，换个位置再测"
+                } else if !motion.isLevelForCompass {
                     collectHint = "没放平，不采样：把气泡稳进绿圈（当前倾斜 \(String(format: "%.1f°", motion.flatTilt))）"
+                } else if location.displayTrueHeading >= 0 && acc >= 0 {
+                    if acc <= 20 {
+                        appendSample(&trueSamples, &magSamples)
+                        collectHint = "采样中：已采 \(trueSamples.count)/8（精度 ±\(Int(acc))°），保持放平…"
+                    } else if acc <= 35 {
+                        appendSample(&weakTrue, &weakMag)
+                        collectHint = "当前精度差（±\(Int(acc))°），只作备选采样：先按下方自检校准一遍…"
+                    } else {
+                        collectHint = "精度太低（±\(Int(acc))°）不采样：按下方自检做一遍再测"
+                    }
                 }
                 if trueSamples.count >= 8 { finishCollect(); return }
                 collectTicks += 1
                 try? await Task.sleep(nanoseconds: 150_000_000)
             }
             if collecting {
-                collecting = false
-                collectHint = "这次没采够：放平后再点一次记录。"
+                if trueSamples.count >= 4 {
+                    finishCollect()
+                } else if weakTrue.count >= 4 {
+                    trueSamples = weakTrue; magSamples = weakMag
+                    finishCollect(lowAccuracy: true)
+                } else {
+                    collecting = false
+                    collectHint = "这次没采够：按下方精度自检做一遍，换个位置再测。"
+                }
             }
         }
+    }
+
+    // 尖峰剔除：与已采样本圆周均值偏差 >15° 的读数丢弃（防干扰毛刺污染平均）
+    private func appendSample(_ t: inout [Double], _ m: inout [Double]) {
+        if t.count >= 3 {
+            let (mean, _) = CompassMath.circularMean(t)
+            if abs(CompassMath.shortestDiff(from: mean, to: location.displayTrueHeading)) > 15 { return }
+        }
+        t.append(location.displayTrueHeading)
+        m.append(location.displayMagneticHeading)
     }
 
     private var bubbleOffset: (Double, Double) {
@@ -1197,7 +1252,7 @@ struct CompassView: View {
         return (dx, dy)
     }
 
-    private func finishCollect() {
+    private func finishCollect(lowAccuracy: Bool = false) {
         collecting = false
         let (meanT, r) = CompassMath.circularMean(trueSamples)
         let (meanM, _) = CompassMath.circularMean(magSamples)
@@ -1215,7 +1270,9 @@ struct CompassView: View {
             tiltDegrees: motion.flatTilt,
             sampleSpread: r))
         justSaved = true
-        collectHint = "已记录：8 次采样平均，集中度 \(String(format: "%.2f", r))（越接近 1 越稳）"
+        collectHint = lowAccuracy
+            ? "已记录（低精度备选样本 \(trueSamples.count) 次平均，精度 ±\(Int(location.headingAccuracy))°，已标注；能重测尽量重测）"
+            : "已记录：\(trueSamples.count) 次采样平均，集中度 \(String(format: "%.2f", r))（越接近 1 越稳）"
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { justSaved = false }
     }
 
