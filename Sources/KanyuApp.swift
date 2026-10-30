@@ -581,7 +581,7 @@ final class MotionManager: ObservableObject {
                 self?.cameraPitch = pitch
                 self?.bubbleX = gx
                 self?.bubbleY = gy
-                if dm.magneticField.accuracy != .invalid { self?.fieldMicroTesla = mag }
+                if dm.magneticField.accuracy.rawValue >= 0 { self?.fieldMicroTesla = mag }  // 精度有效（非 invalid=-1）才更新磁场强度
             }
         }
     }
