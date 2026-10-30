@@ -272,6 +272,20 @@ struct BaziHomeView: View {
                 .font(.caption).foregroundStyle(Ky.ink)
         }
         .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+
+        // 解盘入口（初断·规则层，每条结论带依据链）
+        NavigationLink { InterpretView(chart: ch, name: name) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "text.book.closed").foregroundStyle(Ky.cinnabar)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("解盘 · 初断").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
+                    Text("命局风景 / 格局候选 / 喜忌 / 十神 / 岁运，逐条附依据链").font(.caption2).foregroundStyle(Ky.sub)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        }.buttonStyle(.plain).foregroundStyle(Ky.ink)
     }
 
     // 四柱表格：行＝维度，列＝四柱；专业细盘多三行（藏干十神/星运/纳音）

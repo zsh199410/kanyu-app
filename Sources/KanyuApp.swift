@@ -1344,6 +1344,7 @@ struct ContentView: View {
     }
 
     private var quickTiles: some View {
+        VStack(spacing: 12) {
         HStack(spacing: 12) {
             NavigationLink { KnowledgeView() } label: { tile("books.vertical.fill", "风水知识", Ky.gold) }
                 .buttonStyle(.plain)
@@ -1353,6 +1354,18 @@ struct ContentView: View {
                 .buttonStyle(.plain)
             Button { showingNew = true } label: { tile("plus.circle.fill", "新建案件", Ky.jade) }
                 .buttonStyle(.plain)
+        }
+        NavigationLink { PalmHomeView() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "hand.raised.fill").foregroundStyle(Ky.cinnabar)
+                Text("手相面相").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                Text("测量 · 描线 · 三停").font(.caption2).foregroundStyle(Ky.sub)
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
         }
     }
 
