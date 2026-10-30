@@ -5,6 +5,9 @@ import SwiftUI
 import CoreLocation
 import CoreMotion
 import AVFoundation
+import ARKit
+import SceneKit
+import RoomPlan
 import UIKit
 import ZIPFoundation
 
@@ -73,6 +76,7 @@ struct MediaItem: Identifiable, Codable {
     var longitude: Double?
     var note: String = ""
     var tilt: Double = -1          // 拍摄时倾斜角（照片=地平线倾斜，罗盘类=放平倾斜）
+    var extraFile: String = ""     // 附加数据文件（3D 扫描的房间结构摘要 JSON 等）
 }
 
 struct CaseData: Identifiable, Codable {
@@ -137,7 +141,7 @@ enum CompassMath {
 
 // MARK: - 任务单（按 SOP 生成）
 
-enum TaskKind { case photo, video, heading }
+enum TaskKind { case photo, video, heading, scan3D, arTrack }
 
 struct SurveyTask: Identifiable {
     var id: String
@@ -176,6 +180,9 @@ enum TaskFactory {
         .init(id: "p_bath", title: "照片·卫生间位置", instruction: "拍卫生间门与周围房间的关系，能看出它在房子哪个方位区域即可，不必拍内部细节。", kind: .photo),
         .init(id: "p_stair", title: "照片·楼梯位置", instruction: "多层住宅拍楼梯所在位置与走向；平层可跳过，在备注写「平层无楼梯」。", kind: .photo),
         .init(id: "v_flow", title: "视频·室内动线", instruction: "从大门进屋，慢慢走到客厅、厨房、主卧，边走边拍，像带人参观一样走一遍。", kind: .video),
+        .init(id: "s_roomscan", title: "3D扫描·户型建模（激光雷达）", instruction: "仅带激光雷达的 Pro 机型：逐间房各扫一遍。开始前站在门口、身体朝向屋内站直再开始，沿墙慢走、把每面墙和家具都扫到，单间别超过 5 分钟；扫完点完成，生成带米数尺寸的 3D 户型模型（墙/门/窗/床/灶台位置自动识别）。", kind: .scan3D),
+        .init(id: "s_artrack_in", title: "AR轨迹·室内动线", instruction: "从大门内侧点开始，举着手机（镜头朝前）按平时走法走遍全屋再点结束。轨迹自动记录位置（米）与真北朝向，比手绘动线准。", kind: .arTrack),
+        .init(id: "s_artrack_env", title: "AR轨迹·绕屋一周", instruction: "在屋外点开始，绕房子慢走一圈回到起点点结束（中途别停太久）。轨迹带真北朝向与米数距离，用于核对房子与周边道路/空地的相对方位。开阔处效果好，高楼遮挡处可能漂移，备注写明。", kind: .arTrack),
     ]
     static let yinzhaiTasks: [SurveyTask] = [
         .init(id: "h_bei", title: "罗盘·碑向", instruction: "站在墓碑正前方，面朝碑面方向（即朝山方向），到罗盘页记录「碑向朝外」；再转身记录坐方。", kind: .heading),
@@ -315,6 +322,44 @@ final class SurveyStore: ObservableObject {
                          latitude: loc.currentLocation?.coordinate.latitude,
                          longitude: loc.currentLocation?.coordinate.longitude,
                          tilt: tilt)
+    }
+
+    // 保存 AR 轨迹（JSON 即本体文件）
+    func saveARTrack(caseId: UUID, task: SurveyTask, samples: [ARTrackSample], loc: LocationManager) -> MediaItem? {
+        guard !samples.isEmpty else { return nil }
+        let dir = caseDir(caseId)
+        let stamp = Date()
+        let name = "\(task.id)_\(Int(stamp.timeIntervalSince1970)).json"
+        guard let data = try? Self.encoder.encode(samples) else { return nil }
+        do { try data.write(to: dir.appendingPathComponent(name)) } catch { return nil }
+        let h = samples.first?.compassHeading ?? -1
+        return MediaItem(taskId: task.id, taskTitle: task.title, kind: "artrack",
+                         fileName: name, timestamp: stamp,
+                         trueHeading: h, magneticHeading: loc.displayMagneticHeading,
+                         mountain: h >= 0 ? CompassMath.mountain(for: h) : "",
+                         latitude: loc.currentLocation?.coordinate.latitude,
+                         longitude: loc.currentLocation?.coordinate.longitude)
+    }
+
+    // 保存 3D 户型扫描（USDZ 模型＋结构摘要 JSON）
+    func saveScan(caseId: UUID, task: SurveyTask, tempUSDZ: URL, summary: Data?, loc: LocationManager, startHeading: Double) -> MediaItem? {
+        let dir = caseDir(caseId)
+        let stamp = Date()
+        let base = "\(task.id)_\(Int(stamp.timeIntervalSince1970))"
+        let name = "\(base).usdz"
+        do { try FileManager.default.copyItem(at: tempUSDZ, to: dir.appendingPathComponent(name)) } catch { return nil }
+        var extra = ""
+        if let summary {
+            extra = "\(base)_room.json"
+            try? summary.write(to: dir.appendingPathComponent(extra))
+        }
+        return MediaItem(taskId: task.id, taskTitle: task.title, kind: "scan3d",
+                         fileName: name, timestamp: stamp,
+                         trueHeading: startHeading, magneticHeading: loc.displayMagneticHeading,
+                         mountain: startHeading >= 0 ? CompassMath.mountain(for: startHeading) : "",
+                         latitude: loc.currentLocation?.coordinate.latitude,
+                         longitude: loc.currentLocation?.coordinate.longitude,
+                         extraFile: extra)
     }
 
     // 导出 ZIP 数据包：媒体原件＋data.json＋勘察摘要.txt
@@ -590,6 +635,257 @@ struct CameraPreview: UIViewRepresentable {
         return v
     }
     func updateUIView(_ uiView: PreviewUIView, context: Context) {}
+}
+
+// MARK: - AR 轨迹（ARKit 真北对齐：自动记录位置＋朝向）
+//
+// ARKit 世界坐标设为 .gravityAndHeading 后，坐标轴直接对齐真北：
+// +X 东、+Y 上、−Z 北。相机姿态 60fps 融合罗盘/陀螺/视觉里程计，
+// 比手工 0.5 秒采样密得多、稳得多；每点另存同期罗盘读数互校漂移。
+
+struct ARTrackSample: Codable {
+    var t: Double                  // 秒（自开始）
+    var x: Double                  // 米，相对起点（东+）
+    var y: Double                  // 米（上+）
+    var z: Double                  // 米（北−，即向北为负）
+    var arHeading: Double          // 相机姿态推算朝向（真北系，度）
+    var compassHeading: Double     // 同期罗盘真北读数（度，互校）
+}
+
+final class ARTrackRecorder: NSObject, ObservableObject, ARSessionDelegate {
+    let session = ARSession()
+    @Published var isRunning = false
+    @Published var currentHeading: Double = -1
+    @Published var distance: Double = 0
+    private(set) var samples: [ARTrackSample] = []
+    private var startDate: Date?
+    private var lastLog = Date.distantPast
+    private weak var loc: LocationManager?
+
+    static var supported: Bool { ARWorldTrackingConfiguration.isSupported }
+
+    func start(loc: LocationManager) {
+        guard Self.supported else { return }
+        self.loc = loc
+        samples = []; distance = 0
+        let cfg = ARWorldTrackingConfiguration()
+        cfg.worldAlignment = .gravityAndHeading
+        session.delegate = self
+        session.run(cfg, options: [.resetTracking, .removeExistingAnchors])
+        startDate = Date(); lastLog = .distantPast; isRunning = true
+    }
+
+    func stop() { session.pause(); isRunning = false }
+
+    func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        let now = Date()
+        guard let start = startDate, now.timeIntervalSince(lastLog) >= 0.1 else { return }
+        lastLog = now
+        let tr = frame.camera.transform
+        let pos = tr.columns.3
+        // 相机前向 = −Z 列；正北时前向 (0,0,−1)：atan2(0, +1)=0° ✓；正东 (1,0,0)：90° ✓
+        var heading = atan2(Double(-tr.columns.2.x), Double(tr.columns.2.z)) * 180 / .pi
+        if heading < 0 { heading += 360 }
+        let s = ARTrackSample(t: now.timeIntervalSince(start),
+                              x: Double(pos.x), y: Double(pos.y), z: Double(pos.z),
+                              arHeading: heading,
+                              compassHeading: loc?.displayTrueHeading ?? -1)
+        if let prev = samples.last {
+            let dx = s.x - prev.x, dy = s.y - prev.y, dz = s.z - prev.z
+            distance += (dx * dx + dy * dy + dz * dz).squareRoot()
+        }
+        samples.append(s)
+        let h = heading, d = distance
+        DispatchQueue.main.async { self.currentHeading = h; self.distance = d }
+    }
+}
+
+struct ARPreviewView: UIViewRepresentable {
+    let session: ARSession
+    func makeUIView(context: Context) -> ARSCNView {
+        let v = ARSCNView()
+        v.session = session
+        v.automaticallyUpdatesLighting = true
+        return v
+    }
+    func updateUIView(_ uiView: ARSCNView, context: Context) {}
+}
+
+struct ARTrackView: View {
+    @EnvironmentObject var store: SurveyStore
+    @EnvironmentObject var location: LocationManager
+    @Environment(\.dismiss) var dismiss
+    let task: SurveyTask
+    @Binding var draft: CaseData
+    @StateObject private var recorder = ARTrackRecorder()
+    @State private var savedTip = false
+
+    var body: some View {
+        ZStack {
+            if ARTrackRecorder.supported {
+                ARPreviewView(session: recorder.session).ignoresSafeArea()
+            } else {
+                Color.black.ignoresSafeArea()
+            }
+            VStack {
+                VStack(spacing: 4) {
+                    Text("真北 \(CompassMath.format(recorder.currentHeading)) · 已走 \(String(format: "%.1f", recorder.distance)) 米 · \(recorder.samples.count) 点")
+                        .font(.callout).fontWeight(.medium).foregroundStyle(.white)
+                    if recorder.isRunning {
+                        Text("轨迹记录中：匀速走，别停太久；遮挡多会漂移").font(.caption).foregroundStyle(.white.opacity(0.85))
+                    } else {
+                        Text(ARTrackRecorder.supported ? task.instruction : "本机型不支持 AR 追踪")
+                            .font(.caption).foregroundStyle(.white.opacity(0.85))
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .padding(10).background(.black.opacity(0.45))
+                .clipShape(RoundedRectangle(cornerRadius: 10)).padding()
+                Spacer()
+                Button {
+                    if recorder.isRunning {
+                        recorder.stop()
+                        if let item = store.saveARTrack(caseId: draft.surveyCase.id, task: task, samples: recorder.samples, loc: location) {
+                            draft.media.append(item)
+                            draft.taskDone[task.id] = true
+                            savedTip = true
+                        }
+                    } else {
+                        recorder.start(loc: location)
+                    }
+                } label: {
+                    ZStack {
+                        Circle().fill(recorder.isRunning ? .gray : .red).frame(width: 68, height: 68)
+                        if recorder.isRunning { RoundedRectangle(cornerRadius: 4).fill(.white).frame(width: 26, height: 26) }
+                    }
+                }
+                .disabled(!ARTrackRecorder.supported)
+                .padding(.bottom, 28)
+                if savedTip { Text("✓ 轨迹已保存").foregroundStyle(.green).padding(.bottom, 10) }
+            }
+        }
+        .navigationTitle(task.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { location.start() }
+        .onDisappear { recorder.stop() }
+    }
+}
+
+// MARK: - 3D 户型扫描（RoomPlan：激光雷达，需 Pro 机型）
+
+final class RoomScanController: NSObject, ObservableObject, RoomCaptureSessionDelegate {
+    let captureView = RoomCaptureView(frame: .zero)
+    @Published var finished = false
+    @Published var failedText = ""
+    private(set) var capturedRoom: CapturedRoom?
+
+    override init() {
+        super.init()
+        captureView.captureSession.delegate = self
+    }
+    func start() {
+        finished = false; failedText = ""
+        captureView.captureSession.run(configuration: RoomCaptureSession.Configuration())
+    }
+    func stop() { captureView.captureSession.stop() }
+    func captureSession(_ session: RoomCaptureSession, didEndWith data: CapturedRoom, error: (any Error)?) {
+        if let error { failedText = "扫描失败：\(error.localizedDescription)"; return }
+        capturedRoom = data
+        finished = true
+    }
+    // 结构摘要：墙/门/窗/开口的尺寸（米）与家具类别，回传后用于户型核对与九宫量算
+    func summaryJSON(startHeading: Double) -> Data? {
+        guard let room = capturedRoom else { return nil }
+        func surf(_ s: CapturedRoom.Surface) -> [String: Any] {
+            ["category": "\(s.category)", "length": Double(s.dimensions.x), "height": Double(s.dimensions.y)]
+        }
+        let dict: [String: Any] = [
+            "startTrueHeading": startHeading,
+            "walls": room.walls.map(surf),
+            "doors": room.doors.map(surf),
+            "windows": room.windows.map(surf),
+            "openings": room.openings.map(surf),
+            "objects": room.objects.map { ["category": "\($0.category)", "dx": Double($0.dimensions.x), "dy": Double($0.dimensions.y), "dz": Double($0.dimensions.z)] }
+        ]
+        return try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted])
+    }
+}
+
+struct RoomCaptureRepresentable: UIViewRepresentable {
+    let controller: RoomScanController
+    func makeUIView(context: Context) -> RoomCaptureView { controller.captureView }
+    func updateUIView(_ uiView: RoomCaptureView, context: Context) {}
+}
+
+struct RoomScanView: View {
+    @EnvironmentObject var store: SurveyStore
+    @EnvironmentObject var location: LocationManager
+    @Environment(\.dismiss) var dismiss
+    let task: SurveyTask
+    @Binding var draft: CaseData
+    @StateObject private var controller = RoomScanController()
+    @State private var scanning = false
+    @State private var startHeading: Double = -1
+    @State private var savedTip = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if RoomCaptureSession.isSupported {
+                RoomCaptureRepresentable(controller: controller)
+                    .ignoresSafeArea(edges: .horizontal)
+                VStack(spacing: 8) {
+                    Text(task.instruction).font(.caption).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center).padding(.horizontal)
+                    if !controller.failedText.isEmpty {
+                        Text(controller.failedText).font(.caption).foregroundStyle(.red)
+                    }
+                    if controller.finished {
+                        Button("保存这个房间的模型") { save() }
+                            .buttonStyle(.borderedProminent)
+                    } else if scanning {
+                        Button("完成扫描") { controller.stop(); scanning = false }
+                            .buttonStyle(.bordered)
+                    } else {
+                        Button("开始扫描（先站门口朝屋内站直）") {
+                            startHeading = location.displayTrueHeading
+                            controller.start(); scanning = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    if savedTip { Text("✓ 已保存，可继续扫下一间").foregroundStyle(.green).font(.caption) }
+                }
+                .padding()
+            } else {
+                ContentUnavailableView("本机型没有激光雷达",
+                                       systemImage: "cube.transparent.slash",
+                                       description: Text("3D 户型扫描需要带 LiDAR 的 iPhone Pro 机型；普通机型请用照片＋手绘平面代替，本项可跳过。"))
+            }
+        }
+        .navigationTitle(task.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { location.start() }
+        .onDisappear { controller.stop() }
+    }
+
+    private func save() {
+        guard let room = controller.capturedRoom else { return }
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("room-\(UUID().uuidString).usdz")
+        do {
+            try room.export(to: tmp, exportOptions: .parametric)
+        } catch {
+            controller.failedText = "导出模型失败：\(error.localizedDescription)"
+            return
+        }
+        if let item = store.saveScan(caseId: draft.surveyCase.id, task: task, tempUSDZ: tmp,
+                                     summary: controller.summaryJSON(startHeading: startHeading),
+                                     loc: location, startHeading: startHeading) {
+            draft.media.append(item)
+            draft.taskDone[task.id] = true
+            savedTip = true
+            controller.finished = false
+        }
+    }
 }
 
 // MARK: - 界面
@@ -944,6 +1240,14 @@ struct TaskDetailView: View {
                     NavigationLink {
                         CompassView(draft: $draft)
                     } label: { Label("打开罗盘记录", systemImage: "location.north.circle") }
+                } else if task.kind == .scan3D {
+                    NavigationLink {
+                        RoomScanView(task: task, draft: $draft)
+                    } label: { Label("开始 3D 扫描", systemImage: "cube.transparent") }
+                } else if task.kind == .arTrack {
+                    NavigationLink {
+                        ARTrackView(task: task, draft: $draft)
+                    } label: { Label("开始记录轨迹", systemImage: "point.topleft.down.curvedto.point.bottomright.up") }
                 } else {
                     NavigationLink {
                         CaptureView(task: task, draft: $draft)
