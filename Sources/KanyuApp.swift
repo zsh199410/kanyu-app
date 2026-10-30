@@ -1366,6 +1366,17 @@ struct ContentView: View {
             .padding(.horizontal, 14).padding(.vertical, 11)
             .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
         }.buttonStyle(.plain)
+        NavigationLink { ZiweiHomeView() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles").foregroundStyle(Ky.gold)
+                Text("紫微斗数").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                Text("方盘 · 十四主星 · 四化 · 大限").font(.caption2).foregroundStyle(Ky.sub)
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
         NavigationLink { SynastryView() } label: {
             HStack(spacing: 10) {
                 Image(systemName: "heart.circle.fill").foregroundStyle(Ky.cinnabar)
