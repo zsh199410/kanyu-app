@@ -23,7 +23,7 @@ struct WuxingBarsView: View {
     let percents: [Double]  // 木火土金水，合计 100
     var body: some View {
         VStack(spacing: 7) {
-            ForEach(KyV2.wuxingNames.indices, id: \.self) { i in
+            ForEach(0..<min(KyV2.wuxingNames.count, percents.count), id: \.self) { i in
                 HStack(spacing: 8) {
                     Text(KyV2.wuxingNames[i])
                         .font(.caption).fontWeight(.semibold)
@@ -55,18 +55,18 @@ struct TimeCapsuleBar: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(levels.indices, id: \.self) { i in
-                Button { if enabled[i] { selection = i } } label: {
+                Button { if enabled.indices.contains(i) && enabled[i] { selection = i } } label: {
                     HStack(spacing: 3) {
                         Text(levels[i]).font(.caption).fontWeight(selection == i ? .semibold : .regular)
-                        if !enabled[i] {
+                        if !(enabled.indices.contains(i) && enabled[i]) {
                             Text("P2").font(.system(size: 8)).foregroundStyle(Ky.sub)
                         }
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 7)
                     .background(selection == i ? Ky.ink : Color.clear)
-                    .foregroundStyle(selection == i ? Ky.bg : (enabled[i] ? Ky.ink : Ky.sub))
+                    .foregroundStyle(selection == i ? Ky.bg : ((enabled.indices.contains(i) && enabled[i]) ? Ky.ink : Ky.sub))
                     .clipShape(Capsule())
-                }.buttonStyle(.plain).disabled(!enabled[i])
+                }.buttonStyle(.plain).disabled(!(enabled.indices.contains(i) && enabled[i]))
             }
         }
         .padding(3)
@@ -144,6 +144,8 @@ enum AppSettings {
 }
 
 struct CaliberSettingsView: View {
+    @AppStorage("signDateEpoch") private var signDateEpoch: Double = 0
+    @AppStorage("signCertDays") private var signCertDays: Int = 365
     @AppStorage("baziSect") private var baziSect = 2
     @AppStorage("ziweiLeapNext") private var ziweiLeapNext = true
     @AppStorage("ziweiLateZiNext") private var ziweiLateZiNext = false
@@ -163,6 +165,24 @@ struct CaliberSettingsView: View {
                     Toggle("闰月整月归下月", isOn: $ziweiLeapNext)
                     Toggle("晚子时作次日", isOn: $ziweiLateZiNext)
                     Text("默认：闰月归下月、晚子时作当日，与紫微金标准盘（iztro 同源参照）一致。").font(.caption2).foregroundStyle(Ky.sub)
+                }.kyCard()
+                VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "签名信息（侧载）")
+                    DatePicker("签名日期", selection: Binding(
+                        get: { signDateEpoch > 0 ? Date(timeIntervalSince1970: signDateEpoch) : Date() },
+                        set: { signDateEpoch = $0.timeIntervalSince1970 }), displayedComponents: .date)
+                    Picker("证书类型", selection: $signCertDays) {
+                        Text("免费证书（7 天）").tag(7)
+                        Text("付费证书（1 年）").tag(365)
+                    }.pickerStyle(.segmented)
+                    if signDateEpoch > 0 {
+                        let expiry = Date(timeIntervalSince1970: signDateEpoch).addingTimeInterval(Double(signCertDays) * 86400)
+                        let remain = Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 0
+                        Text("到期日 \(expiry.formatted(date: .abbreviated, time: .omitted))，还剩 \(remain) 天。到期前 7 天起首页会亮提醒：到期后 App 打不开是证书问题、不是数据问题，续签覆盖安装即可，数据不丢。")
+                            .font(.caption2).foregroundStyle(remain <= 7 ? Ky.cinnabar : Ky.sub)
+                    } else {
+                        Text("装好 App 后在这里记下签名日期，临近到期首页会提醒续签。").font(.caption2).foregroundStyle(Ky.sub)
+                    }
                 }.kyCard()
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "紫微亮度表")

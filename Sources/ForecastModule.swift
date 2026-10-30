@@ -19,22 +19,31 @@ final class ForecastStore: ObservableObject {
             .appendingPathComponent("forecasts.json")
     }
     init() {
-        if let data = try? Data(contentsOf: fileURL),
-           let list = try? JSONDecoder().decode([ForecastEntry].self, from: data) { entries = list }
+        if let data = try? Data(contentsOf: fileURL) {
+            if let list = try? JSONDecoder().decode([ForecastEntry].self, from: data) { entries = list }
+            else { try? FileManager.default.copyItem(at: fileURL, to: fileURL.deletingPathExtension().appendingPathExtension("corrupt.json")) }
+        }
     }
     func save() {
-        if let data = try? JSONEncoder().encode(entries) { try? data.write(to: fileURL) }
+        if let data = try? JSONEncoder().encode(entries) { try? data.write(to: fileURL, options: .atomic) }
     }
     func add(_ e: ForecastEntry) { entries.insert(e, at: 0); save() }
     func setStatus(_ e: ForecastEntry, _ s: String) {
         if let i = entries.firstIndex(where: { $0.id == e.id }) { entries[i].status = s; save() }
     }
     func remove(_ e: ForecastEntry) { entries.removeAll { $0.id == e.id }; save() }
+    func exportData() -> Data { (try? JSONEncoder().encode(entries)) ?? Data() }
 }
 
 struct ForecastView: View {
     @StateObject private var store = ForecastStore()
     @State private var showingNew = false
+    @State private var exportCache: URL?
+    static func writeExport(_ data: Data, _ name: String) -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        try? data.write(to: url, options: .atomic)
+        return url
+    }
     var body: some View {
         List {
             if store.entries.isEmpty {
@@ -70,7 +79,14 @@ struct ForecastView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { showingNew = true } label: { Image(systemName: "plus") }
+                HStack(spacing: 14) {
+                    if let u = exportCache {
+                        ShareLink(item: u) { Image(systemName: "square.and.arrow.up") }
+                    } else {
+                        Button { exportCache = Self.writeExport(store.exportData(), "forecasts-export.json") } label: { Image(systemName: "square.and.arrow.up") }
+                    }
+                    Button { showingNew = true } label: { Image(systemName: "plus") }
+                }
             }
         }
         .sheet(isPresented: $showingNew) { ForecastFormView(store: store) }

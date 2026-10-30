@@ -24,11 +24,14 @@ final class PeopleStore: ObservableObject {
     }
     init() { load() }
     func load() {
-        if let data = try? Data(contentsOf: fileURL),
-           let list = try? JSONDecoder().decode([Person].self, from: data) { people = list }
+        guard let data = try? Data(contentsOf: fileURL) else { return }
+        if let list = try? JSONDecoder().decode([Person].self, from: data) { people = list }
+        else { // 解码失败：先把坏档备份保全，绝不静默当空数据（备份文件勿删，交助手处理）
+            try? FileManager.default.copyItem(at: fileURL, to: fileURL.deletingPathExtension().appendingPathExtension("corrupt.json"))
+        }
     }
     func save() {
-        if let data = try? JSONEncoder().encode(people) { try? data.write(to: fileURL) }
+        if let data = try? JSONEncoder().encode(people) { try? data.write(to: fileURL, options: .atomic) }
     }
     func upsert(_ p: Person) {
         if let i = people.firstIndex(where: { $0.id == p.id }) { people[i] = p } else { people.append(p) }
@@ -50,6 +53,7 @@ struct PeopleView: View {
     @StateObject private var store = PeopleStore()
     @State private var editing: Person?
     @State private var showingNew = false
+    @State private var exportCache: URL?
     private static var fmt: DateFormatter {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH:mm"
         f.timeZone = TimeZone(secondsFromGMT: 8 * 3600); return f
@@ -92,7 +96,11 @@ struct PeopleView: View {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 14) {
                     Menu {
-                        ShareLink(item: exportURL()) { Label("导出命例（JSON）", systemImage: "square.and.arrow.up") }
+                        if let u = exportCache {
+                            ShareLink(item: u) { Label("导出命例（JSON）", systemImage: "square.and.arrow.up") }
+                        } else {
+                            Button { exportCache = exportURL() } label: { Label("导出命例（JSON）", systemImage: "square.and.arrow.up") }
+                        }
                         Button { importing = true } label: { Label("导入命例", systemImage: "square.and.arrow.down") }
                     } label: { Image(systemName: "arrow.up.arrow.down") }
                     Button { showingNew = true } label: { Image(systemName: "plus") }
@@ -192,9 +200,11 @@ struct PersonDetailView: View {
     var body: some View {
         let ch = BaziEngine.paipan(clock: person.birthDate, gender: person.gender,
                                    longitude: person.useLongitude ? person.longitude : nil)
+        let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
+                                   longitude: person.useLongitude ? person.longitude : nil)
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                overviewCard(chart: ch)
+                overviewCard(chart: ch, ziwei: zw)
                 if let url = pdfURL {
                     ShareLink(item: url) {
                         HStack(spacing: 8) {
@@ -206,7 +216,7 @@ struct PersonDetailView: View {
                         .kyCard()
                     }.buttonStyle(.plain).foregroundStyle(Ky.ink)
                 }
-                ShareLink(item: aiPrompt(chart: ch)) {
+                ShareLink(item: aiPrompt(chart: ch, ziwei: zw)) {
                     HStack(spacing: 8) {
                         Image(systemName: "text.badge.star").foregroundStyle(Ky.gold)
                         Text("AI 解读提示词（复制盘面去问 AI）").font(.subheadline).fontWeight(.medium)
@@ -227,12 +237,10 @@ struct PersonDetailView: View {
     }
 
     // 三术合参总览：八字/紫微/手相面相/前瞻四路对齐，冲突按分工明标，不和稀泥
-    private func overviewCard(chart ch: BaziChart) -> some View {
+    private func overviewCard(chart ch: BaziChart, ziwei zw: ZiweiChart) -> some View {
         let now = Calendar.current.component(.year, from: Date())
         let yr = YearEngine.report(chart: ch, year: now)
         let di = YearEngine.dayunIndex(chart: ch, year: now)
-        let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
-                                   longitude: person.useLongitude ? person.longitude : nil)
         let ming = zw.palaces[zw.mingGong]
         let birthYear = Calendar.current.component(.year, from: person.birthDate)
         let age = now - birthYear + 1
@@ -264,9 +272,7 @@ struct PersonDetailView: View {
 
 // MARK: - AI 解读提示词（对标问真「AI 提示词」：盘面结构化文本，粘到任意 AI 即得解读）
 extension PersonDetailView {
-    func aiPrompt(chart ch: BaziChart) -> String {
-        let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
-                                   longitude: person.useLongitude ? person.longitude : nil)
+    func aiPrompt(chart ch: BaziChart, ziwei zw: ZiweiChart) -> String {
         let ming = zw.palaces[zw.mingGong]
         let wx = zip(["木", "火", "土", "金", "水"], ch.wuxingPercents).map { "\($0.0)\(Int($0.1))%" }.joined(separator: " ")
         return """

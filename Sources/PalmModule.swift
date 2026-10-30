@@ -366,12 +366,15 @@ final class PalmRecordStore: ObservableObject {
     }
     init() {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        if let data = try? Data(contentsOf: indexURL),
-           let list = try? JSONDecoder().decode([PalmRecord].self, from: data) { records = list }
+        if let data = try? Data(contentsOf: indexURL) {
+            if let list = try? JSONDecoder().decode([PalmRecord].self, from: data) { records = list }
+            else { try? FileManager.default.copyItem(at: indexURL, to: indexURL.deletingPathExtension().appendingPathExtension("corrupt.json")) }
+        }
     }
     func save() {
-        if let data = try? JSONEncoder().encode(records) { try? data.write(to: indexURL) }
+        if let data = try? JSONEncoder().encode(records) { try? data.write(to: indexURL, options: .atomic) }
     }
+    func exportData() -> Data { (try? JSONEncoder().encode(records)) ?? Data() }
     func add(_ r: PalmRecord, image: UIImage?) {
         var rec = r
         if let img = image, let jpg = img.jpegData(compressionQuality: 0.85) {
@@ -394,6 +397,7 @@ final class PalmRecordStore: ObservableObject {
 
 struct PalmRecordListView: View {
     @StateObject private var store = PalmRecordStore()
+    @State private var exportCache: URL?
     var body: some View {
         List {
             if store.records.isEmpty {
@@ -421,6 +425,19 @@ struct PalmRecordListView: View {
         }
         .navigationTitle("测量记录")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if let u = exportCache {
+                    ShareLink(item: u) { Image(systemName: "square.and.arrow.up") }
+                } else {
+                    Button {
+                        let url = FileManager.default.temporaryDirectory.appendingPathComponent("palm-records-export.json")
+                        try? store.exportData().write(to: url, options: .atomic)
+                        exportCache = url
+                    } label: { Image(systemName: "square.and.arrow.up") }
+                }
+            }
+        }
     }
 }
 
@@ -433,7 +450,8 @@ struct PalmRecordDetailView: View {
                 if let img = store.image(of: record) {
                     FittedImage(image: img) { rect in
                         Canvas { ctx, _ in
-                            let pts = stride(from: 0, to: record.linesFlat.count, by: 2).map {
+                            let flatN = record.linesFlat.count / 2 * 2
+                            let pts = stride(from: 0, to: flatN, by: 2).map {
                                 CGPoint(x: record.linesFlat[$0], y: record.linesFlat[$0 + 1])
                             }
                             // 三线各 4 点（保存时按线顺序拼接）

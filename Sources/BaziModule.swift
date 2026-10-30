@@ -29,7 +29,8 @@ struct BaziChart {
     func dayunStartYear(_ i: Int) -> Int { qiyunYear + i * 10 }
     static func yearGanZhi(_ year: Int) -> String {
         let tg = Array("甲乙丙丁戊己庚辛壬癸"); let dz = Array("子丑寅卯辰巳午未申酉戌亥")
-        return String(tg[(year - 4) % 10]) + String(dz[(year - 4) % 12])
+        let y60 = ((year - 4) % 60 + 60) % 60
+        return String(tg[y60 % 10]) + String(dz[y60 % 12])
     }
 }
 
@@ -329,6 +330,7 @@ struct BaziResultView: View {
     @State private var proMode = false
     @State private var timeLevel = 0        // 0 大运 1 流年 2 流月 3 流日（流时并入流日速查）
     @State private var selectedDayun = 0
+    private var safeDayun: Int { chart.dayunGanZhi.isEmpty ? 0 : min(selectedDayun, chart.dayunGanZhi.count - 1) }
     @State private var selectedYear: Int? = nil
     @State private var flowDate = Date()
     @State private var flowHour = 12
@@ -342,6 +344,19 @@ struct BaziResultView: View {
             interpretLink
             yearlyLink
             lifePlanLink
+            NavigationLink { PosterSheetView(chart: chart, name: name) } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "photo.artframe").foregroundStyle(Ky.cinnabar)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("命盘海报 · 下载分享").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
+                        Text("道教墨金风海报，1080×1920 高清导出存相册或发微信").font(.caption2).foregroundStyle(Ky.sub)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
+                }
+                .padding(12).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain).foregroundStyle(Ky.ink)
         }
     }
 
@@ -414,7 +429,7 @@ struct BaziResultView: View {
     }
 
     private var liunianLevel: some View {
-        let start = chart.dayunStartYear(selectedDayun)
+        let start = chart.dayunStartYear(safeDayun)
         let nowYear = Calendar.current.component(.year, from: Date())
         return VStack(alignment: .leading, spacing: 8) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 8) {
@@ -434,13 +449,13 @@ struct BaziResultView: View {
                     }.buttonStyle(.plain).foregroundStyle(Ky.ink)
                 }
             }
-            Text("\(chart.dayunGanZhi[selectedDayun]) 运（\(start) 起）十年流年，干下小字为流年天干十神；点任意一年进流月。")
+            Text("\(chart.dayunGanZhi[safeDayun]) 运（\(start) 起）十年流年，干下小字为流年天干十神；点任意一年进流月。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
     }
 
     private var liuyueLevel: some View {
-        let year = selectedYear ?? chart.dayunStartYear(selectedDayun)
+        let year = selectedYear ?? chart.dayunStartYear(safeDayun)
         let ygz = BaziChart.yearGanZhi(year)
         let branches: [(Character, String)] = [("寅", "正月"), ("卯", "二月"), ("辰", "三月"), ("巳", "四月"),
             ("午", "五月"), ("未", "六月"), ("申", "七月"), ("酉", "八月"), ("戌", "九月"), ("亥", "十月"),
@@ -524,7 +539,7 @@ struct BaziResultView: View {
                 Image(systemName: "text.book.closed").foregroundStyle(Ky.cinnabar)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("解盘 · 全维度").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
-                    Text("25 个维度逐条说清：事业财运婚姻子女寿元＋颜色数字方位＋注意事项与化解").font(.caption2).foregroundStyle(Ky.sub)
+                    Text("25 个维度逐条说清：事业财运婚姻子女健康守年＋颜色数字方位＋注意事项与化解").font(.caption2).foregroundStyle(Ky.sub)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)

@@ -379,6 +379,7 @@ enum TaskFactory {
 @MainActor
 final class SurveyStore: ObservableObject {
     @Published var cases: [CaseData] = []
+    @Published var loadError: String? = nil
     private let baseDir: URL
     private var indexURL: URL { baseDir.appendingPathComponent("index.json") }
 
@@ -396,9 +397,14 @@ final class SurveyStore: ObservableObject {
     }
 
     func load() {
-        guard let data = try? Data(contentsOf: indexURL),
-              let decoded = try? Self.decoder.decode([CaseData].self, from: data) else { return }
-        cases = decoded
+        guard let data = try? Data(contentsOf: indexURL) else { return }
+        if let decoded = try? Self.decoder.decode([CaseData].self, from: data) {
+            cases = decoded
+        } else { // 解码失败：备份坏档＋亮错误，绝不静默以零案件启动
+            let bak = baseDir.appendingPathComponent("index.corrupt-\(Int(Date().timeIntervalSince1970)).json")
+            try? FileManager.default.copyItem(at: indexURL, to: bak)
+            loadError = "案件数据读取失败：原文件已备份为 \(bak.lastPathComponent)，请勿删除，联系助手处理。"
+        }
     }
 
     func save() {
@@ -1232,6 +1238,8 @@ struct KyProgressRing: View {
 
 struct ContentView: View {
     @EnvironmentObject var store: SurveyStore
+    @AppStorage("signDateEpoch") private var signDateEpoch: Double = 0
+    @AppStorage("signCertDays") private var signCertDays: Int = 365
     @StateObject private var forecastStore = ForecastStore()
     @StateObject private var peopleStore = PeopleStore()
     @State private var showingNew = false
@@ -1272,6 +1280,7 @@ struct ContentView: View {
                     brandHeader
                     todayCard
                     dueCard
+                    signBanner
                     recentPeople
                     toolsGrid
                     heroCard
@@ -1420,6 +1429,20 @@ struct ContentView: View {
     }
 
     // 今日盘（工作台第一卡：干支日＋宜忌精选＋值神，点进黄历完整版）
+    @ViewBuilder private var signBanner: some View {
+        if signDateEpoch > 0 {
+            let expiry = Date(timeIntervalSince1970: signDateEpoch).addingTimeInterval(Double(signCertDays) * 86400)
+            let remain = Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 99
+            if remain <= 7 {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.shield").foregroundStyle(Ky.cinnabar)
+                    Text(remain >= 0 ? "签名证书还有 \(remain) 天到期（到期后 App 打不开是证书问题、不是数据问题），请提前续签，续签后在「排盘口径设置」里更新签名日期。" : "签名证书已过期：App 随时可能打不开，请立即续签；数据都在，不必重装。")
+                        .font(.caption).foregroundStyle(Ky.ink)
+                }.kyCard()
+            }
+        }
+    }
+
     private var todayCard: some View {
         let now = Date()
         var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
@@ -1512,6 +1535,11 @@ struct ContentView: View {
 
     private var casesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if let e = store.loadError {
+                Text(e).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10).background(Ky.cinnabar.opacity(0.10)).clipShape(RoundedRectangle(cornerRadius: 8))
+            }
             HStack {
                 Text("我的案件").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
                 Spacer()
@@ -2409,7 +2437,7 @@ struct RemoteView: View {
     @State private var status = ""
     @State private var busy = false
     @State private var remoteInfo: String? = nil
-    private let appTag = "v4.6"
+    private var appTag: String { "v" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "4.6") }
 
     var body: some View {
         List {
@@ -2468,7 +2496,8 @@ struct RemoteView: View {
         guard let zipURL = store.exportZip(caseData: draft),
               let data = try? Data(contentsOf: zipURL) else { status = "打包失败"; return }
         status = "正在上传（\(data.count / 1024) KB）…"
-        var req = URLRequest(url: URL(string: base() + "/api/upload")!)
+        guard let uploadURL = URL(string: base() + "/api/upload") else { status = "地址无效"; return }
+        var req = URLRequest(url: uploadURL)
         req.httpMethod = "POST"
         req.setValue(uploadToken, forHTTPHeaderField: "X-Upload-Token")
         req.setValue(draft.surveyCase.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "case",

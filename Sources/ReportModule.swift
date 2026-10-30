@@ -37,6 +37,15 @@ enum ReportBuilder {
             for line in r.lines { L.append("  · \(line)") }
         }
         L.append("")
+        // 2026-10-31 批次二核对结论：此前命书只含四柱／大运／逐年／紫微摘要，未含解盘 25 维；
+        // 此处补一页「维度摘要」：25 维逐条标题＋该维首行结论（首句按「。」切分），不改已验证的排盘字段引用。
+        let dims = InterpretEngine.interpret(chart: ch)
+        L.append("【解盘维度摘要（\(dims.count)维）】")
+        for (i, it) in dims.enumerated() {
+            let first = it.conclusion.split(separator: "。", maxSplits: 1, omittingEmptySubsequences: true).first.map { String($0) + "。" } ?? it.conclusion
+            L.append("\(i + 1). \(it.title)：\(first)")
+        }
+        L.append("")
         L.append("【紫微摘要】")
         let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
                                    longitude: person.useLongitude ? person.longitude : nil)
@@ -71,6 +80,7 @@ enum ReportBuilder {
                 y += h + gap
             }
             for (i, line) in lines.enumerated() {
+                if line.hasPrefix("【解盘维度摘要") { ctx.beginPage(); y = 48 }
                 if i == 0 { draw(line, titleFont, gap: 10) }
                 else if line.hasPrefix("【") { draw(line, headFont, gap: 6) }
                 else { draw(line, bodyFont) }
