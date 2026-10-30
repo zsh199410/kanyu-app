@@ -93,7 +93,7 @@ struct YearByYearView: View {
     }
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            LazyVStack(alignment: .leading, spacing: 12) {
                 ForEach(years, id: \.self) { y in
                     let r = YearEngine.report(chart: chart, year: y)
                     VStack(alignment: .leading, spacing: 6) {
@@ -127,14 +127,20 @@ struct YearByYearView: View {
 struct LifePlanView: View {
     let chart: BaziChart
     let name: String
-    private var years: [Int] { Array((chart.birthYear + 1)...(chart.birthYear + 88)) }
-    private var reports: [YearEngine.YearReport] { years.map { YearEngine.report(chart: chart, year: $0) } }
+    private let reps: [YearEngine.YearReport]
+    private let stageList: [Stage]
+    init(chart: BaziChart, name: String) {
+        self.chart = chart
+        self.name = name
+        self.reps = ((chart.birthYear + 1)...(chart.birthYear + 88)).map { YearEngine.report(chart: chart, year: $0) }
+        self.stageList = Self.buildStages(chart: chart)
+    }
 
     private struct Stage { let range: ClosedRange<Int>; let name: String; let theme: String }
-    private var stages: [Stage] {
+    private static func buildStages(chart ch: BaziChart) -> [Stage] {
         var cnt: [String: Int] = [:]
-        for ss in chart.stemShiShen where ss != "日主" { cnt[ss, default: 0] += 1 }
-        for row in chart.hideShiShen { for ss in row { cnt[ss, default: 0] += 1 } }
+        for ss in ch.stemShiShen where ss != "日主" { cnt[ss, default: 0] += 1 }
+        for row in ch.hideShiShen { for ss in row { cnt[ss, default: 0] += 1 } }
         func g(_ ns: [String]) -> Int { ns.reduce(0) { $0 + (cnt[$1] ?? 0) } }
         let yin = g(["正印", "偏印"]), shi = g(["食神", "伤官"]), cai = g(["正财", "偏财"]), bi = g(["比肩", "劫财"])
         return [
@@ -164,10 +170,9 @@ struct LifePlanView: View {
     }
 
     var body: some View {
-        let reps = reports
-        let stages = self.stages
+        let stages = stageList
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("从 1 岁到 88 岁，逐年按八字说清：每一年先给干支解说（流年怎么引动你的盘），再给当年的规划——哪年进取、哪年守成、哪年攒本钱，一年一条，照着排人生大事。")
                         .font(.callout).foregroundStyle(Ky.ink)
