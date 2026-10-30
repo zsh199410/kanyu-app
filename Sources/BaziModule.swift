@@ -78,6 +78,23 @@ enum BaziTables {
         var covered = Set<Int>(); for k in 0..<10 { covered.insert((hb + k) % 12) }
         return DZ.enumerated().filter { !covered.contains($0.offset) }.map { String($0.element) }.joined()
     }
+    static func relation(_ a: Character, _ b: Character) -> String? {
+        let chong: [Character: Character] = ["子":"午","午":"子","丑":"未","未":"丑","寅":"申","申":"寅","卯":"酉","酉":"卯","辰":"戌","戌":"辰","巳":"亥","亥":"巳"]
+        let he: [Character: Character] = ["子":"丑","丑":"子","寅":"亥","亥":"寅","卯":"戌","戌":"卯","辰":"酉","酉":"辰","巳":"申","申":"巳","午":"未","未":"午"]
+        if chong[a] == b { return "冲" }
+        if he[a] == b { return "合" }
+        return nil
+    }
+    static func monthGanZhi(yearStem: Character, monthBranch: Character) -> String {
+        let startMap: [Character: Int] = ["甲":2,"己":2,"乙":4,"庚":4,"丙":6,"辛":6,"丁":8,"壬":8,"戊":0,"癸":0]
+        let off = (DZ.firstIndex(of: monthBranch)! - DZ.firstIndex(of: "寅")! + 12) % 12
+        return String(TG[(startMap[yearStem]! + off) % 10]) + String(monthBranch)
+    }
+    static func timeGanZhi(dayStem: Character, hour: Int) -> String {
+        let startMap: [Character: Int] = ["甲":0,"己":0,"乙":2,"庚":2,"丙":4,"辛":4,"丁":6,"壬":6,"戊":8,"癸":8]
+        let branch = DZ[((hour + 1) / 2) % 12]
+        return String(TG[(startMap[dayStem]! + DZ.firstIndex(of: branch)!) % 10]) + String(branch)
+    }
     static func wuxingPercents(pillars: [String]) -> [Double] {
         let order = ["木", "火", "土", "金", "水"]
         var score: [String: Double] = [:]
@@ -144,6 +161,17 @@ enum BaziEngine {
                          xunKong: BaziTables.xunKong(dayPillar: dg),
                          wuxingPercents: BaziTables.wuxingPercents(pillars: pillars))
     }
+
+    /// 任意公历日期的日柱（流日速查；晚子时 sect=2 与排盘同口径）
+    static func dayPillar(for date: Date) -> String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
+        let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        let solar = Solar.fromYmdHms(year: c.year!, month: c.month!, day: c.day!, hour: c.hour!, minute: c.minute!)
+        let ec = solar.lunar.eightChar
+        ec.sect = 2
+        return ec.day
+    }
 }
 
 // MARK: - 八字排盘页（v2 双层密度盘面：基本盘/专业细盘＋五行横条＋五级时间胶囊）
@@ -198,8 +226,11 @@ struct BaziResultView: View {
     let chart: BaziChart
     let name: String
     @State private var proMode = false
-    @State private var timeLevel = 0        // 0 大运 1 流年（流月/流日/流时 P2）
+    @State private var timeLevel = 0        // 0 大运 1 流年 2 流月 3 流日（流时并入流日速查）
     @State private var selectedDayun = 0
+    @State private var selectedYear: Int? = nil
+    @State private var flowDate = Date()
+    @State private var flowHour = 12
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -247,41 +278,129 @@ struct BaziResultView: View {
                 Text("起运 \(chart.qiyunDirection) · \(chart.qiyunDate)").font(.caption).foregroundStyle(Ky.sub)
             }
             TimeCapsuleBar(levels: ["大运", "流年", "流月", "流日", "流时"],
-                           enabled: [true, true, false, false, false], selection: $timeLevel)
-            if timeLevel == 0 {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(chart.dayunGanZhi.indices, id: \.self) { i in
-                            Button { selectedDayun = i; timeLevel = 1 } label: {
-                                VStack(spacing: 2) {
-                                    Text(chart.dayunGanZhi[i]).font(.system(.callout, design: .serif)).fontWeight(.semibold)
-                                    Text("\(chart.dayunStartYear(i)) 起").font(.caption2).foregroundStyle(Ky.sub)
-                                }
-                                .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(i == selectedDayun ? Ky.gold.opacity(0.18) : Ky.bg)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }.buttonStyle(.plain).foregroundStyle(Ky.ink)
-                        }
-                    }
-                }
-                Text("点任一步大运，进到它的流年。").font(.caption2).foregroundStyle(Ky.sub)
-            } else {
-                let start = chart.dayunStartYear(selectedDayun)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 8) {
-                    ForEach(0..<10, id: \.self) { k in
-                        VStack(spacing: 2) {
-                            Text(BaziChart.yearGanZhi(start + k)).font(.system(.callout, design: .serif)).fontWeight(.semibold)
-                            Text(String(start + k)).font(.caption2).foregroundStyle(Ky.sub)
-                        }
-                        .frame(maxWidth: .infinity).padding(.vertical, 8)
-                        .background(Ky.bg).clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                }
-                Text("\(chart.dayunGanZhi[selectedDayun]) 运（\(start) 起）十年流年；流月/流日/流时在 P2 下钻。")
-                    .font(.caption2).foregroundStyle(Ky.sub)
+                           enabled: [true, true, true, true, false], selection: $timeLevel)
+            switch timeLevel {
+            case 0: dayunLevel
+            case 1: liunianLevel
+            case 2: liuyueLevel
+            default: liuriLevel
             }
         }
         .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var dayunLevel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(chart.dayunGanZhi.indices, id: \.self) { i in
+                        Button { selectedDayun = i; selectedYear = chart.dayunStartYear(i); timeLevel = 1 } label: {
+                            VStack(spacing: 2) {
+                                Text(chart.dayunGanZhi[i]).font(.system(.callout, design: .serif)).fontWeight(.semibold)
+                                Text("\(chart.dayunStartYear(i)) 起").font(.caption2).foregroundStyle(Ky.sub)
+                            }
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(i == selectedDayun ? Ky.gold.opacity(0.18) : Ky.bg)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+                    }
+                }
+            }
+            Text("点任一步大运，进到它的流年。").font(.caption2).foregroundStyle(Ky.sub)
+        }
+    }
+
+    private var liunianLevel: some View {
+        let start = chart.dayunStartYear(selectedDayun)
+        let nowYear = Calendar.current.component(.year, from: Date())
+        return VStack(alignment: .leading, spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 8) {
+                ForEach(0..<10, id: \.self) { k in
+                    let y = start + k
+                    let gz = BaziChart.yearGanZhi(y)
+                    Button { selectedYear = y; timeLevel = 2 } label: {
+                        VStack(spacing: 2) {
+                            Text(gz).font(.system(.callout, design: .serif)).fontWeight(.semibold)
+                            Text(String(y) + (y == nowYear ? " · 今" : "")).font(.caption2).foregroundStyle(Ky.sub)
+                            Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!))
+                                .font(.caption2).foregroundStyle(Ky.gold)
+                        }
+                        .frame(maxWidth: .infinity).padding(.vertical, 8)
+                        .background(y == nowYear ? Ky.gold.opacity(0.18) : Ky.bg)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+                }
+            }
+            Text("\(chart.dayunGanZhi[selectedDayun]) 运（\(start) 起）十年流年，干下小字为流年天干十神；点任意一年进流月。")
+                .font(.caption2).foregroundStyle(Ky.sub)
+        }
+    }
+
+    private var liuyueLevel: some View {
+        let year = selectedYear ?? chart.dayunStartYear(selectedDayun)
+        let ygz = BaziChart.yearGanZhi(year)
+        let branches: [(Character, String)] = [("寅", "正月"), ("卯", "二月"), ("辰", "三月"), ("巳", "四月"),
+            ("午", "五月"), ("未", "六月"), ("申", "七月"), ("酉", "八月"), ("戌", "九月"), ("亥", "十月"),
+            ("子", "冬月"), ("丑", "腊月")]
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("\(year) 年（\(ygz)）流月 · 以节气为界")
+                .font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            ForEach(branches.indices, id: \.self) { i in
+                let gz = BaziTables.monthGanZhi(yearStem: ygz.first!, monthBranch: branches[i].0)
+                HStack(spacing: 10) {
+                    Text(branches[i].1).font(.caption).foregroundStyle(Ky.sub).frame(width: 34, alignment: .leading)
+                    Text(gz).font(.system(.callout, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                    Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!))
+                        .font(.caption2).foregroundStyle(Ky.gold)
+                    Spacer()
+                    if let rel = BaziTables.relation(gz.last!, chart.monthPillar.last!) {
+                        Text("\(rel)月令").font(.caption2).foregroundStyle(Ky.cinnabar)
+                    }
+                }
+                .padding(.vertical, 4)
+                Divider().opacity(0.35)
+            }
+            Text("流月干支按五虎遁自流年干推，月份以交节为界（寅月自立春起）；与月令的冲合单独标出。")
+                .font(.caption2).foregroundStyle(Ky.sub)
+        }
+    }
+
+    private var liuriLevel: some View {
+        let dp = BaziEngine.dayPillar(for: flowDate)
+        let dayStemForTime: Character = flowHour == 23
+            ? BaziEngine.dayPillar(for: flowDate.addingTimeInterval(86400)).first! : dp.first!
+        let tp = BaziTables.timeGanZhi(dayStem: dayStemForTime, hour: flowHour)
+        return VStack(alignment: .leading, spacing: 10) {
+            DatePicker("选一天", selection: $flowDate, displayedComponents: [.date])
+            Stepper("时刻：\(flowHour) 时（\(tp)）", value: $flowHour, in: 0...23)
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("流日").font(.caption2).foregroundStyle(Ky.sub)
+                    HStack(spacing: 6) {
+                        Text(dp).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: dp.first!))
+                            .font(.caption).foregroundStyle(Ky.gold)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("流时").font(.caption2).foregroundStyle(Ky.sub)
+                    HStack(spacing: 6) {
+                        Text(tp).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: tp.first!))
+                            .font(.caption).foregroundStyle(Ky.gold)
+                    }
+                }
+                Spacer()
+            }
+            if let rel = BaziTables.relation(dp.last!, chart.dayPillar.last!) {
+                Text("流日支与命盘日支成「\(rel)」——日子落到自身宫位的引动，细读看解盘口径。")
+                    .font(.caption).foregroundStyle(Ky.cinnabar)
+            } else {
+                Text("流日支与命盘日支无直接冲合。").font(.caption).foregroundStyle(Ky.sub)
+            }
+            Text("流日按晚子时口径（23 时后日柱不换、时干按次日日干推），与排盘一致。")
+                .font(.caption2).foregroundStyle(Ky.sub)
+        }
     }
 
     private var infoCard: some View {
