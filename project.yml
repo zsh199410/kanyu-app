@@ -29,6 +29,11 @@ targets:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: 堪舆勘察
+        CFBundleIcons:
+          CFBundlePrimaryIcon:
+            CFBundleIconFiles:
+              - AppIcon
+            UIPrerenderedIcon: true
         CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         UILaunchScreen: {}
