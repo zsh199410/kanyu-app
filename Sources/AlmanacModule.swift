@@ -16,7 +16,7 @@ struct AlmanacView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 DatePicker("选一天", selection: $date, displayedComponents: [.date])
-                    .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                    .kyCard()
                 // 头卡：干支日＋农历＋宿
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -37,7 +37,7 @@ struct AlmanacView: View {
                     if !l.otherFestivals.isEmpty { row("纪念日", l.otherFestivals.joined(separator: "、")) }
                     row("节气", "上一节气 \(l.prevJieQi.name) · 下一节气 \(l.nextJieQi.name)")
                 }
-                .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                .kyCard()
                 // 宜忌
                 VStack(alignment: .leading, spacing: 8) {
                     Text("宜").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.jade)
@@ -45,7 +45,7 @@ struct AlmanacView: View {
                     Text("忌").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
                     chips(l.dayJi)
                 }
-                .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                .kyCard()
                 // 吉神凶煞＋方位＋彭祖
                 VStack(alignment: .leading, spacing: 8) {
                     row("吉神宜趋", l.dayJiShen.joined(separator: " "))
@@ -59,7 +59,7 @@ struct AlmanacView: View {
                     Divider()
                     row("彭祖百忌", "\(l.pengZuGan)；\(l.pengZuZhi)")
                 }
-                .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                .kyCard()
                 // 十二时辰
                 VStack(alignment: .leading, spacing: 8) {
                     Text("十二时辰").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
@@ -79,7 +79,7 @@ struct AlmanacView: View {
                         if i < l.times.count - 1 { Divider() }
                     }
                 }
-                .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                .kyCard()
                 Text("数据为 lunar 历算全量输出（宜忌含时辰层），与主流黄历同源算法；择吉仍须结合当事人命局，历书只作通参。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)

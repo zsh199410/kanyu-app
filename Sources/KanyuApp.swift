@@ -1270,11 +1270,12 @@ struct ContentView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     brandHeader
-                    heroCard
                     todayCard
                     dueCard
                     recentPeople
-                    quickTiles
+                    toolsGrid
+                    heroCard
+                    surveyLinks
                     tipCard
                     casesSection
                 }
@@ -1283,7 +1284,7 @@ struct ContentView: View {
                 .padding(.bottom, 28)
             }
             .background(Ky.bg)
-            .navigationTitle("堪舆勘察")
+            .navigationTitle("三术合参")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "搜索案件名或地点")
             .toolbar {
@@ -1301,8 +1302,8 @@ struct ContentView: View {
         HStack(spacing: 12) {
             AppLogoView(size: 46)
             VStack(alignment: .leading, spacing: 2) {
-                Text("堪舆勘察").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                Text("现场勘察 · 排盘断宅 · 数据回传").font(.caption).foregroundStyle(Ky.sub)
+                Text("三术合参").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                Text("八字 · 紫微 · 风水 · 手相面相").font(.caption).foregroundStyle(Ky.sub)
             }
             Spacer()
         }
@@ -1310,7 +1311,7 @@ struct ContentView: View {
 
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: 13) {
-            Text("现场勘察工作台").font(.system(.headline, design: .serif)).foregroundStyle(Ky.instInk)
+            Text("风水勘察工作台").font(.system(.headline, design: .serif)).foregroundStyle(Ky.instInk)
             HStack(spacing: 26) {
                 statItem("案件", "\(store.cases.count)")
                 statItem("已定盘", "\(sitedCount)")
@@ -1338,7 +1339,7 @@ struct ContentView: View {
         .overlay(alignment: .bottomTrailing) {
             Circle().fill(Ky.instCinnabar.opacity(0.35)).frame(width: 10, height: 10).offset(x: -18, y: -16)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.14), radius: 12, y: 6)
     }
 
@@ -1349,96 +1350,60 @@ struct ContentView: View {
         }
     }
 
-    private var quickTiles: some View {
+    private var toolsGrid: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            KySectionTitle(title: "工具", trailing: "排盘 · 断事 · 查验")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                NavigationLink { BaziHomeView() } label: { toolTile("tablecells.fill", "八字排盘", "四柱细盘 · 逐年直断", Ky.gold) }.buttonStyle(.plain)
+                NavigationLink { ZiweiHomeView() } label: { toolTile("sparkles", "紫微斗数", "方盘 · 四化 · 大限", Ky.gold) }.buttonStyle(.plain)
+                NavigationLink { PeopleView() } label: { toolTile("person.2.fill", "人物档案", "建一次 · 三术共用", Ky.jade) }.buttonStyle(.plain)
+                NavigationLink { AlmanacView() } label: { toolTile("calendar", "黄历", "宜忌 · 吉神 · 时辰", Ky.ink) }.buttonStyle(.plain)
+                NavigationLink { SynastryView() } label: { toolTile("heart.circle.fill", "合盘", "合婚四看 · 双盘互看", Ky.cinnabar) }.buttonStyle(.plain)
+                NavigationLink { ForecastView() } label: { toolTile("checkmark.seal.fill", "前瞻登记", "写下断语 · 到期回验", Ky.jade) }.buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func toolTile(_ icon: String, _ title: String, _ desc: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Image(systemName: icon).font(.system(size: 17))
+                .foregroundStyle(color)
+                .frame(width: 36, height: 36)
+                .background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 10))
+            Text(title).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text(desc).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
+        .shadow(color: .black.opacity(0.04), radius: 5, y: 2)
+    }
+
+    private var surveyLinks: some View {
         VStack(spacing: 12) {
-        HStack(spacing: 12) {
-            NavigationLink { KnowledgeView() } label: { tile("books.vertical.fill", "风水知识", Ky.gold) }
-                .buttonStyle(.plain)
-            NavigationLink { ShaHandbookView() } label: { tile("shield.lefthalf.filled", "解煞手册", Ky.cinnabar) }
-                .buttonStyle(.plain)
-            NavigationLink { BaziHomeView() } label: { tile("calendar", "八字排盘", Ky.jade) }
-                .buttonStyle(.plain)
-            Button { showingNew = true } label: { tile("plus.circle.fill", "新建案件", Ky.jade) }
-                .buttonStyle(.plain)
+            wideLink("books.vertical.fill", "风水知识", "流派源流 · 勘察要点", Ky.gold) { KnowledgeView() }
+            wideLink("shield.lefthalf.filled", "解煞手册", "形煞对位 · 分层化解", Ky.cinnabar) { ShaHandbookView() }
+            wideLink("text.book.closed.fill", "断语库", "类象 · 格局 · 神煞条文可搜", Ky.gold) { LibraryView() }
         }
-        NavigationLink { PeopleView() } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "person.2.fill").foregroundStyle(Ky.jade)
-                Text("人物档案").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                Text("建一次 · 三术共用").font(.caption2).foregroundStyle(Ky.sub)
+    }
+
+    private func wideLink<Dest: View>(_ icon: String, _ title: String, _ desc: String, _ color: Color, @ViewBuilder dest: @escaping () -> Dest) -> some View {
+        NavigationLink(destination: dest()) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).font(.system(size: 16)).foregroundStyle(color)
+                    .frame(width: 34, height: 34).background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 9))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                    Text(desc).font(.caption2).foregroundStyle(Ky.sub)
+                }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
             }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
         }.buttonStyle(.plain)
-        NavigationLink { LibraryView() } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "books.vertical.fill").foregroundStyle(Ky.gold)
-                Text("断语库").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                Text("类象 · 格局 · 神煞条文可搜").font(.caption2).foregroundStyle(Ky.sub)
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain)
-        NavigationLink { ZiweiHomeView() } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles").foregroundStyle(Ky.gold)
-                Text("紫微斗数").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                Text("方盘 · 十四主星 · 四化 · 大限").font(.caption2).foregroundStyle(Ky.sub)
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain)
-        NavigationLink { SynastryView() } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "heart.circle.fill").foregroundStyle(Ky.cinnabar)
-                Text("合盘").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                Text("合婚四看 · 双盘互看").font(.caption2).foregroundStyle(Ky.sub)
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain)
-        NavigationLink { AlmanacView() } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "calendar.circle.fill").foregroundStyle(Ky.gold)
-                Text("黄历简卡").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                Text("宜忌 · 宿 · 吉神凶煞 · 时辰").font(.caption2).foregroundStyle(Ky.sub)
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain)
-        NavigationLink { ForecastView() } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "bookmark.circle.fill").foregroundStyle(Ky.jade)
-                Text("前瞻登记").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                Text("断语冻结 · 到期回验").font(.caption2).foregroundStyle(Ky.sub)
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain)
-        NavigationLink { PalmHomeView() } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "hand.raised.fill").foregroundStyle(Ky.cinnabar)
-                Text("手相面相").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                Text("测量 · 描线 · 三停").font(.caption2).foregroundStyle(Ky.sub)
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain)
-        }
     }
 
     private func tile(_ icon: String, _ title: String, _ color: Color) -> some View {

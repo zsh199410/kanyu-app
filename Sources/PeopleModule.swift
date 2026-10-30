@@ -147,7 +147,7 @@ struct PersonDetailView: View {
                             Spacer()
                             Image(systemName: "square.and.arrow.up").font(.caption).foregroundStyle(Ky.sub)
                         }
-                        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                        .kyCard()
                     }.buttonStyle(.plain).foregroundStyle(Ky.ink)
                 }
                 BaziResultView(chart: ch, name: person.name)
@@ -185,7 +185,7 @@ struct PersonDetailView: View {
             Text("对读规矩：阶段主题看紫微大限、应期年份以八字逐年消歧；两边信号冲突时按此分工取主断，另一边记异议。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 
     private func ovRow(_ label: String, _ text: String) -> some View {

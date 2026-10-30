@@ -122,7 +122,7 @@ struct InterpretView: View {
                             .font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
                         EvidenceChainView(conclusion: items[i].conclusion, links: items[i].links)
                     }
-                    .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                    .kyCard()
                 }
                 Text("初断（规则层）：以上为盘面结构化初读，每条附依据链可复核。正式命书的直断与逐年（经回测校准）以工作室报告为准，后续版本逐步并入。")
                     .font(.caption2).foregroundStyle(Ky.sub)

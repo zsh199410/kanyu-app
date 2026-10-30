@@ -128,10 +128,10 @@ struct KySeal: View {
 extension View {
     /// v3 标准卡：纸面＋发丝描边＋极浅投影（内容层，永不玻璃）
     func kyCard() -> some View {
-        self.padding(14)
+        self.padding(16)
             .background(Ky.card)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
             .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
     }
 }

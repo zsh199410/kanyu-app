@@ -49,7 +49,7 @@ struct SynastryView: View {
             personPicker("甲方", selection: $aId)
             personPicker("乙方", selection: $bId)
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 
     private func personPicker(_ label: String, selection: Binding<UUID?>) -> some View {
@@ -122,6 +122,6 @@ struct SynastryView: View {
             Text(title).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
             EvidenceChainView(conclusion: conclusion, links: [("盘面", facts)])
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 }

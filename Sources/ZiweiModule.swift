@@ -165,7 +165,7 @@ struct ZiweiHomeView: View {
                                                   longitude: useLongitude ? Double(longitudeText) : nil)
                     }.buttonStyle(KyPrimaryButton())
                 }
-                .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                .kyCard()
                 if let ch = chart {
                     ZiweiBoardView(chart: ch, name: name)
                     ZiweiReadingView(chart: ch)
@@ -263,7 +263,7 @@ struct ZiweiBoardView: View {
         let isHL = highlighted.contains(p.branch)
         return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 3) {
-                Text(p.name).font(.system(size: 10)).fontWeight(.semibold)
+                Text(p.name).font(.system(size: 11)).fontWeight(.semibold)
                     .foregroundStyle(p.branch == chart.mingGong ? Ky.cinnabar : Ky.ink)
                 if p.isBody { Text("身").font(.system(size: 8)).foregroundStyle(Ky.gold) }
                 Spacer()
@@ -271,7 +271,7 @@ struct ZiweiBoardView: View {
             }
             ForEach(p.majors.indices, id: \.self) { i in
                 HStack(spacing: 2) {
-                    Text(p.majors[i].star).font(.system(size: 12, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text(p.majors[i].star).font(.system(size: 13, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     Text(ZiweiBrightness.of(p.majors[i].star, branch: p.branch))
                         .font(.system(size: 8)).foregroundStyle(Ky.sub)
                     if let m = p.majors[i].mutagen {
@@ -281,10 +281,10 @@ struct ZiweiBoardView: View {
                 }
             }
             if !p.minors.isEmpty {
-                Text(p.minors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: " ")).font(.system(size: 8)).foregroundStyle(Ky.sub).lineLimit(2)
+                Text(p.minors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: " ")).font(.system(size: 9)).foregroundStyle(Ky.sub).lineLimit(2)
             }
             Spacer()
-            Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0)").font(.system(size: 8)).foregroundStyle(Ky.sub)
+            Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0)").font(.system(size: 9)).foregroundStyle(Ky.sub)
         }
         .padding(5)
         .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
@@ -428,7 +428,7 @@ struct ZiweiReadingView: View {
                     Text(c.title).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
                     EvidenceChainView(conclusion: c.conclusion, links: [("盘面", c.facts)])
                 }
-                .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                .kyCard()
             }
         }
     }

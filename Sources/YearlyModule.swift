@@ -111,7 +111,7 @@ struct YearByYearView: View {
                             Text(r.lines[i]).font(.callout).foregroundStyle(Ky.ink)
                         }
                     }
-                    .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                    .kyCard()
                 }
                 Text("口径：逐年四查规则生成（引动分级＋岁运叠加＋干支定性），重断须 ≥2 项强引动同现；健康只给倾向、六亲生死类断语不在 App 层出现——细断以正式报告为准。")
                     .font(.caption2).foregroundStyle(Ky.sub)

@@ -236,7 +236,7 @@ struct BaziHomeView: View {
             Text("家里人建议到「人物档案」建档，建一次，八字、手相、案件都直接调人。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 }
 
@@ -277,7 +277,7 @@ struct BaziResultView: View {
             }
             plateGrid(chart)
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 
     private var wuxingCard: some View {
@@ -287,7 +287,7 @@ struct BaziResultView: View {
             Text("计法：天干各 1，藏干本气 1 / 中气 0.5 / 余气 0.3，归一化。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 
     private var timeCard: some View {
@@ -306,7 +306,7 @@ struct BaziResultView: View {
             default: liuriLevel
             }
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 
     private var dayunLevel: some View {
@@ -429,7 +429,7 @@ struct BaziResultView: View {
             Text("胎元 \(chart.taiYuan) · 胎息 \(chart.taiXi) · 命宫 \(chart.mingGong) · 身宫 \(chart.shenGong)")
                 .font(.caption).foregroundStyle(Ky.ink)
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 
     private var interpretLink: some View {
@@ -443,7 +443,7 @@ struct BaziResultView: View {
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
             }
-            .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+            .kyCard()
         }.buttonStyle(.plain).foregroundStyle(Ky.ink)
     }
 
@@ -458,7 +458,7 @@ struct BaziResultView: View {
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
             }
-            .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+            .kyCard()
         }.buttonStyle(.plain).foregroundStyle(Ky.ink)
     }
 

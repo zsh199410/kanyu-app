@@ -125,7 +125,7 @@ struct HandMeasureView: View {
                             }
                         }.buttonStyle(KyPrimaryButton()).disabled(savedTip)
                     }
-                    .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                    .kyCard()
                 }
                 Text("测量口径：Vision 21 点关节点几何（学术同款管线在本工作室已实测）；三线为手描修正层——把每个圆点拖到你真实掌纹上，描准了判读才有意义。娱乐参考。")
                     .font(.caption2).foregroundStyle(Ky.sub)
@@ -218,7 +218,7 @@ struct HandMeasureView: View {
             Text("判读要点（按相书通说，娱乐参考）：掌型定大框架——方掌重实际与秩序，长掌重感受与想象；指长比看行事风格的细腻度。细读须结合修正后的三线。")
                 .font(.caption).foregroundStyle(Ky.sub)
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 
     private func detect() {
@@ -313,7 +313,7 @@ struct FaceMeasureView: View {
                             }
                         }.buttonStyle(KyPrimaryButton()).disabled(savedTip)
                     }
-                    .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                    .kyCard()
                 }
                 Text("校准口径：发际线以实际发际为准手动拖准（儿童发际未定型更要人工校正）；三停比例为几何事实，判读按相书通说、娱乐参考，不套成人断语于儿童。")
                     .font(.caption2).foregroundStyle(Ky.sub)
@@ -338,7 +338,7 @@ struct FaceMeasureView: View {
                  : "三停不均：以最长一停为主象细读——上停主早年与额相，中停主中年与鼻相，下停主晚年与地阁；须结合五官逐项看，不单凭比例下断。")
                 .font(.caption).foregroundStyle(Ky.sub)
         }
-        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        .kyCard()
     }
 }
 
