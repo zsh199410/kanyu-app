@@ -253,7 +253,6 @@ struct ZiweiBoardView: View {
             Text(chart.juName).font(.caption).foregroundStyle(Ky.gold)
             Text(chart.lunarText).font(.system(size: 9)).foregroundStyle(Ky.sub)
                 .multilineTextAlignment(.center).lineLimit(3)
-        }
             }
         }
         .frame(maxWidth: .infinity, minHeight: 104)
