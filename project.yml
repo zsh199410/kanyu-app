@@ -56,6 +56,10 @@ targets:
       - target: Kanyu
 schemes:
   Kanyu:
+    build:
+      targets:
+        Kanyu: all
+        KanyuTests: [test]
     test:
       targets:
         - KanyuTests
