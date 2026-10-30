@@ -33,8 +33,9 @@ final class ZiweiGoldenTests: XCTestCase {
                     XCTAssertEqual(g.majors[m.star], b, "\(g.name) \(m.star)")
                     XCTAssertEqual(g.mutagens[m.star], m.mutagen, "\(g.name) \(m.star)四化")
                 }
-                for s in p.minors {
-                    XCTAssertEqual(g.minors[s], b, "\(g.name) \(s)")
+                for m in p.minors {
+                    XCTAssertEqual(g.minors[m.star], b, "\(g.name) \(m.star)")
+                    XCTAssertEqual(g.mutagens[m.star], m.mutagen, "\(g.name) \(m.star)四化")
                 }
             }
             XCTAssertEqual(ch.palaces.flatMap { $0.majors }.count, 14, g.name)
