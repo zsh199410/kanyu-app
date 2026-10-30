@@ -1159,6 +1159,76 @@ struct AppLogoView: View {
     }
 }
 
+// MARK: - 主题层（v4.4：双主题 日间宣纸 / 夜间墨金，仪器页恒深；规范见 UI-DESIGN.md）
+
+extension Color {
+    init(rgb: UInt32) {
+        self.init(.sRGB, red: Double((rgb >> 16) & 0xFF) / 255,
+                  green: Double((rgb >> 8) & 0xFF) / 255, blue: Double(rgb & 0xFF) / 255, opacity: 1)
+    }
+    static func kyDyn(_ light: UInt32, _ dark: UInt32) -> Color {
+        func ui(_ v: UInt32) -> UIColor {
+            UIColor(red: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255,
+                    blue: CGFloat(v & 0xFF) / 255, alpha: 1)
+        }
+        return Color(UIColor { t in t.userInterfaceStyle == .dark ? ui(dark) : ui(light) })
+    }
+}
+
+enum Ky {
+    static var bg: Color { .kyDyn(0xF7F3EA, 0x14161A) }
+    static var card: Color { .kyDyn(0xFFFFFF, 0x1E2126) }
+    static var ink: Color { .kyDyn(0x1C1A17, 0xEDE8DC) }
+    static var sub: Color { .kyDyn(0x6E675C, 0x9A958A) }
+    static var gold: Color { .kyDyn(0xA87F14, 0xC9A227) }
+    static var cinnabar: Color { .kyDyn(0xB33727, 0xD95F43) }
+    static var jade: Color { .kyDyn(0x2E7D4F, 0x4CAF7D) }
+    static var line: Color { .kyDyn(0xE2DACB, 0x33373E) }
+    // 仪器页恒深色
+    static let instBg = Color(rgb: 0x14161A)
+    static let instGold = Color(rgb: 0xC9A227)
+    static let instCinnabar = Color(rgb: 0xD95F43)
+    static let instInk = Color(rgb: 0xEDE8DC)
+}
+
+struct KyPrimaryButton: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 13)
+            .background(Ky.gold)
+            .foregroundStyle(Color(rgb: 0x14161A))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .opacity(configuration.isPressed ? 0.72 : 1)
+    }
+}
+
+extension View {
+    // Liquid Glass（iOS 26+）/ 旧系统回退磨砂材质
+    @ViewBuilder func kyGlass(corner: CGFloat = 14) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular, in: RoundedRectangle(cornerRadius: corner))
+        } else {
+            self.background(.ultraThinMaterial).clipShape(RoundedRectangle(cornerRadius: corner))
+        }
+    }
+}
+
+// 进度环（金）
+struct KyProgressRing: View {
+    var done: Int, total: Int, size: CGFloat = 46
+    var body: some View {
+        ZStack {
+            Circle().stroke(Ky.line, lineWidth: 5)
+            Circle().trim(from: 0, to: CGFloat(done) / CGFloat(max(1, total)))
+                .stroke(Ky.gold, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text("\(done)/\(total)").font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.ink)
+        }.frame(width: size, height: size)
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var store: SurveyStore
     @State private var showingNew = false
@@ -1178,17 +1248,29 @@ struct ContentView: View {
                             NavigationLink {
                                 CaseDetailView(caseId: cd.surveyCase.id)
                             } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(cd.surveyCase.name).font(.headline)
-                                    let total = TaskFactory.tasks(for: cd.surveyCase.type).count
-                                    let done = TaskFactory.tasks(for: cd.surveyCase.type).filter { cd.taskDone[$0.id] == true }.count
-                                    Text("\(cd.surveyCase.type.rawValue) · \(cd.surveyCase.locationNote) · 任务 \(done)/\(total) · 媒体 \(cd.media.count) 项 · 罗盘 \(cd.headings.count) 个")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                let total = TaskFactory.tasks(for: cd.surveyCase.type).count
+                                let done = TaskFactory.tasks(for: cd.surveyCase.type).filter { cd.taskDone[$0.id] == true }.count
+                                HStack(spacing: 12) {
+                                    KyProgressRing(done: done, total: total)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(cd.surveyCase.name).font(.headline).foregroundStyle(Ky.ink)
+                                        if let inn = cd.headings.last(where: { $0.pointName == "大门外朝内" && $0.trueNorth >= 0 }) {
+                                            Text("坐向 \(CompassMath.mountain(for: inn.trueNorth))山 · 媒体 \(cd.media.count) 项 · 罗盘 \(cd.headings.count) 个")
+                                                .font(.caption).foregroundStyle(Ky.gold)
+                                        } else {
+                                            Text("\(cd.surveyCase.type.rawValue) · \(cd.surveyCase.locationNote) · 尚未定盘")
+                                                .font(.caption).foregroundStyle(Ky.sub)
+                                        }
+                                    }
                                 }
+                                .padding(.vertical, 4)
                             }
+                            .listRowBackground(Ky.card)
                         }
                         .onDelete { store.deleteCase(at: $0) }
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(Ky.bg)
                 }
             }
             .navigationTitle("堪舆勘察")
@@ -1260,6 +1342,9 @@ struct CaseDetailView: View {
         Group {
             if let d = draft {
                 List {
+                    Section("定盘摘要") {
+                        sittingCard(d)
+                    }
                     Section("采集进度") {
                         let tasks = TaskFactory.tasks(for: d.surveyCase.type)
                         let done = tasks.filter { d.taskDone[$0.id] == true }.count
@@ -1337,6 +1422,8 @@ struct CaseDetailView: View {
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
+                .background(Ky.bg)
                 .navigationTitle(d.surveyCase.name)
                 .navigationBarTitleDisplayMode(.inline)
             } else {
@@ -1345,6 +1432,47 @@ struct CaseDetailView: View {
         }
         .onAppear {
             if draft == nil { draft = store.cases.first(where: { $0.surveyCase.id == caseId }) }
+        }
+    }
+
+    // 定盘摘要卡（工作台顶部常驻）：坐向大字＋互校状态＋进度环
+    @ViewBuilder private func sittingCard(_ d: CaseData) -> some View {
+        let tasks = TaskFactory.tasks(for: d.surveyCase.type)
+        let done = tasks.filter { d.taskDone[$0.id] == true }.count
+        if let inn = d.headings.last(where: { $0.pointName == "大门外朝内" && $0.trueNorth >= 0 }) {
+            let sitM = CompassMath.mountain(for: inn.trueNorth)
+            let midx = CompassMath.mountains.firstIndex(of: sitM) ?? 0
+            let faceM = CompassMath.mountains[(midx + 12) % 24]
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("\(sitM)山\(faceM)向")
+                        .font(.system(.title2, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text("坐\(CompassMath.palace(for: inn.trueNorth))宫 · \(d.surveyCase.builtYear.isEmpty ? "建成年未填" : d.surveyCase.builtYear + " 年建")")
+                        .font(.caption).foregroundStyle(Ky.sub)
+                    crossChip(d)
+                }
+                Spacer()
+                KyProgressRing(done: done, total: tasks.count, size: 54)
+            }
+        } else {
+            HStack(spacing: 10) {
+                Image(systemName: "compass.drawing").font(.title3).foregroundStyle(Ky.gold)
+                Text("尚未定盘：先去罗盘页记录「大门外朝内」，这里会常驻显示坐向摘要。")
+                    .font(.callout).foregroundStyle(Ky.sub)
+            }
+        }
+    }
+
+    @ViewBuilder private func crossChip(_ d: CaseData) -> some View {
+        if let out = d.headings.last(where: { $0.pointName == "大门外朝外" }),
+           let inn = d.headings.last(where: { $0.pointName == "大门外朝内" }) {
+            let dev = abs(abs(CompassMath.shortestDiff(from: out.trueNorth, to: inn.trueNorth)) - 180)
+            Text(dev > 10 ? "互校偏差 \(String(format: "%.0f°", dev)) · 待复测" : "坐向可信")
+                .font(.caption2).fontWeight(.semibold)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background((dev > 10 ? Color.orange : Ky.jade).opacity(0.16))
+                .foregroundStyle(dev > 10 ? .orange : Ky.jade)
+                .clipShape(Capsule())
         }
     }
 
@@ -1432,6 +1560,9 @@ struct CompassView: View {
                             .foregroundStyle(motion.fieldAbnormal ? .red : .secondary)
                     }
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity)
+                .kyGlass(corner: 16)
                 if location.accuracyWarning != nil || motion.fieldAbnormal {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("精度自检（校准好后可达 ±5° 左右）").font(.caption).fontWeight(.semibold)
@@ -1440,8 +1571,7 @@ struct CompassView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(10)
-                    .background(Color.orange.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .kyGlass(corner: 12)
                 }
                 Picker("测点", selection: $pointName) {
                     ForEach(presetPoints, id: \.self) { Text($0).tag($0) }
@@ -1457,7 +1587,7 @@ struct CompassView: View {
                     Text(justSaved ? "✓ 已记录" : (collecting ? "采样中…（\(trueSamples.count)/8）" : "记录这个方位（放平自动采样）"))
                         .frame(maxWidth: .infinity).padding(.vertical, 6)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(KyPrimaryButton())
                 if !collectHint.isEmpty {
                     Text(collectHint).font(.caption).foregroundStyle(.secondary)
                 }
@@ -1482,6 +1612,8 @@ struct CompassView: View {
                 }
             }.padding()
         }
+        .background(Ky.instBg)
+        .preferredColorScheme(.dark)
         .navigationTitle("罗盘定向")
         .onAppear { location.start(); motion.start() }
         .onDisappear { collectTask?.cancel() }
@@ -1569,18 +1701,49 @@ struct CompassView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { justSaved = false }
     }
 
+    // 仪器盘面（墨金恒深）：Canvas 金线刻度环＋二十四山（金）＋八宫（内圈）＋定盘针
     private var dial: some View {
         ZStack {
-            Circle().stroke(Color.secondary.opacity(0.4), lineWidth: 2)
+            Canvas { ctx, size in
+                let c = CGPoint(x: size.width / 2, y: size.height / 2)
+                let r = size.width / 2 - 6
+                ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)),
+                           with: .color(Ky.instGold.opacity(0.55)), lineWidth: 1.5)
+                let rIn = r - 34
+                ctx.stroke(Path(ellipseIn: CGRect(x: c.x - rIn, y: c.y - rIn, width: 2 * rIn, height: 2 * rIn)),
+                           with: .color(Ky.instGold.opacity(0.25)), lineWidth: 1)
+                for i in 0..<72 {
+                    let a = Double(i) * 5 * .pi / 180
+                    let isLong = i % 3 == 0
+                    let r1 = r - (isLong ? 11 : 6)
+                    var p = Path()
+                    p.move(to: CGPoint(x: c.x + r * sin(a), y: c.y - r * cos(a)))
+                    p.addLine(to: CGPoint(x: c.x + r1 * sin(a), y: c.y - r1 * cos(a)))
+                    ctx.stroke(p, with: .color(Ky.instGold.opacity(isLong ? 0.9 : 0.35)), lineWidth: isLong ? 1.4 : 1)
+                }
+            }
+            ForEach(0..<24, id: \.self) { i in
+                let bearing = Double(i) * 15
+                let ang = (bearing - location.displayTrueHeading) * .pi / 180
+                Text(CompassMath.mountains[i])
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(i == 0 ? Ky.instCinnabar : Ky.instGold)
+                    .position(x: 130 + 97 * sin(ang), y: 130 - 97 * cos(ang))
+            }
             ForEach(0..<8, id: \.self) { i in
                 let bearing = Double(i) * 45
                 let ang = (bearing - location.displayTrueHeading) * .pi / 180
                 Text(CompassMath.palaces[i])
                     .font(i % 2 == 0 ? .headline : .subheadline)
-                    .foregroundStyle(i == 0 ? .red : .primary)
-                    .position(x: 130 + 104 * sin(ang), y: 130 - 104 * cos(ang))
+                    .foregroundStyle(i == 0 ? Ky.instCinnabar : Ky.instInk)
+                    .position(x: 130 + 62 * sin(ang), y: 130 - 62 * cos(ang))
             }
-            Image(systemName: "arrow.up").font(.system(size: 30, weight: .bold)).foregroundStyle(.red)
+            // 定盘针：金针指前（机头方向）＋朱砂尾点＋金芯
+            Image(systemName: "arrowtriangle.up.fill")
+                .font(.system(size: 17)).foregroundStyle(Ky.instGold)
+                .offset(y: -26)
+            Circle().fill(Ky.instCinnabar).frame(width: 7, height: 7).offset(y: 24)
+            Circle().fill(Ky.instGold).frame(width: 9, height: 9)
         }
     }
 }
@@ -1670,6 +1833,8 @@ struct AnalysisView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Ky.bg)
         .navigationTitle("本地排盘断宅")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1885,6 +2050,8 @@ struct ShaHandbookView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Ky.bg)
         .navigationTitle("犯煞解说与解煞手册")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1900,6 +2067,8 @@ struct ShaDetailView: View {
             Section("怎么化解（分层）") { Text(entry.remedy).font(.callout) }
             Section { Text("层级说明：L1 结构/功能调整（可由建筑、卫生、人体工学独立解释，先做）；L2 流派应用（只在所据流派内成立）；L3 民俗/象征（心理安顿，不承诺效力）。").font(.caption).foregroundStyle(.secondary) }
         }
+        .scrollContentBackground(.hidden)
+        .background(Ky.bg)
         .navigationTitle(entry.name)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1915,7 +2084,7 @@ struct RemoteView: View {
     @State private var status = ""
     @State private var busy = false
     @State private var remoteInfo: String? = nil
-    private let appTag = "v4.3"
+    private let appTag = "v4.5"
 
     var body: some View {
         List {
@@ -1951,6 +2120,8 @@ struct RemoteView: View {
                 if let info = remoteInfo { Text(info).font(.callout) }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Ky.bg)
         .navigationTitle("远程服务")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -2087,6 +2258,8 @@ struct ShaJudgeView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Ky.bg)
         .navigationTitle("实景判定")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -2118,6 +2291,8 @@ struct KnowledgeView: View {
                 Text("本卡片为风水堪舆专窗知识库（00–08）的离线精简版，口径以工作手册五条定调为准；完整版与出处在知识库，随安装包升级更新。").font(.caption).foregroundStyle(.secondary)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Ky.bg)
         .navigationTitle("风水知识卡（离线）")
         .navigationBarTitleDisplayMode(.inline)
     }
