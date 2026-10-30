@@ -38,7 +38,7 @@ targets:
             CFBundleIconFiles:
               - AppIcon
             UIPrerenderedIcon: true
-        CFBundleShortVersionString: "1.0.0"
+        CFBundleShortVersionString: "4.6"
         CFBundleVersion: "1"
         UILaunchScreen: {}
         NSCameraUsageDescription: 勘察拍照与录像需要使用相机，照片会烙印当时的罗盘方位。
