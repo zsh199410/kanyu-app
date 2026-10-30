@@ -974,6 +974,21 @@ struct KanyuSurveyApp: App {
     }
 }
 
+// App 图标（定盘针 Logo，B 版）：空状态页品牌图，文件缺失时回退系统符号
+struct AppLogoView: View {
+    var size: CGFloat = 84
+    var body: some View {
+        if let path = Bundle.main.path(forResource: "AppIcon", ofType: "png"),
+           let ui = UIImage(contentsOfFile: path) {
+            Image(uiImage: ui).resizable().scaledToFit()
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.22))
+        } else {
+            Image(systemName: "compass.drawing").font(.system(size: size * 0.55)).foregroundStyle(.secondary)
+        }
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var store: SurveyStore
     @State private var showingNew = false
@@ -982,7 +997,7 @@ struct ContentView: View {
             Group {
                 if store.cases.isEmpty {
                     VStack(spacing: 12) {
-                        Image(systemName: "compass.drawing").font(.system(size: 44)).foregroundStyle(.secondary)
+                        AppLogoView()
                         Text("还没有勘察案件").font(.headline)
                         Text("点右上角 ＋ 新建一个案件，按任务单一步步拍，\n最后导出数据包发回即可。")
                             .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
