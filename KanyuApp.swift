@@ -1,0 +1,943 @@
+// 堪舆勘察 Kanyu Survey — 风水勘察数据采集 App
+// 按《勘察作业标准-SOP》字段设计：建案表单 / 罗盘定向（磁北+真北+二十四山）/
+// 任务单拍照录像（照片烙印方位、视频同步记录罗盘轨迹）/ 一键导出数据包 ZIP。
+import SwiftUI
+import CoreLocation
+import AVFoundation
+import UIKit
+import ZIPFoundation
+
+// MARK: - 数据模型
+
+enum CaseType: String, Codable, CaseIterable, Identifiable {
+    case yangzhai = "阳宅"
+    case yinzhai = "阴宅"
+    case courtyard = "庭院"
+    var id: String { rawValue }
+}
+
+struct Resident: Identifiable, Codable {
+    var id = UUID()
+    var label: String = ""        // 如：户主 / 配偶 / 长子（可空）
+    var birthYear: String = ""    // 出生年（八宅命卦用）
+    var gender: String = "男"
+}
+
+struct SurveyCase: Identifiable, Codable {
+    var id = UUID()
+    var name: String = ""
+    var type: CaseType = .yangzhai
+    var locationNote: String = "" // 所在乡镇/小区（粗略即可）
+    var builtYear: String = ""    // 建成年
+    var movedInYear: String = ""  // 入住年
+    var renovatedYear: String = ""// 大装修年（可空）
+    var residents: [Resident] = []
+    var createdAt = Date()
+}
+
+struct HeadingReading: Identifiable, Codable {
+    var id = UUID()
+    var pointName: String         // 测点名，如 大门外朝外
+    var magnetic: Double          // 磁北方位角
+    var trueNorth: Double         // 真北方位角
+    var mountain: String          // 二十四山
+    var palace: String            // 八卦宫
+    var timestamp = Date()
+    var latitude: Double?
+    var longitude: Double?
+    var headingAccuracy: Double = -1
+}
+
+struct HeadingSample: Codable {
+    var t: Double                 // 距录像开始的秒数
+    var trueNorth: Double
+    var magnetic: Double
+}
+
+struct MediaItem: Identifiable, Codable {
+    var id = UUID()
+    var taskId: String
+    var taskTitle: String
+    var kind: String              // photo / video
+    var fileName: String          // 原始文件（相对案件目录）
+    var stampedFileName: String?  // 烙印版照片（仅照片）
+    var samplesFileName: String?  // 罗盘轨迹 JSON（仅视频）
+    var timestamp = Date()
+    var trueHeading: Double = -1
+    var magneticHeading: Double = -1
+    var mountain: String = ""
+    var latitude: Double?
+    var longitude: Double?
+    var note: String = ""
+}
+
+struct CaseData: Identifiable, Codable {
+    var surveyCase: SurveyCase
+    var headings: [HeadingReading] = []
+    var media: [MediaItem] = []
+    var taskDone: [String: Bool] = [:]
+    var taskNotes: [String: String] = [:]
+    var id: UUID { surveyCase.id }
+}
+
+struct ExportPackage: Codable {
+    var exportedAt = Date()
+    var surveyCase: SurveyCase
+    var headings: [HeadingReading]
+    var media: [MediaItem]
+    var taskNotes: [String: String]
+}
+
+// MARK: - 二十四山 / 八宫换算
+
+enum CompassMath {
+    static let mountains = ["子","癸","丑","艮","寅","甲","卯","乙","辰","巽","巳","丙","午","丁",
+                            "未","坤","申","庚","酉","辛","戌","乾","亥","壬"]
+    static let palaces = ["坎","艮","震","巽","离","坤","兑","乾"] // 北起顺时针，每宫45°
+    static func normalize(_ deg: Double) -> Double {
+        var d = deg.truncatingRemainder(dividingBy: 360)
+        if d < 0 { d += 360 }
+        return d
+    }
+    static func mountain(for deg: Double) -> String {
+        let d = normalize(deg)
+        let idx = Int((d + 7.5) / 15) % 24
+        return mountains[idx]
+    }
+    static func palace(for deg: Double) -> String {
+        let d = normalize(deg)
+        let idx = Int((d + 22.5) / 45) % 8
+        return palaces[idx]
+    }
+    static func format(_ deg: Double) -> String {
+        deg >= 0 ? String(format: "%.1f°", normalize(deg)) : "—"
+    }
+}
+
+// MARK: - 任务单（按 SOP 生成）
+
+enum TaskKind { case photo, video, heading }
+
+struct SurveyTask: Identifiable {
+    var id: String
+    var title: String
+    var instruction: String
+    var kind: TaskKind
+}
+
+enum TaskFactory {
+    static func tasks(for type: CaseType) -> [SurveyTask] {
+        switch type {
+        case .yangzhai: return yangzhaiTasks
+        case .yinzhai: return yinzhaiTasks
+        case .courtyard: return courtyardTasks
+        }
+    }
+    static let yangzhaiTasks: [SurveyTask] = [
+        .init(id: "h_door_out", title: "罗盘·大门外朝外", instruction: "站在大门外正中，面朝出门方向（背对房子），手机贴胸端平，稳住后到罗盘页记录「大门外朝外」。", kind: .heading),
+        .init(id: "h_door_in", title: "罗盘·大门外朝内（坐山）", instruction: "同一位置转身面对大门，到罗盘页记录「大门外朝内」。与朝外读数应相差约 180°，互校用。", kind: .heading),
+        .init(id: "h_balcony", title: "罗盘·主阳台朝外", instruction: "站在主阳台/客厅大窗前，面朝窗外，到罗盘页记录「主阳台朝外」。没有阳台就记客厅主窗。", kind: .heading),
+        .init(id: "h_back", title: "罗盘·房后朝外", instruction: "站在房子正后方，背对后墙面朝外，到罗盘页记录「房后朝外」。", kind: .heading),
+        .init(id: "p_front", title: "照片·正立面全景", instruction: "退到能拍全整栋的位置，正对大门拍整栋全景，左右邻居边缘也要带进来。", kind: .photo),
+        .init(id: "p_mingtang", title: "照片·门前向外（明堂）", instruction: "站在大门口向外拍：门前空地、道路、对面景物一次拍全。", kind: .photo),
+        .init(id: "p_left", title: "照片·左侧邻舍", instruction: "站到房子左前方，拍左侧邻居建筑与本宅的间距、高度关系。", kind: .photo),
+        .init(id: "p_right", title: "照片·右侧邻舍", instruction: "站到房子右前方，拍右侧邻居建筑与本宅的间距、高度关系。", kind: .photo),
+        .init(id: "p_back", title: "照片·后立面", instruction: "站到房后能拍全的位置，拍后墙全貌及紧贴后墙的地面。", kind: .photo),
+        .init(id: "p_backland", title: "照片·房后地势与排水", instruction: "拍房后地块全貌：坡势、排水沟、积水处、杂物堆放，重点拍清雨水可能往哪流。", kind: .photo),
+        .init(id: "p_surround", title: "照片·周边路口与水体", instruction: "附近有路口、河流、水塘、变压器、庙宇的，各拍一张并在备注里写方位（如：大门左前方）。", kind: .photo),
+        .init(id: "v_front_env", title: "视频·门前环境环拍", instruction: "站在大门外，原地慢转一圈（约 30 秒），把前方、左右、路面都扫到。罗盘轨迹会同步记录。", kind: .video),
+        .init(id: "v_back_env", title: "视频·房后环境环拍", instruction: "站在房后，原地慢转一圈，拍清后方地势远近。", kind: .video),
+        .init(id: "p_entry", title: "照片·入户向内", instruction: "站在大门外向屋内拍：进门第一眼看到什么（墙/厅/厕/灶）要拍清。", kind: .photo),
+        .init(id: "p_living", title: "照片·客厅全景", instruction: "站客厅角上拍全景，沙发、电视、窗的位置都要在画面里。", kind: .photo),
+        .init(id: "p_kitchen", title: "照片·厨房与灶台", instruction: "拍厨房全景＋灶台近景，水槽与灶的相对位置要清楚。", kind: .photo),
+        .init(id: "p_master", title: "照片·主卧（床头）", instruction: "拍主卧全景，床头靠哪面墙、床头朝向画面里要能判断。", kind: .photo),
+        .init(id: "p_bed2", title: "照片·其他卧室", instruction: "每间卧室一张全景，多间就在备注里注明是哪间、谁住。", kind: .photo),
+        .init(id: "p_bath", title: "照片·卫生间位置", instruction: "拍卫生间门与周围房间的关系，能看出它在房子哪个方位区域即可，不必拍内部细节。", kind: .photo),
+        .init(id: "p_stair", title: "照片·楼梯位置", instruction: "多层住宅拍楼梯所在位置与走向；平层可跳过，在备注写「平层无楼梯」。", kind: .photo),
+        .init(id: "v_flow", title: "视频·室内动线", instruction: "从大门进屋，慢慢走到客厅、厨房、主卧，边走边拍，像带人参观一样走一遍。", kind: .video),
+    ]
+    static let yinzhaiTasks: [SurveyTask] = [
+        .init(id: "h_bei", title: "罗盘·碑向", instruction: "站在墓碑正前方，面朝碑面方向（即朝山方向），到罗盘页记录「碑向朝外」；再转身记录坐方。", kind: .heading),
+        .init(id: "p_yuan", title: "照片·陵园大局", instruction: "拍陵园整体：背后靠山、左右护持、前方视野，站在高处拍一张全景。", kind: .photo),
+        .init(id: "v_yuan", title: "视频·墓区环拍", instruction: "站在选位处原地慢转一圈，四周地势、道路、水体都扫到。", kind: .video),
+        .init(id: "p_wei", title: "照片·选位近景", instruction: "拍选定排位近景：左右相邻位、上下排距、挡墙距离。", kind: .photo),
+        .init(id: "p_shui", title: "照片·排水与坡面", instruction: "拍选位周边排水沟、坡面、挡土墙，有淋头水/积水隐患的重点拍。", kind: .photo),
+        .init(id: "p_lu", title: "照片·园区道路", instruction: "拍通往选位的道路走向：是环抱还是直冲选位。", kind: .photo),
+    ]
+    static let courtyardTasks: [SurveyTask] = [
+        .init(id: "h_gate", title: "罗盘·院门朝外", instruction: "站在院门外，面朝出门方向，到罗盘页记录「院门朝外」。", kind: .heading),
+        .init(id: "v_all", title: "视频·院内全景环拍", instruction: "站在院子中心慢转一圈，院墙、主体房、水景、植物都扫到。", kind: .video),
+        .init(id: "p_gate_out", title: "照片·院门向外", instruction: "站在院门内向外拍：门前道路、空地、对面景物。", kind: .photo),
+        .init(id: "p_water", title: "照片·水景", instruction: "拍池/溪/水缸等水体与房子的相对位置，水流方向在备注里写清。", kind: .photo),
+        .init(id: "p_rock", title: "照片·假山与置石", instruction: "拍假山、景石的位置与形状，尖锐对门窗的要带上门窗一起拍。", kind: .photo),
+        .init(id: "p_plants", title: "照片·主要植物", instruction: "拍大树与主要植栽，尤其正对门窗、压屋的树。", kind: .photo),
+        .init(id: "p_wall", title: "照片·影壁与院墙", instruction: "拍影壁/照墙、院墙完整度与高度。", kind: .photo),
+    ]
+}
+
+// MARK: - 数据存储与导出
+
+@MainActor
+final class SurveyStore: ObservableObject {
+    @Published var cases: [CaseData] = []
+    private let baseDir: URL
+    private var indexURL: URL { baseDir.appendingPathComponent("index.json") }
+
+    init() {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        baseDir = docs.appendingPathComponent("AppData", isDirectory: true)
+        try? FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
+        load()
+    }
+
+    func caseDir(_ id: UUID) -> URL {
+        let d = baseDir.appendingPathComponent(id.uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+        return d
+    }
+
+    func load() {
+        guard let data = try? Data(contentsOf: indexURL),
+              let decoded = try? Self.decoder.decode([CaseData].self, from: data) else { return }
+        cases = decoded
+    }
+
+    func save() {
+        guard let data = try? Self.encoder.encode(cases) else { return }
+        try? data.write(to: indexURL, options: .atomic)
+    }
+
+    static var encoder: JSONEncoder {
+        let e = JSONEncoder(); e.dateEncodingStrategy = .iso8601; e.outputFormatting = [.prettyPrinted, .sortedKeys]; return e
+    }
+    static var decoder: JSONDecoder {
+        let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601; return d
+    }
+
+    func addCase(_ c: SurveyCase) {
+        cases.insert(CaseData(surveyCase: c), at: 0)
+        _ = caseDir(c.id)
+        save()
+    }
+
+    func deleteCase(at offsets: IndexSet) {
+        for i in offsets {
+            let dir = caseDir(cases[i].surveyCase.id)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        cases.remove(atOffsets: offsets)
+        save()
+    }
+
+    func update(_ data: CaseData) {
+        if let i = cases.firstIndex(where: { $0.surveyCase.id == data.surveyCase.id }) {
+            cases[i] = data
+            save()
+        }
+    }
+
+    // 保存一张照片（原图＋烙印图），返回 MediaItem
+    func savePhoto(caseId: UUID, task: SurveyTask, imageData: Data, loc: LocationManager) -> MediaItem? {
+        guard let image = UIImage(data: imageData) else { return nil }
+        let dir = caseDir(caseId)
+        let stamp = Date()
+        let base = "\(task.id)_\(Int(stamp.timeIntervalSince1970))"
+        let origName = "\(base).jpg"
+        let stampedName = "\(base)_stamp.jpg"
+        let trueH = loc.displayTrueHeading
+        let magH = loc.displayMagneticHeading
+        let mountain = trueH >= 0 ? CompassMath.mountain(for: trueH) : ""
+        // 原图
+        if let jpg = image.jpegData(compressionQuality: 0.9) {
+            try? jpg.write(to: dir.appendingPathComponent(origName))
+        }
+        // 烙印图
+        let lines = [
+            "\(Self.timeFormatter.string(from: stamp))",
+            "真北 \(CompassMath.format(trueH)) \(mountain)山 · 磁北 \(CompassMath.format(magH))",
+            loc.coordinateText
+        ]
+        let stamped = StampDrawer.stamped(image: image, lines: lines)
+        if let jpg = stamped.jpegData(compressionQuality: 0.9) {
+            try? jpg.write(to: dir.appendingPathComponent(stampedName))
+        }
+        return MediaItem(taskId: task.id, taskTitle: task.title, kind: "photo",
+                         fileName: origName, stampedFileName: stampedName,
+                         timestamp: stamp, trueHeading: trueH, magneticHeading: magH,
+                         mountain: mountain,
+                         latitude: loc.currentLocation?.coordinate.latitude,
+                         longitude: loc.currentLocation?.coordinate.longitude)
+    }
+
+    // 保存一段视频（文件已由相机写入临时路径）＋罗盘轨迹
+    func saveVideo(caseId: UUID, task: SurveyTask, tempURL: URL, samples: [HeadingSample], loc: LocationManager) -> MediaItem? {
+        let dir = caseDir(caseId)
+        let stamp = Date()
+        let base = "\(task.id)_\(Int(stamp.timeIntervalSince1970))"
+        let name = "\(base).mov"
+        let dest = dir.appendingPathComponent(name)
+        do { try FileManager.default.moveItem(at: tempURL, to: dest) } catch { return nil }
+        var samplesName: String? = nil
+        if !samples.isEmpty {
+            samplesName = "\(base)_headings.json"
+            if let data = try? Self.encoder.encode(samples) {
+                try? data.write(to: dir.appendingPathComponent(samplesName!))
+            }
+        }
+        let trueH = samples.first?.trueNorth ?? loc.displayTrueHeading
+        let magH = samples.first?.magnetic ?? loc.displayMagneticHeading
+        return MediaItem(taskId: task.id, taskTitle: task.title, kind: "video",
+                         fileName: name, samplesFileName: samplesName,
+                         timestamp: stamp, trueHeading: trueH, magneticHeading: magH,
+                         mountain: trueH >= 0 ? CompassMath.mountain(for: trueH) : "",
+                         latitude: loc.currentLocation?.coordinate.latitude,
+                         longitude: loc.currentLocation?.coordinate.longitude)
+    }
+
+    // 导出 ZIP 数据包：媒体原件＋data.json＋勘察摘要.txt
+    func exportZip(caseData: CaseData) -> URL? {
+        let sc = caseData.surveyCase
+        let safeName = sc.name.isEmpty ? "勘察" : sc.name
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Export_\(sc.id.uuidString)", isDirectory: true)
+        try? FileManager.default.removeItem(at: tmp)
+        do {
+            try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+            let src = caseDir(sc.id)
+            for m in caseData.media {
+                for f in [m.fileName, m.stampedFileName, m.samplesFileName].compactMap({ $0 }) {
+                    let from = src.appendingPathComponent(f)
+                    if FileManager.default.fileExists(atPath: from.path) {
+                        try FileManager.default.copyItem(at: from, to: tmp.appendingPathComponent(f))
+                    }
+                }
+            }
+            let pkg = ExportPackage(surveyCase: sc, headings: caseData.headings,
+                                    media: caseData.media, taskNotes: caseData.taskNotes)
+            try Self.encoder.encode(pkg).write(to: tmp.appendingPathComponent("data.json"))
+            try summaryText(caseData).write(to: tmp.appendingPathComponent("勘察摘要.txt"),
+                                             atomically: true, encoding: .utf8)
+            let zipURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("\(safeName)-勘察数据包.zip")
+            try? FileManager.default.removeItem(at: zipURL)
+            try FileManager.default.zipItem(at: tmp, to: zipURL)
+            return zipURL
+        } catch { return nil }
+    }
+
+    func summaryText(_ cd: CaseData) -> String {
+        let sc = cd.surveyCase
+        var s = "勘察数据包摘要\n================\n"
+        s += "名称：\(sc.name)\n类型：\(sc.type.rawValue)\n地点：\(sc.locationNote)\n"
+        s += "建成年：\(sc.builtYear) 入住年：\(sc.movedInYear) 大装修年：\(sc.renovatedYear)\n"
+        for r in sc.residents { s += "居住者：\(r.label) \(r.birthYear)年 \(r.gender)\n" }
+        s += "\n罗盘读数（真北为准）\n----------------\n"
+        for h in cd.headings {
+            s += "\(h.pointName)：真北 \(CompassMath.format(h.trueNorth))（\(h.mountain)山·\(h.palace)宫）磁北 \(CompassMath.format(h.magnetic)) 精度±\(Int(h.headingAccuracy))° \(Self.timeFormatter.string(from: h.timestamp))\n"
+        }
+        s += "\n媒体清单\n----------------\n"
+        for m in cd.media {
+            s += "[\(m.kind == "photo" ? "照片" : "视频")] \(m.taskTitle)｜真北 \(CompassMath.format(m.trueHeading)) \(m.mountain)｜\(m.fileName)\(m.note.isEmpty ? "" : "｜备注：\(m.note)")\n"
+        }
+        return s
+    }
+
+    static let timeFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH:mm:ss"; return f
+    }()
+}
+
+// 照片烙印：在底部压一条半透明黑条，写时间/方位/GPS
+enum StampDrawer {
+    static func stamped(image: UIImage, lines: [String]) -> UIImage {
+        let w = image.size.width
+        let barH = max(90, image.size.height * 0.085)
+        let newSize = CGSize(width: w, height: image.size.height + barH)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = image.scale
+        let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
+        return renderer.image { ctx in
+            UIColor.black.setFill()
+            ctx.fill(CGRect(origin: .zero, size: newSize))
+            image.draw(at: .zero)
+            let fontSize = max(26, w * 0.026)
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: fontSize, weight: .medium),
+                .foregroundColor: UIColor.white
+            ]
+            var y = image.size.height + barH * 0.10
+            for line in lines {
+                (line as NSString).draw(at: CGPoint(x: w * 0.03, y: y), withAttributes: attrs)
+                y += fontSize * 1.35
+            }
+        }
+    }
+}
+
+// MARK: - 定位与罗盘
+
+@MainActor
+final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var magneticHeading: Double = -1
+    @Published var trueHeading: Double = -1
+    @Published var headingAccuracy: Double = -1
+    @Published var currentLocation: CLLocation?
+    @Published var authorized = false
+
+    private let manager = CLLocationManager()
+
+    var displayTrueHeading: Double { trueHeading >= 0 ? trueHeading : magneticHeading }
+    var displayMagneticHeading: Double { magneticHeading }
+    var declination: Double? {
+        guard trueHeading >= 0, magneticHeading >= 0 else { return nil }
+        var d = trueHeading - magneticHeading
+        if d > 180 { d -= 360 }; if d < -180 { d += 360 }
+        return d
+    }
+    var coordinateText: String {
+        guard let l = currentLocation else { return "GPS 未定位" }
+        return String(format: "%.6f, %.6f", l.coordinate.latitude, l.coordinate.longitude)
+    }
+    var accuracyWarning: String? {
+        if headingAccuracy < 0 { return "罗盘未就绪：请远离钢筋、电器、汽车，原地画 8 字校准" }
+        if headingAccuracy > 25 { return "精度偏低（±\(Int(headingAccuracy))°）：请远离金属与电器后重测" }
+        return nil
+    }
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.headingFilter = 1
+        manager.requestWhenInUseAuthorization()
+    }
+
+    func start() {
+        manager.startUpdatingLocation()
+        if CLLocationManager.headingAvailable() { manager.startUpdatingHeading() }
+    }
+    func stop() {
+        manager.stopUpdatingLocation()
+        manager.stopUpdatingHeading()
+    }
+
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { @MainActor in
+            self.authorized = (manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways)
+            if self.authorized { self.start() }
+        }
+    }
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let loc = locations.last
+        Task { @MainActor in self.currentLocation = loc }
+    }
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        let m = newHeading.magneticHeading
+        let t = newHeading.trueHeading
+        let a = newHeading.headingAccuracy
+        Task { @MainActor in
+            self.magneticHeading = m
+            self.trueHeading = t
+            self.headingAccuracy = a
+        }
+    }
+}
+
+// MARK: - 相机（AVFoundation：拍照＋录像，取景框由 SwiftUI 叠罗盘）
+
+final class CameraManager: NSObject, ObservableObject {
+    let session = AVCaptureSession()
+    private let photoOutput = AVCapturePhotoOutput()
+    private let movieOutput = AVCaptureMovieFileOutput()
+    private var photoCompletion: ((Data?) -> Void)?
+    private var movieCompletion: ((URL?) -> Void)?
+    @Published var isRecording = false
+    private var configured = false
+
+    func configure() {
+        guard !configured else { return }
+        configured = true
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            self.session.beginConfiguration()
+            self.session.sessionPreset = .high
+            if let cam = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+               let input = try? AVCaptureDeviceInput(device: cam),
+               self.session.canAddInput(input) { self.session.addInput(input) }
+            if let mic = AVCaptureDevice.default(for: .audio),
+               let input = try? AVCaptureDeviceInput(device: mic),
+               self.session.canAddInput(input) { self.session.addInput(input) }
+            if self.session.canAddOutput(self.photoOutput) { self.session.addOutput(self.photoOutput) }
+            if self.session.canAddOutput(self.movieOutput) { self.session.addOutput(self.movieOutput) }
+            self.session.commitConfiguration()
+            self.session.startRunning()
+        }
+    }
+
+    func capturePhoto(completion: @escaping (Data?) -> Void) {
+        photoCompletion = completion
+        let settings = AVCapturePhotoSettings()
+        photoOutput.capturePhoto(with: settings, delegate: self)
+    }
+
+    func startRecording() {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rec_\(Int(Date().timeIntervalSince1970)).mov")
+        movieOutput.startRecording(to: url, recordingDelegate: self)
+        DispatchQueue.main.async { self.isRecording = true }
+    }
+
+    func stopRecording(completion: @escaping (URL?) -> Void) {
+        movieCompletion = completion
+        movieOutput.stopRecording()
+    }
+}
+
+extension CameraManager: AVCapturePhotoCaptureDelegate {
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        let data = error == nil ? photo.fileDataRepresentation() : nil
+        let c = photoCompletion; photoCompletion = nil
+        DispatchQueue.main.async { c?(data) }
+    }
+}
+
+extension CameraManager: AVCaptureFileOutputRecordingDelegate {
+    func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL,
+                    from connections: [AVCaptureConnection], error: Error?) {
+        DispatchQueue.main.async { self.isRecording = false }
+        let ok = (error == nil)
+        let c = movieCompletion; movieCompletion = nil
+        DispatchQueue.main.async { c?(ok ? outputFileURL : nil) }
+    }
+}
+
+final class PreviewUIView: UIView {
+    override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+    var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+}
+
+struct CameraPreview: UIViewRepresentable {
+    let session: AVCaptureSession
+    func makeUIView(context: Context) -> PreviewUIView {
+        let v = PreviewUIView()
+        v.previewLayer.session = session
+        v.previewLayer.videoGravity = .resizeAspectFill
+        if let conn = v.previewLayer.connection, conn.isVideoOrientationSupported {
+            conn.videoOrientation = .portrait
+        }
+        return v
+    }
+    func updateUIView(_ uiView: PreviewUIView, context: Context) {}
+}
+
+// MARK: - 界面
+
+@main
+struct KanyuSurveyApp: App {
+    @StateObject private var store = SurveyStore()
+    @StateObject private var location = LocationManager()
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(store)
+                .environmentObject(location)
+                .onAppear { location.start() }
+        }
+    }
+}
+
+struct ContentView: View {
+    @EnvironmentObject var store: SurveyStore
+    @State private var showingNew = false
+    var body: some View {
+        NavigationStack {
+            Group {
+                if store.cases.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "compass.drawing").font(.system(size: 44)).foregroundStyle(.secondary)
+                        Text("还没有勘察案件").font(.headline)
+                        Text("点右上角 ＋ 新建一个案件，按任务单一步步拍，\n最后导出数据包发回即可。")
+                            .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    }.padding()
+                } else {
+                    List {
+                        ForEach(store.cases) { cd in
+                            NavigationLink {
+                                CaseDetailView(caseId: cd.surveyCase.id)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(cd.surveyCase.name).font(.headline)
+                                    Text("\(cd.surveyCase.type.rawValue) · \(cd.surveyCase.locationNote) · 已拍 \(cd.media.count) 项 · 罗盘 \(cd.headings.count) 个")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .onDelete { store.deleteCase(at: $0) }
+                    }
+                }
+            }
+            .navigationTitle("堪舆勘察")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showingNew = true } label: { Image(systemName: "plus") }
+                }
+            }
+            .sheet(isPresented: $showingNew) { NewCaseView() }
+        }
+    }
+}
+
+struct NewCaseView: View {
+    @EnvironmentObject var store: SurveyStore
+    @Environment(\.dismiss) var dismiss
+    @State private var c = SurveyCase()
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("案件") {
+                    TextField("名称（如：案例001 临街自建房）", text: $c.name)
+                    Picker("类型", selection: $c.type) {
+                        ForEach(CaseType.allCases) { t in Text(t.rawValue).tag(t) }
+                    }
+                    TextField("所在乡镇/小区（粗略即可）", text: $c.locationNote)
+                }
+                Section("年份（定运要用，务必准）") {
+                    TextField("建成年（如 2016）", text: $c.builtYear).keyboardType(.numberPad)
+                    TextField("入住年", text: $c.movedInYear).keyboardType(.numberPad)
+                    TextField("大装修年（没有留空）", text: $c.renovatedYear).keyboardType(.numberPad)
+                }
+                Section("常住人（八宅命卦用）") {
+                    ForEach($c.residents) { $r in
+                        HStack {
+                            TextField("称谓", text: $r.label)
+                            TextField("出生年", text: $r.birthYear).keyboardType(.numberPad)
+                            Picker("", selection: $r.gender) { Text("男").tag("男"); Text("女").tag("女") }
+                                .pickerStyle(.segmented).frame(width: 90)
+                        }
+                    }
+                    .onDelete { c.residents.remove(atOffsets: $0) }
+                    Button("＋ 添加常住人") { c.residents.append(Resident()) }
+                }
+            }
+            .navigationTitle("新建勘察")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("建立") {
+                        if c.name.isEmpty { c.name = "勘察 \(SurveyStore.timeFormatter.string(from: c.createdAt))" }
+                        store.addCase(c)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct CaseDetailView: View {
+    @EnvironmentObject var store: SurveyStore
+    @EnvironmentObject var location: LocationManager
+    let caseId: UUID
+    @State private var draft: CaseData?
+    @State private var exportURL: URL?
+
+    var body: some View {
+        Group {
+            if let d = draft {
+                List {
+                    Section("基本信息") {
+                        LabeledContent("类型", value: d.surveyCase.type.rawValue)
+                        LabeledContent("地点", value: d.surveyCase.locationNote)
+                        LabeledContent("建成 / 入住 / 装修", value: "\(d.surveyCase.builtYear) / \(d.surveyCase.movedInYear) / \(d.surveyCase.renovatedYear)")
+                        ForEach(d.surveyCase.residents) { r in
+                            LabeledContent("常住人", value: "\(r.label) \(r.birthYear)年 \(r.gender)")
+                        }
+                    }
+                    Section("罗盘读数（\(d.headings.count)）") {
+                        NavigationLink {
+                            CompassView(draft: binding)
+                        } label: { Label("去测罗盘 / 记录方位", systemImage: "location.north.circle") }
+                        ForEach(d.headings) { h in
+                            HStack {
+                                Text(h.pointName)
+                                Spacer()
+                                Text("真北 \(CompassMath.format(h.trueNorth)) \(h.mountain)山")
+                                    .foregroundStyle(.secondary).font(.callout)
+                            }
+                        }
+                        .onDelete { idx in
+                            draft?.headings.remove(atOffsets: idx); commit()
+                        }
+                    }
+                    Section("任务单") {
+                        ForEach(TaskFactory.tasks(for: d.surveyCase.type)) { task in
+                            NavigationLink {
+                                TaskDetailView(task: task, draft: binding)
+                            } label: {
+                                HStack {
+                                    Image(systemName: (draft?.taskDone[task.id] ?? false) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle((draft?.taskDone[task.id] ?? false) ? .green : .secondary)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(task.title).font(.body)
+                                        Text(kindText(task.kind)).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Section("导出") {
+                        Button {
+                            if let dd = draft { exportURL = store.exportZip(caseData: dd) }
+                        } label: { Label("生成数据包（ZIP）", systemImage: "square.and.arrow.up") }
+                        if let url = exportURL {
+                            ShareLink(item: url) { Label("发送数据包", systemImage: "paperplane") }
+                            Text("数据包含：原图＋烙印图＋视频＋罗盘轨迹＋data.json＋勘察摘要。用聊天软件发回即可。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .navigationTitle(d.surveyCase.name)
+                .navigationBarTitleDisplayMode(.inline)
+            } else {
+                Text("案件不存在").foregroundStyle(.secondary)
+            }
+        }
+        .onAppear {
+            if draft == nil { draft = store.cases.first(where: { $0.surveyCase.id == caseId }) }
+        }
+    }
+
+    private var binding: Binding<CaseData> {
+        Binding(get: { draft ?? CaseData(surveyCase: SurveyCase()) },
+                set: { draft = $0; commit() })
+    }
+    private func commit() { if let d = draft { store.update(d) } }
+    private func kindText(_ k: TaskKind) -> String {
+        switch k { case .photo: return "拍照"; case .video: return "录像"; case .heading: return "罗盘" }
+    }
+}
+
+struct CompassView: View {
+    @EnvironmentObject var location: LocationManager
+    @Binding var draft: CaseData
+    @State private var pointName = "大门外朝外"
+    @State private var customPoint = ""
+    @State private var justSaved = false
+    private let presetPoints = ["大门外朝外", "大门外朝内", "主阳台朝外", "房后朝外", "碑向朝外", "院门朝外"]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                dial.frame(width: 260, height: 260).padding(.top, 8)
+                VStack(spacing: 4) {
+                    Text("真北 \(CompassMath.format(location.displayTrueHeading))")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                    let d = location.displayTrueHeading
+                    Text(d >= 0 ? "\(CompassMath.mountain(for: d))山 · \(CompassMath.palace(for: d))宫" : "等待罗盘…")
+                        .font(.headline).foregroundStyle(.secondary)
+                    Text("磁北 \(CompassMath.format(location.displayMagneticHeading))" +
+                         (location.declination != nil ? " · 磁偏角 \(String(format: "%+.1f°", location.declination!))（系统按定位自动校正）" : ""))
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text("GPS：\(location.coordinateText)").font(.caption).foregroundStyle(.secondary)
+                    if let warn = location.accuracyWarning {
+                        Text(warn).font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
+                    }
+                }
+                Picker("测点", selection: $pointName) {
+                    ForEach(presetPoints, id: \.self) { Text($0).tag($0) }
+                    Text("自定义…").tag("__custom__")
+                }.pickerStyle(.menu)
+                if pointName == "__custom__" {
+                    TextField("测点名称", text: $customPoint).textFieldStyle(.roundedBorder)
+                }
+                Button {
+                    let name = pointName == "__custom__" ? (customPoint.isEmpty ? "自定义测点" : customPoint) : pointName
+                    let t = location.displayTrueHeading
+                    draft.headings.append(HeadingReading(
+                        pointName: name,
+                        magnetic: location.displayMagneticHeading,
+                        trueNorth: t,
+                        mountain: t >= 0 ? CompassMath.mountain(for: t) : "",
+                        palace: t >= 0 ? CompassMath.palace(for: t) : "",
+                        latitude: location.currentLocation?.coordinate.latitude,
+                        longitude: location.currentLocation?.coordinate.longitude,
+                        headingAccuracy: location.headingAccuracy))
+                    justSaved = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { justSaved = false }
+                } label: {
+                    Text(justSaved ? "✓ 已记录" : "记录这个方位")
+                        .frame(maxWidth: .infinity).padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                Text("测法：手机端平、远离汽车钢筋电器；每个测点原地慢转半圈等读数稳定后再记录。坐向以真北读数为准入盘，磁北读数留作互校。")
+                    .font(.caption).foregroundStyle(.secondary)
+                if !draft.headings.isEmpty {
+                    Divider()
+                    ForEach(draft.headings) { h in
+                        HStack {
+                            Text(h.pointName).font(.callout)
+                            Spacer()
+                            Text("\(CompassMath.format(h.trueNorth)) \(h.mountain)山").font(.callout).foregroundStyle(.secondary)
+                        }.frame(maxWidth: .infinity)
+                    }
+                }
+            }.padding()
+        }
+        .navigationTitle("罗盘定向")
+        .onAppear { location.start() }
+    }
+
+    private var dial: some View {
+        ZStack {
+            Circle().stroke(Color.secondary.opacity(0.4), lineWidth: 2)
+            ForEach(0..<8, id: \.self) { i in
+                let bearing = Double(i) * 45
+                let ang = (bearing - location.displayTrueHeading) * .pi / 180
+                Text(CompassMath.palaces[i])
+                    .font(i % 2 == 0 ? .headline : .subheadline)
+                    .foregroundStyle(i == 0 ? .red : .primary)
+                    .position(x: 130 + 104 * sin(ang), y: 130 - 104 * cos(ang))
+            }
+            Image(systemName: "arrow.up").font(.system(size: 30, weight: .bold)).foregroundStyle(.red)
+        }
+    }
+}
+
+struct TaskDetailView: View {
+    @EnvironmentObject var store: SurveyStore
+    let task: SurveyTask
+    @Binding var draft: CaseData
+    var body: some View {
+        List {
+            Section("怎么做") { Text(task.instruction) }
+            Section("备注") {
+                TextField("补充说明（可选）", text: noteBinding, axis: .vertical).lineLimit(2...5)
+            }
+            Section {
+                if task.kind == .heading {
+                    NavigationLink {
+                        CompassView(draft: $draft)
+                    } label: { Label("打开罗盘记录", systemImage: "location.north.circle") }
+                } else {
+                    NavigationLink {
+                        CaptureView(task: task, draft: $draft)
+                    } label: {
+                        Label(task.kind == .photo ? "去拍照" : "去录像", systemImage: task.kind == .photo ? "camera" : "video")
+                    }
+                }
+                Toggle("标记完成", isOn: doneBinding)
+            }
+            let items = draft.media.filter { $0.taskId == task.id }
+            if !items.isEmpty {
+                Section("本项已采集（\(items.count)）") {
+                    ForEach(items) { m in
+                        Text("\(m.kind == "photo" ? "照片" : "视频") · 真北 \(CompassMath.format(m.trueHeading)) \(m.mountain) · \(SurveyStore.timeFormatter.string(from: m.timestamp))")
+                            .font(.caption)
+                    }
+                }
+            }
+        }
+        .navigationTitle(task.title)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    private var noteBinding: Binding<String> {
+        Binding(get: { draft.taskNotes[task.id] ?? "" },
+                set: { draft.taskNotes[task.id] = $0 })
+    }
+    private var doneBinding: Binding<Bool> {
+        Binding(get: { draft.taskDone[task.id] ?? false },
+                set: { draft.taskDone[task.id] = $0 })
+    }
+}
+
+struct CaptureView: View {
+    @EnvironmentObject var store: SurveyStore
+    @EnvironmentObject var location: LocationManager
+    @Environment(\.dismiss) var dismiss
+    let task: SurveyTask
+    @Binding var draft: CaseData
+    @StateObject private var camera = CameraManager()
+    @State private var samples: [HeadingSample] = []
+    @State private var recordStart: Date?
+    @State private var savedTip = false
+
+    var body: some View {
+        ZStack {
+            CameraPreview(session: camera.session).ignoresSafeArea()
+            VStack {
+                // 罗盘叠加条（录像时同样可见；视频轨迹同步写入数据包）
+                HStack(spacing: 10) {
+                    Image(systemName: "location.north.fill").foregroundStyle(.red)
+                    Text("真北 \(CompassMath.format(location.displayTrueHeading))")
+                        .font(.headline)
+                    if location.displayTrueHeading >= 0 {
+                        Text("\(CompassMath.mountain(for: location.displayTrueHeading))山")
+                            .font(.headline)
+                    }
+                    Spacer()
+                    if camera.isRecording { Circle().fill(.red).frame(width: 10, height: 10) }
+                }
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(.black.opacity(0.45)).foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding()
+                Spacer()
+                if savedTip {
+                    Text("✓ 已保存").padding(8).background(.black.opacity(0.6))
+                        .foregroundStyle(.white).clipShape(Capsule())
+                }
+                if task.kind == .photo {
+                    Button {
+                        camera.capturePhoto { data in
+                            guard let data else { return }
+                            if let item = store.savePhoto(caseId: draft.surveyCase.id, task: task, imageData: data, loc: location) {
+                                draft.media.append(item)
+                                draft.taskDone[task.id] = true
+                                flashTip()
+                            }
+                        }
+                    } label: {
+                        Circle().fill(.white).frame(width: 68, height: 68)
+                            .overlay(Circle().stroke(.gray, lineWidth: 3).frame(width: 56, height: 56))
+                    }.padding(.bottom, 28)
+                } else {
+                    Button {
+                        if camera.isRecording {
+                            camera.stopRecording { url in
+                                guard let url else { return }
+                                if let item = store.saveVideo(caseId: draft.surveyCase.id, task: task,
+                                                              tempURL: url, samples: samples, loc: location) {
+                                    draft.media.append(item)
+                                    draft.taskDone[task.id] = true
+                                    flashTip()
+                                }
+                                samples = []; recordStart = nil
+                            }
+                        } else {
+                            samples = []; recordStart = Date()
+                            camera.startRecording()
+                        }
+                    } label: {
+                        ZStack {
+                            Circle().fill(camera.isRecording ? .gray : .red).frame(width: 68, height: 68)
+                            if camera.isRecording { RoundedRectangle(cornerRadius: 4).fill(.white).frame(width: 26, height: 26) }
+                        }
+                    }.padding(.bottom, 28)
+                }
+            }
+        }
+        .navigationTitle(task.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { camera.configure(); location.start() }
+        .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { now in
+            guard camera.isRecording, let start = recordStart else { return }
+            samples.append(HeadingSample(t: now.timeIntervalSince(start),
+                                         trueNorth: location.displayTrueHeading,
+                                         magnetic: location.displayMagneticHeading))
+        }
+    }
+    private func flashTip() {
+        savedTip = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { savedTip = false }
+    }
+}
