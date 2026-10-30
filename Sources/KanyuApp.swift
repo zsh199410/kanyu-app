@@ -249,6 +249,19 @@ enum FengshuiEngine {
         "9-1": "一九桃花文昌：宜书房，桃花位慎处理",
     ]
 
+    // 组合化解要点（与知识库 09 号手册同源，L1 优先、L2 流派、L3 民俗须分清）
+    static let comboRemedies: [String: String] = [
+        "2-5": "化解：此宫当年忌动土钻敲、忌久坐久卧；保持通风干燥；以金泄土——置一口金属钟或一串铜钱即可（忌堆砌），宫内忌红、黄助土。",
+        "5-2": "化解：此宫当年忌动土钻敲、忌久坐久卧；保持通风干燥；以金泄土——置一口金属钟或一串铜钱即可（忌堆砌），宫内忌红、黄助土。",
+        "5-5": "化解：此宫大忌动土与装修，保持安静洁净，能空置最好；金属钟泄土，忌红黄；流年五黄再叠临此宫时尤其慎之。",
+        "2-2": "化解：此宫保持通风采光与干燥（卫生层即正解）；不作病人久卧房；金属小件泄土为辅。",
+        "6-7": "化解：此宫不放利器、不作争吵对峙位；以水通关——置静水或蓝黑色织物（流派层）；家人沟通问题回到沟通本身。",
+        "7-6": "化解：此宫不放利器、不作争吵对峙位；以水通关——置静水或蓝黑色织物（流派层）；家人沟通问题回到沟通本身。",
+        "2-7": "化解：此宫若为厨房，先做燃气报警、灭火器、电路复核（结构层真化解）；忌再添红色火色助势，宜金属色平衡。",
+        "7-9": "化解：此宫慎大功率电器久置与明火；忌红黄助火土；保持清爽通风。",
+        "9-7": "化解：此宫慎大功率电器久置与明火；忌红黄助火土；保持清爽通风。",
+    ]
+
     // MARK: 八宅
     // 爻位自下而上 [初, 中, 上]，1=阳 0=阴
     static let trigramBits: [String: [Int]] = [
@@ -1727,7 +1740,11 @@ struct AnalysisView: View {
         var out: [String] = []
         for p in FengshuiEngine.displayPalaces where p != "中" {
             let key = "\(chart.mtn[p] ?? 0)-\(chart.face[p] ?? 0)"
-            if let note = FengshuiEngine.comboNotes[key] { out.append("\(p)宫（\(FengshuiEngine.palaceDirection[p] ?? "")）：\(note)") }
+            if let note = FengshuiEngine.comboNotes[key] {
+                var line = "\(p)宫（\(FengshuiEngine.palaceDirection[p] ?? "")）：\(note)"
+                if let rem = FengshuiEngine.comboRemedies[key] { line += "\n" + rem }
+                out.append(line)
+            }
         }
         return out
     }
@@ -1747,6 +1764,141 @@ struct AnalysisView: View {
     }
 }
 
+// MARK: - 犯煞解说与解煞手册（离线，与知识库 09 号同源）
+
+struct ShaEntry: Identifiable {
+    let id = UUID()
+    let name: String, category: String, identify: String, why: String, impact: String, remedy: String
+}
+
+enum ShaLibrary {
+    static let entries: [ShaEntry] = [
+        ShaEntry(name: "路冲（枪煞）", category: "峦头形煞",
+                 identify: "道路、长巷、走廊正对大门或主窗；路越宽长、车速越快、距离越近论越重。",
+                 why: "实证：车流直冲带来噪声、尾气粉尘、夜间车灯直射与失控车辆的真实风险，正对感也造成心理压迫。流派：气直贯无回旋，称直来直去难聚。",
+                 impact: "传统主应（流派层）：意外损伤、破财、家宅不宁。注：玄空有「冲在当旺方反吉、商铺喜冲」说，高层远离地面者降级。",
+                 remedy: "L1 门内玄关/屏风折线、门前密植两层常绿绿植消能、正对窗换防噪窗＋遮光帘、能改门向最彻底。L2 按向盘旺衰定去留：旺向之冲可留、衰向之冲必改。L3 门前泰山石敢当、珠帘（民俗）。"),
+        ShaEntry(name: "反弓煞", category: "峦头形煞",
+                 identify: "道路、河流、高架呈弧形，弓背（凸面）对着宅；凹面环抱为「有情」不算。",
+                 why: "实证：弯道外侧正是车辆易冲出、灯光扫射、噪声反射的方位。流派：水路无情反跳，财来财去。",
+                 impact: "传统主应（流派层）：破财反复、离散、宅运不稳。",
+                 remedy: "L1 能避则避：选位后缩、偏移弓背正对点；正对面密植高绿篱，临窗加遮光隔音。L2 落衰煞宫更须处理，落旺宫降调。L3 石敢当、阔叶大盆栽（民俗）。反弓大而急时布置作用有限，以避为先。"),
+        ShaEntry(name: "天斩煞", category: "峦头形煞",
+                 identify: "两栋高楼之间的窄缝，正对本宅窗户或阳台。",
+                 why: "实证：窄缝风洞效应真实存在——缝口风速显著加大，直吹窗门、冬寒夏噪。流派：如刀劈中分，象意凶厉。",
+                 impact: "传统主应（流派层）：伤灾手术、家宅争执。断到具体某病属流派语言，不采。",
+                 remedy: "L1 正对窗以磨砂贴膜/百叶/厚帘遮断缝线，缝风直吹处不设床与久坐位，窗台高绿植挡风。L2 缝位落宫按飞星旺衰参断。L3 山海镇、葫芦对缝（民俗）。"),
+        ShaEntry(name: "壁刀煞（墙角冲射）", category: "峦头形煞",
+                 identify: "邻楼墙体侧面如刀刃、或墙角棱线正对本宅门窗、床位；刃越长、距离越近越重。",
+                 why: "实证：棱线无直接物理伤害，但长期正对锐角的压迫与「切入」视觉象意明确。流派：形如刀切，主损伤割裂。",
+                 impact: "传统主应（流派层）：意外割伤、手术、关系破裂。",
+                 remedy: "L1 窗帘/百叶遮断刃线，床与座位移开正对线，墙边绿植软化。L2 落宫旺衰参断。L3 凸面镜、山海镇对刃（民俗；长壁刀慎用镜反射，防扰邻）。"),
+        ShaEntry(name: "尖角煞", category: "峦头形煞",
+                 identify: "屋檐角、三角构件、邻楼锐角、室内家具尖角正对门窗或床、沙发、书桌。",
+                 why: "实证：室内尖角对床主要是碰撞安全与心理压迫；室外尖角为象意层。流派：尖冲如箭。",
+                 impact: "传统主应（流派层）：口舌是非、眼目与筋骨小伤。",
+                 remedy: "L1 家具换圆角/加防撞角、移床移桌避正对、绿植或布艺遮角；室外者以帘遮。L3 阔叶植物对冲（兼 L1 遮挡功能可用，不神化）。"),
+        ShaEntry(name: "穿心煞 / 穿堂", category: "峦头形煞",
+                 identify: "地面：大门直对后门或大窗一线贯通；地下：隧道、地铁、地下通道纵贯宅基。",
+                 why: "实证：穿堂风速过强、不聚温、隐私一览无余；地下穿心可感的是振动与噪声。流派：气穿而不聚，主财来财去。",
+                 impact: "传统主应（流派层）：破财难聚、家运起伏、关系松散。",
+                 remedy: "L1 玄关、屏风、柜体、珠帘任一折线即解地面穿堂（首选）；地毯挂画辅助。地下穿心以减振隔音装修处理，余者降调，不恐吓。"),
+        ShaEntry(name: "横梁压顶", category: "峦头形煞",
+                 identify: "梁正压床头、沙发、书桌、灶台上方且净高低、压迫感实存。梁在过道、已包吊顶者不论。",
+                 why: "实证：低梁的空间压迫与起身碰撞风险。流派：压顶主受压受制。",
+                 impact: "传统主应（流派层）：事业受压、睡眠不佳、头颈不适（健康表述降调，实际不适请就医）。",
+                 remedy: "L1 移床/移座避梁为第一解；不能移则吊顶包梁、梁下改过道或柜体。L3 挂葫芦为民俗末选，不首选。"),
+        ShaEntry(name: "门冲（门对门）", category: "峦头形煞",
+                 identify: "大门正对卧室门、厕门、厨房门；户内门对门且距离近。",
+                 why: "实证：厕门对床/对厨的卫生气味、厨门对卧室的油烟、门对门的隐私与气流直冲，建筑学同样忌。流派：「门对门主口舌」属象征。",
+                 impact: "传统主应（流派/民俗层）：口舌争执、隐私不安、卫生困扰。",
+                 remedy: "L1 改门向或加软隔断、厕门常闭＋排气除味做到位、门帘缓冲。能做 L1 就不谈摆件。"),
+        ShaEntry(name: "开门见灶 / 见厕", category: "峦头形煞",
+                 identify: "入户门一开正对灶台，或正对厕所门、马桶。",
+                 why: "实证：见厕是卫生观感与气味；见灶是油烟动线与视觉冲突。流派：灶为财库，见灶称财露白；见厕称秽气迎门。",
+                 impact: "传统主应（流派层）：破财、家宅不洁之象。",
+                 remedy: "L1 玄关遮挡、结构允许时移灶位、厕门内收或隐形门。L2 灶位最终以八宅/飞星宫位复核。"),
+        ShaEntry(name: "房后无靠", category: "峦头形煞",
+                 identify: "宅后地势下陷、空旷临空、紧临深沟低地，背后无地形或建筑依托。",
+                 why: "实证：后坡排水回渗、土体流失、北风无遮、后墙根受潮，都是真问题。流派：靠山空，主根基不稳、贵人无助。",
+                 impact: "传统主应（流派层）：事业根基不牢、宅运起伏、人丁单薄之象。",
+                 remedy: "L1 后坡固土＋排水沟截水、后墙根防水防渗、宅后植一排常绿乔木作人工靠山、可筑后院墙。此煞以 L1 为正解，摆件无用。"),
+        ShaEntry(name: "淋头水", category: "峦头形煞",
+                 identify: "高处水体（屋顶水箱、高位排水、邻楼落水、山坡汇水）直冲宅顶或门窗上方。",
+                 why: "实证：渗漏、潮湿、墙体霉变是实害。流派：水从上淋，主压制与湿寒。",
+                 impact: "传统主应（流派层）：压制受困、湿病之象（降调表述）。",
+                 remedy: "L1 改排水走向、加截水沟与防水层，根治渗漏。无 L1 不成解。"),
+        ShaEntry(name: "反光煞", category: "峦头形煞",
+                 identify: "玻璃幕墙、水面、光滑立面把强光反射进本宅窗内，随时段移动。",
+                 why: "实证：光污染——眩光、室内过热、作息干扰，证据最硬的一类。流派：光煞如火，主躁动。",
+                 impact: "传统主应（流派层）：情绪躁动、眼目不适、家宅不宁。",
+                 remedy: "L1 遮光帘/百叶/磨砂膜、窗外绿植遮阳、与反射源单位协商改面层。纯 L1 可解，不必玄学化。"),
+        ShaEntry(name: "孤高无护（孤阳）", category: "峦头形煞",
+                 identify: "单栋明显高出四周、无左右护持建筑，前后空旷。",
+                 why: "实证：风荷载与雷击风险、高层风噪、无遮阴。流派：孤高无依、风吹气散。",
+                 impact: "传统主应（流派层）：人丁单薄、宅运飘摇。",
+                 remedy: "L1 防雷抗风按建筑规范、周边补植乔木成护、围墙收束明堂。选址阶段能避则避。"),
+        ShaEntry(name: "五黄煞（宅盘/流年）", category: "理气煞 · 玄空",
+                 identify: "飞星盘中山星/向星五黄所到之宫；流年盘中五黄飞临之方（流年盘已标红）。纯体系推出，与形煞分栏。",
+                 why: "流派：五黄廉贞属土，为煞中之重，特性宜静不宜动——动土、钻敲、久坐久卧于其宫皆忌；火生土、土助土，忌红与土黄助势。",
+                 impact: "传统主应（流派层）：灾病破财、诸事阻滞。到门主门户之扰、到灶主家人健康之扰、到床主卧者之扰，皆象征语言，不作具体病断。",
+                 remedy: "L1 该宫当年不装修不动土不钻孔，保持安静洁净；床灶能移则移，移不了减用。L2 以金泄土为正理路：金属钟、铜铃类会响的金属置其宫，用量宜少不宜多（一串铜钱或一口钟足矣），忌见红、黄。L3 五帝钱、铜葫芦为民俗载体，理路同 L2。"),
+        ShaEntry(name: "二五交加", category: "理气煞 · 玄空",
+                 identify: "同宫山星/向星见 2 与 5 组合（排盘页已自动标注并附化解）。",
+                 why: "流派：二黑病符（土）与五黄（土）戊己相合，土势叠加，为飞星组合中健康口径最重的一条。",
+                 impact: "传统主应（流派层）：疾病、久病、因病破财。断具体部位与病名属注家细法，本手册不采。",
+                 remedy: "L1 此宫忌作病人房与久卧位、保持通风干燥（卫生层即成立）。L2 金泄：铜铃/金属钟置宫，忌红黄。L3 铜钱串为载体。"),
+        ShaEntry(name: "交剑煞（六七同宫）", category: "理气煞 · 玄空",
+                 identify: "同宫山向星 6 与 7 组合（排盘页已自动标注并附化解）。",
+                 why: "流派：六白、七赤皆金，金与金交锋如剑刃相击，故名交剑。",
+                 impact: "传统主应（流派层）：口舌官非、争竞损伤、盗失。",
+                 remedy: "L1 此宫不放利器（刀具收纳本是安全常识）、不作争吵对峙位。L2 以水通关：置静水或蓝黑色织物（流派层）。沟通问题回到沟通本身。"),
+        ShaEntry(name: "门、床、灶落凶方", category: "八宅应用",
+                 identify: "以宅卦游年盘看：大门、床头、灶口落在绝命/五鬼/六煞/祸害方；门犯绝命、五鬼在通说中最重。",
+                 why: "流派：四凶方为宅气不利之位；门为纳气口、床为久卧、灶为火口，落凶方称犯方。纯体系内推论。",
+                 impact: "传统主应（流派层）：绝命主大耗、五鬼主虚火盗失、六煞主口舌桃花扰、祸害主小恙是非，皆象征口径。",
+                 remedy: "L1 能移则移：床位、灶位调整成本最低、优先；门不可移时以玄关折线改纳气角度。L2 八宅正法——灶坐凶向吉：灶坐压凶方、灶口朝吉方本是正格，不必谈灶在凶方色变；厕压凶方为合用；床头朝住户命卦生气/延年方。L3 无摆件正法，不凑。"),
+    ]
+}
+
+struct ShaHandbookView: View {
+    var body: some View {
+        List {
+            Section {
+                Text("每个煞讲清四件事：怎么识别、哪里不好（先讲可观察的实害）、传统主应什么（标注层级，不作病灾断言）、怎么化解（L1 结构→L2 流派→L3 民俗，禁止混卖）。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(ShaLibrary.entries) { e in
+                NavigationLink {
+                    ShaDetailView(entry: e)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(e.name).font(.headline)
+                        Text("\(e.category) · \(e.identify)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+            }
+        }
+        .navigationTitle("犯煞解说与解煞手册")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct ShaDetailView: View {
+    let entry: ShaEntry
+    var body: some View {
+        List {
+            Section("怎么识别") { Text(entry.identify).font(.callout) }
+            Section("哪里不好") { Text(entry.why).font(.callout) }
+            Section("有什么影响（传统主应）") { Text(entry.impact).font(.callout) }
+            Section("怎么化解（分层）") { Text(entry.remedy).font(.callout) }
+            Section { Text("层级说明：L1 结构/功能调整（可由建筑、卫生、人体工学独立解释，先做）；L2 流派应用（只在所据流派内成立）；L3 民俗/象征（心理安顿，不承诺效力）。").font(.caption).foregroundStyle(.secondary) }
+        }
+        .navigationTitle(entry.name)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 struct KnowledgeView: View {
     private let cards: [(String, String)] = [
         ("测法要点", "罗盘每点放平采样 8 次取圆周平均；磁场强度正常 25–65 µT，出界即磁干扰（汽车/钢筋/磁吸壳）；精度 ±20° 内才作正式样本；大门朝外/朝内两读数应差约 180°，偏差 >10° 必有一处受干扰，换位重测。坐向以真北为准入盘。"),
@@ -1760,6 +1912,11 @@ struct KnowledgeView: View {
     ]
     var body: some View {
         List {
+            Section {
+                NavigationLink {
+                    ShaHandbookView()
+                } label: { Label("犯煞解说与解煞手册（17 条逐条详解）", systemImage: "shield.lefthalf.filled") }
+            }
             ForEach(cards, id: \.0) { card in
                 Section(card.0) { Text(card.1).font(.callout) }
             }
