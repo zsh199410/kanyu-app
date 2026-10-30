@@ -113,9 +113,9 @@ enum ZiweiCore {
                                        majors: majorAt[b] ?? [], minors: minorAt[b] ?? [],
                                        decadal: decAt[b] ?? [], isBody: b == shen))
         }
-        return ZiweiChart(mingGong: ming, shenGong: shen, juName: juName, juNumber: ju,
-                          palaces: palaces, lunarText: lunarText, birthYearBranch: yearBranch, isMale: isMale,
-                          birthLunarMonth: month, birthHourBranch: hourBranch)
+        return ZiweiChart(mingGong: ming, shenGong: shen, birthYearBranch: yearBranch, isMale: isMale,
+                          birthLunarMonth: month, birthHourBranch: hourBranch, juName: juName, juNumber: ju,
+                          palaces: palaces, lunarText: lunarText)
     }
 }
 

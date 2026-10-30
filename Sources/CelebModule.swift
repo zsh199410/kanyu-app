@@ -55,9 +55,12 @@ struct CelebView: View {
 
 struct CelebDetailView: View {
     let celeb: Celeb
+    private var clock: Date {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
+        return cal.date(from: DateComponents(year: celeb.y, month: celeb.mo, day: celeb.d, hour: celeb.h, minute: celeb.mi))!
+    }
     var body: some View {
-        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
-        let clock = cal.date(from: DateComponents(year: celeb.y, month: celeb.mo, day: celeb.d, hour: celeb.h, minute: celeb.mi))!
         let ch = BaziEngine.paipan(clock: clock, gender: celeb.gender, longitude: celeb.lon)
         let zw = ZiweiEngine.chart(clock: clock, gender: celeb.gender, longitude: celeb.lon)
         ScrollView {

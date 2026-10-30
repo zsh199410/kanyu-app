@@ -354,6 +354,88 @@ extension InterpretEngine {
         out.append(item("晚年光景", old,
             "时柱 \(ch.timePillar)，日主在时支处\(timeDiShi)地",
             "时柱为晚景宫，长生十二宫定地势（《三命通会》）"))
+
+        // —— 本轮扩项：颜色数字/方位/注意事项/化解（层级标注从严）——
+        let xiIdx: [Int]
+        let jiIdx: Int
+        switch level {
+        case "偏弱": xiIdx = [shengWo, dayWx]; jiIdx = (dayWx + 2) % 5
+        case "偏强": xiIdx = [(dayWx + 1) % 5, (dayWx + 2) % 5]; jiIdx = shengWo
+        default: xiIdx = [orderW.first!]; jiIdx = orderW.last!
+        }
+        let xiNames = xiIdx.map { wxN[$0] }.joined(separator: "、")
+        let colorMap = ["木": "青、绿", "火": "红、紫、粉", "土": "黄、棕、米", "金": "白、银、浅金", "水": "黑、蓝、深灰"]
+        let numMap = ["木": "3、8", "火": "2、7", "土": "5、0（即 10）", "金": "4、9", "水": "1、6"]
+        let dirMap = ["木": "东方", "火": "南方", "土": "中宫一带（及西南、东北）", "金": "西方", "水": "北方"]
+        let xiColors = xiIdx.map { "\(wxN[$0])主\(colorMap[wxN[$0]]!)" }.joined(separator: "；")
+        let xiNums = xiIdx.map { "\(wxN[$0])数 \(numMap[wxN[$0]]!)" }.joined(separator: "；")
+        out.append(item("幸运颜色与数字",
+            "日常多用这几色最合你：\(xiColors)。穿衣、手机壳、车色、家居点缀都可用，不必全身只穿一色，点缀到位即可。数字上 \(xiNums) 与你相合，选号、楼层、车牌尾数遇上可优先。反过来，\(wxN[jiIdx])色（\(colorMap[wxN[jiIdx]]!)）是你的忌向，大面积长期使用少一些。先把层级说清：这条是民间象征层的用法——图的是提醒与心安，不是典籍断法，别为它花高价买『开运物』。",
+            "喜用五行 \(xiNames)；忌向 \(wxN[jiIdx])（身\(level)口径，与喜忌条同源）",
+            "数字出《周易·系辞》河图五行数（一六水、二七火、三八木、四九金、五十土）；颜色为五行配色通说；取用属民间象征层，标注使用"))
+
+        // 适合方位
+        let xiDirs = xiIdx.map { "\(wxN[$0])主\(dirMap[wxN[$0]]!)" }.joined(separator: "；")
+        out.append(item("适合方位",
+            "你的喜用方位：\(xiDirs)。落到生活里：求学、求职、定居选城市，先看出生地往哪个喜用方向走；书桌与办公位朝向、床头方向，也优先朝喜用方位。忌向是\(wxN[jiIdx])主\(dirMap[wxN[jiIdx]]!)，长期定居与重大发展尽量避开纯忌向。这条属流派应用层——取方位之势帮扶喜用；屋内具体的门床灶吉凶另有八宅与飞星法，在风水模块里按宅盘算，不拿这一条代替。",
+            "喜用五行 \(xiNames)；日主 \(ch.rizhu)，身\(level)",
+            "五行配方位（木东、火南、土中、金西、水北）为《尚书·洪范》以降通说；以喜用定方位属流派应用层"))
+
+        // 注意事项
+        var notes: [String] = []
+        let groupVals = [("官杀", guan), ("印星", yin), ("财星", cai), ("食伤", shi), ("比劫", bi)]
+        let topGroup = groupVals.max { $0.1 < $1.1 }!.0
+        let excessText = ["官杀": "注意一：压力与评价是你的暗耗——忌在高压下硬扛到透支，该分出去的责任要分。",
+                          "印星": "注意一：想得多、做得少是你的暗耗——忌无限准备，方案定了七成就先动起来。",
+                          "财星": "注意一：钱与机会是你的暗耗——忌贪多求快、忌为人情破财，账要算在前面。",
+                          "食伤": "注意一：嘴与锋芒是你的暗耗——忌话说太满、得罪人不自知，重要的话先过夜再说。",
+                          "比劫": "注意一：合伙与冲动是你的暗耗——忌担保、忌共同账户，钱的事一律白纸黑字。"][topGroup]!
+        notes.append(excessText)
+        notes.append("注意二：\(weakest)弱是先天短板（\(organ[weakest]!)一线），这一项写进每年的固定体检单，别等有感觉了才查。")
+        let nowY = Calendar.current.component(.year, from: Date())
+        var nearGate: String? = nil
+        for y in nowY...(nowY + 5) {
+            let r = YearEngine.report(chart: ch, year: y)
+            if r.level == "关口级" { nearGate = "\(y) 年（\(r.gz)）"; break }
+        }
+        if let ng = nearGate { notes.append("注意三：最近的关口年是 \(ng)，那年按守年过——不冒进、不做不可逆的大决定、体检提前安排。") }
+        else { notes.append("注意三：近六年逐年扫下来没有关口级年份，节奏平稳，可以按主线年放心推进大事。") }
+        if sha.contains("桃花") { notes.append("注意四：带桃花，人缘是双刃——已婚或有伴后，异性往来的边界要立在明处。") }
+        if sha.contains("驿马") { notes.append("注意四：带驿马，一生动象多——出行与交通安全是常年课题，忌疲劳驾驶、忌赶夜路。") }
+        out.append(item("注意事项", notes.joined(separator: ""),
+            "主导十神组 \(topGroup)；最弱五行 \(weakest)；近六年关口扫描 \(nearGate ?? "无")；神煞 \(sha.sorted().joined(separator: "、"))",
+            "过用之弊按主导十神取象（类象通说）；关口年按逐年四查定级；健康只给体检提醒、不落病名"))
+
+        // 如何化解（破局五层，工作室定版口径）
+        let branchWx: [Character: Int] = ["子": 4, "丑": 2, "寅": 0, "卯": 0, "辰": 2, "巳": 1, "午": 1, "未": 2, "申": 3, "酉": 3, "戌": 2, "亥": 4]
+        let xiSet = Set(xiIdx)
+        var buYun: [String] = []
+        for i in ch.dayunGanZhi.indices {
+            let gz = ch.dayunGanZhi[i]
+            if xiSet.contains(wxIdx(gz.first!)) || xiSet.contains(branchWx[gz.last!]!) {
+                buYun.append("\(gz)运（\(ch.dayunStartYear(i))–\(ch.dayunStartYear(i) + 9)）")
+            }
+        }
+        var buText: String
+        if !buYun.isEmpty { buText = "补得到喜用\(xiNames)的大运是 \(buYun.prefix(2).joined(separator: "、"))——那是你命里的回血期，升学、创业、婚嫁、置业这类大事，优先压到这些十年里办。" }
+        else {
+            var yrs: [String] = []
+            for y in nowY...(nowY + 10) {
+                let gz = BaziChart.yearGanZhi(y)
+                if xiSet.contains(wxIdx(gz.first!)) { yrs.append("\(y)（\(gz)）") }
+                if yrs.count >= 3 { break }
+            }
+            buText = "大运里没有整步直补喜用\(xiNames)的，靠流年小补：\(yrs.isEmpty ? "近十年流年天干亦少见直补，以守势积累为主" : yrs.joined(separator: "、") + " 这几年天干带喜用，是借势推进的窗口")。"
+        }
+        var realRules: [String] = ["把\(organ[weakest]!)一线写进年度体检固定项"]
+        if bi >= 3 { realRules.append("合伙与借贷一律先立字据再谈感情") }
+        if level == "偏弱" && cai >= 3 { realRules.append("钱不贪大、杠杆不上，先练承载再谈扩张") }
+        if shi >= 3 { realRules.append("重要表态与决定先过夜，次日再发") }
+        realRules.append("关口年守三条：不冒进、不做不可逆决定、体检提前")
+        let hua = "先说典籍的实话：命里的『病』，典籍只负责断出来，『药』不靠摆件求、靠岁运带来——人能用的典籍手段只有择时进退。【时间表】\(buText)【修身路】《了凡四训》的路子：改过、积善、谦德——命数之外，日用行为能改的那一半在这条路上，与任何物品无关。【借势路】行业、城市、方位往喜用\(xiNames)靠（见事业方向、适合方位），取其势帮扶。【象征路】颜色、数字、佩饰按喜用取（见幸运颜色与数字），这是民间象征层，图提醒与心安，别花高价买『开运物』。【现实路】真正落地的是这几条：\(realRules.joined(separator: "；"))。"
+        out.append(item("如何化解（破局调理）", hua,
+            "喜用 \(xiNames)；大运序列 \(ch.dayunGanZhi.joined(separator: " "))；最弱 \(weakest)；十神计数 \(cntText)",
+            "破局五层法（工作室 2026-10-30 调研定版）：五典病药是诊断学不是治疗学，药靠原局与岁运；典籍伦理层出《了凡四训》；方位行业为流派应用层；颜色数字佩饰为民间象征层——五层分开标注，不混卖"))
         return out
     }
 }

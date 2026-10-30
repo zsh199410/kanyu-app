@@ -341,6 +341,7 @@ struct BaziResultView: View {
             infoCard
             interpretLink
             yearlyLink
+            lifePlanLink
         }
     }
 
@@ -523,7 +524,22 @@ struct BaziResultView: View {
                 Image(systemName: "text.book.closed").foregroundStyle(Ky.cinnabar)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("解盘 · 全维度").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
-                    Text("命局风景 / 格局候选 / 喜忌 / 十神 / 岁运，逐条附依据链").font(.caption2).foregroundStyle(Ky.sub)
+                    Text("25 个维度逐条说清：事业财运婚姻子女寿元＋颜色数字方位＋注意事项与化解").font(.caption2).foregroundStyle(Ky.sub)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .kyCard()
+        }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+    }
+
+    private var lifePlanLink: some View {
+        NavigationLink { LifePlanView(chart: chart, name: name) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "list.bullet.rectangle.portrait").foregroundStyle(Ky.cinnabar)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("逐年全程 · 人生规划").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
+                    Text("1 岁到 88 岁逐年说清＋八阶段总规划：哪年进取、哪年守成").font(.caption2).foregroundStyle(Ky.sub)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
