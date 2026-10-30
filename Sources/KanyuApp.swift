@@ -137,6 +137,16 @@ enum CompassMath {
     static func shortestDiff(from: Double, to: Double) -> Double {
         normalize(to - from + 180) - 180
     }
+    // 媒体类型中文名（导出摘要/列表共用）
+    static func kindLabel(_ kind: String) -> String {
+        switch kind {
+        case "photo": return "照片"
+        case "video": return "视频"
+        case "scan3d": return "3D扫描"
+        case "artrack": return "AR轨迹"
+        default: return kind
+        }
+    }
 }
 
 // MARK: - 任务单（按 SOP 生成）
@@ -325,7 +335,7 @@ final class SurveyStore: ObservableObject {
     }
 
     // 保存 AR 轨迹（JSON 即本体文件）
-    func saveARTrack(caseId: UUID, task: SurveyTask, samples: [ARTrackSample], loc: LocationManager) -> MediaItem? {
+    func saveARTrack(caseId: UUID, task: SurveyTask, samples: [ARTrackSample], loc: LocationManager, note: String = "") -> MediaItem? {
         guard !samples.isEmpty else { return nil }
         let dir = caseDir(caseId)
         let stamp = Date()
@@ -338,7 +348,8 @@ final class SurveyStore: ObservableObject {
                          trueHeading: h, magneticHeading: loc.displayMagneticHeading,
                          mountain: h >= 0 ? CompassMath.mountain(for: h) : "",
                          latitude: loc.currentLocation?.coordinate.latitude,
-                         longitude: loc.currentLocation?.coordinate.longitude)
+                         longitude: loc.currentLocation?.coordinate.longitude,
+                         note: note)
     }
 
     // 保存 3D 户型扫描（USDZ 模型＋结构摘要 JSON）
@@ -373,7 +384,7 @@ final class SurveyStore: ObservableObject {
             try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
             let src = caseDir(sc.id)
             for m in caseData.media {
-                for f in [m.fileName, m.stampedFileName, m.samplesFileName].compactMap({ $0 }) {
+                for f in [m.fileName, m.stampedFileName, m.samplesFileName, m.extraFile.isEmpty ? nil : m.extraFile].compactMap({ $0 }) {
                     let from = src.appendingPathComponent(f)
                     if FileManager.default.fileExists(atPath: from.path) {
                         try FileManager.default.copyItem(at: from, to: tmp.appendingPathComponent(f))
@@ -405,7 +416,13 @@ final class SurveyStore: ObservableObject {
         }
         s += "\n媒体清单\n----------------\n"
         for m in cd.media {
-            s += "[\(m.kind == "photo" ? "照片" : "视频")] \(m.taskTitle)｜真北 \(CompassMath.format(m.trueHeading)) \(m.mountain)｜\(m.fileName)\(m.note.isEmpty ? "" : "｜备注：\(m.note)")\n"
+            s += "[\(CompassMath.kindLabel(m.kind))] \(m.taskTitle)｜真北 \(CompassMath.format(m.trueHeading)) \(m.mountain)｜\(m.fileName)\(m.extraFile.isEmpty ? "" : "｜附 \(m.extraFile)")\(m.tilt >= 0 ? "｜倾斜 \(String(format: "%.1f°", m.tilt))" : "")\(m.note.isEmpty ? "" : "｜备注：\(m.note)")\n"
+        }
+        if !cd.taskNotes.isEmpty {
+            s += "\n任务备注\n----------------\n"
+            for (tid, note) in cd.taskNotes where !note.isEmpty {
+                s += "\(tid)：\(note)\n"
+            }
         }
         return s
     }
@@ -419,7 +436,7 @@ final class SurveyStore: ObservableObject {
 enum StampDrawer {
     static func stamped(image: UIImage, lines: [String]) -> UIImage {
         let w = image.size.width
-        let barH = max(90, image.size.height * 0.085)
+        let barH = max(120, image.size.height * 0.105)
         let newSize = CGSize(width: w, height: image.size.height + barH)
         let format = UIGraphicsImageRendererFormat()
         format.scale = image.scale
@@ -526,6 +543,7 @@ final class MotionManager: ObservableObject {
     @Published var bubbleX: Double = 0
     @Published var bubbleY: Double = 0
     @Published var fieldMicroTesla: Double = -1   // 总磁场强度 µT（地磁场正常 25–65）
+    @Published var cameraPitch: Double = 0        // 镜头俯仰角（度，+ 仰拍 / − 俯拍，水平正对为 0）
 
     private let motion = CMMotionManager()
     var isLevelForCompass: Bool { flatTilt <= 3 }
@@ -547,11 +565,13 @@ final class MotionManager: ObservableObject {
             let gx = g.x / len, gy = g.y / len, gz = g.z / len
             let flat = acos(min(1, max(-1, -gz))) * 180 / .pi
             let horizon = atan2(gx, -gy) * 180 / .pi
+            let pitch = asin(min(1, max(-1, gz))) * 180 / .pi
             let f = dm.magneticField.field
             let mag = (f.x * f.x + f.y * f.y + f.z * f.z).squareRoot()
             Task { @MainActor in
                 self?.flatTilt = flat
                 self?.horizonTilt = horizon
+                self?.cameraPitch = pitch
                 self?.bubbleX = gx
                 self?.bubbleY = gy
                 if dm.magneticField.accuracy != .invalid { self?.fieldMicroTesla = mag }
@@ -591,13 +611,34 @@ final class CameraManager: NSObject, ObservableObject {
         }
     }
 
+    @Published var zoomFactor: CGFloat = 1
+
+    // 变焦（拍远处案山/来龙/对面建筑用，1–5 倍，硬件上限内）
+    func setZoom(_ f: CGFloat) {
+        guard let dev = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else { return }
+        let clamped = min(max(f, 1), min(5, dev.activeFormat.videoMaxZoomFactor))
+        do {
+            try dev.lockForConfiguration()
+            dev.videoZoomFactor = clamped
+            dev.unlockForConfiguration()
+            DispatchQueue.main.async { self.zoomFactor = clamped }
+        } catch {}
+    }
+
     func capturePhoto(completion: @escaping (Data?) -> Void) {
         photoCompletion = completion
+        if let conn = photoOutput.connection(with: .video), conn.isVideoOrientationSupported {
+            conn.videoOrientation = .portrait
+        }
         let settings = AVCapturePhotoSettings()
         photoOutput.capturePhoto(with: settings, delegate: self)
     }
 
     func startRecording() {
+        // 固定竖屏方向，避免录像回放时画面躺倒
+        if let conn = movieOutput.connection(with: .video), conn.isVideoOrientationSupported {
+            conn.videoOrientation = .portrait
+        }
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("rec_\(Int(Date().timeIntervalSince1970)).mov")
         movieOutput.startRecording(to: url, recordingDelegate: self)
@@ -755,7 +796,17 @@ struct ARTrackView: View {
                 Button {
                     if recorder.isRunning {
                         recorder.stop()
-                        if let item = store.saveARTrack(caseId: draft.surveyCase.id, task: task, samples: recorder.samples, loc: location) {
+                        // 质量自评：AR 与罗盘的平均偏差（漂移指标）＋首尾距离（绕圈任务看闭合）
+                        let ss = recorder.samples
+                        let devs = ss.compactMap { $0.compassHeading >= 0 ? abs(CompassMath.shortestDiff(from: $0.compassHeading, to: $0.arHeading)) : nil }
+                        let meanDev = devs.isEmpty ? -1 : devs.reduce(0, +) / Double(devs.count)
+                        var note = "轨迹点 \(ss.count) 个 · 总长 \(String(format: "%.1f", recorder.distance)) 米"
+                        if meanDev >= 0 { note += " · AR/罗盘平均偏差 \(String(format: "%.1f°", meanDev))" }
+                        if let f = ss.first, let l = ss.last, ss.count > 20 {
+                            let dx = l.x - f.x, dz = l.z - f.z
+                            note += " · 首尾相距 \(String(format: "%.1f", (dx * dx + dz * dz).squareRoot())) 米"
+                        }
+                        if let item = store.saveARTrack(caseId: draft.surveyCase.id, task: task, samples: ss, loc: location, note: note) {
                             draft.media.append(item)
                             draft.taskDone[task.id] = true
                             savedTip = true
@@ -799,10 +850,14 @@ final class RoomScanController: NSObject, ObservableObject, RoomCaptureSessionDe
     }
     func stop() { captureView.captureSession.stop() }
     func captureSession(_ session: RoomCaptureSession, didEndWith data: CapturedRoom, error: (any Error)?) {
-        if let error { failedText = "扫描失败：\(error.localizedDescription)"; return }
-        capturedRoom = data
-        finished = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if let error { self.failedText = "扫描失败：\(error.localizedDescription)"; return }
+            self.capturedRoom = data
+            self.finished = true
+        }
     }
+    func reset() { capturedRoom = nil; finished = false; failedText = "" }
     // 结构摘要：墙/门/窗/开口的尺寸（米）与家具类别，回传后用于户型核对与九宫量算
     func summaryJSON(startHeading: Double) -> Data? {
         guard let room = capturedRoom else { return nil }
@@ -811,10 +866,13 @@ final class RoomScanController: NSObject, ObservableObject, RoomCaptureSessionDe
         }
         let dict: [String: Any] = [
             "startTrueHeading": startHeading,
+            "units": "meters",
+            "note": "RoomPlan 激光雷达扫描生成，供户型量算参考；关键尺寸请现场复核（平面直角假设，异形/曲面可能失真）",
             "walls": room.walls.map(surf),
             "doors": room.doors.map(surf),
             "windows": room.windows.map(surf),
             "openings": room.openings.map(surf),
+            "floors": room.floors.map(surf),
             "objects": room.objects.map { ["category": "\($0.category)", "dx": Double($0.dimensions.x), "dy": Double($0.dimensions.y), "dz": Double($0.dimensions.z)] }
         ]
         return try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted])
@@ -893,7 +951,7 @@ struct RoomScanView: View {
             draft.media.append(item)
             draft.taskDone[task.id] = true
             savedTip = true
-            controller.finished = false
+            controller.reset()
         }
     }
 }
@@ -937,7 +995,9 @@ struct ContentView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(cd.surveyCase.name).font(.headline)
-                                    Text("\(cd.surveyCase.type.rawValue) · \(cd.surveyCase.locationNote) · 已拍 \(cd.media.count) 项 · 罗盘 \(cd.headings.count) 个")
+                                    let total = TaskFactory.tasks(for: cd.surveyCase.type).count
+                                    let done = TaskFactory.tasks(for: cd.surveyCase.type).filter { cd.taskDone[$0.id] == true }.count
+                                    Text("\(cd.surveyCase.type.rawValue) · \(cd.surveyCase.locationNote) · 任务 \(done)/\(total) · 媒体 \(cd.media.count) 项 · 罗盘 \(cd.headings.count) 个")
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                             }
@@ -1015,6 +1075,13 @@ struct CaseDetailView: View {
         Group {
             if let d = draft {
                 List {
+                    Section("采集进度") {
+                        let tasks = TaskFactory.tasks(for: d.surveyCase.type)
+                        let done = tasks.filter { d.taskDone[$0.id] == true }.count
+                        ProgressView(value: Double(done), total: Double(max(1, tasks.count)))
+                        Text("任务 \(done)/\(tasks.count) 已完成 · 罗盘 \(d.headings.count) 个 · 已采集媒体 \(d.media.count) 项")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Section("基本信息") {
                         LabeledContent("类型", value: d.surveyCase.type.rawValue)
                         LabeledContent("地点", value: d.surveyCase.locationNote)
@@ -1038,6 +1105,7 @@ struct CaseDetailView: View {
                         .onDelete { idx in
                             draft?.headings.remove(atOffsets: idx); commit()
                         }
+                        crossCheckNote(d)
                     }
                     Section("任务单") {
                         ForEach(TaskFactory.tasks(for: d.surveyCase.type)) { task in
@@ -1074,6 +1142,21 @@ struct CaseDetailView: View {
         }
         .onAppear {
             if draft == nil { draft = store.cases.first(where: { $0.surveyCase.id == caseId }) }
+        }
+    }
+
+    // 互校提示：大门「朝外」与「朝内」两读数应相差约 180°，偏差大说明其一受了干扰
+    @ViewBuilder private func crossCheckNote(_ d: CaseData) -> some View {
+        if let out = d.headings.last(where: { $0.pointName == "大门外朝外" }),
+           let inn = d.headings.last(where: { $0.pointName == "大门外朝内" }) {
+            let dev = abs(abs(CompassMath.shortestDiff(from: out.trueNorth, to: inn.trueNorth)) - 180)
+            if dev > 10 {
+                Text("互校提醒：大门朝外/朝内应差 180°，实差偏差 \(String(format: "%.0f°", dev))——其中一个测点多半受了磁干扰，建议换位置重测。")
+                    .font(.caption).foregroundStyle(.orange)
+            } else {
+                Text("互校通过：大门朝外/朝内互差 180° 偏差仅 \(String(format: "%.0f°", dev))，坐向可信。")
+                    .font(.caption).foregroundStyle(.green)
+            }
         }
     }
 
@@ -1180,11 +1263,18 @@ struct CompassView: View {
                 if !draft.headings.isEmpty {
                     Divider()
                     ForEach(draft.headings) { h in
-                        HStack {
-                            Text(h.pointName).font(.callout)
-                            Spacer()
-                            Text("\(CompassMath.format(h.trueNorth)) \(h.mountain)山").font(.callout).foregroundStyle(.secondary)
-                        }.frame(maxWidth: .infinity)
+                        VStack(alignment: .leading, spacing: 1) {
+                            HStack {
+                                Text(h.pointName).font(.callout)
+                                Spacer()
+                                Text("\(CompassMath.format(h.trueNorth)) \(h.mountain)山").font(.callout).foregroundStyle(.secondary)
+                            }
+                            if h.headingAccuracy >= 0 || h.tiltDegrees >= 0 || h.sampleSpread >= 0 {
+                                Text("精度 ±\(Int(h.headingAccuracy))° · 倾斜 \(h.tiltDegrees >= 0 ? String(format: "%.1f°", h.tiltDegrees) : "—") · 集中度 \(h.sampleSpread >= 0 ? String(format: "%.2f", h.sampleSpread) : "—")\((h.sampleSpread >= 0 && h.sampleSpread < 0.9) || h.headingAccuracy > 15 ? "（这条不太稳，建议重测）" : "")")
+                                    .font(.caption2)
+                                    .foregroundStyle((h.sampleSpread >= 0 && h.sampleSpread < 0.9) || h.headingAccuracy > 15 ? .orange : .secondary)
+                            }
+                        }.frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }.padding()
@@ -1328,7 +1418,7 @@ struct TaskDetailView: View {
             if !items.isEmpty {
                 Section("本项已采集（\(items.count)）") {
                     ForEach(items) { m in
-                        Text("\(m.kind == "photo" ? "照片" : "视频") · 真北 \(CompassMath.format(m.trueHeading)) \(m.mountain) · \(SurveyStore.timeFormatter.string(from: m.timestamp))")
+                        Text("\(CompassMath.kindLabel(m.kind)) · 真北 \(CompassMath.format(m.trueHeading)) \(m.mountain) · \(SurveyStore.timeFormatter.string(from: m.timestamp))")
                             .font(.caption)
                     }
                 }
@@ -1347,6 +1437,56 @@ struct TaskDetailView: View {
     }
 }
 
+// 九宫格构图线（淡，不抢眼）
+struct GridOverlay: View {
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack {
+                ForEach(1...2, id: \.self) { i in
+                    Rectangle().fill(Color.white.opacity(0.13))
+                        .frame(width: 1, height: h).position(x: w * Double(i) / 3, y: h / 2)
+                    Rectangle().fill(Color.white.opacity(0.13))
+                        .frame(width: w, height: 1).position(x: w / 2, y: h * Double(i) / 3)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+// 中央水平仪（苹果相机式三段线）：两侧固定段是准绳，中间段随真实地平线反向旋转；
+// 对齐成一条线（≤1°）时变绿——眼睛只需把三段拼成一条线，不用读数字。
+struct CenterLevelView: View {
+    let horizon: Double
+    let pitch: Double
+    private var locked: Bool { abs(horizon) <= 1 }
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                HStack(spacing: 118) {
+                    Rectangle().frame(width: 46, height: 2)
+                    Rectangle().frame(width: 46, height: 2)
+                }
+                .foregroundStyle(.white.opacity(0.55))
+                Rectangle()
+                    .fill(locked ? Color.green : Color.white)
+                    .frame(width: 104, height: 2.5)
+                    .rotationEffect(.degrees(-horizon))
+                Circle().stroke(Color.white.opacity(0.7), lineWidth: 1)
+                    .frame(width: 6, height: 6)
+            }
+            Text(locked ? "水平了 · 俯仰 \(String(format: "%+.0f°", pitch))" : "地平线 \(String(format: "%+.1f°", horizon)) · 俯仰 \(String(format: "%+.0f°", pitch))")
+                .font(.caption2).fontWeight(.medium)
+                .foregroundStyle(locked ? .green : .white)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(.black.opacity(0.4))
+                .clipShape(Capsule())
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 struct CaptureView: View {
     @EnvironmentObject var store: SurveyStore
     @EnvironmentObject var location: LocationManager
@@ -1361,6 +1501,9 @@ struct CaptureView: View {
     @State private var sweepStart: Double = -1   // 环拍引导：起始方位
     @State private var sweepAccum: Double = 0     // 环拍引导：已转角度（带符号累计）
     @State private var sweepLast: Double = -1
+    @State private var sampleTask: Task<Void, Never>? = nil  // 录像罗盘采样（Task 驱动，勿用视图层 Timer，真机不触发）
+    @State private var levelHapticArmed = true   // 水平达标震动反馈（出区后重新布防）
+    @State private var tiltWarn = ""             // 拍下时倾斜过大提示
 
     // 本任务的「对准目标」：拍某些照片时应朝向已测过的某个方位（目标箭头引导）
     private var targetInfo: (label: String, bearing: Double)? {
@@ -1382,6 +1525,8 @@ struct CaptureView: View {
     var body: some View {
         ZStack {
             CameraPreview(session: camera.session).ignoresSafeArea()
+            GridOverlay().ignoresSafeArea()
+            CenterLevelView(horizon: motion.horizonTilt, pitch: motion.cameraPitch)
             VStack {
                 // 罗盘叠加条（录像时同样可见；视频轨迹同步写入数据包）
                 HStack(spacing: 10) {
@@ -1404,7 +1549,7 @@ struct CaptureView: View {
                     Rectangle()
                         .fill(motion.isLevelForCamera ? Color.green : Color.orange)
                         .frame(width: 64, height: 3)
-                        .rotationEffect(.degrees(motion.horizonTilt))
+                        .rotationEffect(.degrees(-motion.horizonTilt))
                     Text("地平线 \(String(format: "%+.1f°", motion.horizonTilt))")
                         .font(.caption)
                         .foregroundStyle(motion.isLevelForCamera ? .green : .orange)
@@ -1471,14 +1616,33 @@ struct CaptureView: View {
                     Text("✓ 已保存").padding(8).background(.black.opacity(0.6))
                         .foregroundStyle(.white).clipShape(Capsule())
                 }
+                if !tiltWarn.isEmpty {
+                    Text(tiltWarn).font(.caption).padding(8).background(.black.opacity(0.6))
+                        .foregroundStyle(.orange).clipShape(Capsule())
+                }
+                HStack(spacing: 10) {
+                    ForEach([1.0, 2.0, 3.0], id: \.self) { z in
+                        Button { camera.setZoom(CGFloat(z)) } label: {
+                            Text("\(Int(z))×")
+                                .font(.caption).fontWeight(.semibold)
+                                .foregroundStyle(camera.zoomFactor == CGFloat(z) ? .black : .white)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(camera.zoomFactor == CGFloat(z) ? Color.yellow : Color.black.opacity(0.45))
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .padding(.bottom, 8)
                 if task.kind == .photo {
                     Button {
+                        let shotTilt = abs(motion.horizonTilt)
                         camera.capturePhoto { data in
                             guard let data else { return }
-                            if let item = store.savePhoto(caseId: draft.surveyCase.id, task: task, imageData: data, loc: location, tilt: abs(motion.horizonTilt)) {
+                            if let item = store.savePhoto(caseId: draft.surveyCase.id, task: task, imageData: data, loc: location, tilt: shotTilt) {
                                 draft.media.append(item)
                                 draft.taskDone[task.id] = true
                                 flashTip()
+                                warnTilt(shotTilt)
                             }
                         }
                     } label: {
@@ -1488,13 +1652,16 @@ struct CaptureView: View {
                 } else {
                     Button {
                         if camera.isRecording {
+                            sampleTask?.cancel(); sampleTask = nil
+                            let endTilt = abs(motion.horizonTilt)
                             camera.stopRecording { url in
                                 guard let url else { return }
                                 if let item = store.saveVideo(caseId: draft.surveyCase.id, task: task,
-                                                              tempURL: url, samples: samples, loc: location, tilt: abs(motion.horizonTilt)) {
+                                                              tempURL: url, samples: samples, loc: location, tilt: endTilt) {
                                     draft.media.append(item)
                                     draft.taskDone[task.id] = true
                                     flashTip()
+                                    warnTilt(endTilt)
                                 }
                                 samples = []; recordStart = nil
                             }
@@ -1504,6 +1671,24 @@ struct CaptureView: View {
                             sweepLast = location.displayTrueHeading
                             sweepAccum = 0
                             camera.startRecording()
+                            // Task 驱动采样：每 0.5 秒记一条罗盘轨迹，环拍同步累计转角
+                            sampleTask = Task { @MainActor in
+                                while !Task.isCancelled {
+                                    try? await Task.sleep(nanoseconds: 500_000_000)
+                                    if Task.isCancelled { break }
+                                    guard camera.isRecording, let start = recordStart else { break }
+                                    if isPanoramic {
+                                        let curH = location.displayTrueHeading
+                                        if curH >= 0 {
+                                            if sweepLast >= 0 { sweepAccum += CompassMath.shortestDiff(from: sweepLast, to: curH) }
+                                            sweepLast = curH
+                                        }
+                                    }
+                                    samples.append(HeadingSample(t: Date().timeIntervalSince(start),
+                                                                 trueNorth: location.displayTrueHeading,
+                                                                 magnetic: location.displayMagneticHeading))
+                                }
+                            }
                         }
                     } label: {
                         ZStack {
@@ -1517,22 +1702,23 @@ struct CaptureView: View {
         .navigationTitle(task.title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { camera.configure(); location.start(); motion.start() }
-        .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { now in
-            guard camera.isRecording, let start = recordStart else { return }
-            if isPanoramic {
-                let curH = location.displayTrueHeading
-                if curH >= 0 {
-                    if sweepLast >= 0 { sweepAccum += CompassMath.shortestDiff(from: sweepLast, to: curH) }
-                    sweepLast = curH
-                }
+        .onDisappear { sampleTask?.cancel() }
+        // 水平达标震动一下（苹果相机同款反馈）：进 ≤1° 触发，出到 >2° 重新布防
+        .onChange(of: motion.horizonTilt) { _, newV in
+            if abs(newV) <= 1 && levelHapticArmed {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                levelHapticArmed = false
             }
-            samples.append(HeadingSample(t: now.timeIntervalSince(start),
-                                         trueNorth: location.displayTrueHeading,
-                                         magnetic: location.displayMagneticHeading))
+            if abs(newV) > 2 { levelHapticArmed = true }
         }
     }
     private func flashTip() {
         savedTip = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { savedTip = false }
+    }
+    private func warnTilt(_ t: Double) {
+        guard t > 5 else { return }
+        tiltWarn = "这张倾斜 \(String(format: "%.1f°", t))，已标注在数据里"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { tiltWarn = "" }
     }
 }
