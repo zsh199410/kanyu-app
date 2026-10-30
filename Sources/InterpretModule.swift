@@ -277,8 +277,8 @@ extension InterpretEngine {
         func groupScore(_ names: [String]) -> Double {
             var sc = 0.0
             for ss in ch.stemShiShen where names.contains(ss) { sc += 2 }
-            for (pi, row) in ch.hideGan.enumerated() {
-                for (ci, st) in row.enumerated() where names.contains(BaziTables.shiShen(day: dayStem, stem: st)) {
+            for (pi, row) in ch.hideShiShen.enumerated() {
+                for (ci, ss) in row.enumerated() where names.contains(ss) {
                     sc += (ci == 0 ? 1.0 : 0.5) * (pi == 1 ? 1.5 : 1.0)
                 }
             }
