@@ -10,6 +10,7 @@ import SceneKit
 import RoomPlan
 import UIKit
 import ZIPFoundation
+import LunarSwift
 import os
 
 // MARK: - 数据模型
@@ -1231,6 +1232,8 @@ struct KyProgressRing: View {
 
 struct ContentView: View {
     @EnvironmentObject var store: SurveyStore
+    @StateObject private var forecastStore = ForecastStore()
+    @StateObject private var peopleStore = PeopleStore()
     @State private var showingNew = false
     @State private var query = ""
 
@@ -1268,6 +1271,9 @@ struct ContentView: View {
                 VStack(spacing: 18) {
                     brandHeader
                     heroCard
+                    todayCard
+                    dueCard
+                    recentPeople
                     quickTiles
                     tipCard
                     casesSection
@@ -1445,6 +1451,82 @@ struct ContentView: View {
         .background(Ky.card)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
+    }
+
+    // 今日盘（工作台第一卡：干支日＋宜忌精选＋值神，点进黄历完整版）
+    private var todayCard: some View {
+        let now = Date()
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
+        let c = cal.dateComponents([.year, .month, .day], from: now)
+        let l = Solar.fromYmdHms(year: c.year!, month: c.month!, day: c.day!, hour: 12, minute: 0).lunar
+        return NavigationLink { AlmanacView() } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    Text("今日").font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.gold)
+                    Text(l.dayInGanZhi).font(.system(.title2, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text("\(l.monthInChinese)月\(l.dayInChinese) · \(l.zhiXing)日 · \(l.xiu)\(l.zheng)\(l.animal)")
+                        .font(.caption).foregroundStyle(Ky.sub)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+                }
+                HStack(alignment: .top, spacing: 14) {
+                    Text("宜").font(.caption).fontWeight(.bold).foregroundStyle(Ky.jade)
+                    Text(l.dayYi.prefix(5).joined(separator: " ")).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
+                    Text("忌").font(.caption).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
+                    Text(l.dayJi.prefix(4).joined(separator: " ")).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
+                }
+            }.kyCard()
+        }.buttonStyle(.plain)
+    }
+
+    // 待回验（独门：到期断语在此落判；无到期项时整卡不出现，不占版面）
+    @ViewBuilder private var dueCard: some View {
+        let nowYear = Calendar.current.component(.year, from: Date())
+        let due = forecastStore.entries.filter { $0.status == "待验" && $0.targetYear <= nowYear }
+        if !due.isEmpty {
+            NavigationLink { ForecastView() } label: {
+                HStack(spacing: 12) {
+                    KySeal(text: "验")
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("有 \(due.count) 条断语到期待回验").font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                        Text(due.prefix(2).map { "\($0.personName)·\($0.targetYear)：\($0.text)" }.joined(separator: "；"))
+                            .font(.caption).foregroundStyle(Ky.sub).lineLimit(2)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+                }.kyCard()
+            }.buttonStyle(.plain)
+        }
+    }
+
+    // 最近人物（工作台直达合参页）
+    @ViewBuilder private var recentPeople: some View {
+        if !peopleStore.people.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                KySectionTitle(title: "人物", trailing: "三术共用档案")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(peopleStore.people.prefix(6)) { p in
+                            NavigationLink { PersonDetailView(person: p, store: peopleStore) } label: {
+                                VStack(spacing: 4) {
+                                    Text(String(p.name.prefix(1)))
+                                        .font(.system(.title3, design: .serif)).fontWeight(.bold)
+                                        .frame(width: 44, height: 44)
+                                        .background(Ky.gold.opacity(0.16)).clipShape(Circle())
+                                        .foregroundStyle(Ky.ink)
+                                    Text(p.name).font(.caption).foregroundStyle(Ky.ink)
+                                    if !p.relation.isEmpty {
+                                        Text(p.relation).font(.caption2).foregroundStyle(Ky.sub)
+                                    }
+                                }
+                                .frame(width: 72).padding(.vertical, 10)
+                                .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private var tipCard: some View {

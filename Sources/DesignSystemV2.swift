@@ -94,3 +94,44 @@ struct EvidenceChainView: View {
         }
     }
 }
+
+// MARK: - 设计系统 v3（2026-10-30 UI 对标调研七准则落地）
+// 准则：盘面是纸不是玻璃 / 密度双层可关 / 时间轴主交互 / 专注模式其余淡化 /
+// 首页是工作台 / 朱砂每屏一处·印章只作落款判定 / 大字号方盘变文字盘。
+struct KySectionTitle: View {
+    let title: String
+    var trailing: String = ""
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(title).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+            Rectangle().fill(Ky.gold.opacity(0.55)).frame(height: 1)
+            if !trailing.isEmpty {
+                Text(trailing).font(.caption2).foregroundStyle(Ky.sub)
+            }
+        }
+    }
+}
+
+/// 朱砂印章小记：只用于「落判/落款」语义（回验落判、报告落款），不作普通按钮
+struct KySeal: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.system(size: 13, design: .serif)).fontWeight(.bold)
+            .foregroundStyle(Ky.cinnabar)
+            .padding(.horizontal, 7).padding(.vertical, 4)
+            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Ky.cinnabar, lineWidth: 1.4))
+            .rotationEffect(.degrees(-4))
+    }
+}
+
+extension View {
+    /// v3 标准卡：纸面＋发丝描边＋极浅投影（内容层，永不玻璃）
+    func kyCard() -> some View {
+        self.padding(14)
+            .background(Ky.card)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
+            .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+    }
+}

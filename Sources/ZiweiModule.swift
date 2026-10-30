@@ -184,6 +184,7 @@ struct ZiweiBoardView: View {
     let chart: ZiweiChart
     let name: String
     @State private var selected: Int? = nil
+    @Environment(\.dynamicTypeSize) private var typeSize
     // 方盘格位：branch → (row, col)
     private static let cellPos: [Int: (Int, Int)] = [
         5: (0, 0), 6: (0, 1), 7: (0, 2), 8: (0, 3),
@@ -195,6 +196,34 @@ struct ZiweiBoardView: View {
         return [s, (s + 4) % 12, (s + 8) % 12, (s + 6) % 12]   // 本宫＋三合＋对宫
     }
     var body: some View {
+        if typeSize.isAccessibilitySize { textBoard } else { gridBoard }
+    }
+    // 大字号合规形态：方盘变文字盘（HIG：布局适配所有字号不断裂）
+    private var textBoard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("\(chart.juName) · 命宫\(ZiweiCore.DZ[chart.mingGong]) · 身宫\(chart.palaces[chart.shenGong].name)")
+                .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            ForEach(chart.palaces.sorted { ($0.decadal.first ?? 0) < ($1.decadal.first ?? 0) }, id: \.branch) { p in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(p.name).font(.callout).fontWeight(.bold).foregroundStyle(p.branch == chart.mingGong ? Ky.cinnabar : Ky.ink)
+                        Text("\(p.stem)\(ZiweiCore.DZ[p.branch])").font(.caption).foregroundStyle(Ky.sub)
+                        if p.isBody { Text("身宫").font(.caption2).foregroundStyle(Ky.gold) }
+                        Spacer()
+                        Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.caption).foregroundStyle(Ky.sub)
+                    }
+                    if !p.majors.isEmpty {
+                        Text(p.majors.map { $0.star + ZiweiBrightness.of($0.star, branch: p.branch) + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: "、"))
+                            .font(.callout).foregroundStyle(Ky.ink)
+                    }
+                    if !p.minors.isEmpty {
+                        Text(p.minors.map { $0.star }.joined(separator: " ")).font(.caption).foregroundStyle(Ky.sub)
+                    }
+                }.kyCard()
+            }
+        }
+    }
+    private var gridBoard: some View {
         VStack(spacing: 10) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
                 ForEach(0..<16, id: \.self) { idx in
@@ -216,11 +245,16 @@ struct ZiweiBoardView: View {
         }
     }
     private var centerCell: some View {
-        VStack(spacing: 3) {
+        ZStack {
+            Circle().stroke(Ky.gold.opacity(0.5), lineWidth: 1).padding(6)
+            Circle().stroke(Ky.ink.opacity(0.25), lineWidth: 0.7).padding(10)
+            VStack(spacing: 3) {
             Text(name.isEmpty ? "紫微盘" : name).font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
             Text(chart.juName).font(.caption).foregroundStyle(Ky.gold)
             Text(chart.lunarText).font(.system(size: 9)).foregroundStyle(Ky.sub)
                 .multilineTextAlignment(.center).lineLimit(3)
+        }
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 104)
         .background(Ky.bg).clipShape(RoundedRectangle(cornerRadius: 8))
@@ -255,6 +289,7 @@ struct ZiweiBoardView: View {
         }
         .padding(5)
         .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .opacity(selected != nil && !isHL ? 0.42 : 1)
         .background(isSel ? Ky.gold.opacity(0.22) : isHL ? Ky.gold.opacity(0.10) : Ky.card)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .onTapGesture { selected = isSel ? nil : p.branch }
