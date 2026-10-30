@@ -27,26 +27,30 @@ enum BaziEngine {
     }
 
     /// clock：出生钟表时间（按北京时间记录）；longitude 为 nil 时按钟表时间排
+    /// 接口已按 lunar-swift 源码逐项核对（EightChar/Yun/DaYun/Solar 四个源文件，2026-10-30）：
+    /// 属性式 year/month/day/time/taiYuan/taiXi/mingGong/shenGong；sect 为可写属性、默认 2；
+    /// getYun(gender:sect:) 的运 sect 必须传 1——与服务端引擎默认一致（传 2 起运日差 2 天，金标准盘锁死）。
     static func paipan(clock: Date, gender: String, longitude: Double?) -> BaziChart {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
         let used = longitude.map { TrueSolarTime.corrected(clock: clock, longitude: $0, calendar: cal) } ?? clock
         let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: used)
-        let solar = Solar.fromYmdHms(c.year!, c.month!, c.day!, c.hour!, c.minute!, 0)
-        let ec = solar.getLunar().getEightChar()
-        ec.setSect(2)  // 晚子时：日柱算当天，钉死不许漂移
-        let yg = ec.getYear(); var mg = ec.getMonth(); let dg = ec.getDay(); var tg = ec.getTime()
+        let solar = Solar.fromYmdHms(year: c.year!, month: c.month!, day: c.day!, hour: c.hour!, minute: c.minute!)
+        let ec = solar.lunar.eightChar
+        ec.sect = 2  // 晚子时：日柱算当天，钉死不许漂移
+        let yg = ec.year; var mg = ec.month; let dg = ec.day; var tg = ec.time
         mg = String(wuhu(yearStem: yg.first!, monthBranch: mg.last!)) + String(mg.last!)
         let dayStemForTime: Character = c.hour! == 23 ? TG[(TG.firstIndex(of: dg.first!)! + 1) % 10] : dg.first!
         tg = String(wushu(dayStem: dayStemForTime, hourBranch: tg.last!)) + String(tg.last!)
-        let yun = ec.getYun(gender == "M" ? 1 : 0)
-        let dayun = yun.getDaYun().enumerated().filter { $0.offset > 0 }.map { $0.element.getGanZhi() }
+        let yun = ec.getYun(gender: gender == "M" ? 1 : 0, sect: 1)
+        let dayun = yun.getDaYun().dropFirst().map { $0.ganZhi }
+        let ss = yun.startSolar
         return BaziChart(yearPillar: yg, monthPillar: mg, dayPillar: dg, timePillar: tg,
                          rizhu: String(dg.first!),
-                         taiYuan: ec.getTaiYuan(), taiXi: ec.getTaiXi(),
-                         mingGong: ec.getMingGong(), shenGong: ec.getShenGong(),
-                         qiyunDirection: yun.isForward() ? "顺行" : "逆行",
-                         qiyunDate: yun.getStartSolar().toYmd(),
+                         taiYuan: ec.taiYuan, taiXi: ec.taiXi,
+                         mingGong: ec.mingGong, shenGong: ec.shenGong,
+                         qiyunDirection: yun.forward ? "顺行" : "逆行",
+                         qiyunDate: String(format: "%04d-%02d-%02d", ss.year, ss.month, ss.day),
                          dayunGanZhi: dayun)
     }
 }
