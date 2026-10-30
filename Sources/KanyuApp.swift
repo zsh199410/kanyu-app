@@ -10,6 +10,7 @@ import SceneKit
 import RoomPlan
 import UIKit
 import ZIPFoundation
+import os
 
 // MARK: - 数据模型
 
@@ -470,6 +471,11 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     @Published var authorized = false
 
     private let manager = CLLocationManager()
+    // 线程安全快照：ARKit 委托回调在非主线程读罗盘值走这里（类本身是 MainActor，直读会编译报错）
+    private let headingBox = OSAllocatedUnfairLock(initialState: (mag: -1.0, tru: -1.0))
+    nonisolated var currentTrueHeadingSnapshot: Double {
+        headingBox.withLock { $0.tru >= 0 ? $0.tru : $0.mag }
+    }
 
     var displayTrueHeading: Double { trueHeading >= 0 ? trueHeading : magneticHeading }
     var displayMagneticHeading: Double { magneticHeading }
@@ -520,6 +526,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         let m = newHeading.magneticHeading
         let t = newHeading.trueHeading
         let a = newHeading.headingAccuracy
+        headingBox.withLock { $0 = (mag: m, tru: t) }
         Task { @MainActor in
             self.magneticHeading = m
             self.trueHeading = t
@@ -740,7 +747,7 @@ final class ARTrackRecorder: NSObject, ObservableObject, ARSessionDelegate {
         let s = ARTrackSample(t: now.timeIntervalSince(start),
                               x: Double(pos.x), y: Double(pos.y), z: Double(pos.z),
                               arHeading: heading,
-                              compassHeading: loc?.displayTrueHeading ?? -1)
+                              compassHeading: loc?.currentTrueHeadingSnapshot ?? -1)
         if let prev = samples.last {
             let dx = s.x - prev.x, dy = s.y - prev.y, dz = s.z - prev.z
             distance += (dx * dx + dy * dy + dz * dz).squareRoot()
