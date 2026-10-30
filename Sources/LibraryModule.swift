@@ -1,3 +1,4 @@
+import SwiftUI
 // 断语库数据：由八字线知识库（~/workspace/bazi/knowledge）离线生成，内容为工作室自有研习文本与典籍纲要。
 struct LibraryEntry: Identifiable { let id: Int; let cat: String; let title: String; let body: String }
 enum LibraryData { static let entries: [LibraryEntry] = [
