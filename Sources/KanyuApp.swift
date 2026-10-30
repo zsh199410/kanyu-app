@@ -129,6 +129,10 @@ enum CompassMath {
         if mean < 0 { mean += 360 }
         return (mean, r)
     }
+    // 最短角差（to − from，归一到 −180…180；正＝顺时针/向右转）
+    static func shortestDiff(from: Double, to: Double) -> Double {
+        normalize(to - from + 180) - 180
+    }
 }
 
 // MARK: - 任务单（按 SOP 生成）
@@ -983,6 +987,26 @@ struct CaptureView: View {
     @State private var samples: [HeadingSample] = []
     @State private var recordStart: Date?
     @State private var savedTip = false
+    @State private var sweepStart: Double = -1   // 环拍引导：起始方位
+    @State private var sweepAccum: Double = 0     // 环拍引导：已转角度（带符号累计）
+    @State private var sweepLast: Double = -1
+
+    // 本任务的「对准目标」：拍某些照片时应朝向已测过的某个方位（目标箭头引导）
+    private var targetInfo: (label: String, bearing: Double)? {
+        let source: String?
+        switch task.id {
+        case "p_front": source = "大门外朝内"        // 站在门前拍正立面＝朝房子方向
+        case "p_mingtang": source = "大门外朝外"     // 门前向外看＝大门朝向
+        case "p_backland": source = "房后朝外"       // 房后向外看＝房后朝向
+        default: source = nil
+        }
+        guard let s = source,
+              let h = draft.headings.last(where: { $0.pointName == s && $0.trueNorth >= 0 }) else { return nil }
+        return (s, h.trueNorth)
+    }
+    private var isPanoramic: Bool {
+        ["v_front_env", "v_back_env", "v_all", "v_yuan"].contains(task.id)
+    }
 
     var body: some View {
         ZStack {
@@ -1019,6 +1043,58 @@ struct CaptureView: View {
                 .padding(.horizontal, 10).padding(.vertical, 6)
                 .background(.black.opacity(0.45))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                // 目标箭头：跟着箭头转，对准已测方位变绿（拍正立面/明堂/房后向外时出现）
+                if let t = targetInfo, !camera.isRecording {
+                    let cur = location.displayTrueHeading
+                    let rel = cur >= 0 ? CompassMath.shortestDiff(from: cur, to: t.bearing) : 0
+                    let aligned = cur >= 0 && abs(rel) <= 5
+                    HStack(spacing: 10) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 34))
+                            .foregroundStyle(aligned ? .green : .white)
+                            .rotationEffect(.degrees(rel))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("对准「\(t.label)」\(CompassMath.format(t.bearing))")
+                                .font(.callout).fontWeight(.medium).foregroundStyle(.white)
+                            Text(cur < 0 ? "罗盘读数中…" : (aligned ? "方向对准了，就这样拍" : "跟着箭头转：还差 \(rel > 0 ? "右" : "左") \(String(format: "%.0f°", abs(rel)))"))
+                                .font(.caption)
+                                .foregroundStyle(aligned ? .green : .white.opacity(0.85))
+                        }
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(.black.opacity(0.45))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.top, 8)
+                }
+                // 环拍引导：进度环＋回起点箭头，转满一圈提示停
+                if camera.isRecording && isPanoramic {
+                    let cur = location.displayTrueHeading
+                    let relStart = (cur >= 0 && sweepStart >= 0) ? CompassMath.shortestDiff(from: cur, to: sweepStart) : 0
+                    let done = abs(sweepAccum) >= 350
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle().stroke(Color.white.opacity(0.3), lineWidth: 5).frame(width: 56, height: 56)
+                            Circle().trim(from: 0, to: min(1, abs(sweepAccum) / 360))
+                                .stroke(Color.green, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                                .frame(width: 56, height: 56)
+                                .rotationEffect(.degrees(-90))
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(.white)
+                                .rotationEffect(.degrees(relStart))
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(done ? "已转满一圈，可以停了" : "环拍中：已转 \(String(format: "%.0f°", min(360, abs(sweepAccum)))) / 360°")
+                                .font(.callout).fontWeight(.medium).foregroundStyle(done ? .green : .white)
+                            Text("慢慢匀速转，箭头始终指着出发方向")
+                                .font(.caption).foregroundStyle(.white.opacity(0.85))
+                        }
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(.black.opacity(0.45))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.top, 8)
+                }
                 Spacer()
                 if savedTip {
                     Text("✓ 已保存").padding(8).background(.black.opacity(0.6))
@@ -1053,6 +1129,9 @@ struct CaptureView: View {
                             }
                         } else {
                             samples = []; recordStart = Date()
+                            sweepStart = location.displayTrueHeading
+                            sweepLast = location.displayTrueHeading
+                            sweepAccum = 0
                             camera.startRecording()
                         }
                     } label: {
@@ -1069,6 +1148,13 @@ struct CaptureView: View {
         .onAppear { camera.configure(); location.start(); motion.start() }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { now in
             guard camera.isRecording, let start = recordStart else { return }
+            if isPanoramic {
+                let curH = location.displayTrueHeading
+                if curH >= 0 {
+                    if sweepLast >= 0 { sweepAccum += CompassMath.shortestDiff(from: sweepLast, to: curH) }
+                    sweepLast = curH
+                }
+            }
             samples.append(HeadingSample(t: now.timeIntervalSince(start),
                                          trueNorth: location.displayTrueHeading,
                                          magnetic: location.displayMagneticHeading))
