@@ -176,12 +176,12 @@ struct PersonDetailView: View {
         let fcs = forecastStore.entries.filter { $0.personName == person.name }
         return VStack(alignment: .leading, spacing: 10) {
             Text("三术合参总览").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-            ovRow("八字", "现行\(di.map { ch.dayunGanZhi[$0] } ?? "童限")运；\(now) 年逐年等级［\(yr.level)\]——\(yr.lines.first ?? "")")
+            ovRow("八字", "现行\(di.map { ch.dayunGanZhi[$0] } ?? "童限")运；\(now) 年逐年等级［\(yr.level)］——\(yr.lines.first ?? "")")
             ovRow("紫微", "命宫\(ming.majors.map { $0.star }.joined(separator: "、"))（\(zw.juName)）；当前大限走\(curPalace?.name ?? "—")\(curPalace.map { "（\($0.majors.map { $0.star }.joined(separator: "、"))）" } ?? "")")
             ovRow("手相面相", palms.isEmpty ? "未记录（去手相面相页测量并保存）"
                         : palms.prefix(2).map { "\($0.kind)：\($0.summary)" }.joined(separator: "；"))
             ovRow("前瞻登记", fcs.isEmpty ? "无登记"
-                        : fcs.prefix(3).map { "\($0.targetYear) 年［\($0.status)\]\($0.text)" }.joined(separator: "；"))
+                        : fcs.prefix(3).map { "\($0.targetYear) 年［\($0.status)］\($0.text)" }.joined(separator: "；"))
             Text("对读规矩：阶段主题看紫微大限、应期年份以八字逐年消歧；两边信号冲突时按此分工取主断，另一边记异议。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
