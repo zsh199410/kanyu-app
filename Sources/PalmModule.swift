@@ -112,7 +112,7 @@ struct HandMeasureView: View {
         .background(Ky.bg)
         .navigationTitle("手相 · 测量与描线")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: item) { _, new in Task { await box.load(new); detect() } }
+        .onChange(of: item) { _, new in Task { @MainActor in await box.load(new); detect() } }
     }
 
     private var lineChips: some View {
@@ -205,7 +205,7 @@ struct HandMeasureView: View {
         let req = VNDetectHumanHandPoseRequest()
         req.maximumHandCount = 1
         do {
-            try VNImageRequestHandler(cg, options: [:]).perform([req])
+            try VNImageRequestHandler(cgImage: cg, options: [:]).perform([req])
             guard let obs = req.results?.first else { note = "没识别到手：请用掌心正对镜头、五指自然张开、光线均匀的照片重试。"; return }
             let names: [(String, VNHumanHandPoseObservation.JointName)] = [
                 ("wrist", .wrist), ("thumbCMC", .thumbCMC), ("thumbMP", .thumbMP), ("thumbIP", .thumbIP), ("thumbTip", .thumbTip),
@@ -282,7 +282,7 @@ struct FaceMeasureView: View {
         .background(Ky.bg)
         .navigationTitle("面相 · 三停校准")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: item) { _, new in Task { await box.load(new) } }
+        .onChange(of: item) { _, new in Task { @MainActor in await box.load(new) } }
     }
 
     private var resultCard: some View {
