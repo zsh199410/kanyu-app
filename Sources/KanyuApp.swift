@@ -1355,6 +1355,17 @@ struct ContentView: View {
             Button { showingNew = true } label: { tile("plus.circle.fill", "新建案件", Ky.jade) }
                 .buttonStyle(.plain)
         }
+        NavigationLink { PeopleView() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "person.2.fill").foregroundStyle(Ky.jade)
+                Text("人物档案").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                Text("建一次 · 三术共用").font(.caption2).foregroundStyle(Ky.sub)
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
         NavigationLink { PalmHomeView() } label: {
             HStack(spacing: 10) {
                 Image(systemName: "hand.raised.fill").foregroundStyle(Ky.cinnabar)
