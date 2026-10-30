@@ -11,7 +11,7 @@ struct ZiweiPalace {
     var name: String
     var stem: String
     var majors: [(star: String, mutagen: String?)] = []
-    var minors: [String] = []
+    var minors: [(star: String, mutagen: String?)] = []
     var decadal: [Int] = []         // [起岁, 止岁]
     var isBody: Bool = false
 }
@@ -79,8 +79,8 @@ enum ZiweiCore {
             putMajor(star, (tf + off) % 12)
         }
         // 辅星（十六颗，公式均经对拍拟合定版）
-        var minorAt: [Int: [String]] = [:]
-        func putMinor(_ star: String, _ at: Int) { minorAt[at, default: []].append(star) }
+        var minorAt: [Int: [(String, String?)]] = [:]
+        func putMinor(_ star: String, _ at: Int) { minorAt[at, default: []].append((star, hua[star])) }
         putMinor("文昌", (10 - hourBranch + 12) % 12)
         putMinor("文曲", (4 + hourBranch) % 12)
         putMinor("左辅", (4 + month - 1) % 12)
@@ -168,8 +168,9 @@ struct ZiweiHomeView: View {
                 .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
                 if let ch = chart {
                     ZiweiBoardView(chart: ch, name: name)
+                    ZiweiReadingView(chart: ch)
                 }
-                Text("口径：三合派安星（晚子时作当日、闰月整月归下月），已与主流参照引擎 14 例逐项对拍；庙旺亮度按《全书》表校准中，暂不标。")
+                Text("口径：三合派安星（晚子时作当日、闰月整月归下月），已与主流参照引擎 14 例逐项对拍；星曜亮度为《斗数全书》派表。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
@@ -238,6 +239,8 @@ struct ZiweiBoardView: View {
             ForEach(p.majors.indices, id: \.self) { i in
                 HStack(spacing: 2) {
                     Text(p.majors[i].star).font(.system(size: 12, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text(ZiweiBrightness.of(p.majors[i].star, branch: p.branch))
+                        .font(.system(size: 8)).foregroundStyle(Ky.sub)
                     if let m = p.majors[i].mutagen {
                         Text(m).font(.system(size: 8)).fontWeight(.bold)
                             .foregroundStyle(m == "忌" ? Ky.cinnabar : Ky.gold)
@@ -245,7 +248,7 @@ struct ZiweiBoardView: View {
                 }
             }
             if !p.minors.isEmpty {
-                Text(p.minors.joined(separator: " ")).font(.system(size: 8)).foregroundStyle(Ky.sub).lineLimit(2)
+                Text(p.minors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: " ")).font(.system(size: 8)).foregroundStyle(Ky.sub).lineLimit(2)
             }
             Spacer()
             Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0)").font(.system(size: 8)).foregroundStyle(Ky.sub)
@@ -255,5 +258,144 @@ struct ZiweiBoardView: View {
         .background(isSel ? Ky.gold.opacity(0.22) : isHL ? Ky.gold.opacity(0.10) : Ky.card)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .onTapGesture { selected = isSel ? nil : p.branch }
+    }
+}
+// 紫微星曜亮度（《斗数全书》派 SB_QS 表，源自工作室天纪仓库 school-tables，星×十二宫全量）：
+
+enum ZiweiBrightness {
+    static let table: [String: [String]] = [
+        "紫微": ["平", "庙", "旺", "旺", "得", "旺", "庙", "庙", "旺", "旺", "得", "旺"],
+        "天机": ["庙", "陷", "得", "旺", "利", "平", "庙", "陷", "得", "旺", "利", "平"],
+        "太阳": ["陷", "不", "旺", "庙", "旺", "旺", "旺", "得", "得", "平", "不", "陷"],
+        "武曲": ["旺", "庙", "得", "利", "庙", "平", "旺", "庙", "得", "利", "庙", "平"],
+        "天同": ["旺", "不", "利", "平", "平", "庙", "陷", "不", "旺", "平", "平", "庙"],
+        "廉贞": ["平", "利", "庙", "平", "利", "陷", "平", "利", "庙", "平", "利", "陷"],
+        "天府": ["庙", "庙", "庙", "得", "庙", "得", "旺", "庙", "得", "旺", "庙", "得"],
+        "太阴": ["庙", "庙", "旺", "陷", "陷", "陷", "不", "不", "利", "旺", "旺", "庙"],
+        "贪狼": ["旺", "庙", "平", "利", "庙", "陷", "旺", "庙", "平", "利", "庙", "陷"],
+        "巨门": ["旺", "不", "庙", "庙", "陷", "旺", "旺", "不", "庙", "庙", "陷", "旺"],
+        "天相": ["庙", "庙", "庙", "陷", "得", "得", "庙", "得", "庙", "陷", "得", "得"],
+        "天梁": ["庙", "旺", "庙", "庙", "庙", "得", "庙", "旺", "陷", "得", "庙", "陷"],
+        "七杀": ["旺", "庙", "庙", "旺", "庙", "平", "旺", "庙", "庙", "旺", "庙", "平"],
+        "破军": ["庙", "旺", "得", "陷", "旺", "平", "庙", "旺", "得", "陷", "旺", "平"],
+        "文昌": ["得", "庙", "陷", "利", "得", "庙", "陷", "利", "得", "庙", "陷", "利"],
+        "文曲": ["得", "庙", "平", "旺", "得", "庙", "陷", "旺", "得", "庙", "陷", "旺"],
+        "左辅": ["旺", "庙", "庙", "陷", "庙", "平", "旺", "庙", "平", "陷", "庙", "不"],
+        "右弼": ["庙", "庙", "旺", "陷", "庙", "平", "旺", "庙", "不", "陷", "庙", "平"],
+        "天魁": ["旺", "旺", "", "庙", "", "", "庙", "", "", "", "", "旺"],
+        "天钺": ["", "", "旺", "", "", "旺", "", "旺", "庙", "庙", "", ""],
+        "禄存": ["庙", "", "庙", "庙", "", "庙", "庙", "", "庙", "庙", "", "庙"],
+        "天马": ["", "", "旺", "", "", "平", "", "", "旺", "", "", "平"],
+        "火星": ["陷", "得", "庙", "利", "陷", "得", "庙", "利", "陷", "得", "庙", "利"],
+        "铃星": ["陷", "得", "庙", "利", "陷", "得", "庙", "利", "陷", "得", "庙", "利"],
+        "擎羊": ["陷", "庙", "", "陷", "庙", "", "陷", "庙", "", "陷", "庙", ""],
+        "陀罗": ["", "庙", "陷", "", "庙", "陷", "", "庙", "陷", "", "庙", "陷"],
+        "地空": ["平", "陷", "陷", "平", "陷", "庙", "庙", "平", "庙", "庙", "陷", "陷"],
+        "地劫": ["陷", "陷", "平", "平", "陷", "不", "庙", "平", "庙", "平", "平", "陷"],
+        "天福": ["平", "", "旺", "平", "", "旺", "平", "", "庙", "庙", "", "庙"],
+        "天官": ["", "", "平", "旺", "旺", "旺", "庙", "庙", "", "平", "平", "旺"],
+        "天刑": ["平", "陷", "庙", "庙", "平", "陷", "平", "陷", "陷", "庙", "庙", "陷"],
+        "八座": ["陷", "庙", "庙", "平", "旺", "庙", "旺", "平", "庙", "庙", "平", "庙"],
+        "三台": ["平", "庙", "平", "陷", "庙", "平", "旺", "庙", "旺", "庙", "旺", "平"],
+        "天才": ["旺", "平", "庙", "旺", "陷", "庙", "旺", "平", "庙", "旺", "陷", "庙"],
+        "天空": ["陷", "平", "陷", "平", "庙", "庙", "庙", "陷", "旺", "旺", "陷", "平"],
+        "天姚": ["陷", "平", "旺", "庙", "陷", "平", "平", "旺", "陷", "庙", "庙", "陷"],
+        "天哭": ["平", "庙", "平", "庙", "平", "不", "陷", "平", "庙", "不", "平", "平"],
+        "天喜": ["旺", "陷", "庙", "旺", "陷", "庙", "庙", "陷", "旺", "庙", "陷", "旺"],
+        "天虚": ["陷", "庙", "旺", "庙", "陷", "旺", "平", "陷", "庙", "旺", "陷", "平"],
+        "天贵": ["庙", "旺", "平", "旺", "旺", "平", "庙", "旺", "陷", "庙", "旺", "平"],
+        "天寿": ["平", "庙", "旺", "陷", "庙", "平", "平", "旺", "旺", "平", "庙", "旺"],
+        "天德": ["庙", "庙", "平", "平", "庙", "旺", "旺", "庙", "平", "不", "庙", "平"],
+        "孤辰": ["", "", "平", "", "", "陷", "", "", "平", "", "", "陷"],
+        "红鸾": ["庙", "陷", "旺", "庙", "庙", "旺", "旺", "陷", "庙", "旺", "陷", "庙"],
+        "恩光": ["平", "庙", "平", "庙", "庙", "平", "庙", "旺", "平", "陷", "庙", "不"],
+        "破碎": ["", "陷", "", "", "", "陷", "", "", "", "平", "", ""],
+        "华盖": ["", "陷", "", "", "庙", "", "", "陷", "", "", "平", ""],
+        "解神": ["庙", "平", "庙", "庙", "庙", "旺", "庙", "平", "不", "旺", "庙", "平"],
+        "寡宿": ["", "平", "", "", "陷", "", "", "不", "", "", "陷", ""],
+        "凤阁": ["庙", "平", "庙", "旺", "陷", "庙", "平", "陷", "不", "庙", "庙", "旺"],
+        "龙池": ["旺", "平", "平", "庙", "庙", "陷", "不", "庙", "平", "庙", "陷", "旺"],
+        "大耗": ["旺", "平", "陷", "不", "平", "陷", "旺", "平", "陷", "不", "平", "陷"],
+        "天使": ["陷", "陷", "平", "平", "陷", "平", "平", "平", "平", "陷", "陷", "旺"],
+        "天伤": ["陷", "平", "平", "陷", "平", "平", "陷", "陷", "平", "平", "平", "旺"],
+        "截空": ["陷", "不", "陷", "平", "陷", "庙", "庙", "庙", "庙", "庙", "", ""],
+        "副旬": ["陷", "平", "陷", "平", "陷", "庙", "庙", "陷", "庙", "庙", "陷", "平"],
+        "年解": ["庙", "得", "庙", "庙", "庙", "旺", "庙", "得", "利", "旺", "庙", "得"],
+        "咸池": ["陷", "", "", "平", "", "", "陷", "", "", "平", "", ""],
+    ]
+    static func of(_ star: String, branch: Int) -> String {
+        table[star]?[branch] ?? ""
+    }
+}
+// MARK: - 紫微解读（读盘六步的 App 化：命宫定型→三方四正→四化议题→大限主题，全带依据链）
+enum ZiweiReading {
+    static let starNature: [String: String] = [
+        "紫微": "帝星：主导与自尊强，要舞台也要班底，孤君无辅则辛苦",
+        "天机": "智星：善谋好动、思虑细，动中求成，最忌犹豫自耗",
+        "太阳": "光明星：主贵显与付出，利他中得名分，怕过耗",
+        "武曲": "财星兼武星：刚毅务实，以技艺与执行力立身",
+        "天同": "福星：温和知足、享福缘厚，多晚发而稳",
+        "廉贞": "囚星兼桃花：执着深情，成败都系于专注的方向",
+        "天府": "库星：稳重善守成，调度资源是本能，贵气内藏",
+        "太阴": "富星：细腻积累、夜里发光型，情绪即财库的水位",
+        "贪狼": "欲望桃花星：多才多欲，交际场里开创局面",
+        "巨门": "口舌暗星：以言立业，是非中见真章，研究与表达见长",
+        "天相": "印星：忠厚得人助，借平台成事，宜辅佐不宜独断",
+        "天梁": "荫星：清高好管事，逢难有解，宜公职专业与长辈缘",
+        "七杀": "将星：独断开创，变动里见功名，不喜被管束",
+        "破军": "耗星先锋：破旧立新，大起大落中成事，先破后立"]
+    static func cards(chart ch: ZiweiChart) -> [(title: String, conclusion: String, facts: String)] {
+        var out: [(String, String, String)] = []
+        let ming = ch.palaces[ch.mingGong]
+        func starLine(_ p: ZiweiPalace) -> String {
+            p.majors.isEmpty ? "无主星（借对宫）" : p.majors.map { $0.star }.joined(separator: "、")
+        }
+        let mingStars = ming.majors.map { $0.star }
+        out.append(("命宫定型",
+                    mingStars.isEmpty ? "命宫无主星：定型借对宫迁移宫主星参，性格随环境塑形更明显。"
+                        : mingStars.map { "\($0)：\(starNature[$0] ?? "")" }.joined(separator: "；"),
+                    "命宫在\(ming.stem)\(ZiweiCore.DZ[ming.branch])，主星 \(starLine(ming))"))
+        // 三方四正：财帛/官禄/迁移
+        func palace(_ name: String) -> ZiweiPalace { ch.palaces.first { $0.name == name }! }
+        let cai = palace("财帛"); let guan = palace("官禄"); let qian = palace("迁移")
+        out.append(("三方四正",
+                    "财帛坐\(starLine(cai))定赚钱方式，官禄坐\(starLine(guan))定事业形态，迁移坐\(starLine(qian))定外出方为——四宫合看才是完整的用武之地。",
+                    "财帛\(cai.stem)\(ZiweiCore.DZ[cai.branch])、官禄\(guan.stem)\(ZiweiCore.DZ[guan.branch])、迁移\(qian.stem)\(ZiweiCore.DZ[qian.branch])"))
+        // 四化议题
+        var huaLines: [String] = []
+        for p in ch.palaces {
+            for m in p.majors where m.mutagen != nil {
+                let role = ["禄": "资源与享受所在", "权": "掌控与发力所在", "科": "名声与贵人所在", "忌": "债与执念、反复出题所在"][m.mutagen!]!
+                huaLines.append("\(m.star)化\(m.mutagen!)入\(p.name)：\(role)")
+            }
+            for s in p.minors where s.mutagen != nil {
+                let role = ["禄": "资源与享受所在", "权": "掌控与发力所在", "科": "名声与贵人所在", "忌": "债与执念、反复出题所在"][s.mutagen!]!
+                huaLines.append("\(s.star)化\(s.mutagen!)入\(p.name)：\(role)")
+            }
+        }
+        out.append(("生年四化", huaLines.joined(separator: "；") + "。四化落哪宫，哪宫就是一生反复出题之处。",
+                    "生年干四化（天纪口径，不搞多层飞星）"))
+        // 大限（按虚岁粗定位：以当前年份-出生年+1 落入哪步大限；此处以宫位大限表展示全程）
+        let daxianText = ch.palaces.sorted { ($0.decadal.first ?? 0) < ($1.decadal.first ?? 0) }
+            .map { "\($0.decadal.first ?? 0)–\($0.decadal.last ?? 0) 岁走\($0.name)（\(starLine($0))）" }
+            .joined(separator: "；")
+        out.append(("大限推程", daxianText + "。每限十年以该宫及其三方四正断主题。",
+                    "\(ch.juName)，\(ch.juNumber) 岁起限"))
+        return out
+    }
+}
+
+struct ZiweiReadingView: View {
+    let chart: ZiweiChart
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(ZiweiReading.cards(chart: chart), id: \.title) { c in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(c.title).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                    EvidenceChainView(conclusion: c.conclusion, links: [("盘面", c.facts)])
+                }
+                .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+        }
     }
 }

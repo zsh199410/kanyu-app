@@ -15,6 +15,9 @@ struct PalmHomeView: View {
             NavigationLink { FaceMeasureView() } label: {
                 Label("面相 · 三停校准", systemImage: "face.smiling")
             }
+            NavigationLink { PalmRecordListView() } label: {
+                Label("测量记录（按人存档）", systemImage: "archivebox")
+            }
             Text("用法：手相用掌心正对、光线均匀的照片；面相用正面自然光、无美颜的照片。测量是几何事实，判读为娱乐参考。")
                 .font(.caption).foregroundStyle(Ky.sub)
         }
@@ -75,6 +78,8 @@ struct HandMeasureView: View {
         [CGPoint(x: 0.30, y: 0.36), CGPoint(x: 0.24, y: 0.55), CGPoint(x: 0.30, y: 0.74), CGPoint(x: 0.48, y: 0.88)],
     ]
     @State private var selectedLine = 0
+    @State private var personName = ""
+    @State private var savedTip = false
     private let lineNames = ["感情线", "智慧线", "生命线"]
     private let lineCards = [
         "感情线看情感表达的方式：走向、深浅、终点位置三项，须以你修正后的描线为准细读。",
@@ -105,6 +110,23 @@ struct HandMeasureView: View {
                 }
                 if !note.isEmpty { Text(note).font(.caption).foregroundStyle(Ky.cinnabar) }
                 if let m = measure { measureCard(m) }
+                if box.image != nil && measure != nil {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("姓名（按人归档）", text: $personName)
+                            .textFieldStyle(.roundedBorder)
+                        Button(savedTip ? "已保存到测量记录" : "保存记录（照片＋描线＋测量值）") {
+                            let flat = lines.flatMap { $0.flatMap { [$0.x, $0.y] } }
+                            let mm = measure!; let sum = "\(mm.palmType)；掌宽/掌长 \(String(format: "%.2f", mm.palmWidth / mm.palmLen))；食指/无名指 \(String(format: "%.2f", mm.ratio24))"
+                            Task { @MainActor in
+                                PalmRecordStore().add(PalmRecord(personName: personName, kind: "手相",
+                                                                 summary: sum, linesFlat: flat.map { Double($0) }),
+                                                      image: box.image)
+                                savedTip = true
+                            }
+                        }.buttonStyle(KyPrimaryButton()).disabled(savedTip)
+                    }
+                    .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                }
                 Text("测量口径：Vision 21 点关节点几何（学术同款管线在本工作室已实测）；三线为手描修正层——把每个圆点拖到你真实掌纹上，描准了判读才有意义。娱乐参考。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
@@ -245,6 +267,8 @@ struct HandMeasureView: View {
 struct FaceMeasureView: View {
     @StateObject private var box = PhotoBox()
     @State private var item: PhotosPickerItem?
+    @State private var personName = ""
+    @State private var savedTip = false
     @State private var marks: [Double] = [0.14, 0.40, 0.63, 0.93]  // 发际/眉/鼻底/下颌（相对图高）
     private let labels = ["发际线", "眉线", "鼻底", "下颌"]
 
@@ -274,6 +298,22 @@ struct FaceMeasureView: View {
                         }
                     }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
                     resultCard
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("姓名（按人归档）", text: $personName)
+                            .textFieldStyle(.roundedBorder)
+                        Button(savedTip ? "已保存到测量记录" : "保存记录（照片＋三停比例）") {
+                            let up = marks[1] - marks[0]; let mid = marks[2] - marks[1]; let low = marks[3] - marks[2]
+                            let t = up + mid + low
+                            let sum = String(format: "三停 上 %.0f%% · 中 %.0f%% · 下 %.0f%%",
+                                             t > 0 ? up / t * 100 : 0, t > 0 ? mid / t * 100 : 0, t > 0 ? low / t * 100 : 0)
+                            Task { @MainActor in
+                                PalmRecordStore().add(PalmRecord(personName: personName, kind: "面相", summary: sum),
+                                                      image: box.image)
+                                savedTip = true
+                            }
+                        }.buttonStyle(KyPrimaryButton()).disabled(savedTip)
+                    }
+                    .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 Text("校准口径：发际线以实际发际为准手动拖准（儿童发际未定型更要人工校正）；三停比例为几何事实，判读按相书通说、娱乐参考，不套成人断语于儿童。")
                     .font(.caption2).foregroundStyle(Ky.sub)
@@ -299,5 +339,124 @@ struct FaceMeasureView: View {
                 .font(.caption).foregroundStyle(Ky.sub)
         }
         .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+// MARK: - 测量记录（描线资产化：照片＋修正点位＋测量值全部落盘，按人归档）
+struct PalmRecord: Codable, Identifiable {
+    var id: UUID = UUID()
+    var personName: String
+    var kind: String                    // 手相 / 面相
+    var createdEpoch: Double = Date().timeIntervalSince1970
+    var summary: String                 // 测量摘要（掌型/指比 或 三停比例）
+    var linesFlat: [Double] = []        // 手相三线控制点（归一化 x,y 交错）
+    var photoFile: String = ""          // Documents/PalmPhotos/<id>.jpg
+}
+
+@MainActor
+final class PalmRecordStore: ObservableObject {
+    @Published var records: [PalmRecord] = []
+    private var dir: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("PalmPhotos", isDirectory: true)
+    }
+    private var indexURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("palm_records.json")
+    }
+    init() {
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if let data = try? Data(contentsOf: indexURL),
+           let list = try? JSONDecoder().decode([PalmRecord].self, from: data) { records = list }
+    }
+    func save() {
+        if let data = try? JSONEncoder().encode(records) { try? data.write(to: indexURL) }
+    }
+    func add(_ r: PalmRecord, image: UIImage?) {
+        var rec = r
+        if let img = image, let jpg = img.jpegData(compressionQuality: 0.85) {
+            let f = "\(rec.id.uuidString).jpg"
+            try? jpg.write(to: dir.appendingPathComponent(f))
+            rec.photoFile = f
+        }
+        records.insert(rec, at: 0); save()
+    }
+    func image(of r: PalmRecord) -> UIImage? {
+        guard !r.photoFile.isEmpty else { return nil }
+        return UIImage(contentsOfFile: dir.appendingPathComponent(r.photoFile).path)
+    }
+    func remove(_ r: PalmRecord) {
+        if !r.photoFile.isEmpty { try? FileManager.default.removeItem(at: dir.appendingPathComponent(r.photoFile)) }
+        records.removeAll { $0.id == r.id }; save()
+    }
+    func records(for name: String) -> [PalmRecord] { records.filter { $0.personName == name } }
+}
+
+struct PalmRecordListView: View {
+    @StateObject private var store = PalmRecordStore()
+    var body: some View {
+        List {
+            if store.records.isEmpty {
+                Text("还没有记录。在手相/面相测量页填上姓名、描准线条后点「保存记录」，描线和测量值会按人存档在这里。")
+                    .font(.callout).foregroundStyle(Ky.sub)
+            }
+            ForEach(store.records) { r in
+                NavigationLink { PalmRecordDetailView(store: store, record: r) } label: {
+                    HStack(spacing: 10) {
+                        if let img = store.image(of: r) {
+                            Image(uiImage: img).resizable().scaledToFill()
+                                .frame(width: 44, height: 44).clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(r.personName.isEmpty ? "未命名" : r.personName) · \(r.kind)")
+                                .font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                            Text(r.summary).font(.caption).foregroundStyle(Ky.sub).lineLimit(1)
+                        }
+                    }
+                }
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) { store.remove(r) } label: { Label("删除", systemImage: "trash") }
+                }
+            }
+        }
+        .navigationTitle("测量记录")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct PalmRecordDetailView: View {
+    @ObservedObject var store: PalmRecordStore
+    let record: PalmRecord
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if let img = store.image(of: record) {
+                    FittedImage(image: img) { rect in
+                        Canvas { ctx, _ in
+                            let pts = stride(from: 0, to: record.linesFlat.count, by: 2).map {
+                                CGPoint(x: record.linesFlat[$0], y: record.linesFlat[$0 + 1])
+                            }
+                            // 三线各 4 点（保存时按线顺序拼接）
+                            for li in 0..<3 {
+                                let seg = Array(pts.dropFirst(li * 4).prefix(4))
+                                guard seg.count == 4 else { continue }
+                                var path = Path()
+                                for (k, pt) in seg.enumerated() {
+                                    let v = CGPoint(x: rect.minX + pt.x * rect.width, y: rect.minY + pt.y * rect.height)
+                                    if k == 0 { path.move(to: v) } else { path.addLine(to: v) }
+                                }
+                                ctx.stroke(path, with: .color(Ky.gold), lineWidth: 1.8)
+                            }
+                        }
+                    }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                Text(record.summary).font(.callout).foregroundStyle(Ky.ink)
+                Text("记录时间：\(Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .shortened)) · 描线为当时人工修正的点位，已冻结存档。")
+                    .font(.caption2).foregroundStyle(Ky.sub)
+            }.padding(16)
+        }
+        .background(Ky.bg)
+        .navigationTitle("\(record.personName) · \(record.kind)")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

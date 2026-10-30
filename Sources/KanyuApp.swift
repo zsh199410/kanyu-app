@@ -1366,6 +1366,17 @@ struct ContentView: View {
             .padding(.horizontal, 14).padding(.vertical, 11)
             .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
         }.buttonStyle(.plain)
+        NavigationLink { LibraryView() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "books.vertical.fill").foregroundStyle(Ky.gold)
+                Text("断语库").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                Text("类象 · 格局 · 神煞条文可搜").font(.caption2).foregroundStyle(Ky.sub)
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
         NavigationLink { ZiweiHomeView() } label: {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles").foregroundStyle(Ky.gold)
@@ -1392,7 +1403,7 @@ struct ContentView: View {
             HStack(spacing: 10) {
                 Image(systemName: "calendar.circle.fill").foregroundStyle(Ky.gold)
                 Text("黄历简卡").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                Text("干支 · 建除 · 彭祖 · 冲煞").font(.caption2).foregroundStyle(Ky.sub)
+                Text("宜忌 · 宿 · 吉神凶煞 · 时辰").font(.caption2).foregroundStyle(Ky.sub)
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
             }

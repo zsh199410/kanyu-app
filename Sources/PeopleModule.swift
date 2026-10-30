@@ -130,18 +130,69 @@ struct PersonFormView: View {
 struct PersonDetailView: View {
     let person: Person
     @ObservedObject var store: PeopleStore
+    @StateObject private var palmStore = PalmRecordStore()
+    @StateObject private var forecastStore = ForecastStore()
+    @State private var pdfURL: URL?
     var body: some View {
         let ch = BaziEngine.paipan(clock: person.birthDate, gender: person.gender,
                                    longitude: person.useLongitude ? person.longitude : nil)
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                overviewCard(chart: ch)
+                if let url = pdfURL {
+                    ShareLink(item: url) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "doc.richtext").foregroundStyle(Ky.gold)
+                            Text("分享命书 PDF").font(.subheadline).fontWeight(.medium)
+                            Spacer()
+                            Image(systemName: "square.and.arrow.up").font(.caption).foregroundStyle(Ky.sub)
+                        }
+                        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                    }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+                }
                 BaziResultView(chart: ch, name: person.name)
-                Text("手相照片与风水案件的按人关联在后续版本接入；此页先通八字盘面与解盘。")
+                Text("风水案件在堪舆模块按案件管理；建案时以人物姓名命名，即可对人查阅。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
         .background(Ky.bg)
         .navigationTitle(person.name)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear { pdfURL = ReportBuilder.makePDF(for: person) }
+    }
+
+    // 三术合参总览：八字/紫微/手相面相/前瞻四路对齐，冲突按分工明标，不和稀泥
+    private func overviewCard(chart ch: BaziChart) -> some View {
+        let now = Calendar.current.component(.year, from: Date())
+        let yr = YearEngine.report(chart: ch, year: now)
+        let di = YearEngine.dayunIndex(chart: ch, year: now)
+        let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
+                                   longitude: person.useLongitude ? person.longitude : nil)
+        let ming = zw.palaces[zw.mingGong]
+        let birthYear = Calendar.current.component(.year, from: person.birthDate)
+        let age = now - birthYear + 1
+        let curPalace = zw.palaces.first { ($0.decadal.first ?? 0) <= age && age <= ($0.decadal.last ?? 0) }
+        let palms = palmStore.records(for: person.name)
+        let fcs = forecastStore.entries.filter { $0.personName == person.name }
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("三术合参总览").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            ovRow("八字", "现行\(di.map { ch.dayunGanZhi[$0] } ?? "童限")运；\(now) 年逐年等级［\(yr.level)\]——\(yr.lines.first ?? "")")
+            ovRow("紫微", "命宫\(ming.majors.map { $0.star }.joined(separator: "、"))（\(zw.juName)）；当前大限走\(curPalace?.name ?? "—")\(curPalace.map { "（\($0.majors.map { $0.star }.joined(separator: "、"))）" } ?? "")")
+            ovRow("手相面相", palms.isEmpty ? "未记录（去手相面相页测量并保存）"
+                        : palms.prefix(2).map { "\($0.kind)：\($0.summary)" }.joined(separator: "；"))
+            ovRow("前瞻登记", fcs.isEmpty ? "无登记"
+                        : fcs.prefix(3).map { "\($0.targetYear) 年［\($0.status)\]\($0.text)" }.joined(separator: "；"))
+            Text("对读规矩：阶段主题看紫微大限、应期年份以八字逐年消歧；两边信号冲突时按此分工取主断，另一边记异议。")
+                .font(.caption2).foregroundStyle(Ky.sub)
+        }
+        .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func ovRow(_ label: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(label).font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
+                .frame(width: 56, alignment: .leading)
+            Text(text).font(.callout).foregroundStyle(Ky.ink)
+        }
     }
 }
