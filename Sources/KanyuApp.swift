@@ -1232,54 +1232,243 @@ struct KyProgressRing: View {
 struct ContentView: View {
     @EnvironmentObject var store: SurveyStore
     @State private var showingNew = false
+    @State private var query = ""
+
+    private var filtered: [CaseData] {
+        if query.isEmpty { return store.cases }
+        return store.cases.filter {
+            $0.surveyCase.name.localizedCaseInsensitiveContains(query) ||
+            $0.surveyCase.locationNote.localizedCaseInsensitiveContains(query)
+        }
+    }
+    private var sitedCount: Int {
+        store.cases.filter { cd in cd.headings.contains(where: { $0.pointName == "大门外朝内" && $0.trueNorth >= 0 }) }.count
+    }
+    private var mediaTotal: Int { store.cases.reduce(0) { $0 + $1.media.count } }
+    private var dailyTip: String {
+        let tips = [
+            "测坐向先过磁干扰关：磁场强度 25–65 µT 才正常；摘磁吸壳，离汽车、钢筋 2 米以上。",
+            "煞先过三问：对位吗？有受体吗？有实害吗？三问不过，不成立。",
+            "五黄所在宫宜静不宜动：当年不装修、不钻孔；以金泄土，一口金属钟足矣。",
+            "路冲先做 L1：玄关折线、绿植消能带、防噪窗配遮光帘；摆件永远是最后一步。",
+            "八宅用灶正法：灶坐凶向吉——坐压凶方、灶口朝吉方，不必谈灶在凶方色变。",
+            "兼线两盘只取交集下断；单盘独有之论，存疑待核，禁止硬断。",
+            "房后无靠先治水：后坡截水沟、后墙根防渗，再植一排常绿乔木作人工靠山。",
+            "罗盘互校：大门朝外与朝内两读数应差约 180°，偏差超 10° 必有一处受干扰。",
+            "吉凶同位不相抵：旺位的大门遇路冲——留门化冲，不为一个废另一个。",
+            "反光煞纯 L1 可解：遮光帘、百叶、磨砂膜，按入户时段处理，不必玄学化。",
+        ]
+        let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        return tips[day % tips.count]
+    }
+
     var body: some View {
         NavigationStack {
-            Group {
-                if store.cases.isEmpty {
-                    VStack(spacing: 12) {
-                        AppLogoView()
-                        Text("还没有勘察案件").font(.headline)
-                        Text("点右上角 ＋ 新建一个案件，按任务单一步步拍，\n最后导出数据包发回即可。")
-                            .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    }.padding()
-                } else {
-                    List {
-                        ForEach(store.cases) { cd in
-                            NavigationLink {
-                                CaseDetailView(caseId: cd.surveyCase.id)
-                            } label: {
-                                let total = TaskFactory.tasks(for: cd.surveyCase.type).count
-                                let done = TaskFactory.tasks(for: cd.surveyCase.type).filter { cd.taskDone[$0.id] == true }.count
-                                HStack(spacing: 12) {
-                                    KyProgressRing(done: done, total: total)
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(cd.surveyCase.name).font(.headline).foregroundStyle(Ky.ink)
-                                        if let inn = cd.headings.last(where: { $0.pointName == "大门外朝内" && $0.trueNorth >= 0 }) {
-                                            Text("坐向 \(CompassMath.mountain(for: inn.trueNorth))山 · 媒体 \(cd.media.count) 项 · 罗盘 \(cd.headings.count) 个")
-                                                .font(.caption).foregroundStyle(Ky.gold)
-                                        } else {
-                                            Text("\(cd.surveyCase.type.rawValue) · \(cd.surveyCase.locationNote) · 尚未定盘")
-                                                .font(.caption).foregroundStyle(Ky.sub)
-                                        }
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                            .listRowBackground(Ky.card)
-                        }
-                        .onDelete { store.deleteCase(at: $0) }
-                    }
-                    .scrollContentBackground(.hidden)
-                    .background(Ky.bg)
+            ScrollView {
+                VStack(spacing: 18) {
+                    brandHeader
+                    heroCard
+                    quickTiles
+                    tipCard
+                    casesSection
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 28)
             }
+            .background(Ky.bg)
             .navigationTitle("堪舆勘察")
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "搜索案件名或地点")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingNew = true } label: { Image(systemName: "plus") }
+                    Button { showingNew = true } label: {
+                        Image(systemName: "plus.circle.fill").font(.title3).foregroundStyle(Ky.gold)
+                    }
                 }
             }
             .sheet(isPresented: $showingNew) { NewCaseView() }
+        }
+    }
+
+    private var brandHeader: some View {
+        HStack(spacing: 12) {
+            AppLogoView(size: 46)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("堪舆勘察").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                Text("现场勘察 · 排盘断宅 · 数据回传").font(.caption).foregroundStyle(Ky.sub)
+            }
+            Spacer()
+        }
+    }
+
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            Text("现场勘察工作台").font(.system(.headline, design: .serif)).foregroundStyle(Ky.instInk)
+            HStack(spacing: 26) {
+                statItem("案件", "\(store.cases.count)")
+                statItem("已定盘", "\(sitedCount)")
+                statItem("媒体素材", "\(mediaTotal)")
+            }
+            Button { showingNew = true } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                    Text("新建勘察")
+                }
+                .font(.subheadline).fontWeight(.semibold)
+                .padding(.horizontal, 16).padding(.vertical, 9)
+                .background(Ky.instGold).foregroundStyle(Color(rgb: 0x14161A))
+                .clipShape(Capsule())
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(colors: [Color(rgb: 0x262A31), Color(rgb: 0x14161A)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
+        .overlay(alignment: .topTrailing) {
+            Circle().fill(Ky.instGold.opacity(0.15)).frame(width: 170, height: 170).offset(x: 62, y: -84)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Circle().fill(Ky.instCinnabar.opacity(0.35)).frame(width: 10, height: 10).offset(x: -18, y: -16)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: .black.opacity(0.14), radius: 12, y: 6)
+    }
+
+    private func statItem(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value).font(.title3).fontWeight(.bold).foregroundStyle(Ky.instInk)
+            Text(label).font(.caption2).foregroundStyle(Ky.instInk.opacity(0.65))
+        }
+    }
+
+    private var quickTiles: some View {
+        HStack(spacing: 12) {
+            NavigationLink { KnowledgeView() } label: { tile("books.vertical.fill", "风水知识", Ky.gold) }
+                .buttonStyle(.plain)
+            NavigationLink { ShaHandbookView() } label: { tile("shield.lefthalf.filled", "解煞手册", Ky.cinnabar) }
+                .buttonStyle(.plain)
+            Button { showingNew = true } label: { tile("plus.circle.fill", "新建案件", Ky.jade) }
+                .buttonStyle(.plain)
+        }
+    }
+
+    private func tile(_ icon: String, _ title: String, _ color: Color) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon).font(.system(size: 20)).foregroundStyle(color)
+            Text(title).font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(Ky.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
+    }
+
+    private var tipCard: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text("每日一课")
+                .font(.caption2).fontWeight(.bold).foregroundStyle(.white)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(Ky.cinnabar).clipShape(Capsule())
+            Text(dailyTip).font(.callout).foregroundStyle(Ky.ink)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(Ky.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
+    }
+
+    private var casesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("我的案件").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+                Spacer()
+                Text("共 \(store.cases.count) 个").font(.caption).foregroundStyle(Ky.sub)
+            }
+            if store.cases.isEmpty {
+                VStack(spacing: 10) {
+                    AppLogoView(size: 62)
+                    Text("还没有案件").font(.headline).foregroundStyle(Ky.ink)
+                    Text("点上方「新建勘察」，按任务单一步步采集，\n数据可直传服务器由助手分析。")
+                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 26)
+                .background(Ky.card)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+            } else if filtered.isEmpty {
+                Text("没有匹配的案件")
+                    .font(.callout).foregroundStyle(Ky.sub)
+                    .frame(maxWidth: .infinity).padding(.vertical, 18)
+            } else {
+                ForEach(filtered) { cd in
+                    NavigationLink {
+                        CaseDetailView(caseId: cd.surveyCase.id)
+                    } label: { caseCard(cd) }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            if let idx = store.cases.firstIndex(where: { $0.id == cd.id }) {
+                                store.deleteCase(at: IndexSet(integer: idx))
+                            }
+                        } label: { Label("删除案件", systemImage: "trash") }
+                    }
+                }
+            }
+        }
+    }
+
+    private func caseCard(_ cd: CaseData) -> some View {
+        let tasks = TaskFactory.tasks(for: cd.surveyCase.type)
+        let done = tasks.filter { cd.taskDone[$0.id] == true }.count
+        let sit = cd.headings.last(where: { $0.pointName == "大门外朝内" && $0.trueNorth >= 0 })
+        return HStack(spacing: 13) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 13)
+                    .fill(LinearGradient(colors: [Ky.gold.opacity(0.95), Ky.gold.opacity(0.55)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                Image(systemName: typeIcon(cd.surveyCase.type))
+                    .font(.system(size: 19, weight: .semibold)).foregroundStyle(Color(rgb: 0x14161A))
+            }
+            .frame(width: 46, height: 46)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(cd.surveyCase.name).font(.headline).foregroundStyle(Ky.ink).lineLimit(1)
+                HStack(spacing: 6) {
+                    chip(cd.surveyCase.type.rawValue, Ky.gold)
+                    if let s = sit {
+                        chip("\(CompassMath.mountain(for: s.trueNorth))山坐向", Ky.jade)
+                    } else {
+                        chip("未定盘", Ky.cinnabar)
+                    }
+                }
+                Text("任务 \(done)/\(tasks.count) · 媒体 \(cd.media.count) · 罗盘 \(cd.headings.count)")
+                    .font(.caption2).foregroundStyle(Ky.sub)
+            }
+            Spacer(minLength: 4)
+            KyProgressRing(done: done, total: tasks.count, size: 44)
+            Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+        }
+        .padding(14)
+        .background(Ky.card)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.06), radius: 9, y: 4)
+    }
+
+    private func chip(_ text: String, _ color: Color) -> some View {
+        Text(text)
+            .font(.caption2).fontWeight(.semibold)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(color.opacity(0.14)).foregroundStyle(color)
+            .clipShape(Capsule())
+    }
+
+    private func typeIcon(_ t: CaseType) -> String {
+        switch t {
+        case .yangzhai: return "house.fill"
+        case .yinzhai: return "mountain.2.fill"
+        case .courtyard: return "tree.fill"
         }
     }
 }
@@ -2091,7 +2280,7 @@ struct RemoteView: View {
     @State private var status = ""
     @State private var busy = false
     @State private var remoteInfo: String? = nil
-    private let appTag = "v4.5"
+    private let appTag = "v4.6"
 
     var body: some View {
         List {
