@@ -1595,7 +1595,7 @@ struct CompassView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 if !draft.headings.isEmpty {
                     Divider()
-                    ForEach(draft.headings) { h in
+                    ForEach(draft.headings, id: \.id) { h in
                         VStack(alignment: .leading, spacing: 1) {
                             HStack {
                                 Text(h.pointName).font(.callout)
@@ -1813,7 +1813,7 @@ struct AnalysisView: View {
                         Text(star).foregroundStyle(FengshuiEngine.goodStars.contains(star) ? .green : .red)
                     }
                 }
-                ForEach(draft.surveyCase.residents) { r in
+                ForEach(draft.surveyCase.residents, id: \.id) { r in
                     if let y = Int(r.birthYear) {
                         let g = FengshuiEngine.mingGua(birthYear: y, gender: r.gender)
                         let match = FengshuiEngine.group(of: g) == FengshuiEngine.group(of: sitPalace)
