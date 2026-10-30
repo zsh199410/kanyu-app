@@ -1349,6 +1349,8 @@ struct ContentView: View {
                 .buttonStyle(.plain)
             NavigationLink { ShaHandbookView() } label: { tile("shield.lefthalf.filled", "解煞手册", Ky.cinnabar) }
                 .buttonStyle(.plain)
+            NavigationLink { BaziHomeView() } label: { tile("calendar", "八字排盘", Ky.jade) }
+                .buttonStyle(.plain)
             Button { showingNew = true } label: { tile("plus.circle.fill", "新建案件", Ky.jade) }
                 .buttonStyle(.plain)
         }
