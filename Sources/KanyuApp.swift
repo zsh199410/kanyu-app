@@ -86,7 +86,29 @@ struct CaseData: Identifiable, Codable {
     var media: [MediaItem] = []
     var taskDone: [String: Bool] = [:]
     var taskNotes: [String: String] = [:]
+    var analysisText: String = ""   // 本地排盘断宅结论文本（随包回传）
     var id: UUID { surveyCase.id }
+
+    init(surveyCase: SurveyCase) { self.surveyCase = surveyCase }
+    enum CodingKeys: String, CodingKey { case surveyCase, headings, media, taskDone, taskNotes, analysisText }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        surveyCase = try c.decode(SurveyCase.self, forKey: .surveyCase)
+        headings = try c.decodeIfPresent([HeadingReading].self, forKey: .headings) ?? []
+        media = try c.decodeIfPresent([MediaItem].self, forKey: .media) ?? []
+        taskDone = try c.decodeIfPresent([String: Bool].self, forKey: .taskDone) ?? [:]
+        taskNotes = try c.decodeIfPresent([String: String].self, forKey: .taskNotes) ?? [:]
+        analysisText = try c.decodeIfPresent(String.self, forKey: .analysisText) ?? ""
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(surveyCase, forKey: .surveyCase)
+        try c.encode(headings, forKey: .headings)
+        try c.encode(media, forKey: .media)
+        try c.encode(taskDone, forKey: .taskDone)
+        try c.encode(taskNotes, forKey: .taskNotes)
+        try c.encode(analysisText, forKey: .analysisText)
+    }
 }
 
 struct ExportPackage: Codable {
@@ -95,6 +117,7 @@ struct ExportPackage: Codable {
     var headings: [HeadingReading]
     var media: [MediaItem]
     var taskNotes: [String: String]
+    var analysisText: String = ""
 }
 
 // MARK: - 二十四山 / 八宫换算
@@ -148,6 +171,129 @@ enum CompassMath {
         default: return kind
         }
     }
+}
+
+// MARK: - 本地勘测引擎（离线排盘：玄空飞星＋八宅＋流年）
+//
+// 规则均经回源核对（2026-10-30）：
+// 玄空：飞行轨迹 中→乾→兑→艮→离→坎→坤→震→巽；运盘一概顺飞；山/向盘以运盘坐/向宫星入中，
+//      按坐/向山三元龙阴阳定顺逆（阳顺阴逆）。二十四山阴阳：阳＝乾坤艮巽·甲庚丙壬·寅申巳亥，阴＝余。
+// 八宅：《八宅明镜》变爻口诀——不变伏位、变上爻生气、变下爻祸害、变中爻绝命、变下中爻天医、
+//      变中上爻五鬼、变上下爻六煞、三爻全变延年（已用坎宅八方表逐项验过）。
+// 本引擎为「下卦」盘（不替卦），结论属流派应用层，正式断宅仍以回传数据包复核为准。
+
+enum FengshuiEngine {
+    static let displayPalaces = ["巽", "离", "坤", "震", "中", "兑", "艮", "坎", "乾"] // 南上北下
+    static let flightPath = ["中", "乾", "兑", "艮", "离", "坎", "坤", "震", "巽"]
+    static let palaceDirection = ["坎": "正北", "艮": "东北", "震": "正东", "巽": "东南",
+                                  "离": "正南", "坤": "西南", "兑": "正西", "乾": "西北", "中": "中宫"]
+    static let yangMountains: Set<String> = ["乾", "坤", "艮", "巽", "甲", "庚", "丙", "壬", "寅", "申", "巳", "亥"]
+    static let starNames = ["", "一白", "二黑", "三碧", "四绿", "五黄", "六白", "七赤", "八白", "九紫"]
+
+    static func period(forYear year: Int) -> Int {
+        let idx = ((year - 1864) / 20) % 9
+        return (idx + 9) % 9 + 1
+    }
+    static func periodRange(_ p: Int) -> (Int, Int) {
+        // 找 1864 起第 p 运在 1800–2200 内的最近一轮起止年
+        var start = 1864 + (p - 1) * 20
+        while start + 20 <= 2000 { start += 180 }
+        return (start, start + 19)
+    }
+    // 飞星：中宫星沿轨迹布九宫，forward 顺飞递增、逆飞递减，返回 宫→星
+    static func fly(center: Int, forward: Bool) -> [String: Int] {
+        var out: [String: Int] = [:]
+        for (i, palace) in flightPath.enumerated() {
+            var v = forward ? center + i : center - i
+            v = ((v - 1) % 9 + 9) % 9 + 1
+            out[palace] = v
+        }
+        return out
+    }
+    struct Chart { var base: [String: Int]; var mtn: [String: Int]; var face: [String: Int] }
+    static func chart(period p: Int, sitMountain: String, sitPalace: String, faceMountain: String, facePalace: String) -> Chart {
+        let base = fly(center: p, forward: true)
+        let mtn = fly(center: base[sitPalace] ?? 5, forward: yangMountains.contains(sitMountain))
+        let face = fly(center: base[facePalace] ?? 5, forward: yangMountains.contains(faceMountain))
+        return Chart(base: base, mtn: mtn, face: face)
+    }
+    static func annualStar(year: Int) -> Int {
+        let s = (9 - ((year - 2024) % 9 + 9) % 9)
+        return s == 0 ? 9 : s
+    }
+    // 旺衰（以当运论，流派应用层口径）
+    static func vigor(_ star: Int, period p: Int) -> (label: String, good: Int) {
+        if star == p { return ("旺气", 2) }
+        if star == p % 9 + 1 { return ("生气", 1) }
+        if star == (p + 7) % 9 + 1 { return ("退气", -1) }
+        if star == 5 { return ("五黄煞", -2) }
+        if star == 2 { return ("病符", -1) }
+        return ("平稳", 0)
+    }
+    static let comboNotes: [String: String] = [
+        "2-5": "二五交加：病符遇五黄，此宫忌动土久坐，健康留意",
+        "5-2": "二五交加：病符遇五黄，此宫忌动土久坐，健康留意",
+        "5-5": "五黄重临：此宫大忌动土与红色火源，宜静不宜动",
+        "2-2": "病符叠加：此宫宜保持通风洁净，病人房慎选",
+        "6-7": "交剑煞：口舌争竞，此宫慎置利器与争吵位",
+        "7-6": "交剑煞：口舌争竞，此宫慎置利器与争吵位",
+        "2-7": "二七火曜：防厨房火源与失盗，此宫慎明火",
+        "7-9": "七九火旺：此宫慎火源电器，心血管人群慎居",
+        "9-7": "七九火旺：此宫慎火源电器，心血管人群慎居",
+        "1-6": "一六共宗：文昌官星，此宫宜书桌与办公位",
+        "6-8": "六八武财：此宫宜财位与动线，利武职生意",
+        "8-9": "八九喜庆财星：此宫宜客厅与门位，喜用",
+        "8-6": "六八武财：此宫宜财位与动线，利武职生意",
+        "9-9": "九紫重临：喜庆旺气，此宫宜门与客厅",
+        "1-9": "一九桃花文昌：宜书房，桃花位慎处理",
+        "9-1": "一九桃花文昌：宜书房，桃花位慎处理",
+    ]
+
+    // MARK: 八宅
+    // 爻位自下而上 [初, 中, 上]，1=阳 0=阴
+    static let trigramBits: [String: [Int]] = [
+        "乾": [1, 1, 1], "坤": [0, 0, 0], "坎": [0, 1, 0], "离": [1, 0, 1],
+        "震": [1, 0, 0], "巽": [0, 1, 1], "艮": [0, 0, 1], "兑": [1, 1, 0],
+    ]
+    static let bitsToTrigram: [[Int]: String] = Dictionary(uniqueKeysWithValues: trigramBits.map { ($0.value, $0.key) })
+    // 变爻型（初/中/上哪几爻不同）→ 游年星，《八宅明镜》口诀
+    static func youNianStar(diff: [Int]) -> String {
+        switch diff {
+        case [0, 0, 0]: return "伏位"
+        case [0, 0, 1]: return "生气"
+        case [1, 0, 0]: return "祸害"
+        case [0, 1, 0]: return "绝命"
+        case [1, 1, 0]: return "天医"
+        case [0, 1, 1]: return "五鬼"
+        case [1, 0, 1]: return "六煞"
+        case [1, 1, 1]: return "延年"
+        default: return ""
+        }
+    }
+    static let goodStars: Set<String> = ["生气", "天医", "延年", "伏位"]
+    // 宅卦（坐宫卦）→ 八方游年（键为方位宫卦名）
+    static func youNian(house: String) -> [String: String] {
+        guard let hb = trigramBits[house] else { return [:] }
+        var out: [String: String] = [:]
+        for (palace, bits) in trigramBits {
+            let diff = zip(hb, bits).map { $0 == $1 ? 0 : 1 }
+            out[palace] = youNianStar(diff: diff)
+        }
+        return out
+    }
+    static func mingGua(birthYear: Int, gender: String) -> String {
+        let yy = birthYear % 100
+        var r = gender == "男" ? (100 - yy) % 9 : (yy - 4) % 9
+        r = ((r % 9) + 9) % 9
+        switch r {
+        case 1: return "坎"; case 2: return "坤"; case 3: return "震"; case 4: return "巽"
+        case 6: return "乾"; case 7: return "兑"; case 8: return "艮"; case 0, 9: return "离"
+        case 5: return gender == "男" ? "坤" : "艮"
+        default: return ""
+        }
+    }
+    static let eastFour: Set<String> = ["坎", "震", "巽", "离"]
+    static func group(of gua: String) -> String { eastFour.contains(gua) ? "东四" : "西四" }
 }
 
 // MARK: - 任务单（按 SOP 生成）
@@ -393,7 +539,8 @@ final class SurveyStore: ObservableObject {
                 }
             }
             let pkg = ExportPackage(surveyCase: sc, headings: caseData.headings,
-                                    media: caseData.media, taskNotes: caseData.taskNotes)
+                                    media: caseData.media, taskNotes: caseData.taskNotes,
+                                    analysisText: caseData.analysisText)
             try Self.encoder.encode(pkg).write(to: tmp.appendingPathComponent("data.json"))
             try summaryText(caseData).write(to: tmp.appendingPathComponent("勘察摘要.txt"),
                                              atomically: true, encoding: .utf8)
@@ -424,6 +571,9 @@ final class SurveyStore: ObservableObject {
             for (tid, note) in cd.taskNotes where !note.isEmpty {
                 s += "\(tid)：\(note)\n"
             }
+        }
+        if !cd.analysisText.isEmpty {
+            s += "\n本地排盘结论（App 离线推演，流派层口径）\n----------------\n\(cd.analysisText)\n"
         }
         return s
     }
@@ -1129,6 +1279,18 @@ struct CaseDetailView: View {
                         }
                         crossCheckNote(d)
                     }
+                    Section("本地勘测（离线）") {
+                        NavigationLink {
+                            AnalysisView(draft: binding)
+                        } label: { Label("排盘断宅：玄空＋八宅＋流年", systemImage: "square.grid.3x3.square") }
+                        NavigationLink {
+                            KnowledgeView()
+                        } label: { Label("风水知识卡（速查）", systemImage: "books.vertical") }
+                        if !d.analysisText.isEmpty {
+                            Text("已存本地结论：\(d.analysisText.components(separatedBy: "\n").first ?? "")…")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
                     Section("任务单") {
                         ForEach(TaskFactory.tasks(for: d.surveyCase.type)) { task in
                             NavigationLink {
@@ -1401,6 +1563,212 @@ struct CompassView: View {
             }
             Image(systemName: "arrow.up").font(.system(size: 30, weight: .bold)).foregroundStyle(.red)
         }
+    }
+}
+
+// MARK: - 本地勘测界面（离线排盘断宅＋知识卡）
+
+struct AnalysisView: View {
+    @Binding var draft: CaseData
+    @State private var manualMountain = "子"
+    @State private var periodOverride = 0          // 0=按建成年自动，1–9 手动
+    @State private var annualYear = 2026
+    @State private var savedTip = false
+
+    private var sitReading: HeadingReading? { draft.headings.last(where: { $0.pointName == "大门外朝内" && $0.trueNorth >= 0 }) }
+    private var sitMountain: String {
+        if let r = sitReading { return CompassMath.mountain(for: r.trueNorth) }
+        return manualMountain
+    }
+    private var faceMountain: String {
+        let i = CompassMath.mountains.firstIndex(of: sitMountain) ?? 0
+        return CompassMath.mountains[(i + 12) % 24]
+    }
+    private var sitPalace: String { CompassMath.palace(for: Double(CompassMath.mountains.firstIndex(of: sitMountain) ?? 0) * 15) }
+    private var facePalace: String { CompassMath.palace(for: Double(CompassMath.mountains.firstIndex(of: faceMountain) ?? 12) * 15) }
+    private var buildYear: Int { Int(draft.surveyCase.builtYear) ?? Int(draft.surveyCase.movedInYear) ?? 0 }
+    private var period: Int { periodOverride > 0 ? periodOverride : (buildYear > 0 ? FengshuiEngine.period(forYear: buildYear) : 9) }
+    private var chart: FengshuiEngine.Chart {
+        FengshuiEngine.chart(period: period, sitMountain: sitMountain, sitPalace: sitPalace, faceMountain: faceMountain, facePalace: facePalace)
+    }
+
+    var body: some View {
+        List {
+            Section("定盘") {
+                if let r = sitReading {
+                    LabeledContent("坐向来源", value: "罗盘实测「大门外朝内」\(CompassMath.format(r.trueNorth))")
+                } else {
+                    Picker("坐山（未测罗盘时手选）", selection: $manualMountain) {
+                        ForEach(CompassMath.mountains, id: \.self) { Text($0).tag($0) }
+                    }
+                    Text("提示：先在罗盘页记录「大门外朝内」再回来，定盘以实测为准。").font(.caption).foregroundStyle(.orange)
+                }
+                LabeledContent("坐向", value: "\(sitMountain)山\(faceMountain)向 · 坐\(sitPalace)宫向\(facePalace)宫")
+                LabeledContent("建成年", value: buildYear > 0 ? "\(buildYear)" : "未填（暂按九运）")
+                Picker("元运", selection: $periodOverride) {
+                    Text("自动（\(period)运）").tag(0)
+                    ForEach(1...9, id: \.self) { Text("\($0)运").tag($0) }
+                }
+                let (ps, pe) = FengshuiEngine.periodRange(period)
+                LabeledContent("本运区间", value: "\(ps)–\(pe) 年")
+            }
+            Section("玄空飞星盘（\(period)运 · 下卦）左上山星 右上向星 下运星") {
+                chartGrid
+                patternNote
+                ForEach(comboLines, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
+            }
+            Section("流年飞星（入中星沿洛书顺飞）") {
+                Stepper("年份：\(annualYear)（\(FengshuiEngine.starNames[FengshuiEngine.annualStar(year: annualYear)])入中）", value: $annualYear, in: 2000...2050)
+                annualGrid
+            }
+            Section("八宅（宅卦 \(sitPalace) · \(FengshuiEngine.group(of: sitPalace))宅）") {
+                let yn = FengshuiEngine.youNian(house: sitPalace)
+                ForEach(FengshuiEngine.displayPalaces.filter { $0 != "中" }, id: \.self) { p in
+                    HStack {
+                        Text("\(p)宫 · \(FengshuiEngine.palaceDirection[p] ?? "")")
+                        Spacer()
+                        let star = yn[p] ?? ""
+                        Text(star).foregroundStyle(FengshuiEngine.goodStars.contains(star) ? .green : .red)
+                    }
+                }
+                ForEach(draft.surveyCase.residents) { r in
+                    if let y = Int(r.birthYear) {
+                        let g = FengshuiEngine.mingGua(birthYear: y, gender: r.gender)
+                        let match = FengshuiEngine.group(of: g) == FengshuiEngine.group(of: sitPalace)
+                        Text("\(r.label.isEmpty ? "住户" : r.label)：命卦 \(g)（\(FengshuiEngine.group(of: g))命），与宅 \(match ? "相配" : "不配——床位优先取其命卦四吉方")")
+                            .font(.caption).foregroundStyle(match ? .secondary : .orange)
+                    }
+                }
+            }
+            Section("本地结论（分层）") {
+                ForEach(conclusionLines, id: \.self) { Text($0).font(.callout) }
+                Button {
+                    draft.analysisText = conclusionLines.joined(separator: "\n")
+                    savedTip = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { savedTip = false }
+                } label: { Label(savedTip ? "✓ 已存入案件（随数据包回传）" : "把结论存入案件", systemImage: "square.and.arrow.down") }
+                Text("口径：本地推演为流派应用层规则计算，现场先行参考；正式断宅以数据包回传复核为准（见工作手册分工）。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("本地排盘断宅")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var chartGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
+            ForEach(FengshuiEngine.displayPalaces, id: \.self) { p in
+                if p == "中" {
+                    VStack(spacing: 2) {
+                        Text("中宫").font(.caption).foregroundStyle(.secondary)
+                        Text("\(period)").font(.title3).fontWeight(.bold)
+                        Text("\(period)运").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 74)
+                    .background(Color.secondary.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    let m = chart.mtn[p] ?? 5, f = chart.face[p] ?? 5, b = chart.base[p] ?? 5
+                    VStack(spacing: 2) {
+                        HStack {
+                            Text("\(m)").foregroundStyle(FengshuiEngine.vigor(m, period: period).good > 0 ? .green : (FengshuiEngine.vigor(m, period: period).good < 0 ? .red : .primary))
+                            Spacer()
+                            Text("\(f)").foregroundStyle(FengshuiEngine.vigor(f, period: period).good > 0 ? .green : (FengshuiEngine.vigor(f, period: period).good < 0 ? .red : .primary))
+                        }.font(.headline)
+                        Text("\(p) · \(FengshuiEngine.palaceDirection[p] ?? "")").font(.caption).fontWeight(.medium)
+                        Text("运 \(b)").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .padding(6)
+                    .frame(maxWidth: .infinity, minHeight: 74)
+                    .background(Color.secondary.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+    }
+
+    private var annualGrid: some View {
+        let c = FengshuiEngine.annualStar(year: annualYear)
+        let grid = FengshuiEngine.fly(center: c, forward: true)
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
+            ForEach(FengshuiEngine.displayPalaces, id: \.self) { p in
+                VStack(spacing: 1) {
+                    Text(p == "中" ? "\(c)" : "\(grid[p] ?? 5)")
+                        .font(.headline)
+                        .foregroundStyle((grid[p] ?? 5) == 5 ? .red : .primary)
+                    Text(p).font(.caption2).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(Color.secondary.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+    }
+
+    @ViewBuilder private var patternNote: some View {
+        let mSit = chart.mtn[sitPalace] ?? 0, fFace = chart.face[facePalace] ?? 0
+        let mFace = chart.mtn[facePalace] ?? 0, fSit = chart.face[sitPalace] ?? 0
+        if mSit == period && fFace == period {
+            Text("格局：旺山旺向——坐方山星当旺、向方水星当旺，坐后见山、向前见水为上局。").font(.callout).foregroundStyle(.green)
+        } else if mFace == period && fSit == period {
+            Text("格局：上山下水——旺星错位：坐方宜见水、向方宜见山（或以动线/门路化解），断语须结合峦头。").font(.callout).foregroundStyle(.orange)
+        } else if fFace == period && fSit == period {
+            Text("格局：双星到向——向首旺气集中，利财利门面，坐后宜实不宜虚。").font(.callout)
+        } else if mSit == period && mFace == period {
+            Text("格局：双星到坐——坐山旺气集中，利丁利健康，向前宜开阔。").font(.callout)
+        } else {
+            Text("格局：无成格——按各宫山向星旺衰逐宫论，重点看向首、坐宫与门位所在宫。").font(.callout).foregroundStyle(.secondary)
+        }
+    }
+
+    private var comboLines: [String] {
+        var out: [String] = []
+        for p in FengshuiEngine.displayPalaces where p != "中" {
+            let key = "\(chart.mtn[p] ?? 0)-\(chart.face[p] ?? 0)"
+            if let note = FengshuiEngine.comboNotes[key] { out.append("\(p)宫（\(FengshuiEngine.palaceDirection[p] ?? "")）：\(note)") }
+        }
+        return out
+    }
+
+    private var conclusionLines: [String] {
+        var lines: [String] = []
+        lines.append("【实测层】坐向：\(sitMountain)山\(faceMountain)向（坐\(sitPalace)向\(facePalace)）\(sitReading != nil ? "，罗盘实测入盘" : "，手选坐山（未实测，仅供预演）")；元运：\(period)运（建成年 \(buildYear > 0 ? String(buildYear) : "未填")）。")
+        let mSit = chart.mtn[sitPalace] ?? 0, fFace = chart.face[facePalace] ?? 0
+        lines.append("【流派层·玄空】坐宫山星 \(mSit)（\(FengshuiEngine.vigor(mSit, period: period).label)），向首水星 \(fFace)（\(FengshuiEngine.vigor(fFace, period: period).label)）；五黄到 \(FengshuiEngine.displayPalaces.first(where: { chart.face[$0] == 5 }) ?? "—") 宫（向星）宜静。")
+        for c in comboLines { lines.append("【流派层·玄空】\(c)") }
+        let yn = FengshuiEngine.youNian(house: sitPalace)
+        let good = FengshuiEngine.displayPalaces.filter { $0 != "中" && FengshuiEngine.goodStars.contains(yn[$0] ?? "") }.map { "\($0)（\(yn[$0] ?? "")）" }.joined(separator: "、")
+        lines.append("【流派层·八宅】\(sitPalace)宅四吉方：\(good)。门、床、灶优先落四吉方，四凶方宜作卫浴、储物、楼梯。")
+        lines.append("【流年】\(annualYear) 年 \(FengshuiEngine.starNames[FengshuiEngine.annualStar(year: annualYear)])入中：五黄在 \(FengshuiEngine.displayPalaces.first(where: { FengshuiEngine.fly(center: FengshuiEngine.annualStar(year: annualYear), forward: true)[$0] == 5 }) ?? "—") 宫，该方当年忌动土。")
+        lines.append("【边界】以上为 App 本地规则推演（流派应用层）；形煞与 L1 结构问题以现场照片与回传复核为准。")
+        return lines
+    }
+}
+
+struct KnowledgeView: View {
+    private let cards: [(String, String)] = [
+        ("测法要点", "罗盘每点放平采样 8 次取圆周平均；磁场强度正常 25–65 µT，出界即磁干扰（汽车/钢筋/磁吸壳）；精度 ±20° 内才作正式样本；大门朝外/朝内两读数应差约 180°，偏差 >10° 必有一处受干扰，换位重测。坐向以真北为准入盘。"),
+        ("玄空速记", "运盘：运星入中顺飞；山/向盘：运盘坐/向宫星入中，阳山顺飞、阴山逆飞。二十四山阴阳——阳：乾坤艮巽、甲庚丙壬、寅申巳亥；阴：子午卯酉、辰戌丑未、乙辛丁癸。飞行轨迹：中→乾→兑→艮→离→坎→坤→震→巽。本 App 为下卦盘，不替卦；兼线（两山界 ±3°）须在备注标注。"),
+        ("八宅速记", "命卦：男 (100−生年后两位)÷9 余数、女 (生年后两位−4)÷9 余数定卦，5 男寄坤、女寄艮。游年变爻口诀：不变伏位、变上爻生气、变下爻祸害、变中爻绝命、变下中天医、变中上五鬼、变上下六煞、全变延年。四吉（生气/天医/延年/伏位）安门床灶，四凶（绝命/五鬼/六煞/祸害）置卫浴储物。东西四宅命须相配。"),
+        ("形煞速查（峦头层）", "路冲、反弓、天斩（两楼夹缝）、穿心（路/廊直贯）、开门见灶、横梁压床、尖角冲门窗、明堂受压、房后无靠（地势下陷/空旷）、淋头水（高处水直冲）、孤高（独高无护）、探头山。只记事实与方位，不凭单煞下重断，与理气盘合参。"),
+        ("调理分层", "L1 结构层（先做）：排水防渗、采光通风、动线与功能缺陷、房后固土排水。L2 流派层：玄空旺衰布门床灶、八宅四吉四凶安位。L3 民俗层：摆件、挂画等，只作心理安顿，不与 L1/L2 混卖、不承诺效力。顺序：先 L1，后 L2，L3 可有可无。"),
+        ("阴宅（现代公墓）", "只做三件：环境品质（排水、坡面、挡墙、淋头水、噪音与冲射）、朝向微选（同排位内按碑向细选）、安葬择日。禁止「点中龙穴」式话术；传统峦头理气只作环境解读框架，不作吉凶承诺。"),
+        ("占卜与择日层级", "择日：安葬、动土、入宅按通书层级择吉（建除/黄道/宅主年命参合），属民俗应用层。占卜只作辅助决疑（如两可选日难决时参酌），不得替代实勘、不得推翻实测事实（如坐向、排水），结论须标注层级。"),
+        ("庭院要点", "理水：来水宜环抱、去水宜之玄收束，水口忌直冲院门；理石：置石忌尖锐对门窗、忌压宅心；植物：大树忌正对门窗与压屋，宜植吉位（生气/延年方参合）；影壁：挡冲兼聚气，高度与院门成比例；院墙宜完整、高度匀称，忌东缺西陷无据之说，皆回峦头与动线核实。"),
+    ]
+    var body: some View {
+        List {
+            ForEach(cards, id: \.0) { card in
+                Section(card.0) { Text(card.1).font(.callout) }
+            }
+            Section("来源") {
+                Text("本卡片为风水堪舆专窗知识库（00–08）的离线精简版，口径以工作手册五条定调为准；完整版与出处在知识库，随安装包升级更新。").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("风水知识卡（离线）")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
