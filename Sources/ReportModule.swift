@@ -10,13 +10,13 @@ enum ReportBuilder {
         var L: [String] = []
         L.append("命书 · \(person.name)")
         L.append("生辰：\(person.birthDate.formatted(date: .long, time: .shortened))（\(person.gender == "M" ? "男" : "女")，经度 \(person.useLongitude ? String(format: "%.1f", person.longitude) : "未校正")）")
-        L.append("真太阳时：\(ch.trueSolar) · 四柱：\(ch.sizhu)")
-        L.append("胎元 \(ch.taiyuan) · 胎息 \(ch.taixi) · 命宫 \(ch.minggong) · 身宫 \(ch.shengong)")
+        L.append("四柱：\(ch.pillars.joined(separator: " ")) · 起运方向：\(ch.qiyunDirection) · 日柱旬空：\(ch.xunKong)")
+        L.append("胎元 \(ch.taiYuan) · 胎息 \(ch.taiXi) · 命宫 \(ch.mingGong) · 身宫 \(ch.shenGong)")
         L.append("")
         L.append("【四柱细盘】")
         let heads = ["年柱", "月柱", "日柱", "时柱"]
         for i in 0..<4 {
-            L.append("\(heads[i]) \(ch.pillars[i])：干十神 \(ch.stemShiShen[i])，藏干 \(ch.cangGan[i].joined(separator: " "))（\(ch.hideShiShen[i].joined(separator: " "))），星运 \(ch.diShi[i])，纳音 \(ch.naYin[i])，旬空 \(ch.xunKong[i])")
+            L.append("\(heads[i]) \(ch.pillars[i])：干十神 \(ch.stemShiShen[i])，藏干 \(ch.hideGan[i].joined(separator: " "))（\(ch.hideShiShen[i].joined(separator: " "))），星运 \(ch.diShi[i])，纳音 \(ch.naYin[i])")
         }
         let wxNames = ["木", "火", "土", "金", "水"]
         L.append("五行占比：" + (0..<5).map { "\(wxNames[$0]) \(String(format: "%.0f%%", ch.wuxingPercents[$0]))" }.joined(separator: " · "))
