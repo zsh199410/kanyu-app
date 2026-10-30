@@ -1297,6 +1297,9 @@ struct CaseDetailView: View {
                             AnalysisView(draft: binding)
                         } label: { Label("排盘断宅：玄空＋八宅＋流年", systemImage: "square.grid.3x3.square") }
                         NavigationLink {
+                            ShaJudgeView(draft: binding)
+                        } label: { Label("实景判定：五变量加权定级", systemImage: "scalemass") }
+                        NavigationLink {
                             KnowledgeView()
                         } label: { Label("风水知识卡（速查）", systemImage: "books.vertical") }
                         if !d.analysisText.isEmpty {
@@ -1321,6 +1324,9 @@ struct CaseDetailView: View {
                         }
                     }
                     Section("导出") {
+                        NavigationLink {
+                            RemoteView(draft: binding)
+                        } label: { Label("远程上传 / 检查更新（远程服务）", systemImage: "icloud.and.arrow.up") }
                         Button {
                             if let dd = draft { exportURL = store.exportZip(caseData: dd) }
                         } label: { Label("生成数据包（ZIP）", systemImage: "square.and.arrow.up") }
@@ -1899,9 +1905,197 @@ struct ShaDetailView: View {
     }
 }
 
+// MARK: - 远程服务（上传数据包＋检查更新；服务器 kanyu.vip668.xin）
+
+struct RemoteView: View {
+    @Binding var draft: CaseData
+    @EnvironmentObject var store: SurveyStore
+    @AppStorage("kanyu.serverURL") private var serverURL = "https://kanyu.vip668.xin:8443"
+    @AppStorage("kanyu.uploadToken") private var uploadToken = ""
+    @State private var status = ""
+    @State private var busy = false
+    @State private var remoteInfo: String? = nil
+    private let appTag = "v4.3"
+
+    var body: some View {
+        List {
+            Section("服务器") {
+                TextField("服务器地址", text: $serverURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("上传口令（助手提供，填一次）", text: $uploadToken)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button {
+                    Task { await ping() }
+                } label: { Label("测试连接", systemImage: "antenna.radiowaves.left.and.right") }
+                .disabled(busy)
+            }
+            Section("上传本案数据包") {
+                Button {
+                    Task { await upload() }
+                } label: { Label(busy ? "上传中…" : "一键上传数据包", systemImage: "icloud.and.arrow.up") }
+                .disabled(busy || uploadToken.isEmpty)
+                if uploadToken.isEmpty {
+                    Text("先填上传口令才能上传。上传后助手在服务器端直接取回分析，不必再用聊天软件发文件。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if !status.isEmpty { Text(status).font(.callout) }
+            }
+            Section("版本") {
+                LabeledContent("当前版本", value: appTag)
+                Button {
+                    Task { await checkVersion() }
+                } label: { Label("检查更新", systemImage: "arrow.triangle.2.circlepath") }
+                .disabled(busy)
+                if let info = remoteInfo { Text(info).font(.callout) }
+            }
+        }
+        .navigationTitle("远程服务")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func base() -> String { serverURL.hasSuffix("/") ? String(serverURL.dropLast()) : serverURL }
+
+    private func ping() async {
+        busy = true; defer { busy = false }
+        guard let url = URL(string: base() + "/api/ping") else { status = "地址无效"; return }
+        do {
+            let (_, resp) = try await URLSession.shared.data(from: url)
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            status = code == 200 ? "✓ 服务器连通" : "服务器返回 \(code)"
+        } catch { status = "连接失败：\(error.localizedDescription)" }
+    }
+
+    private func upload() async {
+        busy = true; status = "正在打包…"; defer { busy = false }
+        guard let zipURL = store.exportZip(caseData: draft),
+              let data = try? Data(contentsOf: zipURL) else { status = "打包失败"; return }
+        status = "正在上传（\(data.count / 1024) KB）…"
+        var req = URLRequest(url: URL(string: base() + "/api/upload")!)
+        req.httpMethod = "POST"
+        req.setValue(uploadToken, forHTTPHeaderField: "X-Upload-Token")
+        req.setValue(draft.surveyCase.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "case",
+                     forHTTPHeaderField: "X-Case-Name")
+        req.setValue("application/zip", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 900
+        do {
+            let (respData, resp) = try await URLSession.shared.upload(for: req, from: data)
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            if code == 200 {
+                status = "✓ 上传成功，助手可即时取回分析。回执：\(String(data: respData, encoding: .utf8) ?? "")"
+            } else if code == 401 {
+                status = "✗ 口令不对（401），请核对后重填"
+            } else {
+                status = "✗ 服务器返回 \(code)：\(String(data: respData, encoding: .utf8) ?? "")"
+            }
+        } catch { status = "✗ 上传失败：\(error.localizedDescription)" }
+    }
+
+    private func checkVersion() async {
+        busy = true; defer { busy = false }
+        guard let url = URL(string: base() + "/api/version") else { remoteInfo = "地址无效"; return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let latest = obj["latest"] as? String {
+                if latest == appTag {
+                    remoteInfo = "已是最新版（\(appTag)）"
+                } else {
+                    remoteInfo = "有新版 \(latest)：\(obj["notes"] as? String ?? "")\n下载：\(obj["url"] as? String ?? "（等助手发链接）")"
+                }
+            } else { remoteInfo = "版本信息解析失败" }
+        } catch { remoteInfo = "检查失败：\(error.localizedDescription)" }
+    }
+}
+
+// MARK: - 实景判定工具（五变量加权，与知识库 10 号《实景判断学》同源）
+
+struct ShaJudgeView: View {
+    @Binding var draft: CaseData
+    @State private var shaName = ShaLibrary.entries[0].name
+    @State private var align = 2      // 对位：2 正对 1 斜对 0 侧/背不对位
+    @State private var dist = 1       // 距离：2 近(<10m) 1 中(10–30m) 0 远(>30m)
+    @State private var shield = 2     // 遮挡：2 无 1 部分 0 完全遮挡
+    @State private var volume = 1     // 体量：2 煞体远大于宅 1 相当 0 小于宅
+    @State private var receptor = 2   // 受体：2 床/书桌/沙发/灶 1 大门/主窗 0 空墙/过道/卫浴
+    @State private var harm = false   // 有可观察实害（风/光/声/水/安全/卫生）
+    @State private var savedTip = false
+
+    private var sum: Int { align + dist + shield + volume + receptor }
+    private var level: String {
+        if align == 0 { return "不成立" }
+        if shield == 0 { return harm ? "轻（形已遮断，按实害处理）" : "不成立" }
+        if sum >= 8 { return "重" }
+        if sum >= 5 { return harm && sum <= 5 ? "中（实害升级）" : "中" }
+        if sum >= 2 { return harm ? "中（实害升级）" : "轻" }
+        return "不成立"
+    }
+    private var advice: String {
+        switch level.prefix(1) {
+        case "重": return "处置：入主要结论，置信度甲/乙档；必给 L1 结构方案（移、挡、改），再参 L2 流派布局。"
+        case "中": return "处置：入结论，给 L1/L2 方案；先做低成本可逆项，复盘时回看定级。"
+        case "轻": return "处置：只记录、低成本顺手处理（如帘、绿植、移小件），不作主要结论、不吓唬住户。"
+        default: return "处置：不成立——三问未过（不对位/无受体/被完全遮挡且无实害），只在记录留痕，不入结论。"
+        }
+    }
+    private var judgeLine: String {
+        "【实景判定】\(shaName)：对位\( ["不对位","斜对","正对"][align] )、距离\( ["远","中","近"][dist] )、遮挡\( ["完全","部分","无"][shield] )、体量\( ["小于宅","相当","远大于宅"][volume] )、受体\( ["空墙过道","大门主窗","久留位"][receptor] )、实害\(harm ? "有" : "无") → 定级「\(level)」。\(advice)"
+    }
+
+    var body: some View {
+        List {
+            Section("判定对象") {
+                Picker("煞目", selection: $shaName) {
+                    ForEach(ShaLibrary.entries) { Text($0.name).tag($0.name) }
+                }
+            }
+            Section("入门三问不过者不成立：①对位？②有受体？③有实害？") {
+                Picker("对位程度", selection: $align) {
+                    Text("正对门窗").tag(2); Text("斜对/偏").tag(1); Text("侧对/背对").tag(0)
+                }
+                Picker("受体（正对处是什么）", selection: $receptor) {
+                    Text("床/书桌/沙发/灶（久留）").tag(2); Text("大门/主窗").tag(1); Text("空墙/过道/卫浴").tag(0)
+                }
+                Toggle("有可观察实害（风/光/声/水/安全/卫生）", isOn: $harm)
+            }
+            Section("五变量加权") {
+                Picker("距离", selection: $dist) {
+                    Text("近（<10 米）").tag(2); Text("中（10–30 米）").tag(1); Text("远（>30 米）").tag(0)
+                }
+                Picker("遮挡", selection: $shield) {
+                    Text("无遮挡直冲").tag(2); Text("部分遮挡").tag(1); Text("完全遮挡（不见）").tag(0)
+                }
+                Picker("体量对比", selection: $volume) {
+                    Text("煞体远大于宅").tag(2); Text("相当").tag(1); Text("煞体小于宅").tag(0)
+                }
+            }
+            Section("判定结果") {
+                Text("定级：\(level)").font(.headline)
+                    .foregroundStyle(level.hasPrefix("重") ? .red : (level.hasPrefix("中") ? .orange : .secondary))
+                Text(advice).font(.callout)
+                Text("辅助变量提醒：反光看时段、路冲看昼夜车流、工地动土看工期、高层看本户窗实见——定级时一并考虑，必要时在备注注明。")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    let prev = draft.taskNotes["实景判定"] ?? ""
+                    draft.taskNotes["实景判定"] = prev.isEmpty ? judgeLine : prev + "\n" + judgeLine
+                    savedTip = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { savedTip = false }
+                } label: { Label(savedTip ? "✓ 已存入案件（随数据包回传）" : "存入案件判定记录", systemImage: "square.and.arrow.down") }
+                if let saved = draft.taskNotes["实景判定"], !saved.isEmpty {
+                    Text(saved).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle("实景判定")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 struct KnowledgeView: View {
     private let cards: [(String, String)] = [
         ("测法要点", "罗盘每点放平采样 8 次取圆周平均；磁场强度正常 25–65 µT，出界即磁干扰（汽车/钢筋/磁吸壳）；精度 ±20° 内才作正式样本；大门朝外/朝内两读数应差约 180°，偏差 >10° 必有一处受干扰，换位重测。坐向以真北为准入盘。"),
+        ("实景判断总纲", "知识面是标准像，现场按变量变：先过三问（对位？有受体？有实害？），再以五变量加权定级——对位、距离、遮挡、体量、受体，合议为重/中/轻/不成立（判定页有工具）。排序：实害先于象意、形先于气、多派同指先改；吉凶同位不相抵（如旺位门遇路冲：留门化冲）；兼线两盘只取交集；公寓坐向户门与阳台双参；结论分甲（实测确定）/乙（流派推演）/丙（存疑待核）三档，丙档只给低成本可逆措施，禁止硬断。详版见知识库 10 号《实景判断学》。"),
         ("玄空速记", "运盘：运星入中顺飞；山/向盘：运盘坐/向宫星入中，阳山顺飞、阴山逆飞。二十四山阴阳——阳：乾坤艮巽、甲庚丙壬、寅申巳亥；阴：子午卯酉、辰戌丑未、乙辛丁癸。飞行轨迹：中→乾→兑→艮→离→坎→坤→震→巽。本 App 为下卦盘，不替卦；兼线（两山界 ±3°）须在备注标注。"),
         ("八宅速记", "命卦：男 (100−生年后两位)÷9 余数、女 (生年后两位−4)÷9 余数定卦，5 男寄坤、女寄艮。游年变爻口诀：不变伏位、变上爻生气、变下爻祸害、变中爻绝命、变下中天医、变中上五鬼、变上下六煞、全变延年。四吉（生气/天医/延年/伏位）安门床灶，四凶（绝命/五鬼/六煞/祸害）置卫浴储物。东西四宅命须相配。"),
         ("形煞速查（峦头层）", "路冲、反弓、天斩（两楼夹缝）、穿心（路/廊直贯）、开门见灶、横梁压床、尖角冲门窗、明堂受压、房后无靠（地势下陷/空旷）、淋头水（高处水直冲）、孤高（独高无护）、探头山。只记事实与方位，不凭单煞下重断，与理气盘合参。"),
