@@ -130,8 +130,48 @@ extension View {
     func kyCard() -> some View {
         self.padding(16)
             .background(Ky.card)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
             .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+    }
+}
+
+// MARK: - 排盘口径设置（对标文墨天机的安星参数页：口径成套可调，默认值＝现行金标准口径）
+enum AppSettings {
+    static var baziSect: Int { let v = UserDefaults.standard.integer(forKey: "baziSect"); return v == 1 ? 1 : 2 }
+    static var ziweiLeapNext: Bool { UserDefaults.standard.object(forKey: "ziweiLeapNext") as? Bool ?? true }
+    static var ziweiLateZiNext: Bool { UserDefaults.standard.bool(forKey: "ziweiLateZiNext") }
+}
+
+struct CaliberSettingsView: View {
+    @AppStorage("baziSect") private var baziSect = 2
+    @AppStorage("ziweiLeapNext") private var ziweiLeapNext = true
+    @AppStorage("ziweiLateZiNext") private var ziweiLateZiNext = false
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "八字口径")
+                    Picker("晚子时归日", selection: $baziSect) {
+                        Text("23 点后算次日（sect=1）").tag(1)
+                        Text("23 点后算当日（sect=2）").tag(2)
+                    }.pickerStyle(.segmented)
+                    Text("现行金标准盘以 sect=2 对拍验证；改口径后盘面随之变化，属预期。").font(.caption2).foregroundStyle(Ky.sub)
+                }.kyCard()
+                VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "紫微口径（天纪三合派）")
+                    Toggle("闰月整月归下月", isOn: $ziweiLeapNext)
+                    Toggle("晚子时作次日", isOn: $ziweiLateZiNext)
+                    Text("默认：闰月归下月、晚子时作当日，与紫微金标准盘（iztro 同源参照）一致。").font(.caption2).foregroundStyle(Ky.sub)
+                }.kyCard()
+                VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "紫微亮度表")
+                    Text("现行：《斗数全书》派亮度（58 星×12 宫全量）。中州派亮度表数据源未核实，不编造，缺位标注在此——宁缺毋假。").font(.caption).foregroundStyle(Ky.sub)
+                }.kyCard()
+            }.padding(16)
+        }
+        .background(Ky.bg)
+        .navigationTitle("排盘口径设置")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

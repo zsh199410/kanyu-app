@@ -962,7 +962,7 @@ struct ARTrackView: View {
                     }
                 }
                 .padding(10).background(.black.opacity(0.45))
-                .clipShape(RoundedRectangle(cornerRadius: 10)).padding()
+                .clipShape(RoundedRectangle(cornerRadius: 8)).padding()
                 Spacer()
                 Button {
                     if recorder.isRunning {
@@ -1200,7 +1200,7 @@ struct KyPrimaryButton: ButtonStyle {
             .padding(.vertical, 13)
             .background(Ky.gold)
             .foregroundStyle(Color(rgb: 0x14161A))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             .opacity(configuration.isPressed ? 0.72 : 1)
     }
 }
@@ -1302,7 +1302,7 @@ struct ContentView: View {
         HStack(spacing: 12) {
             AppLogoView(size: 46)
             VStack(alignment: .leading, spacing: 2) {
-                Text("三术合参").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                Text("三术合参").font(.system(.title, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                 Text("八字 · 紫微 · 风水 · 手相面相").font(.caption).foregroundStyle(Ky.sub)
             }
             Spacer()
@@ -1369,14 +1369,14 @@ struct ContentView: View {
             Image(systemName: icon).font(.system(size: 17))
                 .foregroundStyle(color)
                 .frame(width: 36, height: 36)
-                .background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 10))
+                .background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 8))
             Text(title).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
             Text(desc).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
+        .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
         .shadow(color: .black.opacity(0.04), radius: 5, y: 2)
     }
 
@@ -1385,6 +1385,7 @@ struct ContentView: View {
             wideLink("books.vertical.fill", "风水知识", "流派源流 · 勘察要点", Ky.gold) { KnowledgeView() }
             wideLink("shield.lefthalf.filled", "解煞手册", "形煞对位 · 分层化解", Ky.cinnabar) { ShaHandbookView() }
             wideLink("text.book.closed.fill", "断语库", "类象 · 格局 · 神煞条文可搜", Ky.gold) { LibraryView() }
+            wideLink("person.crop.rectangle.stack.fill", "名人命例库", "有据可查的名人盘 · 附可信度", Ky.ink) { CelebView() }
         }
     }
 
@@ -1401,8 +1402,8 @@ struct ContentView: View {
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
         }.buttonStyle(.plain)
     }
 
@@ -1414,7 +1415,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
         .background(Ky.card)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
     }
 
@@ -1505,7 +1506,7 @@ struct ContentView: View {
         }
         .padding(14)
         .background(Ky.card)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
     }
 
@@ -2788,7 +2789,7 @@ struct CaptureView: View {
                 }
                 .padding(.horizontal, 12).padding(.vertical, 8)
                 .background(.black.opacity(0.45)).foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
                 .padding()
                 // 水平指示：地平线倾斜角，绿字≤2° 为端正；倾斜值会随照片/视频存进数据包
                 HStack(spacing: 8) {
@@ -2825,7 +2826,7 @@ struct CaptureView: View {
                     }
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .background(.black.opacity(0.45))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     .padding(.top, 8)
                 }
                 // 环拍引导：进度环＋回起点箭头，转满一圈提示停
@@ -2854,7 +2855,7 @@ struct CaptureView: View {
                     }
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .background(.black.opacity(0.45))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     .padding(.top, 8)
                 }
                 Spacer()

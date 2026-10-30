@@ -101,7 +101,7 @@ struct HandMeasureView: View {
                             skeleton(rect)
                             editableLines(rect)
                         }
-                    }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                    }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                     lineChips
                     if selectedLine >= 0 {
                         Text(lineCards[selectedLine]).font(.caption).foregroundStyle(Ky.ink)
@@ -296,7 +296,7 @@ struct FaceMeasureView: View {
                                     })
                             }
                         }
-                    }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                    }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                     resultCard
                     VStack(alignment: .leading, spacing: 8) {
                         TextField("姓名（按人归档）", text: $personName)
@@ -448,7 +448,7 @@ struct PalmRecordDetailView: View {
                                 ctx.stroke(path, with: .color(Ky.gold), lineWidth: 1.8)
                             }
                         }
-                    }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+                    }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 Text(record.summary).font(.callout).foregroundStyle(Ky.ink)
                 Text("记录时间：\(Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .shortened)) · 描线为当时人工修正的点位，已冻结存档。")

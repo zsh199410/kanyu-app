@@ -22,6 +22,8 @@ struct BaziChart {
     var xunKong: String            // 日柱旬空
     var wuxingPercents: [Double]   // 五行占比（木火土金水）：天干各 1，藏干本气 1/中气 0.5/余气 0.3，归一化
     var birthYear: Int = 0
+    var gender: String = "M"
+    var siliText: String = ""
     var pillars: [String] { [yearPillar, monthPillar, dayPillar, timePillar] }
     var qiyunYear: Int { Int(qiyunDate.prefix(4)) ?? 0 }
     func dayunStartYear(_ i: Int) -> Int { qiyunYear + i * 10 }
@@ -64,6 +66,55 @@ enum BaziTables {
         if wx[day]!.1 == 0 { off = (12 - off) % 12 }  // 阴干逆行
         return states[off]
     }
+    // 神煞（通行表）：按日干/年支/日支/月支查到每柱地支上，返回柱序→神煞名
+    static func shenSha(_ c: BaziChart) -> [[String]] {
+        let stems = [c.yearPillar, c.monthPillar, c.dayPillar, c.timePillar].map { String($0.prefix(1)) }
+        let brs = [c.yearPillar, c.monthPillar, c.dayPillar, c.timePillar].map { String($0.suffix(1)) }
+        let ds = c.rizhu, yb = brs[0], db = brs[2], mb = brs[1]
+        var out: [[String]] = [[], [], [], []]
+        func add(_ name: String, _ branch: String) { for i in 0..<4 where brs[i] == branch { out[i].append(name) } }
+        let tianyi: [String: [String]] = ["甲": ["丑", "未"], "戊": ["丑", "未"], "乙": ["子", "申"], "己": ["子", "申"], "丙": ["亥", "酉"], "丁": ["亥", "酉"], "壬": ["卯", "巳"], "癸": ["卯", "巳"], "庚": ["寅", "午"], "辛": ["寅", "午"]]
+        tianyi[ds]?.forEach { add("天乙贵人", $0) }
+        let stemBranch: [(String, [String: String])] = [
+            ("文昌", ["甲": "巳", "乙": "午", "丙": "申", "丁": "酉", "戊": "申", "己": "酉", "庚": "亥", "辛": "子", "壬": "寅", "癸": "卯"]),
+            ("学堂", ["甲": "亥", "乙": "午", "丙": "寅", "丁": "酉", "戊": "寅", "己": "酉", "庚": "巳", "辛": "子", "壬": "申", "癸": "卯"]),
+            ("禄神", ["甲": "寅", "乙": "卯", "丙": "巳", "戊": "巳", "丁": "午", "己": "午", "庚": "申", "辛": "酉", "壬": "亥", "癸": "子"]),
+            ("羊刃", ["甲": "卯", "乙": "辰", "丙": "午", "丁": "未", "戊": "午", "己": "未", "庚": "酉", "辛": "戌", "壬": "子", "癸": "丑"]),
+            ("金舆", ["甲": "辰", "乙": "巳", "丙": "未", "丁": "申", "戊": "未", "己": "申", "庚": "戌", "辛": "亥", "壬": "丑", "癸": "寅"]),
+        ]
+        for (name, tab) in stemBranch { if let b = tab[ds] { add(name, b) } }
+        // 三合组类（桃花/驿马/华盖/将星/劫煞/亡神）：年支、日支各查一次，去重
+        let triads: [[String]: (tao: String, ma: String, hua: String, jiang: String, jie: String, wang: String)] = [
+            ["申", "子", "辰"]: ("酉", "寅", "辰", "子", "巳", "亥"),
+            ["寅", "午", "戌"]: ("卯", "申", "戌", "午", "亥", "巳"),
+            ["巳", "酉", "丑"]: ("午", "亥", "丑", "酉", "寅", "申"),
+            ["亥", "卯", "未"]: ("子", "巳", "未", "卯", "申", "寅"),
+        ]
+        var seen = Set<String>()
+        for base in [yb, db] {
+            for (members, v) in triads where members.contains(base) {
+                for (n, b) in [("桃花", v.tao), ("驿马", v.ma), ("华盖", v.hua), ("将星", v.jiang), ("劫煞", v.jie), ("亡神", v.wang)] {
+                    if seen.insert(n + b).inserted { add(n, b) }
+                }
+            }
+        }
+        // 红鸾/天喜（年支查）
+        let hong: [String: String] = ["子": "卯", "丑": "寅", "寅": "丑", "卯": "子", "辰": "亥", "巳": "戌", "午": "酉", "未": "申", "申": "未", "酉": "午", "戌": "巳", "亥": "辰"]
+        if let h = hong[yb], let hi = DZ.firstIndex(of: Character(h)) { add("红鸾", h); add("天喜", String(DZ[(hi + 6) % 12])) }
+        // 孤辰/寡宿（年支组）
+        let gu: [[String]: (String, String)] = [["亥", "子", "丑"]: ("寅", "戌"), ["寅", "卯", "辰"]: ("巳", "丑"), ["巳", "午", "未"]: ("申", "辰"), ["申", "酉", "戌"]: ("亥", "未")]
+        for (members, v) in gu where members.contains(yb) { add("孤辰", v.0); add("寡宿", v.1) }
+        // 月德（月支三合→天干，落在柱干）
+        let yuede: [String: String] = ["寅": "丙", "午": "丙", "戌": "丙", "申": "壬", "子": "壬", "辰": "壬", "亥": "甲", "卯": "甲", "未": "甲", "巳": "庚", "酉": "庚", "丑": "庚"]
+        if let g = yuede[mb] { for i in 0..<4 where stems[i] == g { out[i].append("月德贵人") } }
+        // 天德（月支查：干/支混合表）
+        let tiandeStem: [String: String] = ["寅": "丁", "辰": "壬", "巳": "辛", "未": "甲", "申": "癸", "戌": "丙", "亥": "乙", "子": "庚"]
+        let tiandeBranch: [String: String] = ["卯": "申", "午": "亥", "酉": "寅", "丑": "巳"]
+        if let g = tiandeStem[mb] { for i in 0..<4 where stems[i] == g { out[i].append("天德贵人") } }
+        if let b = tiandeBranch[mb] { add("天德贵人", b) }
+        return out
+    }
+
     static let naYinTable = ["海中金", "炉中火", "大林木", "路旁土", "剑锋金", "山头火", "涧下水", "城头土",
         "白蜡金", "杨柳木", "泉中水", "屋上土", "霹雳火", "松柏木", "长流水", "沙中金", "山下火", "平地木",
         "壁上土", "金箔金", "覆灯火", "天河水", "大驿土", "钗钏金", "桑柘木", "大溪水", "沙中土", "天上火",
@@ -152,7 +203,7 @@ enum BaziEngine {
         let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: used)
         let solar = Solar.fromYmdHms(year: c.year!, month: c.month!, day: c.day!, hour: c.hour!, minute: c.minute!)
         let ec = solar.lunar.eightChar
-        ec.sect = 2  // 晚子时：日柱算当天，钉死不许漂移
+        ec.sect = AppSettings.baziSect  // 晚子时归日口径（设置页可调，默认 2）
         let yg = ec.year; var mg = ec.month; let dg = ec.day; var tg = ec.time
         mg = String(wuhu(yearStem: yg.first!, monthBranch: mg.last!)) + String(mg.last!)
         let dayStemForTime: Character = c.hour! == 23 ? TG[(TG.firstIndex(of: dg.first!)! + 1) % 10] : dg.first!
@@ -163,7 +214,7 @@ enum BaziEngine {
         let pillars = [yg, mg, dg, tg]
         let dayStem = dg.first!
         let hide = pillars.map { BaziTables.cangGan[$0.last!]! }
-        return BaziChart(yearPillar: yg, monthPillar: mg, dayPillar: dg, timePillar: tg,
+        var chart = BaziChart(yearPillar: yg, monthPillar: mg, dayPillar: dg, timePillar: tg,
                          rizhu: String(dayStem),
                          taiYuan: ec.taiYuan, taiXi: ec.taiXi,
                          mingGong: ec.mingGong, shenGong: ec.shenGong,
@@ -178,7 +229,30 @@ enum BaziEngine {
                          naYin: pillars.map { BaziTables.naYin($0) },
                          xunKong: BaziTables.xunKong(dayPillar: dg),
                          wuxingPercents: BaziTables.wuxingPercents(pillars: pillars),
-                         birthYear: c.year!)
+                         birthYear: c.year!, gender: gender)
+        chart.siliText = sili(lunar: solar.lunar, monthBranch: mg.last!, birth: solar)
+        return chart
+    }
+
+    /// 人元司令分野（《子平真诠评注》表）：按生日距月令节气天数落段
+    static func sili(lunar: Lunar, monthBranch: Character, birth: Solar) -> String {
+        let segs: [Character: [(String, Int)]] = [
+            "子": [("癸", 30)], "丑": [("己", 9), ("癸", 3), ("辛", 18)],
+            "寅": [("戊", 7), ("丙", 7), ("甲", 16)], "卯": [("甲", 10), ("乙", 20)],
+            "辰": [("乙", 9), ("癸", 3), ("戊", 18)], "巳": [("戊", 7), ("庚", 7), ("丙", 16)],
+            "午": [("丙", 10), ("己", 9), ("丁", 11)], "未": [("乙", 9), ("丁", 3), ("己", 18)],
+            "申": [("戊", 7), ("壬", 7), ("庚", 16)], "酉": [("庚", 10), ("辛", 20)],
+            "戌": [("戊", 18), ("丁", 3), ("辛", 9)], "亥": [("戊", 7), ("甲", 7), ("壬", 16)],
+        ]
+        guard let seg = segs[monthBranch] else { return "" }
+        let jq = lunar.prevJieQi.solar
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
+        let d0 = cal.date(from: DateComponents(year: jq.year, month: jq.month, day: jq.day))!
+        let d1 = cal.date(from: DateComponents(year: birth.year, month: birth.month, day: birth.day))!
+        let days = cal.dateComponents([.day], from: d0, to: d1).day ?? 0
+        var acc = 0; var cur = seg.last!
+        for sg in seg { if days < acc + sg.1 { cur = sg; break }; acc += sg.1 }
+        return "\(cur.0)司令（入节 \(days) 天）"
     }
 
     /// 任意公历日期的日柱（流日速查；晚子时 sect=2 与排盘同口径）
@@ -188,7 +262,7 @@ enum BaziEngine {
         let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         let solar = Solar.fromYmdHms(year: c.year!, month: c.month!, day: c.day!, hour: c.hour!, minute: c.minute!)
         let ec = solar.lunar.eightChar
-        ec.sect = 2
+        ec.sect = AppSettings.baziSect
         return ec.day
     }
 }
@@ -208,7 +282,15 @@ struct BaziHomeView: View {
             VStack(alignment: .leading, spacing: 16) {
                 inputCard
                 if let ch = chart { BaziResultView(chart: ch, name: name) }
-                Text("口径：真太阳时＋晚子时 sect=2；细盘查表与服务端已验证引擎逐项对拍（金标准盘 12 例）。断语与报告在 P2 接入。")
+                NavigationLink { CaliberSettingsView() } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "slider.horizontal.3")
+                        Text("排盘口径设置（晚子时归日等）").font(.caption)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption2)
+                    }.foregroundStyle(Ky.sub)
+                }.buttonStyle(.plain)
+                Text("口径：真太阳时＋晚子时归日（设置页可调，默认 sect=2）；细盘与金标准盘 12 例逐项对拍。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
@@ -321,7 +403,7 @@ struct BaziResultView: View {
                             }
                             .padding(.horizontal, 12).padding(.vertical, 8)
                             .background(i == selectedDayun ? Ky.gold.opacity(0.18) : Ky.bg)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }.buttonStyle(.plain).foregroundStyle(Ky.ink)
                     }
                 }
@@ -347,7 +429,7 @@ struct BaziResultView: View {
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 8)
                         .background(y == nowYear ? Ky.gold.opacity(0.18) : Ky.bg)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                     }.buttonStyle(.plain).foregroundStyle(Ky.ink)
                 }
             }
@@ -428,6 +510,9 @@ struct BaziResultView: View {
             Text("基本信息").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
             Text("胎元 \(chart.taiYuan) · 胎息 \(chart.taiXi) · 命宫 \(chart.mingGong) · 身宫 \(chart.shenGong)")
                 .font(.caption).foregroundStyle(Ky.ink)
+            if !chart.siliText.isEmpty {
+                Text("人元司令 \(chart.siliText)").font(.caption).foregroundStyle(Ky.ink)
+            }
         }
         .kyCard()
     }
@@ -437,7 +522,7 @@ struct BaziResultView: View {
             HStack(spacing: 10) {
                 Image(systemName: "text.book.closed").foregroundStyle(Ky.cinnabar)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("解盘 · 初断").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
+                    Text("解盘 · 全维度").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
                     Text("命局风景 / 格局候选 / 喜忌 / 十神 / 岁运，逐条附依据链").font(.caption2).foregroundStyle(Ky.sub)
                 }
                 Spacer()
@@ -475,6 +560,7 @@ struct BaziResultView: View {
                 plateRow(cells: ch.hideShiShen.map { $0.joined(separator: " ") }, small: true, dim: true)
                 plateRow(cells: ch.diShi, small: true)
                 plateRow(cells: ch.naYin, small: true, dim: true)
+                plateRow(cells: BaziTables.shenSha(ch).map { $0.joined(separator: " ") }, small: true, dim: true)
             }
         }
     }

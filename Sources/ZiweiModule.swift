@@ -18,6 +18,8 @@ struct ZiweiPalace {
 
 struct ZiweiChart {
     var mingGong: Int; var shenGong: Int
+    var birthYearBranch: Int = 0; var birthYear: Int = 0; var isMale: Bool = true
+    var birthLunarMonth: Int = 1; var birthHourBranch: Int = 0
     var juName: String; var juNumber: Int
     var palaces: [ZiweiPalace]      // 按地支序 子→亥
     var lunarText: String
@@ -112,7 +114,60 @@ enum ZiweiCore {
                                        decadal: decAt[b] ?? [], isBody: b == shen))
         }
         return ZiweiChart(mingGong: ming, shenGong: shen, juName: juName, juNumber: ju,
-                          palaces: palaces, lunarText: lunarText)
+                          palaces: palaces, lunarText: lunarText, birthYearBranch: yearBranch, isMale: isMale,
+                          birthLunarMonth: month, birthHourBranch: hourBranch)
+    }
+}
+
+extension ZiweiCore {
+    /// 某宫宫干四化表 [(星, 化)]（禄权科忌序）
+    static func mutagens(ofStem stem: String) -> [(star: String, kind: String)] {
+        guard let tab = sihua[Character(stem)] else { return [] }
+        let order = ["禄", "权", "科", "忌"]
+        return tab.map { (star: $0.key, kind: $0.value) }.sorted { order.firstIndex(of: $0.kind)! < order.firstIndex(of: $1.kind)! }
+    }
+    /// 星所在宫（地支序）
+    static func palaceOf(_ ch: ZiweiChart, star: String) -> ZiweiPalace? {
+        ch.palaces.first { p in p.majors.contains { $0.star == star } || p.minors.contains { $0.star == star } }
+    }
+    /// 自化：宫干四化恰落本宫的星
+    static func selfTransforms(_ ch: ZiweiChart) -> [Int: [String]] {
+        var out: [Int: [String]] = [:]
+        for p in ch.palaces {
+            let own = Set(p.majors.map { $0.star } + p.minors.map { $0.star })
+            let hits = mutagens(ofStem: p.stem).filter { own.contains($0.star) }.map { "自化\($0.kind)" }
+            if !hits.isEmpty { out[p.branch] = hits }
+        }
+        return out
+    }
+    /// 飞化：某宫宫干四化各飞入哪宫
+    static func flyFrom(_ ch: ZiweiChart, branch: Int) -> [(kind: String, star: String, target: String)] {
+        let p = ch.palaces[branch]
+        return mutagens(ofStem: p.stem).map { m in
+            (kind: m.kind, star: m.star, target: palaceOf(ch, star: m.star)?.name ?? "—")
+        }
+    }
+    /// 小限起宫（生年三合局定：水局戌/火局辰/金局未/木局丑；男顺女逆，虚岁行）
+    static func xiaoxian(birthYearBranch: Int, age: Int, isMale: Bool) -> Int {
+        let triadStart: [Int: Int] = [0: 10, 4: 10, 8: 10, 2: 4, 6: 4, 10: 4, 5: 7, 9: 7, 1: 7, 11: 1, 3: 1, 7: 1]
+        let start = triadStart[birthYearBranch] ?? 0
+        let step = (age - 1) * (isMale ? 1 : -1)
+        return ((start + step) % 12 + 12) % 12
+    }
+    /// 斗君（流月命宫基准）：生年支宫逆数生月、顺数生时；逐年顺进一宫（iztro 三例拟合验证）
+    static func doujun(_ ch: ZiweiChart, year: Int) -> Int {
+        let base = ch.birthYearBranch - (ch.birthLunarMonth - 1) + ch.birthHourBranch
+        return ((base + (year - ch.birthYear)) % 12 + 12) % 12
+    }
+    static func monthPalace(_ ch: ZiweiChart, year: Int, lunarMonth: Int) -> Int {
+        ((doujun(ch, year: year) + (lunarMonth - 1)) % 12 + 12) % 12
+    }
+    /// 流年宫名（流年命宫落在年支宫，宫名逆行序）
+    static func yearNames(yearBranch: Int) -> [Int: String] {
+        let names = ["命宫", "兄弟", "夫妻", "子女", "财帛", "疾厄", "迁移", "仆役", "官禄", "田宅", "福德", "父母"]
+        var out: [Int: String] = [:]
+        for b in 0..<12 { out[b] = names[((yearBranch - b) % 12 + 12) % 12] }
+        return out
     }
 }
 
@@ -127,14 +182,27 @@ enum ZiweiEngine {
         let lunar = solar.lunar
         let rawMonth = lunar.month
         let leap = rawMonth < 0
-        let month = leap ? min(abs(rawMonth) + 1, 12) : rawMonth   // 闰月整月归下月（天纪口径）
+        let month = leap ? (AppSettings.ziweiLeapNext ? min(abs(rawMonth) + 1, 12) : abs(rawMonth)) : rawMonth   // 闰月归属（设置页可调，默认归下月）
         let yearStem = ZiweiCore.TG[lunar.yearGanIndex % 10]
         let yearBranch = lunar.yearZhiIndex % 12
         let hourBranch = ((c.hour! + 1) / 2) % 12
         let text = "农历 \(lunar.year) 年\(leap ? "闰" : "")\(abs(rawMonth)) 月 \(lunar.day) 日 · \(ZiweiCore.DZ[hourBranch])时"
-        return ZiweiCore.compute(yearStem: yearStem, yearBranch: yearBranch, month: month,
+        if AppSettings.ziweiLateZiNext && c.hour! >= 23 {
+            let nd = used.addingTimeInterval(86400)
+            let nc = cal.dateComponents([.year, .month, .day], from: nd)
+            let nl = Solar.fromYmdHms(year: nc.year!, month: nc.month!, day: nc.day!, hour: 0, minute: 30).lunar
+            let nMonth = nl.month < 0 ? (AppSettings.ziweiLeapNext ? min(abs(nl.month) + 1, 12) : abs(nl.month)) : nl.month
+            var ch = ZiweiCore.compute(yearStem: ZiweiCore.TG[nl.yearGanIndex % 10], yearBranch: nl.yearZhiIndex % 12,
+                                       month: nMonth, day: nl.day, hourBranch: 0,
+                                       isMale: gender == "M", lunarText: text + "（晚子时作次日）")
+            ch.birthYear = c.year!
+            return ch
+        }
+        var ch = ZiweiCore.compute(yearStem: yearStem, yearBranch: yearBranch, month: month,
                                  day: lunar.day, hourBranch: hourBranch,
                                  isMale: gender == "M", lunarText: text)
+        ch.birthYear = c.year!
+        return ch
     }
 }
 
@@ -168,9 +236,18 @@ struct ZiweiHomeView: View {
                 .kyCard()
                 if let ch = chart {
                     ZiweiBoardView(chart: ch, name: name)
+                    ZiweiYearView(chart: ch)
                     ZiweiReadingView(chart: ch)
                 }
-                Text("口径：三合派安星（晚子时作当日、闰月整月归下月），已与主流参照引擎 14 例逐项对拍；星曜亮度为《斗数全书》派表。")
+                NavigationLink { CaliberSettingsView() } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "slider.horizontal.3")
+                        Text("排盘口径设置（子时/闰月）").font(.caption)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption2)
+                    }.foregroundStyle(Ky.sub)
+                }.buttonStyle(.plain)
+                Text("口径：三合派安星（晚子时/闰月口径在设置页可调），已与主流参照引擎 14 例逐项对拍；星曜亮度为《斗数全书》派表。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
@@ -237,8 +314,16 @@ struct ZiweiBoardView: View {
             }
             if let s = selected {
                 let p = chart.palaces[s]
-                Text("已选\(p.name)（\(p.stem)\(ZiweiCore.DZ[p.branch])）：高亮为其三方四正——本宫、三合两宫与对宫，读盘时四宫合看。")
-                    .font(.caption).foregroundStyle(Ky.sub)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("已选\(p.name)（\(p.stem)\(ZiweiCore.DZ[p.branch])）：高亮为其三方四正——本宫、三合两宫与对宫，读盘时四宫合看。")
+                        .font(.caption).foregroundStyle(Ky.sub)
+                    Text("飞化：" + ZiweiCore.flyFrom(chart, branch: s).map { "\($0.star)化\($0.kind)入\($0.target)" }.joined(separator: " · "))
+                        .font(.caption).foregroundStyle(Ky.ink)
+                    if let selfT = ZiweiCore.selfTransforms(chart)[s] {
+                        Text("本宫自化：" + selfT.joined(separator: "、") + "（自化者，该议题自己生变，不待外力）")
+                            .font(.caption).foregroundStyle(Ky.gold)
+                    }
+                }
             } else {
                 Text("点任一宫，高亮它的三方四正。").font(.caption).foregroundStyle(Ky.sub)
             }
@@ -285,6 +370,9 @@ struct ZiweiBoardView: View {
             }
             Spacer()
             Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0)").font(.system(size: 9)).foregroundStyle(Ky.sub)
+            if let selfT = ZiweiCore.selfTransforms(chart)[p.branch] {
+                Text(selfT.joined(separator: " ")).font(.system(size: 8)).fontWeight(.bold).foregroundStyle(Ky.gold).lineLimit(1)
+            }
         }
         .padding(5)
         .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
@@ -431,5 +519,74 @@ struct ZiweiReadingView: View {
                 .kyCard()
             }
         }
+    }
+}
+
+// MARK: - 紫微流年层（流年命宫/流年宫名/流年四化/小限：文墨收费项，此处全给）
+struct ZiweiYearView: View {
+    let chart: ZiweiChart
+    @State private var year = Calendar.current.component(.year, from: Date())
+    @State private var lmonth = abs(Solar.fromYmdHms(year: Calendar.current.component(.year, from: Date()), month: Calendar.current.component(.month, from: Date()), day: 15, hour: 12, minute: 0).lunar.month)
+    var body: some View {
+        let solar = Solar.fromYmdHms(year: year, month: 7, day: 1, hour: 12, minute: 0)
+        let yStem = ZiweiCore.TG[solar.lunar.yearGanIndex % 10]
+        let yBranch = solar.lunar.yearZhiIndex % 12
+        let names = ZiweiCore.yearNames(yearBranch: yBranch)
+        let age = year - chart.birthYear + 1
+        let xiao = ZiweiCore.xiaoxian(birthYearBranch: chart.birthYearBranch, age: max(age, 1), isMale: chart.isMale)
+        let muts = ZiweiCore.mutagens(ofStem: String(yStem))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                KySectionTitle(title: "流年", trailing: "\(year) \(yStem)\(ZiweiCore.DZ[yBranch])年")
+                Spacer()
+                Stepper("", value: $year, in: 1950...2100).labelsHidden()
+            }
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("流年命宫").font(.caption2).foregroundStyle(Ky.sub)
+                    Text(chart.palaces[yBranch].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("小限（虚岁 \(age)）").font(.caption2).foregroundStyle(Ky.sub)
+                    Text(chart.palaces[xiao].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("流年四化").font(.caption2).foregroundStyle(Ky.sub)
+                    Text(muts.map { "\($0.star)\($0.kind)" }.joined(separator: " ")).font(.caption).fontWeight(.semibold)
+                        .foregroundStyle(Ky.ink)
+                }
+            }
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                ForEach(0..<12, id: \.self) { b in
+                    HStack(spacing: 4) {
+                        Text(names[b] ?? "").font(.caption2).fontWeight(names[b] == "命宫" ? .bold : .regular)
+                            .foregroundStyle(names[b] == "命宫" ? Ky.cinnabar : Ky.ink)
+                        Text(chart.palaces[b].name).font(.caption2).foregroundStyle(Ky.sub)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 7).padding(.vertical, 5)
+                    .background(b == yBranch ? Ky.gold.opacity(0.14) : Ky.bg)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+            Divider()
+            let mp = ZiweiCore.monthPalace(chart, year: year, lunarMonth: lmonth)
+            let mStemIdx = (solar.lunar.yearGanIndex % 5) * 2 + 2 + (lmonth - 1)
+            let mMuts = ZiweiCore.mutagens(ofStem: String(ZiweiCore.TG[mStemIdx % 10]))
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("流月命宫（农历 \(lmonth) 月）").font(.caption2).foregroundStyle(Ky.sub)
+                    Text(chart.palaces[mp].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("流月四化").font(.caption2).foregroundStyle(Ky.sub)
+                    Text(mMuts.map { "\($0.star)\($0.kind)" }.joined(separator: " ")).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                }
+                Stepper("", value: $lmonth, in: 1...12).labelsHidden()
+            }
+            Text("读法：流年命宫定今年的舞台，流年四化定今年的引线，小限看自身状态；与大限宫位叠看（限年同宫议题最重）。流月以斗君起宫（本引擎已与参照三例拟合）。")
+                .font(.caption2).foregroundStyle(Ky.sub)
+        }.kyCard()
     }
 }
