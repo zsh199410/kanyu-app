@@ -7,6 +7,9 @@ packages:
   ZIPFoundation:
     url: https://github.com/weichsel/ZIPFoundation
     from: "0.9.19"
+  LunarSwift:
+    url: https://github.com/6tail/lunar-swift
+    from: "1.1.8"
 settings:
   base:
     CODE_SIGN_STYLE: Manual
@@ -19,6 +22,7 @@ targets:
       - Sources
     dependencies:
       - package: ZIPFoundation
+      - package: LunarSwift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kanyu.survey
@@ -42,3 +46,16 @@ targets:
         NSLocationWhenInUseUsageDescription: 罗盘定向与照片定位需要位置与方向信息，用于计算真北方位与磁偏角。
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+
+  KanyuTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: Kanyu
+schemes:
+  Kanyu:
+    test:
+      targets:
+        - KanyuTests
