@@ -1073,7 +1073,7 @@ struct CaseDetailView: View {
     }
     private func commit() { if let d = draft { store.update(d) } }
     private func kindText(_ k: TaskKind) -> String {
-        switch k { case .photo: return "拍照"; case .video: return "录像"; case .heading: return "罗盘" }
+        switch k { case .photo: return "拍照"; case .video: return "录像"; case .heading: return "罗盘"; case .scan3D: return "3D扫描"; case .arTrack: return "AR轨迹" }
     }
 }
 
@@ -1089,6 +1089,7 @@ struct CompassView: View {
     @State private var magSamples: [Double] = []
     @State private var collectTicks = 0
     @State private var collectHint = ""
+    @State private var collectTask: Task<Void, Never>? = nil
     private let presetPoints = ["大门外朝外", "大门外朝内", "主阳台朝外", "房后朝外", "碑向朝外", "院门朝外"]
 
     var body: some View {
@@ -1137,8 +1138,7 @@ struct CompassView: View {
                 }
                 Button {
                     guard !collecting else { return }
-                    collecting = true; trueSamples = []; magSamples = []; collectTicks = 0
-                    collectHint = "采样中：把气泡稳在绿圈里…"
+                    startCollect()
                 } label: {
                     Text(justSaved ? "✓ 已记录" : (collecting ? "采样中…（\(trueSamples.count)/8）" : "记录这个方位（放平自动采样）"))
                         .frame(maxWidth: .infinity).padding(.vertical, 6)
@@ -1163,18 +1163,28 @@ struct CompassView: View {
         }
         .navigationTitle("罗盘定向")
         .onAppear { location.start(); motion.start() }
-        .onReceive(Timer.publish(every: 0.15, on: .main, in: .common).autoconnect()) { _ in
-            guard collecting else { return }
-            collectTicks += 1
-            if motion.isLevelForCompass && location.displayTrueHeading >= 0 {
-                trueSamples.append(location.displayTrueHeading)
-                magSamples.append(location.displayMagneticHeading)
-                collectHint = "采样中：已采 \(trueSamples.count)/8，保持放平…"
-            } else {
-                collectHint = "没放平，不采样：把气泡稳进绿圈（当前倾斜 \(String(format: "%.1f°", motion.flatTilt))）"
+        .onDisappear { collectTask?.cancel() }
+    }
+
+    // 采样循环用 Task 驱动（v1.3 用视图层 Timer 发布者，真机上不触发导致永远 0/8，已改）
+    private func startCollect() {
+        collecting = true; trueSamples = []; magSamples = []; collectTicks = 0
+        collectHint = "采样中：把气泡稳在绿圈里…"
+        collectTask?.cancel()
+        collectTask = Task { @MainActor in
+            while collecting && trueSamples.count < 8 && collectTicks < 80 {
+                if motion.isLevelForCompass && location.displayTrueHeading >= 0 {
+                    trueSamples.append(location.displayTrueHeading)
+                    magSamples.append(location.displayMagneticHeading)
+                    collectHint = "采样中：已采 \(trueSamples.count)/8，保持放平…"
+                } else {
+                    collectHint = "没放平，不采样：把气泡稳进绿圈（当前倾斜 \(String(format: "%.1f°", motion.flatTilt))）"
+                }
+                if trueSamples.count >= 8 { finishCollect(); return }
+                collectTicks += 1
+                try? await Task.sleep(nanoseconds: 150_000_000)
             }
-            if trueSamples.count >= 8 { finishCollect() }
-            else if collectTicks > 60 {
+            if collecting {
                 collecting = false
                 collectHint = "这次没采够：放平后再点一次记录。"
             }
