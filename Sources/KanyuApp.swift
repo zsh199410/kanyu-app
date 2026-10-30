@@ -3,6 +3,7 @@
 // 任务单拍照录像（照片烙印方位、视频同步记录罗盘轨迹）/ 一键导出数据包 ZIP。
 import SwiftUI
 import CoreLocation
+import CoreMotion
 import AVFoundation
 import UIKit
 import ZIPFoundation
@@ -46,6 +47,8 @@ struct HeadingReading: Identifiable, Codable {
     var latitude: Double?
     var longitude: Double?
     var headingAccuracy: Double = -1
+    var tiltDegrees: Double = -1   // 记录时手机倾斜角（放平采样，越小越可信）
+    var sampleSpread: Double = -1  // 采样集中度 R（0–1，越接近 1 读数越稳）
 }
 
 struct HeadingSample: Codable {
@@ -69,6 +72,7 @@ struct MediaItem: Identifiable, Codable {
     var latitude: Double?
     var longitude: Double?
     var note: String = ""
+    var tilt: Double = -1          // 拍摄时倾斜角（照片=地平线倾斜，罗盘类=放平倾斜）
 }
 
 struct CaseData: Identifiable, Codable {
@@ -111,6 +115,19 @@ enum CompassMath {
     }
     static func format(_ deg: Double) -> String {
         deg >= 0 ? String(format: "%.1f°", normalize(deg)) : "—"
+    }
+    // 圆周平均：角度不能算术平均（359° 与 1° 的均值应是 0° 而非 180°）。
+    // 返回均值与集中度 R（0–1，越接近 1 采样越稳）。
+    static func circularMean(_ degs: [Double]) -> (mean: Double, r: Double) {
+        guard !degs.isEmpty else { return (-1, 0) }
+        var sx = 0.0, sy = 0.0
+        for d in degs { let rad = d * .pi / 180; sx += cos(rad); sy += sin(rad) }
+        let n = Double(degs.count)
+        let mx = sx / n, my = sy / n
+        let r = min(1.0, (mx * mx + my * my).squareRoot())
+        var mean = atan2(my, mx) * 180 / .pi
+        if mean < 0 { mean += 360 }
+        return (mean, r)
     }
 }
 
@@ -237,7 +254,7 @@ final class SurveyStore: ObservableObject {
     }
 
     // 保存一张照片（原图＋烙印图），返回 MediaItem
-    func savePhoto(caseId: UUID, task: SurveyTask, imageData: Data, loc: LocationManager) -> MediaItem? {
+    func savePhoto(caseId: UUID, task: SurveyTask, imageData: Data, loc: LocationManager, tilt: Double = -1) -> MediaItem? {
         guard let image = UIImage(data: imageData) else { return nil }
         let dir = caseDir(caseId)
         let stamp = Date()
@@ -266,11 +283,12 @@ final class SurveyStore: ObservableObject {
                          timestamp: stamp, trueHeading: trueH, magneticHeading: magH,
                          mountain: mountain,
                          latitude: loc.currentLocation?.coordinate.latitude,
-                         longitude: loc.currentLocation?.coordinate.longitude)
+                         longitude: loc.currentLocation?.coordinate.longitude,
+                         tilt: tilt)
     }
 
     // 保存一段视频（文件已由相机写入临时路径）＋罗盘轨迹
-    func saveVideo(caseId: UUID, task: SurveyTask, tempURL: URL, samples: [HeadingSample], loc: LocationManager) -> MediaItem? {
+    func saveVideo(caseId: UUID, task: SurveyTask, tempURL: URL, samples: [HeadingSample], loc: LocationManager, tilt: Double = -1) -> MediaItem? {
         let dir = caseDir(caseId)
         let stamp = Date()
         let base = "\(task.id)_\(Int(stamp.timeIntervalSince1970))"
@@ -291,7 +309,8 @@ final class SurveyStore: ObservableObject {
                          timestamp: stamp, trueHeading: trueH, magneticHeading: magH,
                          mountain: trueH >= 0 ? CompassMath.mountain(for: trueH) : "",
                          latitude: loc.currentLocation?.coordinate.latitude,
-                         longitude: loc.currentLocation?.coordinate.longitude)
+                         longitude: loc.currentLocation?.coordinate.longitude,
+                         tilt: tilt)
     }
 
     // 导出 ZIP 数据包：媒体原件＋data.json＋勘察摘要.txt
@@ -333,7 +352,7 @@ final class SurveyStore: ObservableObject {
         for r in sc.residents { s += "居住者：\(r.label) \(r.birthYear)年 \(r.gender)\n" }
         s += "\n罗盘读数（真北为准）\n----------------\n"
         for h in cd.headings {
-            s += "\(h.pointName)：真北 \(CompassMath.format(h.trueNorth))（\(h.mountain)山·\(h.palace)宫）磁北 \(CompassMath.format(h.magnetic)) 精度±\(Int(h.headingAccuracy))° \(Self.timeFormatter.string(from: h.timestamp))\n"
+            s += "\(h.pointName)：真北 \(CompassMath.format(h.trueNorth))（\(h.mountain)山·\(h.palace)宫）磁北 \(CompassMath.format(h.magnetic)) 精度±\(Int(h.headingAccuracy))° 倾斜\(h.tiltDegrees >= 0 ? String(format: "%.1f°", h.tiltDegrees) : "—") 集中度\(h.sampleSpread >= 0 ? String(format: "%.2f", h.sampleSpread) : "—") \(Self.timeFormatter.string(from: h.timestamp))\n"
         }
         s += "\n媒体清单\n----------------\n"
         for m in cd.media {
@@ -443,6 +462,45 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     }
 }
 
+// MARK: - 水平仪（CoreMotion 重力向量）
+//
+// 罗盘准不准，一半看放没放平：手机倾斜时磁力计读数会漂。
+// 本类给出两种倾斜角：
+// - flatTilt：手机平放（测罗盘时）偏离水平的夹角，0° 为完全放平；
+// - horizonTilt：手机竖举（拍照时）地平线的倾斜角，0° 为地平线端正。
+// 另给气泡位置（bubbleX/bubbleY，-1…1）供界面画气泡。
+
+@MainActor
+final class MotionManager: ObservableObject {
+    @Published var flatTilt: Double = 90
+    @Published var horizonTilt: Double = 0
+    @Published var bubbleX: Double = 0
+    @Published var bubbleY: Double = 0
+
+    private let motion = CMMotionManager()
+    var isLevelForCompass: Bool { flatTilt <= 3 }
+    var isLevelForCamera: Bool { abs(horizonTilt) <= 2 }
+
+    func start() {
+        guard motion.isDeviceMotionAvailable, !motion.isDeviceMotionActive else { return }
+        motion.deviceMotionUpdateInterval = 0.1
+        motion.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] dm, _ in
+            guard let g = dm?.gravity else { return }
+            let len = (g.x * g.x + g.y * g.y + g.z * g.z).squareRoot()
+            guard len > 0 else { return }
+            let gx = g.x / len, gy = g.y / len, gz = g.z / len
+            let flat = acos(min(1, max(-1, -gz))) * 180 / .pi
+            let horizon = atan2(gx, -gy) * 180 / .pi
+            Task { @MainActor in
+                self?.flatTilt = flat
+                self?.horizonTilt = horizon
+                self?.bubbleX = gx
+                self?.bubbleY = gy
+            }
+        }
+    }
+}
+
 // MARK: - 相机（AVFoundation：拍照＋录像，取景框由 SwiftUI 叠罗盘）
 
 final class CameraManager: NSObject, ObservableObject {
@@ -536,12 +594,14 @@ struct CameraPreview: UIViewRepresentable {
 struct KanyuSurveyApp: App {
     @StateObject private var store = SurveyStore()
     @StateObject private var location = LocationManager()
+    @StateObject private var motion = MotionManager()
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
                 .environmentObject(location)
-                .onAppear { location.start() }
+                .environmentObject(motion)
+                .onAppear { location.start(); motion.start() }
         }
     }
 }
@@ -719,16 +779,41 @@ struct CaseDetailView: View {
 
 struct CompassView: View {
     @EnvironmentObject var location: LocationManager
+    @EnvironmentObject var motion: MotionManager
     @Binding var draft: CaseData
     @State private var pointName = "大门外朝外"
     @State private var customPoint = ""
     @State private var justSaved = false
+    @State private var collecting = false
+    @State private var trueSamples: [Double] = []
+    @State private var magSamples: [Double] = []
+    @State private var collectTicks = 0
+    @State private var collectHint = ""
     private let presetPoints = ["大门外朝外", "大门外朝内", "主阳台朝外", "房后朝外", "碑向朝外", "院门朝外"]
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
                 dial.frame(width: 260, height: 260).padding(.top, 8)
+                // 水平仪：气泡进小圈（倾斜≤3°）才算放平
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle().stroke(Color.secondary.opacity(0.5), lineWidth: 1.5).frame(width: 76, height: 76)
+                        Circle().stroke(Color.green.opacity(0.7), lineWidth: 1.5).frame(width: 26, height: 26)
+                        Circle().fill(motion.isLevelForCompass ? Color.green : Color.orange)
+                            .frame(width: 18, height: 18)
+                            .offset(x: bubbleOffset.0, y: bubbleOffset.1)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("水平仪：倾斜 \(String(format: "%.1f°", motion.flatTilt))")
+                            .font(.callout).fontWeight(.medium)
+                        Text(motion.isLevelForCompass ? "已放平，可以记录" : "把手机平放，气泡稳进绿圈")
+                            .font(.caption)
+                            .foregroundStyle(motion.isLevelForCompass ? .green : .orange)
+                        Text("倾斜时罗盘会漂，记录只采放平时的读数并取平均。")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 VStack(spacing: 4) {
                     Text("真北 \(CompassMath.format(location.displayTrueHeading))")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
@@ -751,24 +836,17 @@ struct CompassView: View {
                     TextField("测点名称", text: $customPoint).textFieldStyle(.roundedBorder)
                 }
                 Button {
-                    let name = pointName == "__custom__" ? (customPoint.isEmpty ? "自定义测点" : customPoint) : pointName
-                    let t = location.displayTrueHeading
-                    draft.headings.append(HeadingReading(
-                        pointName: name,
-                        magnetic: location.displayMagneticHeading,
-                        trueNorth: t,
-                        mountain: t >= 0 ? CompassMath.mountain(for: t) : "",
-                        palace: t >= 0 ? CompassMath.palace(for: t) : "",
-                        latitude: location.currentLocation?.coordinate.latitude,
-                        longitude: location.currentLocation?.coordinate.longitude,
-                        headingAccuracy: location.headingAccuracy))
-                    justSaved = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { justSaved = false }
+                    guard !collecting else { return }
+                    collecting = true; trueSamples = []; magSamples = []; collectTicks = 0
+                    collectHint = "采样中：把气泡稳在绿圈里…"
                 } label: {
-                    Text(justSaved ? "✓ 已记录" : "记录这个方位")
+                    Text(justSaved ? "✓ 已记录" : (collecting ? "采样中…（\(trueSamples.count)/8）" : "记录这个方位（放平自动采样）"))
                         .frame(maxWidth: .infinity).padding(.vertical, 6)
                 }
                 .buttonStyle(.borderedProminent)
+                if !collectHint.isEmpty {
+                    Text(collectHint).font(.caption).foregroundStyle(.secondary)
+                }
                 Text("测法：手机端平、远离汽车钢筋电器；每个测点原地慢转半圈等读数稳定后再记录。坐向以真北读数为准入盘，磁北读数留作互校。")
                     .font(.caption).foregroundStyle(.secondary)
                 if !draft.headings.isEmpty {
@@ -784,7 +862,51 @@ struct CompassView: View {
             }.padding()
         }
         .navigationTitle("罗盘定向")
-        .onAppear { location.start() }
+        .onAppear { location.start(); motion.start() }
+        .onReceive(Timer.publish(every: 0.15, on: .main, in: .common).autoconnect()) { _ in
+            guard collecting else { return }
+            collectTicks += 1
+            if motion.isLevelForCompass && location.displayTrueHeading >= 0 {
+                trueSamples.append(location.displayTrueHeading)
+                magSamples.append(location.displayMagneticHeading)
+                collectHint = "采样中：已采 \(trueSamples.count)/8，保持放平…"
+            } else {
+                collectHint = "没放平，不采样：把气泡稳进绿圈（当前倾斜 \(String(format: "%.1f°", motion.flatTilt))）"
+            }
+            if trueSamples.count >= 8 { finishCollect() }
+            else if collectTicks > 60 {
+                collecting = false
+                collectHint = "这次没采够：放平后再点一次记录。"
+            }
+        }
+    }
+
+    private var bubbleOffset: (Double, Double) {
+        let dx = min(1, max(-1, motion.bubbleX / 0.25)) * 27
+        let dy = min(1, max(-1, -motion.bubbleY / 0.25)) * 27
+        return (dx, dy)
+    }
+
+    private func finishCollect() {
+        collecting = false
+        let (meanT, r) = CompassMath.circularMean(trueSamples)
+        let (meanM, _) = CompassMath.circularMean(magSamples)
+        guard meanT >= 0 else { collectHint = "读数无效，请重试"; return }
+        let name = pointName == "__custom__" ? (customPoint.isEmpty ? "自定义测点" : customPoint) : pointName
+        draft.headings.append(HeadingReading(
+            pointName: name,
+            magnetic: meanM,
+            trueNorth: meanT,
+            mountain: CompassMath.mountain(for: meanT),
+            palace: CompassMath.palace(for: meanT),
+            latitude: location.currentLocation?.coordinate.latitude,
+            longitude: location.currentLocation?.coordinate.longitude,
+            headingAccuracy: location.headingAccuracy,
+            tiltDegrees: motion.flatTilt,
+            sampleSpread: r))
+        justSaved = true
+        collectHint = "已记录：8 次采样平均，集中度 \(String(format: "%.2f", r))（越接近 1 越稳）"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { justSaved = false }
     }
 
     private var dial: some View {
@@ -853,6 +975,7 @@ struct TaskDetailView: View {
 struct CaptureView: View {
     @EnvironmentObject var store: SurveyStore
     @EnvironmentObject var location: LocationManager
+    @EnvironmentObject var motion: MotionManager
     @Environment(\.dismiss) var dismiss
     let task: SurveyTask
     @Binding var draft: CaseData
@@ -881,6 +1004,21 @@ struct CaptureView: View {
                 .background(.black.opacity(0.45)).foregroundStyle(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .padding()
+                // 水平指示：地平线倾斜角，绿字≤2° 为端正；倾斜值会随照片/视频存进数据包
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(motion.isLevelForCamera ? Color.green : Color.orange)
+                        .frame(width: 64, height: 3)
+                        .rotationEffect(.degrees(motion.horizonTilt))
+                    Text("地平线 \(String(format: "%+.1f°", motion.horizonTilt))")
+                        .font(.caption)
+                        .foregroundStyle(motion.isLevelForCamera ? .green : .orange)
+                    Text(motion.isLevelForCamera ? "端正" : "把手机转正一点")
+                        .font(.caption).foregroundStyle(.white.opacity(0.85))
+                }
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(.black.opacity(0.45))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
                 Spacer()
                 if savedTip {
                     Text("✓ 已保存").padding(8).background(.black.opacity(0.6))
@@ -890,7 +1028,7 @@ struct CaptureView: View {
                     Button {
                         camera.capturePhoto { data in
                             guard let data else { return }
-                            if let item = store.savePhoto(caseId: draft.surveyCase.id, task: task, imageData: data, loc: location) {
+                            if let item = store.savePhoto(caseId: draft.surveyCase.id, task: task, imageData: data, loc: location, tilt: abs(motion.horizonTilt)) {
                                 draft.media.append(item)
                                 draft.taskDone[task.id] = true
                                 flashTip()
@@ -906,7 +1044,7 @@ struct CaptureView: View {
                             camera.stopRecording { url in
                                 guard let url else { return }
                                 if let item = store.saveVideo(caseId: draft.surveyCase.id, task: task,
-                                                              tempURL: url, samples: samples, loc: location) {
+                                                              tempURL: url, samples: samples, loc: location, tilt: abs(motion.horizonTilt)) {
                                     draft.media.append(item)
                                     draft.taskDone[task.id] = true
                                     flashTip()
@@ -928,7 +1066,7 @@ struct CaptureView: View {
         }
         .navigationTitle(task.title)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { camera.configure(); location.start() }
+        .onAppear { camera.configure(); location.start(); motion.start() }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { now in
             guard camera.isRecording, let start = recordStart else { return }
             samples.append(HeadingSample(t: now.timeIntervalSince(start),
