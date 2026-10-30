@@ -1366,6 +1366,39 @@ struct ContentView: View {
             .padding(.horizontal, 14).padding(.vertical, 11)
             .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
         }.buttonStyle(.plain)
+        NavigationLink { SynastryView() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "heart.circle.fill").foregroundStyle(Ky.cinnabar)
+                Text("合盘").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                Text("合婚四看 · 双盘互看").font(.caption2).foregroundStyle(Ky.sub)
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
+        NavigationLink { AlmanacView() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "calendar.circle.fill").foregroundStyle(Ky.gold)
+                Text("黄历简卡").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                Text("干支 · 建除 · 彭祖 · 冲煞").font(.caption2).foregroundStyle(Ky.sub)
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
+        NavigationLink { ForecastView() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "bookmark.circle.fill").foregroundStyle(Ky.jade)
+                Text("前瞻登记").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                Text("断语冻结 · 到期回验").font(.caption2).foregroundStyle(Ky.sub)
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
         NavigationLink { PalmHomeView() } label: {
             HStack(spacing: 10) {
                 Image(systemName: "hand.raised.fill").foregroundStyle(Ky.cinnabar)

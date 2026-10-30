@@ -21,6 +21,7 @@ struct BaziChart {
     var naYin: [String]            // 四柱纳音
     var xunKong: String            // 日柱旬空
     var wuxingPercents: [Double]   // 五行占比（木火土金水）：天干各 1，藏干本气 1/中气 0.5/余气 0.3，归一化
+    var birthYear: Int = 0
     var pillars: [String] { [yearPillar, monthPillar, dayPillar, timePillar] }
     var qiyunYear: Int { Int(qiyunDate.prefix(4)) ?? 0 }
     func dayunStartYear(_ i: Int) -> Int { qiyunYear + i * 10 }
@@ -77,6 +78,23 @@ enum BaziTables {
         let i = gzIndex(dayPillar); let head = i - i % 10; let hb = head % 12
         var covered = Set<Int>(); for k in 0..<10 { covered.insert((hb + k) % 12) }
         return DZ.enumerated().filter { !covered.contains($0.offset) }.map { String($0.element) }.joined()
+    }
+    static func relationFull(_ a: Character, _ b: Character) -> (String, Int)? {
+        if a == b {
+            return ["辰", "午", "酉", "亥"].contains(a) ? ("刑", 4) : ("伏吟", 1)
+        }
+        let chong: [Character: Character] = ["子":"午","午":"子","丑":"未","未":"丑","寅":"申","申":"寅","卯":"酉","酉":"卯","辰":"戌","戌":"辰","巳":"亥","亥":"巳"]
+        if chong[a] == b { return ("冲", 5) }
+        let xingTriples: [Set<Character>] = [["寅","巳","申"], ["丑","戌","未"]]
+        if xingTriples.contains(where: { $0.contains(a) && $0.contains(b) }) || (["子","卯"].contains(a) && ["子","卯"].contains(b)) {
+            return ("刑", 4)
+        }
+        let chuan: [Character: Character] = ["子":"未","未":"子","丑":"午","午":"丑","寅":"巳","巳":"寅","卯":"辰","辰":"卯","申":"亥","亥":"申","酉":"戌","戌":"酉"]
+        if chuan[a] == b { return ("穿", 3) }
+        if relation(a, b) == "合" { return ("合", 2) }
+        let po: [Character: Character] = ["子":"酉","酉":"子","卯":"午","午":"卯","辰":"丑","丑":"辰","戌":"未","未":"戌","寅":"亥","亥":"寅","巳":"申","申":"巳"]
+        if po[a] == b { return ("破", 1) }
+        return nil
     }
     static func relation(_ a: Character, _ b: Character) -> String? {
         let chong: [Character: Character] = ["子":"午","午":"子","丑":"未","未":"丑","寅":"申","申":"寅","卯":"酉","酉":"卯","辰":"戌","戌":"辰","巳":"亥","亥":"巳"]
@@ -159,7 +177,8 @@ enum BaziEngine {
                          diShi: pillars.map { BaziTables.diShi(day: dayStem, branch: $0.last!) },
                          naYin: pillars.map { BaziTables.naYin($0) },
                          xunKong: BaziTables.xunKong(dayPillar: dg),
-                         wuxingPercents: BaziTables.wuxingPercents(pillars: pillars))
+                         wuxingPercents: BaziTables.wuxingPercents(pillars: pillars),
+                         birthYear: c.year!)
     }
 
     /// 任意公历日期的日柱（流日速查；晚子时 sect=2 与排盘同口径）
@@ -239,6 +258,7 @@ struct BaziResultView: View {
             timeCard
             infoCard
             interpretLink
+            yearlyLink
         }
     }
 
@@ -419,6 +439,21 @@ struct BaziResultView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("解盘 · 初断").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
                     Text("命局风景 / 格局候选 / 喜忌 / 十神 / 岁运，逐条附依据链").font(.caption2).foregroundStyle(Ky.sub)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(14).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 14))
+        }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+    }
+
+    private var yearlyLink: some View {
+        NavigationLink { YearByYearView(chart: chart, name: name) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "calendar.badge.clock").foregroundStyle(Ky.gold)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("逐年直断").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
+                    Text("四查生成：引动分级＋岁运叠加＋喜忌称重，重断有门槛").font(.caption2).foregroundStyle(Ky.sub)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
