@@ -233,7 +233,7 @@ struct BirthInputView: View {
     private var hasLeapChoice: Bool { leapMonthOfYear == lf.mo }
     private var lunarDayCount: Int {
         let m = lf.leap ? -lf.mo : lf.mo
-        return Lunar.fromYmdHms(year: lf.y, month: m, day: 30, hour: 0, minute: 0).day == 30 ? 30 : 29
+        return Lunar.fromYmdHms(lunarYear: lf.y, lunarMonth: m, lunarDay: 30, hour: 0, minute: 0).day == 30 ? 30 : 29
     }
 
     var body: some View {
@@ -440,7 +440,7 @@ struct BirthInputView: View {
     }
     private func composeLunar() -> Date {
         let m = (lf.leap && hasLeapChoice) ? -lf.mo : lf.mo
-        let s = Lunar.fromYmdHms(year: lf.y, month: m, day: min(lf.d, lunarDayCount), hour: lf.h, minute: lf.mi).solar
+        let s = Lunar.fromYmdHms(lunarYear: lf.y, lunarMonth: m, lunarDay: min(lf.d, lunarDayCount), hour: lf.h, minute: lf.mi).solar
         var c = DateComponents(); c.year = s.year; c.month = s.month; c.day = s.day; c.hour = s.hour; c.minute = s.minute
         return Calendar(identifier: .gregorian).date(from: c) ?? clock
     }
