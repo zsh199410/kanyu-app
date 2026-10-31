@@ -6,6 +6,7 @@
 // 在 12 例金标准盘上逐项对拍全过（原型验证记录见 sanhe-app），不猜 lunar-swift 未核对的接口。
 import SwiftUI
 import LunarSwift
+import UIKit
 
 struct BaziChart {
     var yearPillar: String; var monthPillar: String; var dayPillar: String; var timePillar: String
@@ -277,6 +278,11 @@ struct BaziHomeView: View {
     @State private var useLongitude = true
     @State private var longitudeText = "107.8"
     @State private var chart: BaziChart?
+    @StateObject private var peopleStore = PeopleStore()
+    @State private var chartSnapshot = ""
+    @State private var savedTip = false
+    private var inputSnapshot: String { "\(name)|\(gender)|\(birth.timeIntervalSince1970)|\(useLongitude)|\(longitudeText)" }
+    private var isStale: Bool { chart != nil && chartSnapshot != inputSnapshot }
 
     var body: some View {
         ScrollView {
@@ -302,20 +308,46 @@ struct BaziHomeView: View {
 
     private var inputCard: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if !peopleStore.people.isEmpty {
+                Menu {
+                    ForEach(peopleStore.people) { p in
+                        Button("\(p.name)（\(p.gender == "M" ? "男" : "女")）") {
+                            name = p.name; gender = p.gender; birth = p.birthDate
+                            useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.crop.rectangle.stack").foregroundStyle(Ky.qingdai)
+                        Text("选已有人物（免重填）").font(.subheadline).foregroundStyle(Ky.qingdai)
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
+                    }
+                }
+            }
             TextField("姓名（可空）", text: $name)
             Picker("性别", selection: $gender) { Text("男").tag("M"); Text("女").tag("F") }
                 .pickerStyle(.segmented)
-            DatePicker("出生钟表时间", selection: $birth, displayedComponents: [.date, .hourAndMinute])
-            Toggle("真太阳时校正（按经度）", isOn: $useLongitude)
-            if useLongitude {
-                HStack { Text("出生地经度"); Spacer()
-                    TextField("107.8", text: $longitudeText)
-                        .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 90) }
-            }
+            BirthInputView(clock: $birth, useLongitude: $useLongitude, longitudeText: $longitudeText)
             Button("排盘") {
                 chart = BaziEngine.paipan(clock: birth, gender: gender,
                                           longitude: useLongitude ? Double(longitudeText) : nil)
+                chartSnapshot = inputSnapshot; savedTip = false
             }.buttonStyle(KyPrimaryButton())
+            if isStale {
+                Text("输入已改动，下面是旧盘——点「排盘」刷新。").font(.caption).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
+            }
+            if chart != nil {
+                HStack(spacing: 10) {
+                    Button {
+                        peopleStore.upsert(Person(name: name.isEmpty ? "未命名" : name, gender: gender,
+                                                  birthEpoch: birth.timeIntervalSince1970,
+                                                  useLongitude: useLongitude, longitude: Double(longitudeText) ?? 107.8))
+                        savedTip = true
+                    } label: { Label("存入人物档案", systemImage: "person.crop.circle.badge.plus").font(.subheadline) }
+                    if savedTip { Text("已存，下次可直接选人").font(.caption).foregroundStyle(Ky.jade) }
+                }
+            }
             Text("家里人建议到「人物档案」建档，建一次，八字、手相、案件都直接调人。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
@@ -334,10 +366,21 @@ struct BaziResultView: View {
     @State private var selectedYear: Int? = nil
     @State private var flowDate = Date()
     @State private var flowHour = 12
+    @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             plateCard
+            HStack(spacing: 8) {
+                Button {
+                    let dy = chart.dayunGanZhi.enumerated().map { "\(chart.dayunStartYear($0.offset)) \($0.element)" }.joined(separator: "、")
+                    UIPasteboard.general.string = "\(name.isEmpty ? "命盘" : name)：\(chart.pillars.joined(separator: " "))｜日主 \(chart.rizhu) 命宫 \(chart.mingGong) 身宫 \(chart.shenGong)｜起运 \(chart.qiyunDate)（\(chart.qiyunDirection)）｜大运：\(dy)"
+                    copied = true
+                } label: { Label(copied ? "已复制" : "复制盘面文本", systemImage: copied ? "checkmark" : "doc.on.doc").font(.caption) }
+                .foregroundStyle(Ky.qingdai)
+                Spacer()
+                Text("发给谁都能直接粘贴看盘").font(.caption2).foregroundStyle(Ky.sub)
+            }
             wuxingCard
             timeCard
             infoCard

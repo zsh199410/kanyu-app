@@ -166,12 +166,8 @@ struct PersonFormView: View {
                 TextField("标签（逗号分隔，可搜）", text: $person.tags)
                 Picker("性别", selection: $person.gender) { Text("男").tag("M"); Text("女").tag("F") }
                     .pickerStyle(.segmented)
-                DatePicker("出生钟表时间", selection: $birth, displayedComponents: [.date, .hourAndMinute])
-                Toggle("真太阳时校正（按经度）", isOn: $person.useLongitude)
-                if person.useLongitude {
-                    HStack { Text("出生地经度"); Spacer()
-                        TextField("107.8", text: $longitudeText)
-                            .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 90) }
+                Section {
+                    BirthInputView(clock: $birth, useLongitude: $person.useLongitude, longitudeText: $longitudeText)
                 }
             }
             .navigationTitle(person.name.isEmpty ? "新建人物" : "编辑人物")

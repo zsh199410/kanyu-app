@@ -214,24 +214,43 @@ struct ZiweiHomeView: View {
     @State private var useLongitude = true
     @State private var longitudeText = "107.8"
     @State private var chart: ZiweiChart?
+    @StateObject private var peopleStore = PeopleStore()
+    @State private var chartSnapshot = ""
+    private var inputSnapshot: String { "\(name)|\(gender)|\(birth.timeIntervalSince1970)|\(useLongitude)|\(longitudeText)" }
+    private var isStale: Bool { chart != nil && chartSnapshot != inputSnapshot }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 12) {
+                    if !peopleStore.people.isEmpty {
+                        Menu {
+                            ForEach(peopleStore.people) { p in
+                                Button("\(p.name)（\(p.gender == "M" ? "男" : "女")）") {
+                                    name = p.name; gender = p.gender; birth = p.birthDate
+                                    useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.crop.rectangle.stack").foregroundStyle(Ky.qingdai)
+                                Text("选已有人物（免重填）").font(.subheadline).foregroundStyle(Ky.qingdai)
+                                Spacer()
+                                Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
+                            }
+                        }
+                    }
                     TextField("姓名（可空）", text: $name)
                     Picker("性别", selection: $gender) { Text("男").tag("M"); Text("女").tag("F") }
                         .pickerStyle(.segmented)
-                    DatePicker("出生钟表时间", selection: $birth, displayedComponents: [.date, .hourAndMinute])
-                    Toggle("真太阳时校正（按经度）", isOn: $useLongitude)
-                    if useLongitude {
-                        HStack { Text("出生地经度"); Spacer()
-                            TextField("107.8", text: $longitudeText)
-                                .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 90) }
-                    }
+                    BirthInputView(clock: $birth, useLongitude: $useLongitude, longitudeText: $longitudeText)
                     Button("排紫微盘") {
                         chart = ZiweiEngine.chart(clock: birth, gender: gender,
                                                   longitude: useLongitude ? Double(longitudeText) : nil)
+                        chartSnapshot = inputSnapshot
                     }.buttonStyle(KyPrimaryButton())
+                    if isStale {
+                        Text("输入已改动，下面是旧盘——点「排紫微盘」刷新。").font(.caption).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
+                    }
                 }
                 .kyCard()
                 if let ch = chart {
