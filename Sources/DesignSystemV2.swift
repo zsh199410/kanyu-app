@@ -212,12 +212,52 @@ struct BirthInputView: View {
     @State private var unknownHour = false
     @State private var ready = false
     @State private var yearJump = ""
+    @State private var provinceSel = ""   // 只控制城市菜单列出哪省的城，不动经度；选城后才写经度
 
     private static let branches = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
-    private static let places: [(String, Double)] = [
-        ("梁平", 107.8), ("重庆主城", 106.5), ("成都", 104.1), ("北京", 116.4), ("上海", 121.5),
-        ("广州", 113.3), ("深圳", 114.1), ("西安", 108.9), ("武汉", 114.3), ("拉萨", 91.1), ("乌鲁木齐", 87.6),
+    // 出生地省市两级：省会/首府＋用户常用城（梁平、深圳）。
+    // 经度为城市中心值、精确到 0.1°（与原 11 城预设同口径；0.1°对应真太阳时约 24 秒，
+    // 本页校正量按分钟显示，故不影响分钟数）。340 城全表未引入——待审计数据来源后再扩。
+    private static let provinceCities: [(String, [(String, Double)])] = [
+        ("北京", [("北京", 116.4)]),
+        ("天津", [("天津", 117.2)]),
+        ("河北", [("石家庄", 114.5)]),
+        ("山西", [("太原", 112.6)]),
+        ("内蒙古", [("呼和浩特", 111.7)]),
+        ("辽宁", [("沈阳", 123.4)]),
+        ("吉林", [("长春", 125.3)]),
+        ("黑龙江", [("哈尔滨", 126.5)]),
+        ("上海", [("上海", 121.5)]),
+        ("江苏", [("南京", 118.8)]),
+        ("浙江", [("杭州", 120.2)]),
+        ("安徽", [("合肥", 116.9)]),
+        ("福建", [("福州", 119.3)]),
+        ("江西", [("南昌", 115.9)]),
+        ("山东", [("济南", 117.0)]),
+        ("河南", [("郑州", 113.6)]),
+        ("湖北", [("武汉", 114.3)]),
+        ("湖南", [("长沙", 112.9)]),
+        ("广东", [("广州", 113.3), ("深圳", 114.1)]),
+        ("广西", [("南宁", 108.3)]),
+        ("海南", [("海口", 110.3)]),
+        ("重庆", [("重庆主城", 106.5), ("梁平", 107.8)]),
+        ("四川", [("成都", 104.1)]),
+        ("贵州", [("贵阳", 106.7)]),
+        ("云南", [("昆明", 102.8)]),
+        ("西藏", [("拉萨", 91.1)]),
+        ("陕西", [("西安", 108.9)]),
+        ("甘肃", [("兰州", 103.8)]),
+        ("青海", [("西宁", 101.8)]),
+        ("宁夏", [("银川", 106.3)]),
+        ("新疆", [("乌鲁木齐", 87.6)]),
+        ("香港", [("香港", 114.2)]),
+        ("澳门", [("澳门", 113.5)]),
+        ("台湾", [("台北", 121.6)]),
     ]
+    private static var places: [(String, Double)] { provinceCities.flatMap { $0.1 } }
+    private static func province(of city: String) -> String? {
+        provinceCities.first(where: { $0.1.contains(where: { $0.0 == city }) })?.0
+    }
     private static let lunarMonths = ["正月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "冬月", "腊月"]
     private static let lunarDays = ["初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
                                     "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
@@ -260,19 +300,37 @@ struct BirthInputView: View {
             readoutLine
             Toggle("真太阳时校正（按出生地经度）", isOn: $useLongitude)
             if useLongitude {
-                HStack {
-                    Text("出生地")
-                    Spacer()
-                    Menu {
-                        ForEach(Self.places, id: \.0) { p in
-                            Button("\(p.0)（东经 \(String(format: "%.1f", p.1))）") { longitudeText = String(format: "%.1f", p.1) }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(placeName).foregroundStyle(Ky.sub)
-                            Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("出生地 · 省份")
+                        Spacer()
+                        Menu {
+                            ForEach(Self.provinceCities, id: \.0) { prov in
+                                Button(prov.0) { provinceSel = prov.0 }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(provinceSel.isEmpty ? "选省份" : provinceSel).foregroundStyle(Ky.sub)
+                                Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
+                            }
                         }
                     }
+                    HStack {
+                        Text("出生地 · 城市")
+                        Spacer()
+                        Menu {
+                            ForEach(cityOptions, id: \.0) { p in
+                                Button("\(p.0)（东经 \(String(format: "%.1f", p.1))）") { longitudeText = String(format: "%.1f", p.1) }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(placeName).foregroundStyle(Ky.sub)
+                                Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
+                            }
+                        }
+                    }
+                    Text("先选省份再选城市；经度为城市中心值（0.1°），也可直接手填。未选省份时城市菜单列出全部城市。")
+                        .font(.caption2).foregroundStyle(Ky.sub).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 HStack {
                     Text("经度（可手填）").foregroundStyle(Ky.sub)
@@ -282,7 +340,13 @@ struct BirthInputView: View {
                 }
             }
         }
-        .onAppear { if !ready { syncFromClock(); ready = true } }
+        .onAppear {
+            if !ready {
+                syncFromClock()
+                if provinceSel.isEmpty, placeName != "自定义", let prov = Self.province(of: placeName) { provinceSel = prov }
+                ready = true
+            }
+        }
         .onChange(of: sf) { _ in guard ready, mode == 0 else { return }; unknownHour = false; clock = composeSolar() }
         .onChange(of: lf) { _ in guard ready, mode == 1 else { return }; unknownHour = false; clock = composeLunar() }
     }
@@ -290,6 +354,11 @@ struct BirthInputView: View {
     private var placeName: String {
         if let p = Self.places.first(where: { abs($0.1 - (Double(longitudeText) ?? -999)) < 0.051 }) { return p.0 }
         return "自定义"
+    }
+
+    private var cityOptions: [(String, Double)] {
+        if let prov = Self.provinceCities.first(where: { $0.0 == provinceSel }) { return prov.1 }
+        return Self.places
     }
 
     private func wheelCol<V: Hashable>(_ label: String, _ sel: Binding<V>, _ items: [V], _ fmt: @escaping (V) -> String, _ w: CGFloat) -> some View {
