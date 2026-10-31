@@ -1190,6 +1190,7 @@ enum Ky {
     static var gold: Color { .kyDyn(0xA87F14, 0xC9A227) }
     static var cinnabar: Color { .kyDyn(0xB33727, 0xD95F43) }
     static var jade: Color { .kyDyn(0x2E7D4F, 0x4CAF7D) }
+    static var qingdai: Color { .kyDyn(0x2E4A5A, 0x7FA3B5) }
     static var line: Color { .kyDyn(0xE2DACB, 0x33373E) }
     // 仪器页恒深色
     static let instBg = Color(rgb: 0x14161A)
