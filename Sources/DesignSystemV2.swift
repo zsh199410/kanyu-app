@@ -229,11 +229,11 @@ struct BirthInputView: View {
         if let d = cal.date(from: c), let r = cal.range(of: .day, in: .month, for: d) { return r.count }
         return 31
     }
-    private var leapMonthOfYear: Int { LunarYear.fromYear(lf.y).leapMonth }
+    private var leapMonthOfYear: Int { LunarYear.fromYear(lunarYear: lf.y).leapMonth }
     private var hasLeapChoice: Bool { leapMonthOfYear == lf.mo }
     private var lunarDayCount: Int {
         let m = lf.leap ? -lf.mo : lf.mo
-        return Lunar.fromYmdHms(lf.y, m, 30, 0, 0, 0).day == 30 ? 30 : 29
+        return Lunar.fromYmdHms(year: lf.y, month: m, day: 30, hour: 0, minute: 0).day == 30 ? 30 : 29
     }
 
     var body: some View {
@@ -376,7 +376,7 @@ struct BirthInputView: View {
     }
 
     private var readoutLine: some View {
-        let s = Solar.fromDate(clock)
+        let s = Self.solarOf(clock)
         let l = s.lunar
         let lm = l.month
         let mName = Self.lunarMonths[abs(lm) - 1]
@@ -389,7 +389,7 @@ struct BirthInputView: View {
                 if let lo = lon, (-180...180).contains(lo) {
                     let corr = TrueSolarTime.corrected(clock: clock, longitude: lo)
                     let delta = Int((corr.timeIntervalSince(clock) / 60).rounded())
-                    let cs = Solar.fromDate(corr)
+                    let cs = Self.solarOf(corr)
                     Text("真太阳时 \(String(format: "%02d:%02d", cs.hour, cs.minute))（经度时差＋均时差合计 \(delta >= 0 ? "+" : "")\(delta) 分钟，排盘以此为准）")
                 } else {
                     Text("经度没填对：将按不校正（钟表时间）排盘！请填数字，如 107.8，或从出生地里选。")
@@ -423,11 +423,15 @@ struct BirthInputView: View {
         return "出生距节气「\(b.0)」仅约 \(Int(b.1.rounded())) 小时——月柱按节气切换，出生时间请务必核准（差一小时可能换月柱）。"
     }
 
+    static func solarOf(_ date: Date) -> Solar {
+        let c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        return Solar.fromYmdHms(year: c.year ?? 2000, month: c.month ?? 1, day: c.day ?? 1, hour: c.hour ?? 12, minute: c.minute ?? 0)
+    }
     private func syncFromClock() {
         let cal = Calendar(identifier: .gregorian)
         let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: clock)
         sf = SF(y: c.year ?? 2000, mo: c.month ?? 1, d: c.day ?? 1, h: c.hour ?? 12, mi: c.minute ?? 0)
-        let l = Solar.fromDate(clock).lunar
+        let l = Self.solarOf(clock).lunar
         lf = LF(y: l.year, mo: abs(l.month), d: l.day, h: l.hour, mi: l.minute, leap: l.month < 0)
     }
     private func composeSolar() -> Date {
@@ -436,7 +440,7 @@ struct BirthInputView: View {
     }
     private func composeLunar() -> Date {
         let m = (lf.leap && hasLeapChoice) ? -lf.mo : lf.mo
-        let s = Lunar.fromYmdHms(lf.y, m, min(lf.d, lunarDayCount), lf.h, lf.mi, 0).solar
+        let s = Lunar.fromYmdHms(year: lf.y, month: m, day: min(lf.d, lunarDayCount), hour: lf.h, minute: lf.mi).solar
         var c = DateComponents(); c.year = s.year; c.month = s.month; c.day = s.day; c.hour = s.hour; c.minute = s.minute
         return Calendar(identifier: .gregorian).date(from: c) ?? clock
     }
