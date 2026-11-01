@@ -2,6 +2,8 @@
 // 与八字线《前瞻断语登记簿》同规矩：原文不许改，只许到期标状态（待验/命中/部分/未中）。
 import SwiftUI
 
+struct ForecastExport: Codable { var schemaVersion: Int; var entries: [ForecastEntry] }
+
 struct ForecastEntry: Codable, Identifiable {
     var id: UUID = UUID()
     var personName: String
@@ -25,14 +27,19 @@ final class ForecastStore: ObservableObject {
         }
     }
     func save() {
-        if let data = try? JSONEncoder().encode(entries) { try? data.write(to: fileURL, options: .atomic) }
+        if let data = try? JSONEncoder().encode(entries) {
+            try? data.write(to: fileURL, options: .atomic)
+            StoreSchema.writeMeta(for: fileURL, count: entries.count)
+        }
     }
     func add(_ e: ForecastEntry) { entries.insert(e, at: 0); save() }
     func setStatus(_ e: ForecastEntry, _ s: String) {
         if let i = entries.firstIndex(where: { $0.id == e.id }) { entries[i].status = s; save() }
     }
     func remove(_ e: ForecastEntry) { entries.removeAll { $0.id == e.id }; save() }
-    func exportData() -> Data { (try? JSONEncoder().encode(entries)) ?? Data() }
+    func exportData() -> Data {
+        (try? JSONEncoder().encode(ForecastExport(schemaVersion: StoreSchema.current, entries: entries))) ?? Data()
+    }
 }
 
 struct ForecastView: View {

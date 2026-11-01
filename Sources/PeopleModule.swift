@@ -3,6 +3,30 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+// 存储 schema 版本号（B-5，2026-11-02）：每份存档旁写 <名>.meta.json（含 schemaVersion 与条数），
+// 导出包带 schemaVersion 字段；导入时带版本与无版本旧格式都接受（旧格式按 v0 计，字段只加不删）。
+// v1 与 v0 的数据形状相同（只加了版本标记），故 v1 代码可直接读 v0 存档；将来改字段形状时按
+// loadedSchemaVersion 分支做迁移，不得再靠“字段只加不删”硬扛。
+enum StoreSchema {
+    static let current = 1
+    struct Meta: Codable { var schemaVersion: Int; var count: Int }
+    static func metaURL(for fileURL: URL) -> URL {
+        fileURL.deletingPathExtension().appendingPathExtension("meta.json")
+    }
+    static func writeMeta(for fileURL: URL, count: Int) {
+        if let data = try? JSONEncoder().encode(Meta(schemaVersion: current, count: count)) {
+            try? data.write(to: metaURL(for: fileURL), options: .atomic)
+        }
+    }
+    static func readVersion(for fileURL: URL) -> Int {
+        guard let data = try? Data(contentsOf: metaURL(for: fileURL)),
+              let m = try? JSONDecoder().decode(Meta.self, from: data) else { return 0 }
+        return m.schemaVersion
+    }
+}
+
+struct PeopleExport: Codable { var schemaVersion: Int; var people: [Person] }
+
 struct Person: Codable, Identifiable, Equatable {
     var id: UUID = UUID()
     var name: String
@@ -18,12 +42,14 @@ struct Person: Codable, Identifiable, Equatable {
 @MainActor
 final class PeopleStore: ObservableObject {
     @Published var people: [Person] = []
+    private(set) var loadedSchemaVersion = 0   // 读档时 meta 的版本（无 meta 的旧档为 0）；将来改形状时按此分支迁移
     private var fileURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("people.json")
     }
     init() { load() }
     func load() {
+        loadedSchemaVersion = StoreSchema.readVersion(for: fileURL)
         guard let data = try? Data(contentsOf: fileURL) else { return }
         if let list = try? JSONDecoder().decode([Person].self, from: data) { people = list }
         else { // 解码失败：先把坏档备份保全，绝不静默当空数据（备份文件勿删，交助手处理）
@@ -31,17 +57,26 @@ final class PeopleStore: ObservableObject {
         }
     }
     func save() {
-        if let data = try? JSONEncoder().encode(people) { try? data.write(to: fileURL, options: .atomic) }
+        if let data = try? JSONEncoder().encode(people) {
+            try? data.write(to: fileURL, options: .atomic)
+            StoreSchema.writeMeta(for: fileURL, count: people.count)
+        }
     }
     func upsert(_ p: Person) {
         if let i = people.firstIndex(where: { $0.id == p.id }) { people[i] = p } else { people.append(p) }
         save()
     }
     func remove(_ p: Person) { people.removeAll { $0.id == p.id }; save() }
-    func exportData() -> Data { (try? JSONEncoder().encode(people)) ?? Data() }
+    func exportData() -> Data {
+        (try? JSONEncoder().encode(PeopleExport(schemaVersion: StoreSchema.current, people: people))) ?? Data()
+    }
     @discardableResult
     func importData(_ data: Data) -> Int {
-        guard let list = try? JSONDecoder().decode([Person].self, from: data) else { return 0 }
+        // 先按带版本导出包解，失败再按无版本旧格式（纯数组）解；版本高于当前也照收（v1 形状未变）
+        let list: [Person]?
+        if let wrapped = try? JSONDecoder().decode(PeopleExport.self, from: data) { list = wrapped.people }
+        else { list = try? JSONDecoder().decode([Person].self, from: data) }
+        guard let list = list else { return 0 }
         var n = 0
         for p in list where !people.contains(where: { $0.id == p.id }) { people.append(p); n += 1 }
         if n > 0 { save() }

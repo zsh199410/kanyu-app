@@ -353,6 +353,8 @@ struct PalmRecord: Codable, Identifiable {
     var photoFile: String = ""          // Documents/PalmPhotos/<id>.jpg
 }
 
+struct PalmExport: Codable { var schemaVersion: Int; var records: [PalmRecord] }
+
 @MainActor
 final class PalmRecordStore: ObservableObject {
     @Published var records: [PalmRecord] = []
@@ -372,9 +374,14 @@ final class PalmRecordStore: ObservableObject {
         }
     }
     func save() {
-        if let data = try? JSONEncoder().encode(records) { try? data.write(to: indexURL, options: .atomic) }
+        if let data = try? JSONEncoder().encode(records) {
+            try? data.write(to: indexURL, options: .atomic)
+            StoreSchema.writeMeta(for: indexURL, count: records.count)
+        }
     }
-    func exportData() -> Data { (try? JSONEncoder().encode(records)) ?? Data() }
+    func exportData() -> Data {
+        (try? JSONEncoder().encode(PalmExport(schemaVersion: StoreSchema.current, records: records))) ?? Data()
+    }
     func add(_ r: PalmRecord, image: UIImage?) {
         var rec = r
         if let img = image, let jpg = img.jpegData(compressionQuality: 0.85) {
