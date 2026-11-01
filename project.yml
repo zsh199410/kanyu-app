@@ -32,7 +32,7 @@ targets:
     info:
       path: Sources/Info.plist
       properties:
-        CFBundleDisplayName: 堪舆勘察
+        CFBundleDisplayName: 三术合参
         CFBundleIcons:
           CFBundlePrimaryIcon:
             CFBundleIconFiles:

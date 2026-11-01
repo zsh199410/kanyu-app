@@ -113,6 +113,8 @@ struct CaseData: Identifiable, Codable {
 }
 
 struct ExportPackage: Codable {
+    // 导出包版本字段（B-5）：旧包无此键时按合成 Codable 的默认值计，不破坏旧包读取
+    var schemaVersion: Int = StoreSchema.current
     var exportedAt = Date()
     var surveyCase: SurveyCase
     var headings: [HeadingReading]
@@ -410,6 +412,7 @@ final class SurveyStore: ObservableObject {
     func save() {
         guard let data = try? Self.encoder.encode(cases) else { return }
         try? data.write(to: indexURL, options: .atomic)
+        StoreSchema.writeMeta(for: indexURL, count: cases.count)
     }
 
     static var encoder: JSONEncoder {
