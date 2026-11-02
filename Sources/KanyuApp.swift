@@ -1240,13 +1240,50 @@ struct KyProgressRing: View {
     }
 }
 
+// 首启引导页（B-8）：只出现一次，讲清三术模块、数据存本机、权限用到才申请
+struct OnboardingView: View {
+    var onDone: () -> Void
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                AppLogoView(size: 72)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("三术合参").font(.system(.largeTitle, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text("八字 · 紫微 · 风水 · 手相面相").font(.callout).foregroundStyle(Ky.sub)
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("这个 App 能做什么").font(.headline).foregroundStyle(Ky.ink)
+                    Text("八字 / 紫微：输入出生信息排盘解盘，逐年与合盘都在本机算。").font(.callout).foregroundStyle(Ky.ink)
+                    Text("风水勘察：按任务单拍照录像，罗盘方位随照片烙印进数据包。").font(.callout).foregroundStyle(Ky.ink)
+                    Text("手相面相：本地拍照解读，不上传原图。").font(.callout).foregroundStyle(Ky.ink)
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("数据存在哪").font(.headline).foregroundStyle(Ky.ink)
+                    Text("案件、人物、手相、前瞻都只存在本机；只有你主动点「上传数据包」时，才发往你自己的远程服务。").font(.callout).foregroundStyle(Ky.ink)
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("权限用到才申请").font(.headline).foregroundStyle(Ky.ink)
+                    Text("相机（勘察拍照与录像）、定位（罗盘真北）、运动（水平仪）都在用到时才申请；若被拒绝，相关页面会给去设置的引导，不会黑屏无提示。").font(.callout).foregroundStyle(Ky.ink)
+                }
+                Button("开始使用", action: onDone).buttonStyle(KyPrimaryButton())
+                Text("覆盖安装升级会保留本机数据；删 App 则数据全清，重要案件请先导出数据包。").font(.caption).foregroundStyle(Ky.sub)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 28)
+        }
+        .background(Ky.bg)
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var store: SurveyStore
     @AppStorage("signDateEpoch") private var signDateEpoch: Double = 0
     @AppStorage("signCertDays") private var signCertDays: Int = 365
+    @AppStorage("onboardingDone") private var onboardingDone = false
     @StateObject private var forecastStore = ForecastStore()
     @StateObject private var peopleStore = PeopleStore()
     @State private var showingNew = false
+    @State private var showingOnboarding = false
     @State private var query = ""
 
     private var filtered: [CaseData] {
@@ -1308,6 +1345,8 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showingNew) { NewCaseView() }
+            .sheet(isPresented: $showingOnboarding) { OnboardingView(onDone: { onboardingDone = true; showingOnboarding = false }) }
+            .onAppear { if !onboardingDone { showingOnboarding = true } }
         }
     }
 
@@ -2784,6 +2823,7 @@ struct CaptureView: View {
     @State private var sampleTask: Task<Void, Never>? = nil  // 录像罗盘采样（Task 驱动，勿用视图层 Timer，真机不触发）
     @State private var levelHapticArmed = true   // 水平达标震动反馈（出区后重新布防）
     @State private var tiltWarn = ""             // 拍下时倾斜过大提示
+    @State private var cameraDenied = false      // B-7：相机被拒时遮罩引导去设置，不进黑屏取景
 
     // 本任务的「对准目标」：拍某些照片时应朝向已测过的某个方位（目标箭头引导）
     private var targetInfo: (label: String, bearing: Double)? {
@@ -2978,10 +3018,26 @@ struct CaptureView: View {
                     }.padding(.bottom, 28)
                 }
             }
+            // B-7：相机被拒遮罩（不进黑屏取景）：去设置开启后回前台自动复查
+            if cameraDenied {
+                Color.black.opacity(0.85).ignoresSafeArea()
+                VStack(spacing: 14) {
+                    Image(systemName: "camera.fill").font(.largeTitle).foregroundStyle(.white)
+                    Text("相机权限未开启").font(.headline).foregroundStyle(.white)
+                    Text("拍摄页需要相机权限才能取景。请去「设置 → 三术合参 → 相机」开启，返回本页后即可继续拍照或录像。")
+                        .font(.callout).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center)
+                    Button("去设置开启相机") { openCameraSettings() }.buttonStyle(KyPrimaryButton())
+                    Button("返回") { dismiss() }.foregroundStyle(.white)
+                }
+                .padding(24)
+            }
         }
         .navigationTitle(task.title)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { camera.configure(); location.start(); motion.start() }
+        .onAppear { checkCameraAccess() }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            if cameraDenied { checkCameraAccess() }
+        }
         .onDisappear { sampleTask?.cancel() }
         // 水平达标震动一下（苹果相机同款反馈）：进 ≤1° 触发，出到 >2° 重新布防
         .onChange(of: motion.horizonTilt) { _, newV in
@@ -2991,6 +3047,30 @@ struct CaptureView: View {
             }
             if abs(newV) > 2 { levelHapticArmed = true }
         }
+    }
+    // B-7：进拍摄页先查相机授权；未决定时系统弹窗一次，被拒/受限则遮罩引导，不调用 configure()
+    private func checkCameraAccess() {
+        location.start(); motion.start()
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            cameraDenied = false
+            camera.configure()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    self.cameraDenied = !granted
+                    if granted { self.camera.configure() }
+                }
+            }
+        case .denied, .restricted:
+            cameraDenied = true
+        @unknown default:
+            cameraDenied = true
+        }
+    }
+    private func openCameraSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
     private func flashTip() {
         savedTip = true
