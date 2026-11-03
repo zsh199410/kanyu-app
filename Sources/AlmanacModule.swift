@@ -4,7 +4,8 @@ import SwiftUI
 import LunarSwift
 
 struct AlmanacView: View {
-    @State private var date = Date()
+    @State private var date: Date
+    init(initialDate: Date = Date()) { _date = State(initialValue: initialDate) }
     private var lunar: Lunar {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
@@ -15,8 +16,7 @@ struct AlmanacView: View {
         let l = lunar
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                DatePicker("选一天", selection: $date, displayedComponents: [.date])
-                    .kyCard()
+                AlmanacCalendarCard(date: $date)
                 // 头卡：干支日＋农历＋宿
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -101,6 +101,115 @@ struct AlmanacView: View {
         HStack(alignment: .top, spacing: 10) {
             Text(label).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.gold).frame(width: 58, alignment: .leading)
             Text(value).font(.callout).foregroundStyle(Ky.ink)
+        }
+    }
+}
+
+// MARK: - 黄历选日卡（自绘中文日历，2026-11-03）
+// 取代系统 DatePicker 弹窗：弹窗在部分环境下走英文月份/星期（November、MON–SUN），
+// 且浮层盖住下方干支卡；自绘卡片随页面滚动、不遮挡，月份星期全部中文，格内小字配农历日。
+// 与选时间弹层同套日历格做法（周一起始，与原弹窗版式一致；2026-11-01 周日落在最后一列）。
+struct AlmanacCalendarCard: View {
+    @Binding var date: Date
+    @State private var showYear = 0
+    @State private var showMonth = 0
+    @State private var seeded = false
+    private static let weekdays = ["一", "二", "三", "四", "五", "六", "日"]
+    private var cal: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
+        return c
+    }
+    private var today: (Int, Int, Int) {
+        let c = cal.dateComponents([.year, .month, .day], from: Date())
+        return (c.year!, c.month!, c.day!)
+    }
+    private var selected: (Int, Int, Int) {
+        let c = cal.dateComponents([.year, .month, .day], from: date)
+        return (c.year!, c.month!, c.day!)
+    }
+    private var daysInMonth: Int {
+        var c = DateComponents(); c.year = showYear; c.month = showMonth
+        if let d = cal.date(from: c), let r = cal.range(of: .day, in: .month, for: d) { return r.count }
+        return 30
+    }
+    private var firstOffset: Int {
+        var c = DateComponents(); c.year = showYear; c.month = showMonth; c.day = 1
+        let d = cal.date(from: c) ?? Date()
+        let w = cal.component(.weekday, from: d)  // 1=周日
+        return (w + 5) % 7  // 周一起始
+    }
+    private func lunarText(_ day: Int) -> String {
+        let l = Solar.fromYmdHms(year: showYear, month: showMonth, day: day, hour: 12, minute: 0).lunar
+        return l.day == 1 ? l.monthInChinese : l.dayInChinese
+    }
+    private func pick(_ day: Int) {
+        var c = DateComponents(); c.year = showYear; c.month = showMonth; c.day = day; c.hour = 12; c.minute = 0
+        if let d = cal.date(from: c) { date = d }
+    }
+    private func stepMonth(_ d: Int) {
+        var m = showMonth + d, y = showYear
+        if m < 1 { m = 12; y -= 1 }
+        if m > 12 { m = 1; y += 1 }
+        showMonth = m; showYear = y
+    }
+    private func stepDay(_ d: Int) {
+        if let nd = cal.date(byAdding: .day, value: d, to: date) {
+            date = nd
+            let c = cal.dateComponents([.year, .month], from: nd)
+            showYear = c.year!; showMonth = c.month!
+        }
+    }
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack {
+                Text("选一天").font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                Spacer()
+                Button("今天") {
+                    let t = today
+                    showYear = t.0; showMonth = t.1
+                    pick(t.2)
+                }.font(.caption)
+                Button { stepMonth(-1) } label: { Image(systemName: "chevron.left").font(.subheadline) }
+                Text("\(showYear)年\(showMonth)月").font(.subheadline).fontWeight(.semibold).frame(minWidth: 92)
+                Button { stepMonth(1) } label: { Image(systemName: "chevron.right").font(.subheadline) }
+            }
+            HStack(spacing: 0) {
+                ForEach(Self.weekdays, id: \.self) { w in
+                    Text(w).font(.caption2).foregroundStyle(Ky.sub).frame(maxWidth: .infinity)
+                }
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
+                ForEach(0..<firstOffset, id: \.self) { _ in Color.clear.frame(height: 40) }
+                ForEach(1...daysInMonth, id: \.self) { d in
+                    let isSel = selected == (showYear, showMonth, d)
+                    let isToday = today == (showYear, showMonth, d)
+                    Button { pick(d) } label: {
+                        VStack(spacing: 0) {
+                            Text("\(d)").font(.subheadline).fontWeight(isSel ? .semibold : .regular)
+                            Text(lunarText(d)).font(.caption2).foregroundStyle(Ky.sub)
+                        }
+                        .frame(maxWidth: .infinity).frame(height: 40)
+                        .background(isSel ? Ky.qingdai.opacity(0.16) : Color.clear)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(isToday ? Ky.gold : Color.clear, lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .foregroundStyle(Ky.ink)
+                    }.buttonStyle(.plain)
+                }
+            }
+            HStack {
+                Button("前一天") { stepDay(-1) }.font(.caption2)
+                Spacer()
+                Text("\(selected.0)年\(selected.1)月\(selected.2)日").font(.caption2).foregroundStyle(Ky.sub)
+                Spacer()
+                Button("后一天") { stepDay(1) }.font(.caption2)
+            }
+        }
+        .kyCard()
+        .onAppear {
+            if !seeded {
+                showYear = selected.0; showMonth = selected.1; seeded = true
+            }
         }
     }
 }

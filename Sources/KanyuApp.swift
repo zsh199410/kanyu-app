@@ -1145,7 +1145,7 @@ struct KanyuSurveyApp: App {
     @StateObject private var motion = MotionManager()
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootTabView()
                 .environmentObject(store)
                 .environmentObject(location)
                 .environmentObject(motion)
@@ -1275,15 +1275,13 @@ struct OnboardingView: View {
     }
 }
 
-struct ContentView: View {
+struct HomePageView: View {
     @EnvironmentObject var store: SurveyStore
     @AppStorage("signDateEpoch") private var signDateEpoch: Double = 0
     @AppStorage("signCertDays") private var signCertDays: Int = 365
-    @AppStorage("onboardingDone") private var onboardingDone = false
     @StateObject private var forecastStore = ForecastStore()
     @StateObject private var peopleStore = PeopleStore()
     @State private var showingNew = false
-    @State private var showingOnboarding = false
     @State private var query = ""
 
     private var filtered: [CaseData] {
@@ -1315,8 +1313,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 LazyVStack(spacing: 18) {
                     brandHeader
                     todayCard
@@ -1345,9 +1342,6 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showingNew) { NewCaseView() }
-            .sheet(isPresented: $showingOnboarding) { OnboardingView(onDone: { onboardingDone = true; showingOnboarding = false }) }
-            .onAppear { if !onboardingDone { showingOnboarding = true } }
-        }
     }
 
     private var brandHeader: some View {
@@ -1412,6 +1406,9 @@ struct ContentView: View {
                 NavigationLink { AlmanacView() } label: { toolTile("calendar", "黄历", "宜忌 · 吉神 · 时辰", Ky.ink) }.buttonStyle(.plain)
                 NavigationLink { SynastryView() } label: { toolTile("heart.circle.fill", "合盘", "合婚四看 · 双盘互看", Ky.cinnabar) }.buttonStyle(.plain)
                 NavigationLink { ForecastView() } label: { toolTile("checkmark.seal.fill", "前瞻登记", "写下断语 · 到期回验", Ky.jade) }.buttonStyle(.plain)
+                NavigationLink { WealthView() } label: { toolTile("yensign.circle.fill", "八字论财", "财星 · 财库 · 财运大运", Ky.gold) }.buttonStyle(.plain)
+                NavigationLink { CompareView() } label: { toolTile("person.3.fill", "多盘对比", "2–4 人并排比盘", Ky.jade) }.buttonStyle(.plain)
+                NavigationLink { YunQiPageView() } label: { toolTile("aqi.medium", "五运六气", "岁运 · 司天在泉", Ky.ink) }.buttonStyle(.plain)
             }
         }
     }
