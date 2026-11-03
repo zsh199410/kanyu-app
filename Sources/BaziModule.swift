@@ -286,7 +286,7 @@ struct BaziHomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 inputCard
                 if let ch = chart { BaziResultView(chart: ch, name: name) }
                 NavigationLink { CaliberSettingsView() } label: {

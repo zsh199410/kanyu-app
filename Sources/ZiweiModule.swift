@@ -220,7 +220,7 @@ struct ZiweiHomeView: View {
     private var isStale: Bool { chart != nil && chartSnapshot != inputSnapshot }
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 12) {
                     if !peopleStore.people.isEmpty {
                         Menu {
