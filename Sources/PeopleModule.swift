@@ -234,7 +234,7 @@ struct PersonDetailView: View {
         let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
                                    longitude: person.useLongitude ? person.longitude : nil)
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 overviewCard(chart: ch, ziwei: zw)
                 if let url = pdfURL {
                     ShareLink(item: url) {

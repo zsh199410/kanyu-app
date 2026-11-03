@@ -1245,7 +1245,7 @@ struct OnboardingView: View {
     var onDone: () -> Void
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            LazyVStack(alignment: .leading, spacing: 18) {
                 AppLogoView(size: 72)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("三术合参").font(.system(.largeTitle, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
@@ -1317,7 +1317,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 18) {
+                LazyVStack(spacing: 18) {
                     brandHeader
                     todayCard
                     dueCard
