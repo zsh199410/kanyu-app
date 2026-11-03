@@ -170,9 +170,9 @@ struct AlmanacCalendarCard: View {
                     showYear = t.0; showMonth = t.1
                     pick(t.2)
                 }.font(.caption)
-                Button { stepMonth(-1) } label: { Image(systemName: "chevron.left").font(.subheadline) }
+                Button { stepMonth(-1) } label: { Image(systemName: "chevron.left").font(.subheadline) }.accessibilityLabel("上个月")
                 Text("\(showYear)年\(showMonth)月").font(.subheadline).fontWeight(.semibold).frame(minWidth: 92)
-                Button { stepMonth(1) } label: { Image(systemName: "chevron.right").font(.subheadline) }
+                Button { stepMonth(1) } label: { Image(systemName: "chevron.right").font(.subheadline) }.accessibilityLabel("下个月")
             }
             HStack(spacing: 0) {
                 ForEach(Self.weekdays, id: \.self) { w in

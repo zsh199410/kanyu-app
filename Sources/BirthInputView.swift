@@ -302,12 +302,12 @@ private struct TimePickerSheet: View {
         HStack(spacing: 10) {
             Text("年份").font(.subheadline).foregroundStyle(Ky.sub)
             Spacer()
-            Button { stepYear(-1) } label: { Image(systemName: "chevron.left").font(.subheadline) }
+            Button { stepYear(-1) } label: { Image(systemName: "chevron.left").font(.subheadline) }.accessibilityLabel("上一年")
             TextField("如 1994", text: $yearText)
                 .keyboardType(.numberPad).multilineTextAlignment(.center).frame(width: 76)
                 .padding(.vertical, 5).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 7))
                 .onSubmit { applyYearText() }
-            Button { stepYear(1) } label: { Image(systemName: "chevron.right").font(.subheadline) }
+            Button { stepYear(1) } label: { Image(systemName: "chevron.right").font(.subheadline) }.accessibilityLabel("下一年")
             Text("1920–2035").font(.caption2).foregroundStyle(Ky.sub)
         }
     }
@@ -329,10 +329,10 @@ private struct TimePickerSheet: View {
         HStack(spacing: 10) {
             Text("月份").font(.subheadline).foregroundStyle(Ky.sub)
             Spacer()
-            Button { stepMonth(-1) } label: { Image(systemName: "chevron.left").font(.subheadline) }
+            Button { stepMonth(-1) } label: { Image(systemName: "chevron.left").font(.subheadline) }.accessibilityLabel("上个月")
             Text(mode == 0 ? "\(smo)月" : Self.lunarMonths[lmo - 1])
                 .font(.subheadline).fontWeight(.semibold).frame(minWidth: 64)
-            Button { stepMonth(1) } label: { Image(systemName: "chevron.right").font(.subheadline) }
+            Button { stepMonth(1) } label: { Image(systemName: "chevron.right").font(.subheadline) }.accessibilityLabel("下个月")
         }
     }
     private func stepMonth(_ d: Int) {
@@ -441,14 +441,14 @@ private struct TimePickerSheet: View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 Text("时").font(.subheadline).foregroundStyle(Ky.sub)
-                Button { unknown = false; setHour((curHour + 23) % 24) } label: { Image(systemName: "chevron.left") }
+                Button { unknown = false; setHour((curHour + 23) % 24) } label: { Image(systemName: "chevron.left") }.accessibilityLabel("上一小时")
                 Text(String(format: "%02d", curHour)).font(.subheadline).fontWeight(.semibold).frame(minWidth: 40)
-                Button { unknown = false; setHour((curHour + 1) % 24) } label: { Image(systemName: "chevron.right") }
+                Button { unknown = false; setHour((curHour + 1) % 24) } label: { Image(systemName: "chevron.right") }.accessibilityLabel("下一小时")
                 Spacer()
                 Text("分").font(.subheadline).foregroundStyle(Ky.sub)
-                Button { unknown = false; setMinute((curMinute + 59) % 60) } label: { Image(systemName: "chevron.left") }
+                Button { unknown = false; setMinute((curMinute + 59) % 60) } label: { Image(systemName: "chevron.left") }.accessibilityLabel("上一分钟")
                 Text(String(format: "%02d", curMinute)).font(.subheadline).fontWeight(.semibold).frame(minWidth: 40)
-                Button { unknown = false; setMinute((curMinute + 1) % 60) } label: { Image(systemName: "chevron.right") }
+                Button { unknown = false; setMinute((curMinute + 1) % 60) } label: { Image(systemName: "chevron.right") }.accessibilityLabel("下一分钟")
             }
             HStack(spacing: 8) {
                 Text("分钟常用").font(.caption2).foregroundStyle(Ky.sub)

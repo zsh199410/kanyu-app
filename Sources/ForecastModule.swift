@@ -27,9 +27,12 @@ final class ForecastStore: ObservableObject {
         }
     }
     func save() {
-        if let data = try? JSONEncoder().encode(entries) {
-            try? data.write(to: fileURL, options: .atomic)
+        do {
+            let data = try JSONEncoder().encode(entries)
+            try data.write(to: fileURL, options: .atomic)
             StoreSchema.writeMeta(for: fileURL, count: entries.count)
+        } catch {
+            AppErrorCenter.shared.report("前瞻登记保存失败，刚才的改动可能没存入：请重试，仍失败请先导出备份再联系助手。")
         }
     }
     func add(_ e: ForecastEntry) { entries.insert(e, at: 0); save() }
@@ -88,11 +91,11 @@ struct ForecastView: View {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 14) {
                     if let u = exportCache {
-                        ShareLink(item: u) { Image(systemName: "square.and.arrow.up") }
+                        ShareLink(item: u) { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("导出前瞻登记")
                     } else {
-                        Button { exportCache = Self.writeExport(store.exportData(), "forecasts-export.json") } label: { Image(systemName: "square.and.arrow.up") }
+                        Button { exportCache = Self.writeExport(store.exportData(), "forecasts-export.json") } label: { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("导出前瞻登记")
                     }
-                    Button { showingNew = true } label: { Image(systemName: "plus") }
+                    Button { showingNew = true } label: { Image(systemName: "plus") }.accessibilityLabel("新增前瞻登记")
                 }
             }
         }

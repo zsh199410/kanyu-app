@@ -781,6 +781,8 @@ struct BaziResultView: View {
                 plateRow(cells: BaziTables.shenSha(ch).map { $0.joined(separator: " ") }, small: true, dim: true)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("四柱：年柱 \(ch.pillars[0])，月柱 \(ch.pillars[1])，日柱 \(ch.pillars[2])，时柱 \(ch.pillars[3])，日主 \(ch.rizhu)")
     }
 
     private func plateRow(cells: [String], header: Bool = false, big: Bool = false, small: Bool = false, dim: Bool = false) -> some View {

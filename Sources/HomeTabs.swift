@@ -6,6 +6,7 @@ import LunarSwift
 
 struct RootTabView: View {
     @AppStorage("onboardingDone") private var onboardingDone = false
+    @ObservedObject private var errorCenter = AppErrorCenter.shared
     @State private var showingOnboarding = false
     @State private var tab = 3  // 默认落在排盘（原首页），老用户不用重新找路
     var body: some View {
@@ -23,6 +24,12 @@ struct RootTabView: View {
         }
         .sheet(isPresented: $showingOnboarding) { OnboardingView(onDone: { onboardingDone = true; showingOnboarding = false }) }
         .onAppear { if !onboardingDone { showingOnboarding = true } }
+        .overlay(alignment: .top) {
+            if let message = errorCenter.message {
+                AppErrorBanner(message: message) { errorCenter.dismiss() }
+                    .padding(.horizontal, 16).padding(.top, 8)
+            }
+        }
     }
 }
 
@@ -282,9 +289,9 @@ struct YunQiPageView: View {
                 HStack {
                     Text("年份").font(.subheadline).foregroundStyle(Ky.sub)
                     Spacer()
-                    Button { year = max(1900, year - 1) } label: { Image(systemName: "chevron.left") }
+                    Button { year = max(1900, year - 1) } label: { Image(systemName: "chevron.left") }.accessibilityLabel("上一年")
                     Text("\(year) 年").font(.subheadline).fontWeight(.semibold).frame(minWidth: 80)
-                    Button { year = min(2100, year + 1) } label: { Image(systemName: "chevron.right") }
+                    Button { year = min(2100, year + 1) } label: { Image(systemName: "chevron.right") }.accessibilityLabel("下一年")
                 }.kyCard()
                 YunQiView(year: year)
             }.padding(16)

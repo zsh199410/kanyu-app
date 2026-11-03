@@ -410,9 +410,13 @@ final class SurveyStore: ObservableObject {
     }
 
     func save() {
-        guard let data = try? Self.encoder.encode(cases) else { return }
-        try? data.write(to: indexURL, options: .atomic)
-        StoreSchema.writeMeta(for: indexURL, count: cases.count)
+        do {
+            let data = try Self.encoder.encode(cases)
+            try data.write(to: indexURL, options: .atomic)
+            StoreSchema.writeMeta(for: indexURL, count: cases.count)
+        } catch {
+            AppErrorCenter.shared.report("勘察案件保存失败，刚才的改动可能没存入：请重试，仍失败请先导出案件包再联系助手。")
+        }
     }
 
     static var encoder: JSONEncoder {

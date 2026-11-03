@@ -374,9 +374,12 @@ final class PalmRecordStore: ObservableObject {
         }
     }
     func save() {
-        if let data = try? JSONEncoder().encode(records) {
-            try? data.write(to: indexURL, options: .atomic)
+        do {
+            let data = try JSONEncoder().encode(records)
+            try data.write(to: indexURL, options: .atomic)
             StoreSchema.writeMeta(for: indexURL, count: records.count)
+        } catch {
+            AppErrorCenter.shared.report("手相测量记录保存失败，刚才的改动可能没存入：请重试，仍失败请先导出备份再联系助手。")
         }
     }
     func exportData() -> Data {
@@ -435,13 +438,13 @@ struct PalmRecordListView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if let u = exportCache {
-                    ShareLink(item: u) { Image(systemName: "square.and.arrow.up") }
+                    ShareLink(item: u) { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("导出测量记录")
                 } else {
                     Button {
                         let url = FileManager.default.temporaryDirectory.appendingPathComponent("palm-records-export.json")
                         try? store.exportData().write(to: url, options: .atomic)
                         exportCache = url
-                    } label: { Image(systemName: "square.and.arrow.up") }
+                    } label: { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("导出测量记录")
                 }
             }
         }

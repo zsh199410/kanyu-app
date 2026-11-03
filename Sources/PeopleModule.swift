@@ -57,9 +57,12 @@ final class PeopleStore: ObservableObject {
         }
     }
     func save() {
-        if let data = try? JSONEncoder().encode(people) {
-            try? data.write(to: fileURL, options: .atomic)
+        do {
+            let data = try JSONEncoder().encode(people)
+            try data.write(to: fileURL, options: .atomic)
             StoreSchema.writeMeta(for: fileURL, count: people.count)
+        } catch {
+            AppErrorCenter.shared.report("人物档案保存失败，刚才的改动可能没存入：请重试，仍失败请先导出备份再联系助手。")
         }
     }
     func upsert(_ p: Person) {
@@ -137,8 +140,8 @@ struct PeopleView: View {
                             Button { exportCache = exportURL() } label: { Label("导出命例（JSON）", systemImage: "square.and.arrow.up") }
                         }
                         Button { importing = true } label: { Label("导入命例", systemImage: "square.and.arrow.down") }
-                    } label: { Image(systemName: "arrow.up.arrow.down") }
-                    Button { showingNew = true } label: { Image(systemName: "plus") }
+                    } label: { Image(systemName: "arrow.up.arrow.down") }.accessibilityLabel("导入导出菜单")
+                    Button { showingNew = true } label: { Image(systemName: "plus") }.accessibilityLabel("新增人物")
                 }
             }
         }
