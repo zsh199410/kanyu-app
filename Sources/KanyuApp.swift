@@ -1413,6 +1413,7 @@ struct HomePageView: View {
                 NavigationLink { WealthView() } label: { toolTile("yensign.circle.fill", "八字论财", "财星 · 财库 · 财运大运", Ky.gold) }.buttonStyle(.plain)
                 NavigationLink { CompareView() } label: { toolTile("person.3.fill", "多盘对比", "2–4 人并排比盘", Ky.jade) }.buttonStyle(.plain)
                 NavigationLink { YunQiPageView() } label: { toolTile("aqi.medium", "五运六气", "岁运 · 司天在泉", Ky.ink) }.buttonStyle(.plain)
+                NavigationLink { QimenHomeView() } label: { toolTile("circle.grid.3x3.fill", "奇门遁甲", "时家排盘 · 九宫断事", Ky.gold) }.buttonStyle(.plain)
             }
         }
     }
