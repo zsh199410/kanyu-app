@@ -1323,6 +1323,41 @@ struct OnboardingView: View {
     }
 }
 
+// MARK: - 实时帧率表（CADisplayLink，0.5 秒一报；只刷新小药丸自身，不触发整页重算）
+final class FPSMonitor: ObservableObject {
+    @Published var fps: Double = 0
+    private var link: CADisplayLink?
+    private var frames = 0
+    private var last = CACurrentMediaTime()
+    init() {
+        link = CADisplayLink(target: self, selector: #selector(tick))
+        link?.add(to: .main, forMode: .common) // .common：划动时不停表，才能量到滚动帧率
+    }
+    @objc private func tick() {
+        frames += 1
+        let now = CACurrentMediaTime()
+        let dt = now - last
+        if dt >= 0.5 {
+            fps = Double(frames) / dt
+            frames = 0
+            last = now
+        }
+    }
+    deinit { link?.invalidate() }
+}
+
+struct FPSPill: View {
+    @StateObject private var monitor = FPSMonitor()
+    var body: some View {
+        Text("\(Int(monitor.fps)) FPS")
+            .font(.system(size: 11, weight: .bold, design: .monospaced))
+            .foregroundStyle(monitor.fps >= 110 ? Ky.jade : (monitor.fps >= 55 ? Ky.gold : Ky.cinnabar))
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(.ultraThinMaterial)
+            .clipShape(Capsule())
+    }
+}
+
 // MARK: - Tab 0：「合参」首页总工作台（iOS 27 Bento 布局 · 120Hz 零卡顿 · 无重复标题）
 struct HomePageView: View {
     @Binding var selectedTab: Int
@@ -1331,6 +1366,7 @@ struct HomePageView: View {
     @StateObject private var forecastStore = ForecastStore()
     @StateObject private var peopleStore = PeopleStore()
     @State private var showingNewPerson = false
+    @AppStorage("showFPS") private var showFPS = true
 
     init(selectedTab: Binding<Int> = .constant(0)) {
         self._selectedTab = selectedTab
@@ -1338,8 +1374,8 @@ struct HomePageView: View {
 
     var body: some View {
         ScrollView {
-            // 采用预布局 VStack（非动态卸载的 LazyVStack）＋零离屏阴影卡片，彻底根治滚动掉帧
-            VStack(alignment: .leading, spacing: 16) {
+            // 120Hz：外层改回 LazyVStack，只渲染可见区段（纠正 build-72 的说法——VStack 全量预布局抬高首帧挂载成本，长页正确做法是可见区渲染）
+            LazyVStack(alignment: .leading, spacing: 16) {
                 topBrandHero
                 signBanner
                 todayAlmanacCard
@@ -1365,7 +1401,9 @@ struct HomePageView: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showingNewPerson = true } label: {
+                HStack(spacing: 8) {
+                    if showFPS { FPSPill() }
+                    Button { showingNewPerson = true } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "person.badge.plus")
                         Text("建档")
@@ -1374,6 +1412,7 @@ struct HomePageView: View {
                     .foregroundStyle(Ky.qingdai)
                 }
                 .accessibilityLabel("新建人物档案")
+                }
             }
         }
         .sheet(isPresented: $showingNewPerson) {
@@ -1732,7 +1771,9 @@ struct HomePageView: View {
     }
 
     private func wideLink<Dest: View>(_ icon: String, _ title: String, _ desc: String, _ color: Color, @ViewBuilder dest: @escaping () -> Dest) -> some View {
-        NavigationLink(destination: dest()) {
+        NavigationLink {
+            dest()
+        } label: {
             HStack(spacing: 12) {
                 Image(systemName: icon).font(.system(size: 16, weight: .semibold)).foregroundStyle(color)
                     .frame(width: 36, height: 36).background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -1976,7 +2017,9 @@ struct KanyuWorkbenchTabView: View {
     }
 
     private func kanyuLink<Dest: View>(_ icon: String, _ title: String, _ desc: String, _ color: Color, @ViewBuilder dest: @escaping () -> Dest) -> some View {
-        NavigationLink(destination: dest()) {
+        NavigationLink {
+            dest()
+        } label: {
             HStack(spacing: 12) {
                 Image(systemName: icon).font(.system(size: 16, weight: .semibold)).foregroundStyle(color)
                     .frame(width: 36, height: 36).background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))

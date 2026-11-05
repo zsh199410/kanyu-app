@@ -461,6 +461,7 @@ struct YunQiPageView: View {
 
 // MARK: - 我的与系统设置页
 struct MyView: View {
+    @AppStorage("showFPS") private var showFPS = true
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -489,6 +490,13 @@ struct MyView: View {
                     myLink("text.book.closed.fill", "五典与实务断语库（100条）", "类象 · 长生 · 格局 · 健康 · 合婚 · 破局调理", Ky.gold) { LibraryView() }
                     myLink("books.vertical.fill", "风水知识与解煞手册", "玄空八宅测法 · 17类形煞L1-L3分层化解", Ky.cinnabar) { ShaHandbookView() }
                 }
+
+                Toggle("首页显示实时帧率", isOn: $showFPS)
+                    .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                    .padding(.horizontal, 14).padding(.vertical, 12)
+                    .background(Ky.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
             }
             .padding(16)
             .padding(.bottom, 32)
@@ -498,7 +506,9 @@ struct MyView: View {
     }
 
     private func myLink<Dest: View>(_ icon: String, _ title: String, _ sub: String, _ color: Color, @ViewBuilder dest: @escaping () -> Dest) -> some View {
-        NavigationLink(destination: dest()) {
+        NavigationLink {
+            dest()
+        } label: {
             HStack(spacing: 12) {
                 Image(systemName: icon).font(.system(size: 16, weight: .semibold)).foregroundStyle(color)
                     .frame(width: 36, height: 36).background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
