@@ -3,6 +3,21 @@
 规则：每天取最上面未完成的 1–3 项做，做完标注「已落地 build-N（日期）」；新发现的问题追加到对应组末尾；涉及口径争议或无可靠出处的，宁缺不编，在条目下写明卡点。
 **下一构建置顶捎带（2026-11-01 已决策）**：显示名「堪舆勘察」→「三术合参」（改 project.yml 的 CFBundleDisplayName 一行），build-59 起随包实施，做完在文末「已决策待实施」区划掉。
 
+## 每日升级包 2026-11-05（build-72 · iOS 27 架构重塑＋闪退与卡顿根治＋浑天仪定盘针新 Logo＋干支反查）
+- [x] **根治黄历/日历闪退 Bug（`AlmanacModule.swift`）**：定位真机闪退根因——旧版 `AlmanacCalendarCard` 中 `@State showYear=0 / showMonth=0` 在首次 `body` 求值时（`.onAppear` 触发前）直接传入 `Solar.fromYmdHms(year: 0, month: 0, ...)` 导致 `LunarSwift` 月份越界致命崩溃；现改为在 `init` 中直接从 `Date` 初始化合法年月，并新增 `AlmanacLunarCache` 内存级缓存与年月安全边界钳制（1901–2099 年、1–12 月）。
+- [x] **根治划动严重卡顿（120Hz ProMotion 满帧优化）**：
+  1. `AppLogoView`（`KanyuApp.swift`）新增静态内存缩略图缓存（`160×160` 仅在启动时解码一次），彻底消除滚动时每帧从磁盘同步读取解码 `1024×1024` `AppIcon.png` 的主线程 I/O 阻塞；
+  2. `AlmanacLunarCache` 缓存当日黄历与当月 31 天农历标签，`ZejiView` 缓存 30 天宜日结果，彻底消除 `body` 内的同步 `LunarSwift` 历算；
+  3. `.kyCard()`（`DesignSystemV2.swift`）移除引发 CoreAnimation 离屏高斯模糊渲染的 `.shadow()`，升级为 iOS 27 Continuous Concentric Squircle（`18pt` 连续曲率圆角＋发丝描边）；
+  4. 首页、八字、紫微等固定块级页由 `LazyVStack` 改为预布局 `VStack` 并增加 `.padding(.bottom, 38)` 避让 iOS 27 底部 Liquid Glass 悬浮胶囊栏。
+- [x] **底部 TabBar 重构与 iOS 27 界面重排（`HomeTabs.swift` & `KanyuApp.swift`）**：
+  1. 替换底部栏原有的「日历」「黄历」Tab，定版为五大核心柱：**`合参`（总工作台） / `八字` / `紫微` / `奇门` / `堪舆`（风水与设置）**；
+  2. 修复真机截图两处排版问题：消除顶部两个「三术合参」标题重复；`KySectionTitle` 强制单行不折行（改「四柱·斗数·奇门·相法」为四字「核心排盘」）。
+- [x] **全新设计《三术合参》浑天仪定盘针品牌图标（`Sources/AppIcon.png`）**：1024×1024 满幅无白边 RGB PNG（青黛玄黑渐变底＋金线浑天仪环＋朱砂点睛定盘针＋八卦爻线＋宋式远山云雾）。
+- [x] **高阶功能升级（`BaziModule.swift` & `BirthInputView.swift`）**：
+  1. 新增 **`GanZhiLookupView`（四柱干支反查出生日期）**：支持选年柱、月支（五虎遁自动配干）、日柱、时支（五鼠遁自动配干），按 60 日周期跳步毫秒级反查公农历生辰并一键排盘；
+  2. 扩充 `BirthInputView` 省市经纬度表至 **全国 34 省 130+ 核心城市**（含重庆梁平、万州、涪陵、永川、合川、江津、垫江、忠县、开州、云阳、奉节等 20 区县及四川 19 城全覆盖）。
+
 ## 每日升级包 2026-11-05（build-70 · UI/UX v5 全面重塑）
 - [x] **v5.0「宋纸·青黛」UI/UX 全面升级**（改动 8 个核心视图文件：`DesignSystemV2.swift`, `BirthInputView.swift`, `KanyuApp.swift`, `HomeTabs.swift`, `BaziModule.swift`, `ZiweiModule.swift`, `InterpretModule.swift`, `YearlyModule.swift`, `PeopleModule.swift`, `PosterModule.swift`；底层排盘/定局/安星算法与数据结构零改动，6 项金标准测试 100% 保持兼容）：
   1. 找回首页丢失的 `PalmHomeView`（手相面相）入口，重构 `HomePageView` 为「命理合参 / 风水勘察」双工作台模式；
@@ -11,6 +26,7 @@
   4. `BaziHomeView` / `ZiweiHomeView` 新增排盘后自动折叠生辰眉卡与档案人物一键速选横栏；`BaziResultView` 移除重复四柱按钮行，落地四柱干支五行分色双编码可点击柱卡，并将十二时辰对照改为可折叠抽屉；
   5. `InterpretView` 新增 25 维六大分类胶囊导航、关键词搜索与单节独立听书；`LifePlanView` 新增八阶段胶囊筛选与关键年过滤；
   6. `PersonDetailView` 新增导航栏「换人」切换器、四合一分段视图与异步 PDF 生成；`PosterModule` 新增定版「宋纸青黛版」海报。
+- 注：分两次提交上仓（Sources 10 文件 commit 9301aed → Run #70；根目录 2 文档 commit a412e5b → Run #71），两次运行均全绿（6 tests 0 failures），各出一个 IPA：build-70（Latest 标记）与 build-71。两包 Swift 代码完全相同，只差文档提交；按「认 build 号不认 Latest」规矩，现行正牌为 **build-71**。
 
 ## 下一包首位（2026-11-04 用户拍板，2026-11-05 包必做第一项）
 - [x] 命卦 mingGua 世纪修正（FengshuiEngine.mingGua，Sources/KanyuApp.swift）：现行公式不分世纪（男一律 (100-yy)%9、女 (yy-4)%9），2000 年后算错。改为：1900 年代沿用旧式；2000 年后男 (99-yy)%9、女 (yy+6)%9。验收：2024 年生男为震（现错给巽），东四分组不变；App 只采年份、立春前后出生者须在界面注明定不了（与现行口径一致）。同步风水窗：风水窗 knowledge/14-八宅命卦与门床灶.md 已持修正后口径（2000 男离女乾、2024 男震），App 改完须与 14 号一致；02-阳宅勘察口径与排盘.md 第 34 行旧公式未限定年代，顺带标注指向 14 号补丁，防误套。双金标准绿了才发包。——已落地（2026-11-05，build-69）：公式按世纪分支，14 号全部例证验算通过（1962 男坤女巽、1999 男坎女艮、2000 男离女乾、2001 男艮女兑、2022 男寄坤女坎、2024 男震女震），1900 年代 200 年×男女零回归差异；新建勘察常住人栏与本地排盘八宅节各加立春界脚注，八宅速记卡同步世纪分段口径；风水窗 02 号已加世纪适用标注（本地知识库，不随包上传）。首轮提交 1deae89 的 Run #68 红于奇门模块预存 bug（QimenModule.swift:126 for-each 缺元组括号，2026-11-05 00:24 奇门上传即带病、Run #67 同错），与本次改动无关；单行修复后重传 c39cf66，Run #69 全绿出包。
