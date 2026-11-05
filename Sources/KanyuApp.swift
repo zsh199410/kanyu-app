@@ -1337,9 +1337,10 @@ final class FPSMonitor: ObservableObject {
     init() {
         link = CADisplayLink(target: self, selector: #selector(tick))
         // 向系统要 120 量程：不设则 iPhone 上回调最高只到 60，表永远量不到 120
+        // 下限须钳住本机上限：模拟器最高只有 60，下限写死 80 会因 80>60 非法直接崩溃
+        let maxFPS = Float(UIScreen.main.maximumFramesPerSecond)
         link?.preferredFrameRateRange = CAFrameRateRange(
-            minimum: 80, maximum: Float(UIScreen.main.maximumFramesPerSecond),
-            preferred: Float(UIScreen.main.maximumFramesPerSecond))
+            minimum: min(80, maxFPS), maximum: maxFPS, preferred: maxFPS)
         link?.add(to: .main, forMode: .common) // .common：划动时不停表，才能量到滚动帧率
     }
     @objc private func tick() {
