@@ -288,7 +288,7 @@ struct BaziHomeView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
                 if chart != nil && inputCollapsed && !isStale {
                     collapsedInputBar
                 } else {
@@ -297,17 +297,26 @@ struct BaziHomeView: View {
                 if let ch = chart {
                     BaziResultView(chart: ch, name: name)
                 }
-                NavigationLink { CaliberSettingsView() } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "slider.horizontal.3")
-                        Text("排盘口径设置（晚子时归日默认 sect=2 · 12例金标准对拍）").font(.caption)
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption2)
-                    }
-                    .foregroundStyle(Ky.sub)
-                    .padding(.horizontal, 4)
-                }.buttonStyle(.plain)
-            }.padding(16)
+                HStack(spacing: 12) {
+                    NavigationLink { GanZhiLookupView() } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "magnifyingglass.circle.fill")
+                            Text("已知四柱？干支反查出生日期 ›")
+                        }
+                        .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                    }.buttonStyle(.plain)
+                    Spacer()
+                    NavigationLink { CaliberSettingsView() } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "slider.horizontal.3")
+                            Text("口径设置 ›")
+                        }
+                        .font(.caption).foregroundStyle(Ky.sub)
+                    }.buttonStyle(.plain)
+                }.padding(.horizontal, 4)
+            }
+            .padding(16)
+            .padding(.bottom, 36)
         }
         .background(Ky.bg)
         .navigationTitle("八字排盘")
@@ -1097,5 +1106,256 @@ struct BaziResultView: View {
             }
         }
         .kyCard()
+    }
+}
+
+
+// MARK: - 四柱干支反查出生日期（对标问真/文墨高阶能力：五虎遁自动定月干、五鼠遁自动定时干、60日周期跳步毫秒级检索）
+struct GanZhiLookupView: View {
+    private static let stems: [Character] = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+    private static let branches: [Character] = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+    private static let monthBranches: [Character] = ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子", "丑"]
+    private static let jiazi60: [String] = (0..<60).map { i in
+        String(stems[i % 10]) + String(branches[i % 12])
+    }
+
+    @State private var yearGZ = "甲辰"
+    @State private var monthBranch: Character = "子"
+    @State private var dayGZ = "己未"
+    @State private var hourBranch: Character = "未"
+    @State private var startYear = 1950
+    @State private var endYear = 2035
+    @State private var gender = "M"
+    @State private var results: [MatchedBirth] = []
+    @State private var searched = false
+
+    struct MatchedBirth: Identifiable {
+        let id = UUID()
+        let date: Date
+        let solarText: String
+        let lunarText: String
+        let pillars: [String]
+    }
+
+    // 五虎遁由年干自动推导月柱
+    private var derivedMonthGZ: String {
+        BaziTables.monthGanZhi(yearStem: yearGZ.first!, monthBranch: monthBranch)
+    }
+
+    // 五鼠遁由日干自动推导时柱
+    private var derivedTimeGZ: String {
+        let hIdx = Self.branches.firstIndex(of: hourBranch) ?? 0
+        let hour = (hIdx * 2) % 24
+        return BaziTables.timeGanZhi(dayStem: dayGZ.first!, hour: hour)
+    }
+
+    private func runSearch() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
+        let loY = min(startYear, endYear)
+        let hiY = max(startYear, endYear)
+        let hIdx = Self.branches.firstIndex(of: hourBranch) ?? 6
+        let sampleHour = hIdx == 0 ? 0 : (hIdx * 2)
+
+        // 先找出年柱等于 yearGZ 的所有候选公历年份（含立春跨年边界，故每个甲子年查当年与次年 1–2 月）
+        var candidateYears: [Int] = []
+        for y in loY...hiY {
+            let gz = BaziChart.yearGanZhi(y)
+            if gz == yearGZ {
+                candidateYears.append(y)
+            }
+        }
+
+        // 2000-01-01 为戊午日（60甲子序号 54）
+        let anchorDate = cal.date(from: DateComponents(year: 2000, month: 1, day: 1, hour: 12, minute: 0))!
+        let targetDayIdx = Self.jiazi60.firstIndex(of: dayGZ) ?? 0
+        let anchorDayIdx = 54 // 戊午
+
+        var found: [MatchedBirth] = []
+        for cy in candidateYears {
+            // 扫描从 cy 年 1 月 20 日 到 cy+1 年 2 月 15 日（完整覆盖立春交界）
+            guard let winStart = cal.date(from: DateComponents(year: cy, month: 1, day: 20, hour: 12, minute: 0)),
+                  let winEnd = cal.date(from: DateComponents(year: cy + 1, month: 2, day: 15, hour: 12, minute: 0)) else { continue }
+            let diffDays = cal.dateComponents([.day], from: anchorDate, to: winStart).day ?? 0
+            let startIdx = ((anchorDayIdx + diffDays) % 60 + 60) % 60
+            let delta = (targetDayIdx - startIdx + 60) % 60
+            guard var cur = cal.date(byAdding: .day, value: delta, to: winStart) else { continue }
+
+            while cur <= winEnd {
+                let c = cal.dateComponents([.year, .month, .day], from: cur)
+                if let y = c.year, let m = c.month, let d = c.day {
+                    let s = Solar.fromYmdHms(year: y, month: m, day: d, hour: sampleHour, minute: 30)
+                    let ec = s.lunar.eightChar
+                    ec.sect = AppSettings.baziSect
+                    if ec.year == yearGZ && ec.month == derivedMonthGZ && ec.day == dayGZ && ec.time == derivedTimeGZ {
+                        if let exactDate = cal.date(from: DateComponents(year: y, month: m, day: d, hour: sampleHour, minute: 0)) {
+                            let l = s.lunar
+                            found.append(MatchedBirth(
+                                date: exactDate,
+                                solarText: "公历 \(y)年\(String(format: "%02d", m))月\(String(format: "%02d", d))日 \(hourBranch)时（\(String(format: "%02d:00", sampleHour))）",
+                                lunarText: "农历 \(l.yearInGanZhi)年\(l.monthInChinese)月\(l.dayInChinese) · \(hourBranch)时",
+                                pillars: [ec.year, ec.month, ec.day, ec.time]
+                            ))
+                        }
+                    }
+                }
+                guard let next = cal.date(byAdding: .day, value: 60, to: cur) else { break }
+                cur = next
+            }
+        }
+        results = found
+        searched = true
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 12) {
+                    KySectionTitle(title: "四柱设定", trailing: "五虎遁/五鼠遁自动联动")
+
+                    // 当前预览四柱
+                    HStack(spacing: 10) {
+                        pillarPreviewBox("年柱", yearGZ)
+                        pillarPreviewBox("月柱（自动推干）", derivedMonthGZ)
+                        pillarPreviewBox("日柱", dayGZ)
+                        pillarPreviewBox("时柱（自动推干）", derivedTimeGZ)
+                    }
+
+                    Divider()
+
+                    HStack {
+                        Text("1. 选定年柱（六十甲子）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                        Spacer()
+                        Picker("年柱", selection: $yearGZ) {
+                            ForEach(Self.jiazi60, id: \.self) { gz in Text(gz).tag(gz) }
+                        }.pickerStyle(.menu).tint(Ky.qingdai)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("2. 选定月支（月干按五虎遁自动配为 \(derivedMonthGZ)）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
+                            ForEach(Self.monthBranches, id: \.self) { mb in
+                                let active = monthBranch == mb
+                                let mgz = BaziTables.monthGanZhi(yearStem: yearGZ.first!, monthBranch: mb)
+                                Button { monthBranch = mb } label: {
+                                    Text(mgz)
+                                        .font(.system(.callout, design: .serif)).fontWeight(active ? .bold : .regular)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 6)
+                                        .background(active ? Ky.qingdai : Ky.elevated)
+                                        .foregroundStyle(active ? Color.white : Ky.ink)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+
+                    HStack {
+                        Text("3. 选定日柱（六十甲子）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                        Spacer()
+                        Picker("日柱", selection: $dayGZ) {
+                            ForEach(Self.jiazi60, id: \.self) { gz in Text(gz).tag(gz) }
+                        }.pickerStyle(.menu).tint(Ky.qingdai)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("4. 选定时支（时干按五鼠遁自动配为 \(derivedTimeGZ)）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
+                            ForEach(Self.branches, id: \.self) { hb in
+                                let active = hourBranch == hb
+                                let hIdx = Self.branches.firstIndex(of: hb) ?? 0
+                                let tgz = BaziTables.timeGanZhi(dayStem: dayGZ.first!, hour: (hIdx * 2) % 24)
+                                Button { hourBranch = hb } label: {
+                                    Text(tgz)
+                                        .font(.system(.callout, design: .serif)).fontWeight(active ? .bold : .regular)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 6)
+                                        .background(active ? Ky.qingdai : Ky.elevated)
+                                        .foregroundStyle(active ? Color.white : Ky.ink)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+
+                    HStack {
+                        Text("查询年份范围").font(.caption).foregroundStyle(Ky.sub)
+                        Spacer()
+                        Stepper("\(startYear)", value: $startYear, in: 1901...2090).labelsHidden()
+                        Text("\(startYear) – \(endYear) 年").font(KyV2.tabular(13, weight: .bold)).foregroundStyle(Ky.ink)
+                        Stepper("\(endYear)", value: $endYear, in: 1910...2099).labelsHidden()
+                    }
+
+                    Picker("排盘性别", selection: $gender) {
+                        Text("乾造（男）").tag("M")
+                        Text("坤造（女）").tag("F")
+                    }.pickerStyle(.segmented)
+
+                    Button("反查匹配生辰") {
+                        runSearch()
+                    }.buttonStyle(KyPrimaryButton())
+                }.kyCard()
+
+                if searched {
+                    KySectionTitle(title: "反查结果", trailing: "共找到 \(results.count) 个匹配时辰")
+                    if results.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: "calendar.badge.exclamationmark").font(.title2).foregroundStyle(Ky.cinnabar)
+                            Text("在 \(min(startYear, endYear))–\(max(startYear, endYear)) 年间未找到该四柱组合")
+                                .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                            Text("原因：该年柱的此节气月内正好未逢「\(dayGZ)」日（一月约 30 天而甲子周期为 60 天，故每个月仅有约一半日柱出现），可换相邻年份或扩大年份范围再查。")
+                                .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity).padding(18).kyCard()
+                    } else {
+                        ForEach(results) { item in
+                            NavigationLink {
+                                ScrollView {
+                                    BaziResultView(
+                                        chart: BaziEngine.paipan(clock: item.date, gender: gender, longitude: nil),
+                                        name: item.pillars.joined(separator: " ")
+                                    )
+                                    .padding(16)
+                                }
+                                .background(Ky.bg)
+                                .navigationTitle(item.pillars.joined(separator: " "))
+                            } label: {
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(item.solarText)
+                                            .font(KyV2.tabular(14, weight: .bold)).foregroundStyle(Ky.ink)
+                                        Text(item.lunarText)
+                                            .font(.caption).foregroundStyle(Ky.sub)
+                                    }
+                                    Spacer()
+                                    KyBadge(text: "看全盘 ›", color: Ky.qingdai, filled: true)
+                                }
+                                .kyCard()
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .padding(.bottom, 36)
+        }
+        .background(Ky.bg)
+        .navigationTitle("四柱干支反查")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if !searched { runSearch() }
+        }
+    }
+
+    private func pillarPreviewBox(_ label: String, _ gz: String) -> some View {
+        VStack(spacing: 3) {
+            Text(label).font(.system(size: 9.5)).foregroundStyle(Ky.sub).lineLimit(1)
+            HStack(spacing: 2) {
+                Text(String(gz.first!)).foregroundStyle(KyV2.color(forChar: gz.first!))
+                Text(String(gz.last!)).foregroundStyle(KyV2.color(forChar: gz.last!))
+            }
+            .font(.system(size: 22, weight: .bold, design: .serif))
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 8)
+        .background(Ky.elevated)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }

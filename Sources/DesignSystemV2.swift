@@ -213,27 +213,30 @@ struct EvidenceChainView: View {
     }
 }
 
-// MARK: - 宋式章节眉题（左青黛竖线＋衬线标题＋金发丝线＋右小注）
+// MARK: - iOS 27 宋式章节眉题（强制单行不折行，左青黛圆角柱＋衬线标题＋发丝线＋右胶囊注）
 struct KySectionTitle: View {
     let title: String
     var trailing: String = ""
     var body: some View {
         HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 1.5)
+            Capsule()
                 .fill(Ky.qingdai)
-                .frame(width: 3.5, height: 16)
+                .frame(width: 4, height: 15)
             Text(title)
-                .font(.system(.headline, design: .serif))
-                .fontWeight(.bold)
+                .font(.system(size: 16, weight: .bold, design: .serif))
                 .foregroundStyle(Ky.ink)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
             Rectangle()
-                .fill(Ky.line)
+                .fill(Ky.line.opacity(0.85))
                 .frame(height: 0.8)
             if !trailing.isEmpty {
                 Text(trailing)
                     .font(.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(Ky.sub)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
         }
     }
@@ -248,27 +251,33 @@ struct KySeal: View {
             .foregroundStyle(Ky.cinnabar)
             .padding(.horizontal, 7).padding(.vertical, 4)
             .background(Ky.cinnabar.opacity(0.06))
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Ky.cinnabar, lineWidth: 1.3))
+            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).stroke(Ky.cinnabar, lineWidth: 1.3))
             .rotationEffect(.degrees(-3))
     }
 }
 
 extension View {
-    /// v5 标准宋纸卡：宣纸暖白卡面＋发丝描边＋柔和温润投影（内容层，永不玻璃）
+    /// iOS 27 120Hz 零掉帧卡片：采用 continuous 连续曲率圆角（18pt）＋精细发丝描边，
+    /// 剔除昂贵的动态离屏高斯阴影（.shadow），确保 ProMotion 滚动满帧丝滑。
     func kyCard() -> some View {
         self.padding(16)
             .background(Ky.card)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Ky.line.opacity(0.85), lineWidth: 0.8))
-            .shadow(color: .black.opacity(0.035), radius: 7, y: 3)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Ky.line.opacity(0.9), lineWidth: 0.8)
+            )
     }
 
-    /// 浅染内嵌卡（用于卡片内部二级区块）
+    /// 浅染内嵌卡（用于卡片内部二级同心圆角区块，12pt continuous）
     func kySubCard() -> some View {
         self.padding(11)
             .background(Ky.elevated)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Ky.line.opacity(0.6), lineWidth: 0.6))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Ky.line.opacity(0.65), lineWidth: 0.6)
+            )
     }
 }
 

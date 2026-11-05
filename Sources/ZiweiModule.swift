@@ -224,7 +224,7 @@ struct ZiweiHomeView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
                 if chart != nil && inputCollapsed && !isStale {
                     collapsedInputBar
                 } else {
@@ -243,7 +243,9 @@ struct ZiweiHomeView: View {
                         Image(systemName: "chevron.right").font(.caption2)
                     }.foregroundStyle(Ky.sub).padding(.horizontal, 4)
                 }.buttonStyle(.plain)
-            }.padding(16)
+            }
+            .padding(16)
+            .padding(.bottom, 36)
         }
         .background(Ky.bg)
         .navigationTitle("紫微斗数")
