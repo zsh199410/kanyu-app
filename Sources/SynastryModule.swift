@@ -8,7 +8,7 @@ struct SynastryView: View {
     @State private var bId: UUID?
 
     private func chart(of p: Person) -> BaziChart {
-        BaziEngine.paipan(clock: p.birthDate, gender: p.gender,
+        BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender,
                           longitude: p.useLongitude ? p.longitude : nil)
     }
     // 喜用初判（与解盘同口径：同党占比定强弱，调候另注）
@@ -25,7 +25,7 @@ struct SynastryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 pickerCard
                 if let a = selected(aId), let b = selected(bId), a.id != b.id {
                     resultCards(a: a, b: b)

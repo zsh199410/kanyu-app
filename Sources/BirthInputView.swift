@@ -257,7 +257,7 @@ struct BirthInputView: View {
             if s.hour == 23 {
                 HStack(spacing: 5) {
                     Image(systemName: "moon.stars").foregroundStyle(Ky.cinnabar)
-                    Text("夜子时（23:00–24:00）：当前按口径设置（默认 sect=2 日柱算当日、时干按次日推）")
+                    Text("夜子时（23:00–24:00）：当前按口径设置（默认日柱算当日、时干按次日推）")
                 }.foregroundStyle(Ky.cinnabar)
             }
             if let jq = Self.nearestJieQiText(lunar: l, clock: clock) {
@@ -354,7 +354,7 @@ private struct TimePickerSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                LazyVStack(alignment: .leading, spacing: 14) {
                     Picker("历法", selection: $mode) {
                         Text("公历（阳历）").tag(0)
                         Text("农历（阴历）").tag(1)
@@ -583,10 +583,18 @@ private struct TimePickerSheet: View {
         }
     }
     private func setDay(_ d: Int) { if mode == 0 { sd = d } else { ld = d } }
+    // 按月缓存：未缓存前每次 body 求值要对 28–31 个格子各算一次农历；缓存后同月直接命中
+    private static var solarDayTextCache: [String: [Int: String]] = [:]
     private func solarDayText(_ lunarDay: Int) -> String {
         let m = (leap && hasLeapChoice) ? -lmo : lmo
+        let key = "\(ly)-\(m)-\(lunarDayCount)"
+        if let hit = Self.solarDayTextCache[key]?[lunarDay] { return hit }
         let s = Lunar.fromYmdHms(lunarYear: ly, lunarMonth: m, lunarDay: min(lunarDay, lunarDayCount), hour: 12, minute: 0).solar
-        return "\(s.day)"
+        let v = "\(s.day)"
+        var d = Self.solarDayTextCache[key] ?? [:]; d[lunarDay] = v
+        if Self.solarDayTextCache.count > 24 { Self.solarDayTextCache.removeAll() }
+        Self.solarDayTextCache[key] = d
+        return v
     }
 
     // MARK: 时辰与时分

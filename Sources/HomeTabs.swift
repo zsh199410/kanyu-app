@@ -42,7 +42,7 @@ struct MonthCalendarTabView: View {
     var body: some View {
         let info = AlmanacLunarCache.dayInfo(for: date)
         ScrollView {
-            VStack(spacing: 14) {
+            LazyVStack(spacing: 14) {
                 AlmanacCalendarCard(date: $date)
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -127,7 +127,7 @@ struct ZejiView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "择吉事项", trailing: "近 30 天历书初筛")
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
@@ -210,13 +210,13 @@ struct WealthView: View {
     }
     private var chart: BaziChart? {
         guard let p = person else { return nil }
-        return BaziEngine.paipan(clock: p.birthDate, gender: p.gender,
+        return BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender,
                                  longitude: p.useLongitude ? p.longitude : nil)
     }
     private static let kuOf: [String: String] = ["木": "未", "火": "戌", "土": "辰", "金": "丑", "水": "辰"]
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 if peopleStore.people.isEmpty {
                     VStack(spacing: 10) {
                         Image(systemName: "person.crop.circle.badge.exclamationmark").font(.largeTitle).foregroundStyle(Ky.gold)
@@ -330,11 +330,11 @@ struct CompareView: View {
     @State private var selected: Set<UUID> = []
     private var picked: [Person] { peopleStore.people.filter { selected.contains($0.id) } }
     private func chart(_ p: Person) -> BaziChart {
-        BaziEngine.paipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
+        BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
     }
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 Text("在档案里勾选 2–4 位命主并排比盘；日主或日柱相同的会高亮标出。")
                     .font(.caption).foregroundStyle(Ky.sub)
                 if peopleStore.people.isEmpty {
@@ -435,7 +435,7 @@ struct YunQiPageView: View {
     @State private var year: Int = Calendar.current.component(.year, from: Date())
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
+            LazyVStack(spacing: 14) {
                 HStack {
                     Text("推算年份").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                     Spacer()
@@ -464,12 +464,12 @@ struct MyView: View {
     @AppStorage("showFPS") private var showFPS = true
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
                     AppLogoView(size: 56)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("三术合参").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text("子平五典 · 天纪斗数 · 统宗奇门 · 堪舆SOP")
+                        Text("子平五典 · 天纪斗数 · 统宗奇门 · 堪舆勘察")
                             .font(.caption).foregroundStyle(Ky.qingdai)
                         Text("全本机离线演算 · 零云端追踪")
                             .font(.caption2).foregroundStyle(Ky.sub)
@@ -479,7 +479,7 @@ struct MyView: View {
 
                 KySectionTitle(title: "档案账本", trailing: "本机持久化存储")
                 VStack(spacing: 10) {
-                    myLink("person.2.fill", "人物档案管理", "家人与命例建档 · 支持 JSON 导入导出备份", Ky.qingdai) { PeopleView() }
+                    myLink("person.2.fill", "人物档案管理", "家人与命例建档 · 支持数据导入导出备份", Ky.qingdai) { PeopleView() }
                     myLink("checkmark.seal.fill", "前瞻断语登记簿", "事前封存断语 · 到期核验命中率", Ky.jade) { ForecastView() }
                     myLink("hand.raised.fill", "手相面相与测量记录", "21点几何掌型 · 三线手描 · 三停校准归档", Ky.gold) { PalmHomeView() }
                 }

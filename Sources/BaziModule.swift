@@ -236,6 +236,17 @@ enum BaziEngine {
         return chart
     }
 
+    // 划动缓存：body 每求值一次就重算全盘是卡顿主因之一；按（出生时刻＋性别＋经度＋晚子时口径）缓存，口径改了即换键
+    private static var paipanCache: [String: BaziChart] = [:]
+    static func cachedPaipan(clock: Date, gender: String, longitude: Double?) -> BaziChart {
+        let key = "\(clock.timeIntervalSince1970)-\(gender)-\(longitude ?? 0)-\(AppSettings.baziSect)"
+        if let hit = paipanCache[key] { return hit }
+        let c = paipan(clock: clock, gender: gender, longitude: longitude)
+        if paipanCache.count > 64 { paipanCache.removeAll() }
+        paipanCache[key] = c
+        return c
+    }
+
     /// 人元司令分野（《子平真诠评注》表）：按生日距月令节气天数落段
     static func sili(lunar: Lunar, monthBranch: Character, birth: Solar) -> String {
         let segs: [Character: [(String, Int)]] = [
@@ -288,7 +299,7 @@ struct BaziHomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 if chart != nil && inputCollapsed && !isStale {
                     collapsedInputBar
                 } else {
@@ -717,7 +728,7 @@ struct BaziResultView: View {
         let branch = gz.last!
         return NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                LazyVStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 14) {
                         HStack(spacing: 4) {
                             Text(String(stem)).foregroundStyle(KyV2.color(forChar: stem))
@@ -1061,7 +1072,8 @@ struct BaziResultView: View {
             ? BaziEngine.dayPillar(for: flowDate.addingTimeInterval(86400)).first! : dp.first!
         let tp = BaziTables.timeGanZhi(dayStem: dayStemForTime, hour: flowHour)
         return VStack(alignment: .leading, spacing: 10) {
-            DatePicker("选定流日", selection: $flowDate, displayedComponents: [.date])
+            Text("选定流日").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+            KyChineseDatePicker(date: $flowDate)
             Stepper("选定流时：\(flowHour):00（\(tp)时）", value: $flowHour, in: 0...23)
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
@@ -1209,7 +1221,7 @@ struct GanZhiLookupView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 12) {
                     KySectionTitle(title: "四柱设定", trailing: "五虎遁/五鼠遁自动联动")
 
@@ -1310,7 +1322,7 @@ struct GanZhiLookupView: View {
                             NavigationLink {
                                 ScrollView {
                                     BaziResultView(
-                                        chart: BaziEngine.paipan(clock: item.date, gender: gender, longitude: nil),
+                                        chart: BaziEngine.cachedPaipan(clock: item.date, gender: gender, longitude: nil),
                                         name: item.pillars.joined(separator: " ")
                                     )
                                     .padding(16)

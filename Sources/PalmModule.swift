@@ -89,7 +89,7 @@ struct HandMeasureView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 PhotosPicker(selection: $item, matching: .images) {
                     Label(box.image == nil ? "选一张手掌照片" : "换一张照片", systemImage: "photo")
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -127,7 +127,7 @@ struct HandMeasureView: View {
                     }
                     .kyCard()
                 }
-                Text("测量口径：Vision 21 点关节点几何（学术同款管线在本工作室已实测）；三线为手描修正层——把每个圆点拖到你真实掌纹上，描准了判读才有意义。娱乐参考。")
+                Text("测量口径：视觉识别 21 点关节点几何（学术同款管线在本工作室已实测）；三线为手描修正层——把每个圆点拖到你真实掌纹上，描准了判读才有意义。娱乐参考。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
@@ -274,7 +274,7 @@ struct FaceMeasureView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 PhotosPicker(selection: $item, matching: .images) {
                     Label(box.image == nil ? "选一张正面照片" : "换一张照片", systemImage: "photo")
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -456,7 +456,7 @@ struct PalmRecordDetailView: View {
     let record: PalmRecord
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            LazyVStack(alignment: .leading, spacing: 12) {
                 if let img = store.image(of: record) {
                     FittedImage(image: img) { rect in
                         Canvas { ctx, _ in

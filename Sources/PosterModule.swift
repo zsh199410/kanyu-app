@@ -312,7 +312,7 @@ struct PosterSheetView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            LazyVStack(spacing: 16) {
                 Picker("海报版本", selection: $style) {
                     ForEach(PosterStyle.allCases, id: \.self) { s in Text(s.rawValue).tag(s) }
                 }

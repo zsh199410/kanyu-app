@@ -286,15 +286,26 @@ struct QimenHomeView: View {
         let f = DateFormatter(); f.dateFormat = "yyyy年M月d日 HH:mm"; f.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
         return f.string(from: date)
     }
+    private var weekdayText: String {
+        let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.dateFormat = "EEEE"
+        return f.string(from: date)
+    }
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 // 时间选择
                 VStack(alignment: .leading, spacing: 10) {
+                    Text("起局时间：\(dateText) \(weekdayText)").font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
                     HStack {
                         DatePicker("起局时间", selection: $date, displayedComponents: [.date, .hourAndMinute])
                             .labelsHidden()
+                            .datePickerStyle(.compact)
+                            .environment(\.locale, Locale(identifier: "zh_CN")) // 锁死中文
                         Spacer()
+                        Button("上一时辰") { date = date.addingTimeInterval(-7200) }
+                            .font(.subheadline).foregroundStyle(Ky.qingdai)
+                        Button("下一时辰") { date = date.addingTimeInterval(7200) }
+                            .font(.subheadline).foregroundStyle(Ky.qingdai)
                         Button("此刻") { date = Date() }
                             .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                     }

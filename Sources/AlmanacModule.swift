@@ -120,7 +120,7 @@ struct AlmanacView: View {
     var body: some View {
         let info = AlmanacLunarCache.dayInfo(for: date)
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 14) {
                 AlmanacCalendarCard(date: $date)
 
                 // 头卡：干支日＋农历＋宿

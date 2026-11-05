@@ -288,6 +288,24 @@ enum AppSettings {
     static var ziweiLateZiNext: Bool { UserDefaults.standard.bool(forKey: "ziweiLateZiNext") }
 }
 
+/// 中文图形日历选择器：内联整月日历＋中文年月标题，替代系统紧凑弹窗（弹窗月名曾跟随设备语言出英文）
+struct KyChineseDatePicker: View {
+    @Binding var date: Date
+    private var title: String {
+        let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.dateFormat = "yyyy年M月d日 EEEE"
+        return f.string(from: date)
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            DatePicker("", selection: $date, displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .environment(\.locale, Locale(identifier: "zh_CN"))
+                .labelsHidden()
+        }
+    }
+}
+
 struct CaliberSettingsView: View {
     @AppStorage("signDateEpoch") private var signDateEpoch: Double = 0
     @AppStorage("signCertDays") private var signCertDays: Int = 365
@@ -296,14 +314,14 @@ struct CaliberSettingsView: View {
     @AppStorage("ziweiLateZiNext") private var ziweiLateZiNext = false
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "八字口径", trailing: "子平正统")
                     Picker("晚子时归日", selection: $baziSect) {
-                        Text("23 点后算次日（sect=1）").tag(1)
-                        Text("23 点后算当日（sect=2）").tag(2)
+                        Text("23 点后算次日").tag(1)
+                        Text("23 点后算当日").tag(2)
                     }.pickerStyle(.segmented)
-                    Text("现行金标准盘以 sect=2（23:00 后日柱不换、时干按次日五鼠遁推）对拍验证；改口径后盘面随之变化，属预期。")
+                    Text("现行金标准盘以晚子时算当日（23:00 后日柱不换、时干按次日五鼠遁推）对拍验证；改口径后盘面随之变化，属预期。")
                         .font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
 
@@ -313,15 +331,16 @@ struct CaliberSettingsView: View {
                         .tint(Ky.qingdai)
                     Toggle("晚子时作次日", isOn: $ziweiLateZiNext)
                         .tint(Ky.qingdai)
-                    Text("默认：闰月归下月、晚子时作当日，与紫微金标准盘（iztro 同源参照）一致。")
+                    Text("默认：闰月归下月、晚子时作当日，与紫微金标准盘（同源参照）一致。")
                         .font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
 
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "签名信息", trailing: "侧载证书提醒")
-                    DatePicker("签名日期", selection: Binding(
+                    Text("签名日期").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                    KyChineseDatePicker(date: Binding(
                         get: { signDateEpoch > 0 ? Date(timeIntervalSince1970: signDateEpoch) : Date() },
-                        set: { signDateEpoch = $0.timeIntervalSince1970 }), displayedComponents: .date)
+                        set: { signDateEpoch = $0.timeIntervalSince1970 }))
                     Picker("证书类型", selection: $signCertDays) {
                         Text("免费证书（7 天）").tag(7)
                         Text("付费证书（1 年）").tag(365)
@@ -329,10 +348,10 @@ struct CaliberSettingsView: View {
                     if signDateEpoch > 0 {
                         let expiry = Date(timeIntervalSince1970: signDateEpoch).addingTimeInterval(Double(signCertDays) * 86400)
                         let remain = Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 0
-                        Text("到期日 \(expiry.formatted(date: .abbreviated, time: .omitted))，还剩 \(remain) 天。到期前 7 天起首页会亮提醒：到期后 App 打不开是证书问题、不是数据问题，续签覆盖安装即可，数据不丢。")
+                        Text("到期日 \(expiry.formatted(date: .abbreviated, time: .omitted))，还剩 \(remain) 天。到期前 7 天起首页会亮提醒：到期后应用打不开是证书问题、不是数据问题，续签覆盖安装即可，数据不丢。")
                             .font(.caption).foregroundStyle(remain <= 7 ? Ky.cinnabar : Ky.sub)
                     } else {
-                        Text("装好 App 后在这里记下签名日期，临近到期首页会提醒续签。")
+                        Text("装好应用后在这里记下签名日期，临近到期首页会提醒续签。")
                             .font(.caption).foregroundStyle(Ky.sub)
                     }
                 }.kyCard()

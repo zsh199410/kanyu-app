@@ -61,10 +61,10 @@ struct CelebDetailView: View {
         return cal.date(from: DateComponents(year: celeb.y, month: celeb.mo, day: celeb.d, hour: celeb.h, minute: celeb.mi))!
     }
     var body: some View {
-        let ch = BaziEngine.paipan(clock: clock, gender: celeb.gender, longitude: celeb.lon)
-        let zw = ZiweiEngine.chart(clock: clock, gender: celeb.gender, longitude: celeb.lon)
+        let ch = BaziEngine.cachedPaipan(clock: clock, gender: celeb.gender, longitude: celeb.lon)
+        let zw = ZiweiEngine.cachedChart(clock: clock, gender: celeb.gender, longitude: celeb.lon)
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(celeb.name) · \(celeb.place)").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     Text("记载：\(celeb.note)（可信度 \(celeb.trust)）。外国出生者经度已按生地计真太阳时，其当地钟表时间按通行记载的当地时间录入后以北京时间通道换算，时柱或有半时辰级误差，读盘时留意。")

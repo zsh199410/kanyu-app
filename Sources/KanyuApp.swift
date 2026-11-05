@@ -169,8 +169,8 @@ enum CompassMath {
         switch kind {
         case "photo": return "照片"
         case "video": return "视频"
-        case "scan3d": return "3D扫描"
-        case "artrack": return "AR轨迹"
+        case "scan3d": return "三维扫描"
+        case "artrack": return "实景轨迹"
         default: return kind
         }
     }
@@ -360,9 +360,9 @@ enum TaskFactory {
         .init(id: "p_bath", title: "照片·卫生间位置", instruction: "拍卫生间门与周围房间的关系，能看出它在房子哪个方位区域即可，不必拍内部细节。", kind: .photo),
         .init(id: "p_stair", title: "照片·楼梯位置", instruction: "多层住宅拍楼梯所在位置与走向；平层可跳过，在备注写「平层无楼梯」。", kind: .photo),
         .init(id: "v_flow", title: "视频·室内动线", instruction: "从大门进屋，慢慢走到客厅、厨房、主卧，边走边拍，像带人参观一样走一遍。", kind: .video),
-        .init(id: "s_roomscan", title: "3D扫描·户型建模（激光雷达）", instruction: "仅带激光雷达的 Pro 机型：逐间房各扫一遍。开始前站在门口、身体朝向屋内站直再开始，沿墙慢走、把每面墙和家具都扫到，单间别超过 5 分钟；扫完点完成，生成带米数尺寸的 3D 户型模型（墙/门/窗/床/灶台位置自动识别）。", kind: .scan3D),
-        .init(id: "s_artrack_in", title: "AR轨迹·室内动线", instruction: "从大门内侧点开始，举着手机（镜头朝前）按平时走法走遍全屋再点结束。轨迹自动记录位置（米）与真北朝向，比手绘动线准。", kind: .arTrack),
-        .init(id: "s_artrack_env", title: "AR轨迹·绕屋一周", instruction: "在屋外点开始，绕房子慢走一圈回到起点点结束（中途别停太久）。轨迹带真北朝向与米数距离，用于核对房子与周边道路/空地的相对方位。开阔处效果好，高楼遮挡处可能漂移，备注写明。", kind: .arTrack),
+        .init(id: "s_roomscan", title: "三维扫描·户型建模（激光雷达）", instruction: "仅带激光雷达的高端机型：逐间房各扫一遍。开始前站在门口、身体朝向屋内站直再开始，沿墙慢走、把每面墙和家具都扫到，单间别超过 5 分钟；扫完点完成，生成带米数尺寸的三维户型模型（墙/门/窗/床/灶台位置自动识别）。", kind: .scan3D),
+        .init(id: "s_artrack_in", title: "实景轨迹·室内动线", instruction: "从大门内侧点开始，举着手机（镜头朝前）按平时走法走遍全屋再点结束。轨迹自动记录位置（米）与真北朝向，比手绘动线准。", kind: .arTrack),
+        .init(id: "s_artrack_env", title: "实景轨迹·绕屋一周", instruction: "在屋外点开始，绕房子慢走一圈回到起点点结束（中途别停太久）。轨迹带真北朝向与米数距离，用于核对房子与周边道路/空地的相对方位。开阔处效果好，高楼遮挡处可能漂移，备注写明。", kind: .arTrack),
     ]
     static let yinzhaiTasks: [SurveyTask] = [
         .init(id: "h_bei", title: "罗盘·碑向", instruction: "站在墓碑正前方，面朝碑面方向（即朝山方向），到罗盘页记录「碑向朝外」；再转身记录坐方。", kind: .heading),
@@ -607,7 +607,7 @@ final class SurveyStore: ObservableObject {
             }
         }
         if !cd.analysisText.isEmpty {
-            s += "\n本地排盘结论（App 离线推演，流派层口径）\n----------------\n\(cd.analysisText)\n"
+            s += "\n本地排盘结论（应用离线推演，流派层口径）\n----------------\n\(cd.analysisText)\n"
         }
         return s
     }
@@ -670,7 +670,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         return d
     }
     var coordinateText: String {
-        guard let l = currentLocation else { return "GPS 未定位" }
+        guard let l = currentLocation else { return "尚未定位" }
         return String(format: "%.6f, %.6f", l.coordinate.latitude, l.coordinate.longitude)
     }
     var accuracyWarning: String? {
@@ -1117,7 +1117,7 @@ struct RoomScanView: View {
             } else {
                 ContentUnavailableView("本机型没有激光雷达",
                                        systemImage: "cube.transparent.slash",
-                                       description: Text("3D 户型扫描需要带 LiDAR 的 iPhone Pro 机型；普通机型请用照片＋手绘平面代替，本项可跳过。"))
+                                       description: Text("三维户型扫描需要带激光雷达的苹果手机高端机型；普通机型请用照片＋手绘平面代替，本项可跳过。"))
             }
         }
         .navigationTitle(task.title)
@@ -1286,7 +1286,7 @@ struct OnboardingView: View {
     var onDone: () -> Void
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            LazyVStack(alignment: .leading, spacing: 20) {
                 HStack(spacing: 14) {
                     AppLogoView(size: 68)
                     VStack(alignment: .leading, spacing: 4) {
@@ -1300,20 +1300,20 @@ struct OnboardingView: View {
                         .font(.callout).foregroundStyle(Ky.ink)
                     Text("· 奇门与相法：拆补法时家奇门九宫断事；Vision 21 点手相几何测量与三停面相校准。")
                         .font(.callout).foregroundStyle(Ky.ink)
-                    Text("· 风水勘察：按 SOP 任务单拍照录像，罗盘真北与二十四山随图烙印打包。")
+                    Text("· 风水勘察：按作业标准任务单拍照录像，罗盘真北与二十四山随图烙印打包。")
                         .font(.callout).foregroundStyle(Ky.ink)
                 }.kyCard()
 
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "数据隐私", trailing: "100% 本地")
-                    Text("人物档案、前瞻回验账本、手相描线与勘察案件全部只存在本机 Documents 目录；仅在你主动点击「远程上传」时才发往你自己的私有服务。")
+                    Text("人物档案、前瞻回验账本、手相描线与勘察案件全部只存在本机目录；仅在你主动点击「远程上传」时才发往你自己的私有服务。")
                         .font(.callout).foregroundStyle(Ky.ink)
                     Text("权限用到才申请：相机、定位、运动传感器均在进入对应勘察页面时按需请求。")
                         .font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
 
                 Button("进入三术合参", action: onDone).buttonStyle(KyPrimaryButton())
-                Text("提示：覆盖安装新版本 IPA 会完整保留本机数据；直接删除 App 会清空本地目录，重要档案请定期导出备份。")
+                Text("提示：覆盖安装新版本安装包会完整保留本机数据；直接删除应用会清空本地目录，重要档案请定期导出备份。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(.horizontal, 20)
@@ -1349,7 +1349,7 @@ final class FPSMonitor: ObservableObject {
 struct FPSPill: View {
     @StateObject private var monitor = FPSMonitor()
     var body: some View {
-        Text("\(Int(monitor.fps)) FPS")
+        Text("\(Int(monitor.fps))帧")
             .font(.system(size: 11, weight: .bold, design: .monospaced))
             .foregroundStyle(monitor.fps >= 110 ? Ky.jade : (monitor.fps >= 55 ? Ky.gold : Ky.cinnabar))
             .padding(.horizontal, 8).padding(.vertical, 4)
@@ -1448,7 +1448,7 @@ struct HomePageView: View {
             if remain <= 7 {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.shield.fill").foregroundStyle(Ky.cinnabar)
-                    Text(remain >= 0 ? "签名证书还有 \(remain) 天到期，请提前续签覆盖安装（本机数据全部保留）。" : "签名证书已到期：续签后覆盖安装即可恢复打开，切勿删除 App。")
+                    Text(remain >= 0 ? "签名证书还有 \(remain) 天到期，请提前续签覆盖安装（本机数据全部保留）。" : "签名证书已到期：续签后覆盖安装即可恢复打开，切勿删除应用。")
                         .font(.caption).foregroundStyle(Ky.ink)
                 }.kyCard()
             }
@@ -1811,7 +1811,7 @@ struct KanyuWorkbenchTabView: View {
     private var mediaTotal: Int { store.cases.reduce(0) { $0 + $1.media.count } }
     private var dailyTip: String {
         let tips = [
-            "测坐向先过磁干扰关：磁场强度 25–65 µT 才正常；摘磁吸壳，离汽车、钢筋 2 米以上。",
+            "测坐向先过磁干扰关：磁场强度 25–65 微特才正常；摘磁吸壳，离汽车、钢筋 2 米以上。",
             "煞先过三问：对位吗？有受体吗？有实害吗？三问不过，不成立。",
             "五黄所在宫宜静不宜动：当年不装修、不钻孔；以金泄土，一口金属钟足矣。",
             "路冲先做 L1：玄关折线、绿植消能带、防噪窗配遮光帘；摆件永远是最后一步。",
@@ -1828,7 +1828,7 @@ struct KanyuWorkbenchTabView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 heroCard
                 casesSection
                 surveyKnowledgeSection
@@ -1863,7 +1863,7 @@ struct KanyuWorkbenchTabView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("风水勘察工作台")
                         .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.instInk)
-                    Text("按 SOP 采集：罗盘定盘 · 气泡水平把关 · 照片方位烙印")
+                    Text("按作业标准采集：罗盘定盘 · 气泡水平把关 · 照片方位烙印")
                         .font(.caption2).foregroundStyle(Ky.instInk.opacity(0.72))
                 }
                 Spacer()
@@ -1928,7 +1928,7 @@ struct KanyuWorkbenchTabView: View {
                 VStack(spacing: 10) {
                     Image(systemName: "safari").font(.system(size: 36)).foregroundStyle(Ky.qingdai)
                     Text("尚无现场勘察案件").font(.headline).foregroundStyle(Ky.ink)
-                    Text("点击上方「新建勘察」，按 SOP 任务单测罗盘坐向、拍立面与明堂，一键生成本地玄空/八宅排盘与回传数据包。")
+                    Text("点击上方「新建勘察」，按作业标准任务单测罗盘坐向、拍立面与明堂，一键生成本地玄空/八宅排盘与回传数据包。")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
@@ -2010,7 +2010,7 @@ struct KanyuWorkbenchTabView: View {
         VStack(alignment: .leading, spacing: 10) {
             KySectionTitle(title: "档案设置", trailing: "口径 · 证书 · 备份")
             VStack(spacing: 10) {
-                kanyuLink("person.2.fill", "人物档案管理", "家人与客户生辰建档 · JSON 导入导出备份", Ky.qingdai) { PeopleView() }
+                kanyuLink("person.2.fill", "人物档案管理", "家人与客户生辰建档 · 数据导入导出备份", Ky.qingdai) { PeopleView() }
                 kanyuLink("slider.horizontal.3", "排盘口径与签名证书设置", "晚子时归日 · 紫微闰月 · 侧载证书到期提醒", Ky.jade) { CaliberSettingsView() }
             }
         }
@@ -2261,7 +2261,7 @@ struct CaseDetailView: View {
     }
     private func commit() { if let d = draft { store.update(d) } }
     private func kindText(_ k: TaskKind) -> String {
-        switch k { case .photo: return "拍照"; case .video: return "录像"; case .heading: return "罗盘"; case .scan3D: return "3D扫描"; case .arTrack: return "AR轨迹" }
+        switch k { case .photo: return "拍照"; case .video: return "录像"; case .heading: return "罗盘"; case .scan3D: return "三维扫描"; case .arTrack: return "实景轨迹" }
     }
 }
 
@@ -2284,7 +2284,7 @@ struct CompassView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            LazyVStack(spacing: 16) {
                 dial.frame(width: 260, height: 260).padding(.top, 8)
                 // 水平仪：气泡进小圈（倾斜≤3°）才算放平
                 HStack(spacing: 14) {
@@ -2314,12 +2314,12 @@ struct CompassView: View {
                     Text("磁北 \(CompassMath.format(location.displayMagneticHeading))" +
                          (location.declination != nil ? " · 磁偏角 \(String(format: "%+.1f°", location.declination!))（系统按定位自动校正）" : ""))
                         .font(.caption).foregroundStyle(.secondary)
-                    Text("GPS：\(location.coordinateText)").font(.caption).foregroundStyle(.secondary)
+                    Text("定位：\(location.coordinateText)").font(.caption).foregroundStyle(.secondary)
                     if let warn = location.accuracyWarning {
                         Text(warn).font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
                     }
                     if motion.fieldMicroTesla >= 0 {
-                        Text("磁场强度 \(String(format: "%.0f", motion.fieldMicroTesla)) µT（地磁场正常 25–65）\(motion.fieldAbnormal ? "：异常，附近有磁干扰" : "")")
+                        Text("磁场强度 \(String(format: "%.0f", motion.fieldMicroTesla)) 微特（地磁场正常 25–65）\(motion.fieldAbnormal ? "：异常，附近有磁干扰" : "")")
                             .font(.caption)
                             .foregroundStyle(motion.fieldAbnormal ? .red : .secondary)
                     }
@@ -2393,7 +2393,7 @@ struct CompassView: View {
             while collecting && trueSamples.count < 8 && collectTicks < 90 {
                 let acc = location.headingAccuracy
                 if motion.fieldAbnormal {
-                    collectHint = "磁场异常（\(String(format: "%.0f", motion.fieldMicroTesla)) µT）：附近有磁干扰，换个位置再测"
+                    collectHint = "磁场异常（\(String(format: "%.0f", motion.fieldMicroTesla)) 微特）：附近有磁干扰，换个位置再测"
                 } else if !motion.isLevelForCompass {
                     collectHint = "没放平，不采样：把气泡稳进绿圈（当前倾斜 \(String(format: "%.1f°", motion.flatTilt))）"
                 } else if location.displayTrueHeading >= 0 && acc >= 0 {
@@ -2702,7 +2702,7 @@ struct AnalysisView: View {
         let good = FengshuiEngine.displayPalaces.filter { $0 != "中" && FengshuiEngine.goodStars.contains(yn[$0] ?? "") }.map { "\($0)（\(yn[$0] ?? "")）" }.joined(separator: "、")
         lines.append("【流派层·八宅】\(sitPalace)宅四吉方：\(good)。门、床、灶优先落四吉方，四凶方宜作卫浴、储物、楼梯。")
         lines.append("【流年】\(annualYear) 年 \(FengshuiEngine.starNames[FengshuiEngine.annualStar(year: annualYear)])入中：五黄在 \(FengshuiEngine.displayPalaces.first(where: { FengshuiEngine.fly(center: FengshuiEngine.annualStar(year: annualYear), forward: true)[$0] == 5 }) ?? "—") 宫，该方当年忌动土。")
-        lines.append("【边界】以上为 App 本地规则推演（流派应用层）；形煞与 L1 结构问题以现场照片与回传复核为准。")
+        lines.append("【边界】以上为应用本地规则推演（流派应用层）；形煞与 L1 结构问题以现场照片与回传复核为准。")
         return lines
     }
 }
@@ -3046,9 +3046,9 @@ struct ShaJudgeView: View {
 
 struct KnowledgeView: View {
     private let cards: [(String, String)] = [
-        ("测法要点", "罗盘每点放平采样 8 次取圆周平均；磁场强度正常 25–65 µT，出界即磁干扰（汽车/钢筋/磁吸壳）；精度 ±20° 内才作正式样本；大门朝外/朝内两读数应差约 180°，偏差 >10° 必有一处受干扰，换位重测。坐向以真北为准入盘。"),
+        ("测法要点", "罗盘每点放平采样 8 次取圆周平均；磁场强度正常 25–65 微特，出界即磁干扰（汽车/钢筋/磁吸壳）；精度 ±20° 内才作正式样本；大门朝外/朝内两读数应差约 180°，偏差 >10° 必有一处受干扰，换位重测。坐向以真北为准入盘。"),
         ("实景判断总纲", "知识面是标准像，现场按变量变：先过三问（对位？有受体？有实害？），再以五变量加权定级——对位、距离、遮挡、体量、受体，合议为重/中/轻/不成立（判定页有工具）。排序：实害先于象意、形先于气、多派同指先改；吉凶同位不相抵（如旺位门遇路冲：留门化冲）；兼线两盘只取交集；公寓坐向户门与阳台双参；结论分甲（实测确定）/乙（流派推演）/丙（存疑待核）三档，丙档只给低成本可逆措施，禁止硬断。详版见知识库 10 号《实景判断学》。"),
-        ("玄空速记", "运盘：运星入中顺飞；山/向盘：运盘坐/向宫星入中，阳山顺飞、阴山逆飞。二十四山阴阳——阳：乾坤艮巽、甲庚丙壬、寅申巳亥；阴：子午卯酉、辰戌丑未、乙辛丁癸。飞行轨迹：中→乾→兑→艮→离→坎→坤→震→巽。本 App 为下卦盘，不替卦；兼线（两山界 ±3°）须在备注标注。"),
+        ("玄空速记", "运盘：运星入中顺飞；山/向盘：运盘坐/向宫星入中，阳山顺飞、阴山逆飞。二十四山阴阳——阳：乾坤艮巽、甲庚丙壬、寅申巳亥；阴：子午卯酉、辰戌丑未、乙辛丁癸。飞行轨迹：中→乾→兑→艮→离→坎→坤→震→巽。本应用为下卦盘，不替卦；兼线（两山界 ±3°）须在备注标注。"),
         ("八宅速记", "命卦：1900 年代男 (100−生年后两位)÷9、女 (生年后两位−4)÷9；2000 年后男 (99−生年后两位)÷9、女 (生年后两位＋6)÷9；余数定卦，5 男寄坤、女寄艮。出生年以立春为界，立春前归上一年；只记年份未核立春者，命卦可能差一年。游年变爻口诀：不变伏位、变上爻生气、变下爻祸害、变中爻绝命、变下中天医、变中上五鬼、变上下六煞、全变延年。四吉（生气/天医/延年/伏位）安门床灶，四凶（绝命/五鬼/六煞/祸害）置卫浴储物。东西四宅命须相配。"),
         ("形煞速查（峦头层）", "路冲、反弓、天斩（两楼夹缝）、穿心（路/廊直贯）、开门见灶、横梁压床、尖角冲门窗、明堂受压、房后无靠（地势下陷/空旷）、淋头水（高处水直冲）、孤高（独高无护）、探头山。只记事实与方位，不凭单煞下重断，与理气盘合参。"),
         ("调理分层", "L1 结构层（先做）：排水防渗、采光通风、动线与功能缺陷、房后固土排水。L2 流派层：玄空旺衰布门床灶、八宅四吉四凶安位。L3 民俗层：摆件、挂画等，只作心理安顿，不与 L1/L2 混卖、不承诺效力。顺序：先 L1，后 L2，L3 可有可无。"),
@@ -3095,7 +3095,7 @@ struct TaskDetailView: View {
                 } else if task.kind == .scan3D {
                     NavigationLink {
                         RoomScanView(task: task, draft: $draft)
-                    } label: { Label("开始 3D 扫描", systemImage: "cube.transparent") }
+                    } label: { Label("开始三维扫描", systemImage: "cube.transparent") }
                 } else if task.kind == .arTrack {
                     NavigationLink {
                         ARTrackView(task: task, draft: $draft)

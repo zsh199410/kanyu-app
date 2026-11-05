@@ -5,7 +5,7 @@ import UIKit
 
 enum ReportBuilder {
     static func lines(for person: Person) -> [String] {
-        let ch = BaziEngine.paipan(clock: person.birthDate, gender: person.gender,
+        let ch = BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,
                                    longitude: person.useLongitude ? person.longitude : nil)
         var L: [String] = []
         L.append("命书 · \(person.name)")

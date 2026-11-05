@@ -239,9 +239,9 @@ struct PersonDetailView: View {
 
     var body: some View {
         let p = activePerson
-        let ch = BaziEngine.paipan(clock: p.birthDate, gender: p.gender,
+        let ch = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender,
                                    longitude: p.useLongitude ? p.longitude : nil)
-        let zw = ZiweiEngine.chart(clock: p.birthDate, gender: p.gender,
+        let zw = ZiweiEngine.cachedChart(clock: p.birthDate, gender: p.gender,
                                    longitude: p.useLongitude ? p.longitude : nil)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
@@ -308,7 +308,7 @@ struct PersonDetailView: View {
                 ShareLink(item: url) {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.richtext.fill").foregroundStyle(Ky.cinnabar)
-                        Text("分享命书 PDF").font(.caption).fontWeight(.semibold)
+                        Text("分享命书文件").font(.caption).fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                     .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 10))
@@ -332,7 +332,7 @@ struct PersonDetailView: View {
                         } else {
                             Image(systemName: "doc.badge.gearshape").foregroundStyle(Ky.qingdai)
                         }
-                        Text(generatingPDF ? "生成 PDF 中…" : "生成命书 PDF").font(.caption).fontWeight(.semibold)
+                        Text(generatingPDF ? "生成文件中…" : "生成命书文件").font(.caption).fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                     .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 10))
