@@ -206,7 +206,7 @@ enum ZiweiEngine {
     }
 }
 
-// MARK: - 紫微页（录入＋方盘；方盘保形 4×4，点宫看三方四正）
+// MARK: - 紫微页 v5（修复 4×4 方盘中央重复渲染 4 个小格 Bug，实现真正中央 2×2 合并天心宫＋三方四正飞线）
 struct ZiweiHomeView: View {
     @State private var name = ""
     @State private var gender = "M"
@@ -216,43 +216,20 @@ struct ZiweiHomeView: View {
     @State private var chart: ZiweiChart?
     @StateObject private var peopleStore = PeopleStore()
     @State private var chartSnapshot = ""
+    @State private var savedTip = false
+    @State private var inputCollapsed = false
+
     private var inputSnapshot: String { "\(name)|\(gender)|\(birth.timeIntervalSince1970)|\(useLongitude)|\(longitudeText)" }
     private var isStale: Bool { chart != nil && chartSnapshot != inputSnapshot }
+
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 12) {
-                    if !peopleStore.people.isEmpty {
-                        Menu {
-                            ForEach(peopleStore.people) { p in
-                                Button("\(p.name)（\(p.gender == "M" ? "男" : "女")）") {
-                                    name = p.name; gender = p.gender; birth = p.birthDate
-                                    useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "person.crop.rectangle.stack").foregroundStyle(Ky.qingdai)
-                                Text("选已有人物（免重填）").font(.subheadline).foregroundStyle(Ky.qingdai)
-                                Spacer()
-                                Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
-                            }
-                        }
-                    }
-                    TextField("姓名（可空）", text: $name)
-                    Picker("性别", selection: $gender) { Text("男").tag("M"); Text("女").tag("F") }
-                        .pickerStyle(.segmented)
-                    BirthInputView(clock: $birth, useLongitude: $useLongitude, longitudeText: $longitudeText)
-                    Button("排紫微盘") {
-                        chart = ZiweiEngine.chart(clock: birth, gender: gender,
-                                                  longitude: useLongitude ? Double(longitudeText) : nil)
-                        chartSnapshot = inputSnapshot
-                    }.buttonStyle(KyPrimaryButton())
-                    if isStale {
-                        Text("输入已改动，下面是旧盘——点「排紫微盘」刷新。").font(.caption).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
-                    }
+            LazyVStack(alignment: .leading, spacing: 14) {
+                if chart != nil && inputCollapsed && !isStale {
+                    collapsedInputBar
+                } else {
+                    inputCard
                 }
-                .kyCard()
                 if let ch = chart {
                     ZiweiBoardView(chart: ch, name: name)
                     ZiweiYearView(chart: ch)
@@ -261,18 +238,139 @@ struct ZiweiHomeView: View {
                 NavigationLink { CaliberSettingsView() } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "slider.horizontal.3")
-                        Text("排盘口径设置（子时/闰月）").font(.caption)
+                        Text("排盘口径设置（三合派安星 · 晚子时/闰月口径 · 14例金标准对拍）").font(.caption)
                         Spacer()
                         Image(systemName: "chevron.right").font(.caption2)
-                    }.foregroundStyle(Ky.sub)
+                    }.foregroundStyle(Ky.sub).padding(.horizontal, 4)
                 }.buttonStyle(.plain)
-                Text("口径：三合派安星（晚子时/闰月口径在设置页可调），已与主流参照引擎 14 例逐项对拍；星曜亮度为《斗数全书》派表。")
-                    .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
         .background(Ky.bg)
         .navigationTitle("紫微斗数")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var collapsedInputBar: some View {
+        let s = BirthInputView.solarOf(birth)
+        return HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(name.isEmpty ? "当前紫微盘" : name)
+                        .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    KyBadge(text: gender == "M" ? "乾造（男）" : "坤造（女）", color: gender == "M" ? Ky.qingdai : Ky.cinnabar)
+                    if let ch = chart {
+                        KyBadge(text: ch.juName, color: Ky.gold)
+                    }
+                }
+                Text("公历 \(s.year)-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))" + (useLongitude ? " · 东经 \(longitudeText)°" : " · 钟表时间"))
+                    .font(KyV2.tabular(12)).foregroundStyle(Ky.sub)
+            }
+            Spacer()
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = false }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "slider.horizontal.below.rectangle")
+                    Text("改生辰")
+                }
+                .font(.caption).fontWeight(.semibold)
+                .padding(.horizontal, 10).padding(.vertical, 7)
+                .background(Ky.qingdai.opacity(0.13))
+                .foregroundStyle(Ky.qingdai)
+                .clipShape(Capsule())
+            }.buttonStyle(.plain)
+        }
+        .kyCard()
+    }
+
+    private var inputCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                KySectionTitle(title: "紫微安星录入", trailing: "天纪三合派")
+                if chart != nil {
+                    Button("收起") {
+                        withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
+                    }
+                    .font(.caption).foregroundStyle(Ky.qingdai)
+                }
+            }
+            if !peopleStore.people.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Label("速选：", systemImage: "person.crop.rectangle.stack")
+                            .font(.caption2).foregroundStyle(Ky.sub)
+                        ForEach(peopleStore.people.prefix(8)) { p in
+                            Button {
+                                name = p.name; gender = p.gender; birth = p.birthDate
+                                useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
+                                chart = ZiweiEngine.chart(clock: birth, gender: gender,
+                                                          longitude: useLongitude ? Double(longitudeText) : nil)
+                                chartSnapshot = inputSnapshot; savedTip = true; inputCollapsed = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(p.name.isEmpty ? "未命名" : p.name).fontWeight(.medium)
+                                    Text(p.gender == "M" ? "男" : "女").opacity(0.75)
+                                }
+                                .font(.caption)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(Ky.elevated)
+                                .foregroundStyle(Ky.ink)
+                                .clipShape(Capsule())
+                                .overlay(Capsule().stroke(Ky.line, lineWidth: 0.7))
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            HStack(spacing: 10) {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.text.rectangle").foregroundStyle(Ky.sub)
+                    TextField("命主姓名（可留空）", text: $name)
+                        .font(.subheadline)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 8)
+                .background(Ky.elevated)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+
+                Picker("性别", selection: $gender) {
+                    Text("乾造（男）").tag("M")
+                    Text("坤造（女）").tag("F")
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 156)
+            }
+            BirthInputView(clock: $birth, useLongitude: $useLongitude, longitudeText: $longitudeText)
+            Button("立即排紫微盘") {
+                chart = ZiweiEngine.chart(clock: birth, gender: gender,
+                                          longitude: useLongitude ? Double(longitudeText) : nil)
+                chartSnapshot = inputSnapshot; savedTip = false
+                withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
+            }.buttonStyle(KyPrimaryButton())
+            if isStale {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.clockwise.circle.fill")
+                    Text("生辰输入已改动，请点「立即排紫微盘」刷新盘面。")
+                }
+                .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
+            }
+            if chart != nil {
+                HStack(spacing: 10) {
+                    Button {
+                        peopleStore.upsert(Person(name: name.isEmpty ? "未命名" : name, gender: gender,
+                                                  birthEpoch: birth.timeIntervalSince1970,
+                                                  useLongitude: useLongitude, longitude: Double(longitudeText) ?? 107.8))
+                        savedTip = true
+                    } label: {
+                        Label(savedTip ? "已存入人物档案" : "存入人物档案（三术共用）",
+                              systemImage: savedTip ? "checkmark.circle.fill" : "person.crop.circle.badge.plus")
+                            .font(.caption).fontWeight(.semibold)
+                            .foregroundStyle(savedTip ? Ky.jade : Ky.qingdai)
+                    }.buttonStyle(.plain)
+                    Spacer()
+                }
+            }
+        }
+        .kyCard()
     }
 }
 
@@ -281,30 +379,36 @@ struct ZiweiBoardView: View {
     let name: String
     @State private var selected: Int? = nil
     @Environment(\.dynamicTypeSize) private var typeSize
-    // 方盘格位：branch → (row, col)
+
+    // 传统十二宫外框方位坐标（归一化到 4×4 网格的各宫中心点，供中宫三方四正连线指示）
     private static let cellPos: [Int: (Int, Int)] = [
         5: (0, 0), 6: (0, 1), 7: (0, 2), 8: (0, 3),
-        4: (1, 0), 9: (1, 3),
-        3: (2, 0), 10: (2, 3),
-        2: (3, 0), 1: (3, 1), 0: (3, 2), 11: (3, 3)]
+        4: (1, 0),                       9: (1, 3),
+        3: (2, 0),                      10: (2, 3),
+        2: (3, 0), 1: (3, 1), 0: (3, 2), 11: (3, 3)
+    ]
+
+    private var activeBranch: Int { selected ?? chart.mingGong }
     private var highlighted: Set<Int> {
-        guard let s = selected else { return [] }
-        return [s, (s + 4) % 12, (s + 8) % 12, (s + 6) % 12]   // 本宫＋三合＋对宫
+        let s = activeBranch
+        return [s, (s + 4) % 12, (s + 8) % 12, (s + 6) % 12]   // 本宫＋三合两宫＋对宫
     }
+
     var body: some View {
         if typeSize.isAccessibilitySize { textBoard } else { gridBoard }
     }
-    // 大字号合规形态：方盘变文字盘（HIG：布局适配所有字号不断裂）
+
+    // 大字号合规形态：方盘自动切换为高可读列表盘
     private var textBoard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("\(chart.juName) · 命宫\(ZiweiCore.DZ[chart.mingGong]) · 身宫\(chart.palaces[chart.shenGong].name)")
                 .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
             ForEach(chart.palaces.sorted { ($0.decadal.first ?? 0) < ($1.decadal.first ?? 0) }, id: \.branch) { p in
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(p.name).font(.callout).fontWeight(.bold).foregroundStyle(p.branch == chart.mingGong ? Ky.cinnabar : Ky.ink)
                         Text("\(p.stem)\(ZiweiCore.DZ[p.branch])").font(.caption).foregroundStyle(Ky.sub)
-                        if p.isBody { Text("身宫").font(.caption2).foregroundStyle(Ky.gold) }
+                        if p.isBody { KyBadge(text: "身宫", color: Ky.gold) }
                         Spacer()
                         Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.caption).foregroundStyle(Ky.sub)
                     }
@@ -319,88 +423,249 @@ struct ZiweiBoardView: View {
             }
         }
     }
+
+    // 标准传统 4×4 紫微方盘：外围 12 宫 + 中央合并 2×2 天心宫（彻底修复旧版 4 个重复小圆圈问题）
     private var gridBoard: some View {
-        VStack(spacing: 10) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
-                ForEach(0..<16, id: \.self) { idx in
-                    let row = idx / 4; let col = idx % 4
-                    if let branch = Self.cellPos.first(where: { $0.value == (row, col) })?.key {
-                        cell(chart.palaces[branch])
-                    } else {
-                        centerCell
-                    }
+        let cellH: CGFloat = 114
+        let gap: CGFloat = 5
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                KySectionTitle(title: "紫微十二宫方盘", trailing: "点任意宫位切换三方四正")
+                if selected != nil {
+                    Button("回命宫") { selected = nil }
+                        .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                 }
             }
-            if let s = selected {
-                let p = chart.palaces[s]
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("已选\(p.name)（\(p.stem)\(ZiweiCore.DZ[p.branch])）：高亮为其三方四正——本宫、三合两宫与对宫，读盘时四宫合看。")
-                        .font(.caption).foregroundStyle(Ky.sub)
-                    Text("飞化：" + ZiweiCore.flyFrom(chart, branch: s).map { "\($0.star)化\($0.kind)入\($0.target)" }.joined(separator: " · "))
-                        .font(.caption).foregroundStyle(Ky.ink)
-                    if let selfT = ZiweiCore.selfTransforms(chart)[s] {
-                        Text("本宫自化：" + selfT.joined(separator: "、") + "（自化者，该议题自己生变，不待外力）")
-                            .font(.caption).foregroundStyle(Ky.gold)
-                    }
+
+            VStack(spacing: gap) {
+                // 顶行：巳(5) · 午(6) · 未(7) · 申(8)
+                HStack(spacing: gap) {
+                    cell(chart.palaces[5], height: cellH)
+                    cell(chart.palaces[6], height: cellH)
+                    cell(chart.palaces[7], height: cellH)
+                    cell(chart.palaces[8], height: cellH)
                 }
-            } else {
-                Text("点任一宫，高亮它的三方四正。").font(.caption).foregroundStyle(Ky.sub)
+
+                // 中间两行：左列 辰(4)/卯(3) + 中央合并 2×2 天心宫 + 右列 酉(9)/戌(10)
+                HStack(spacing: gap) {
+                    VStack(spacing: gap) {
+                        cell(chart.palaces[4], height: cellH)
+                        cell(chart.palaces[3], height: cellH)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    centerPalaceView(height: cellH * 2 + gap)
+                        .frame(maxWidth: .infinity)
+                        .layoutPriority(1)
+
+                    VStack(spacing: gap) {
+                        cell(chart.palaces[9], height: cellH)
+                        cell(chart.palaces[10], height: cellH)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                // 底行：寅(2) · 丑(1) · 子(0) · 亥(11)
+                HStack(spacing: gap) {
+                    cell(chart.palaces[2], height: cellH)
+                    cell(chart.palaces[1], height: cellH)
+                    cell(chart.palaces[0], height: cellH)
+                    cell(chart.palaces[11], height: cellH)
+                }
             }
+
+            // 选中宫位的三方四正与飞化详单
+            selectedPalaceDetailBar
         }
+        .kyCard()
     }
-    private var centerCell: some View {
-        ZStack {
-            Circle().stroke(Ky.gold.opacity(0.5), lineWidth: 1).padding(6)
-            Circle().stroke(Ky.ink.opacity(0.25), lineWidth: 0.7).padding(10)
-            VStack(spacing: 3) {
-            Text(name.isEmpty ? "紫微盘" : name).font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-            Text(chart.juName).font(.caption).foregroundStyle(Ky.gold)
-            Text(chart.lunarText).font(.system(size: 9)).foregroundStyle(Ky.sub)
-                .multilineTextAlignment(.center).lineLimit(3)
+
+    // 中央 2×2 合并天心宫（展示命主信息、五行局、命身主星及当前选中宫位的三方四正罗盘指示）
+    private func centerPalaceView(height: CGFloat) -> some View {
+        let p = chart.palaces[activeBranch]
+        let opp = chart.palaces[(activeBranch + 6) % 12]
+        let tri1 = chart.palaces[(activeBranch + 4) % 12]
+        let tri2 = chart.palaces[(activeBranch + 8) % 12]
+        return ZStack {
+            // 淡淡的传统罗经三方四正示意底纹
+            Canvas { ctx, size in
+                let c = CGPoint(x: size.width / 2, y: size.height / 2)
+                let r = min(size.width, size.height) * 0.42
+                ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
+                           with: .color(Ky.gold.opacity(0.22)), lineWidth: 0.9)
+                func dirPoint(_ branch: Int) -> CGPoint {
+                    guard let rc = Self.cellPos[branch] else { return c }
+                    let nx = (CGFloat(rc.1) - 1.5) / 1.5
+                    let ny = (CGFloat(rc.0) - 1.5) / 1.5
+                    return CGPoint(x: c.x + nx * (size.width * 0.46), y: c.y + ny * (size.height * 0.46))
+                }
+                let p0 = dirPoint(activeBranch)
+                let pOpp = dirPoint((activeBranch + 6) % 12)
+                let pT1 = dirPoint((activeBranch + 4) % 12)
+                let pT2 = dirPoint((activeBranch + 8) % 12)
+
+                var triPath = Path()
+                triPath.move(to: p0); triPath.addLine(to: pT1); triPath.addLine(to: pT2); triPath.closeSubpath()
+                ctx.stroke(triPath, with: .color(Ky.qingdai.opacity(0.32)),
+                           style: StrokeStyle(lineWidth: 1.1, dash: [4, 3]))
+
+                var oppPath = Path()
+                oppPath.move(to: p0); oppPath.addLine(to: pOpp)
+                ctx.stroke(oppPath, with: .color(Ky.cinnabar.opacity(0.38)),
+                           style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
             }
+
+            VStack(spacing: 5) {
+                Text(name.isEmpty ? "紫微命盘" : name)
+                    .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                HStack(spacing: 5) {
+                    KyBadge(text: chart.juName, color: Ky.qingdai)
+                    KyBadge(text: "命宫·\(ZiweiCore.DZ[chart.mingGong])", color: Ky.cinnabar)
+                    KyBadge(text: "身·\(chart.palaces[chart.shenGong].name)", color: Ky.gold)
+                }
+                Text(chart.lunarText)
+                    .font(.system(size: 10)).foregroundStyle(Ky.sub)
+                    .multilineTextAlignment(.center).lineLimit(2)
+                    .padding(.horizontal, 6)
+
+                Divider().padding(.horizontal, 12).opacity(0.5)
+
+                VStack(spacing: 2) {
+                    Text("当前聚焦：\(p.name)（\(p.stem)\(ZiweiCore.DZ[p.branch])）")
+                        .font(.system(size: 11, weight: .bold)).foregroundStyle(Ky.qingdai)
+                    Text("对宫 \(opp.name) · 三合 \(tri1.name) / \(tri2.name)")
+                        .font(.system(size: 10)).foregroundStyle(Ky.sub)
+                }
+            }
+            .padding(8)
         }
-        .frame(maxWidth: .infinity, minHeight: 104)
-        .background(Ky.bg).clipShape(RoundedRectangle(cornerRadius: 8))
+        .frame(minWidth: 168, maxWidth: .infinity)
+        .frame(height: height)
+        .background(Ky.elevated.opacity(0.55))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Ky.line, lineWidth: 0.8))
     }
-    private func cell(_ p: ZiweiPalace) -> some View {
-        let isSel = selected == p.branch
-        let isHL = highlighted.contains(p.branch)
-        return VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 3) {
-                Text(p.name).font(.system(size: 11)).fontWeight(.semibold)
-                    .foregroundStyle(p.branch == chart.mingGong ? Ky.cinnabar : Ky.ink)
-                if p.isBody { Text("身").font(.system(size: 8)).foregroundStyle(Ky.gold) }
+
+    private var selectedPalaceDetailBar: some View {
+        let p = chart.palaces[activeBranch]
+        let fly = ZiweiCore.flyFrom(chart, branch: activeBranch)
+        let selfT = ZiweiCore.selfTransforms(chart)[activeBranch]
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 6) {
+                KyBadge(text: "\(p.name)（\(p.stem)\(ZiweiCore.DZ[p.branch])）", color: Ky.qingdai, filled: true)
+                Text("大限 \(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁")
+                    .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.ink)
                 Spacer()
-                Text("\(p.stem)\(ZiweiCore.DZ[p.branch])").font(.system(size: 8)).foregroundStyle(Ky.sub)
+                Text("三方四正已标亮").font(.caption2).foregroundStyle(Ky.sub)
             }
-            ForEach(p.majors.indices, id: \.self) { i in
+            Text("宫干四化飞星：" + fly.map { "\($0.star)化\($0.kind)入\($0.target)" }.joined(separator: " · "))
+                .font(.caption).foregroundStyle(Ky.ink)
+            if let st = selfT {
+                Text("本宫自化：" + st.joined(separator: "、") + "（自化者，该宫事项由自身内因触发变动）")
+                    .font(.caption).fontWeight(.medium).foregroundStyle(Ky.cinnabar)
+            }
+        }
+        .kySubCard()
+    }
+
+    private func cell(_ p: ZiweiPalace, height: CGFloat) -> some View {
+        let isSel = activeBranch == p.branch
+        let isHL = highlighted.contains(p.branch)
+        let isMing = p.branch == chart.mingGong
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                selected = p.branch
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 2.5) {
+                // 顶部：宫名＋命/身标记＋宫干支
                 HStack(spacing: 2) {
-                    Text(p.majors[i].star).font(.system(size: 13, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text(ZiweiBrightness.of(p.majors[i].star, branch: p.branch))
-                        .font(.system(size: 8)).foregroundStyle(Ky.sub)
-                    if let m = p.majors[i].mutagen {
-                        Text(m).font(.system(size: 8)).fontWeight(.bold)
-                            .foregroundStyle(m == "忌" ? Ky.cinnabar : Ky.gold)
+                    Text(p.name)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(isMing ? Ky.cinnabar : (isSel ? Ky.qingdai : Ky.ink))
+                    if p.isBody {
+                        Text("身")
+                            .font(.system(size: 8, weight: .bold))
+                            .padding(.horizontal, 3).padding(.vertical, 0.5)
+                            .background(Ky.gold.opacity(0.2)).foregroundStyle(Ky.gold)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                    }
+                    Spacer(minLength: 1)
+                    Text("\(p.stem)\(ZiweiCore.DZ[p.branch])")
+                        .font(.system(size: 9))
+                        .foregroundStyle(Ky.sub)
+                }
+
+                // 主星＋亮度＋生年四化徽章
+                if p.majors.isEmpty {
+                    Text("无主星·借对宫")
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(Ky.sub.opacity(0.75))
+                        .padding(.vertical, 2)
+                } else {
+                    ForEach(p.majors.indices, id: \.self) { i in
+                        let mj = p.majors[i]
+                        let bright = ZiweiBrightness.of(mj.star, branch: p.branch)
+                        HStack(spacing: 2) {
+                            Text(mj.star)
+                                .font(.system(size: 12.5, weight: .bold, design: .serif))
+                                .foregroundStyle(Ky.ink)
+                            if !bright.isEmpty {
+                                Text(bright)
+                                    .font(.system(size: 8.5))
+                                    .foregroundStyle(bright == "陷" || bright == "不" ? Ky.cinnabar.opacity(0.8) : Ky.sub)
+                            }
+                            if let m = mj.mutagen {
+                                Text(m)
+                                    .font(.system(size: 8.5, weight: .bold))
+                                    .padding(.horizontal, 3.5).padding(.vertical, 0.5)
+                                    .background(m == "忌" ? Ky.cinnabar : Ky.qingdai)
+                                    .foregroundStyle(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                            }
+                        }
+                    }
+                }
+
+                // 辅星/杂曜
+                if !p.minors.isEmpty {
+                    Text(p.minors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: " "))
+                        .font(.system(size: 8.5))
+                        .foregroundStyle(Ky.sub)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+
+                // 底部：大限区间＋自化标记
+                HStack(spacing: 2) {
+                    Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0)")
+                        .font(KyV2.tabular(9, weight: .medium))
+                        .foregroundStyle(Ky.sub)
+                    Spacer(minLength: 0)
+                    if let selfT = ZiweiCore.selfTransforms(chart)[p.branch] {
+                        Text(selfT.joined(separator: ""))
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(Ky.gold)
+                            .lineLimit(1)
                     }
                 }
             }
-            if !p.minors.isEmpty {
-                Text(p.minors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: " ")).font(.system(size: 9)).foregroundStyle(Ky.sub).lineLimit(2)
-            }
-            Spacer()
-            Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0)").font(.system(size: 9)).foregroundStyle(Ky.sub)
-            if let selfT = ZiweiCore.selfTransforms(chart)[p.branch] {
-                Text(selfT.joined(separator: " ")).font(.system(size: 8)).fontWeight(.bold).foregroundStyle(Ky.gold).lineLimit(1)
-            }
+            .padding(5.5)
+            .frame(maxWidth: .infinity, minHeight: height, maxHeight: height, alignment: .topLeading)
+            .opacity(isHL ? 1.0 : 0.58)
+            .background(isSel ? Ky.qingdai.opacity(0.11) : (isHL ? Ky.gold.opacity(0.08) : Ky.card))
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+            .overlay(
+                RoundedRectangle(cornerRadius: 9)
+                    .stroke(isSel ? Ky.qingdai : (isMing ? Ky.cinnabar.opacity(0.6) : (isHL ? Ky.gold.opacity(0.65) : Ky.line)),
+                            lineWidth: isSel ? 1.5 : (isMing || isHL ? 1.0 : 0.6))
+            )
         }
-        .padding(5)
-        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
-        .opacity(selected != nil && !isHL ? 0.42 : 1)
-        .background(isSel ? Ky.gold.opacity(0.22) : isHL ? Ky.gold.opacity(0.10) : Ky.card)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .onTapGesture { selected = isSel ? nil : p.branch }
+        .buttonStyle(.plain)
     }
 }
+
 // 紫微星曜亮度（《斗数全书》派 SB_QS 表，源自工作室天纪仓库 school-tables，星×十二宫全量）：
 
 enum ZiweiBrightness {
@@ -530,9 +795,15 @@ struct ZiweiReadingView: View {
     let chart: ZiweiChart
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            KySectionTitle(title: "天纪三合解读", trailing: "命身 · 三方 · 四化 · 大限")
             ForEach(ZiweiReading.cards(chart: chart), id: \.title) { c in
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(c.title).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                    HStack {
+                        Text(c.title)
+                            .font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Spacer()
+                        KyBadge(text: "天纪口径", color: Ky.qingdai)
+                    }
                     EvidenceChainView(conclusion: c.conclusion, links: [("盘面", c.facts)])
                 }
                 .kyCard()
@@ -541,7 +812,7 @@ struct ZiweiReadingView: View {
     }
 }
 
-// MARK: - 紫微流年层（流年命宫/流年宫名/流年四化/小限：文墨收费项，此处全给）
+// MARK: - 紫微流年层（流年命宫/流年宫名/流年四化/小限）
 struct ZiweiYearView: View {
     let chart: ZiweiChart
     @State private var year = Calendar.current.component(.year, from: Date())
@@ -554,37 +825,47 @@ struct ZiweiYearView: View {
         let age = year - chart.birthYear + 1
         let xiao = ZiweiCore.xiaoxian(birthYearBranch: chart.birthYearBranch, age: max(age, 1), isMale: chart.isMale)
         let muts = ZiweiCore.mutagens(ofStem: String(yStem))
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                KySectionTitle(title: "流年", trailing: "\(year) \(yStem)\(ZiweiCore.DZ[yBranch])年")
-                Spacer()
-                Stepper("", value: $year, in: 1950...2100).labelsHidden()
+                KySectionTitle(title: "流年与小限推演", trailing: "\(year) \(yStem)\(ZiweiCore.DZ[yBranch])年")
+                Button { year = max(1950, year - 1) } label: {
+                    Image(systemName: "chevron.left").frame(width: 26, height: 26).background(Ky.elevated).clipShape(Circle())
+                }.accessibilityLabel("上一年")
+                Button { year = min(2100, year + 1) } label: {
+                    Image(systemName: "chevron.right").frame(width: 26, height: 26).background(Ky.elevated).clipShape(Circle())
+                }.accessibilityLabel("下一年")
             }
-            HStack(spacing: 14) {
+            HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("流年命宫").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(chart.palaces[yBranch].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text(chart.palaces[yBranch].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.qingdai)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text("小限（虚岁 \(age)）").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(chart.palaces[xiao].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text(chart.palaces[xiao].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.gold)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text("流年四化").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(muts.map { "\($0.star)\($0.kind)" }.joined(separator: " ")).font(.caption).fontWeight(.semibold)
-                        .foregroundStyle(Ky.ink)
+                    Text(muts.map { "\($0.star)\($0.kind)" }.joined(separator: " "))
+                        .font(.caption).fontWeight(.bold).foregroundStyle(Ky.ink).lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
             }
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                 ForEach(0..<12, id: \.self) { b in
                     HStack(spacing: 4) {
                         Text(names[b] ?? "").font(.caption2).fontWeight(names[b] == "命宫" ? .bold : .regular)
                             .foregroundStyle(names[b] == "命宫" ? Ky.cinnabar : Ky.ink)
-                        Text(chart.palaces[b].name).font(.caption2).foregroundStyle(Ky.sub)
+                        Spacer(minLength: 0)
+                        Text(chart.palaces[b].name).font(.system(size: 10)).foregroundStyle(Ky.sub)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 7).padding(.vertical, 5)
-                    .background(b == yBranch ? Ky.gold.opacity(0.14) : Ky.bg)
+                    .background(b == yBranch ? Ky.qingdai.opacity(0.14) : Ky.elevated)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
             }
@@ -594,17 +875,17 @@ struct ZiweiYearView: View {
             let mMuts = ZiweiCore.mutagens(ofStem: String(ZiweiCore.TG[mStemIdx % 10]))
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("流月命宫（农历 \(lmonth) 月）").font(.caption2).foregroundStyle(Ky.sub)
+                    Text("斗君流月命宫（农历 \(lmonth) 月）").font(.caption2).foregroundStyle(Ky.sub)
                     Text(chart.palaces[mp].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("流月四化").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(mMuts.map { "\($0.star)\($0.kind)" }.joined(separator: " ")).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                    Text(mMuts.map { "\($0.star)\($0.kind)" }.joined(separator: " ")).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                 }
                 Stepper("", value: $lmonth, in: 1...12).labelsHidden()
             }
-            Text("读法：流年命宫定今年的舞台，流年四化定今年的引线，小限看自身状态；与大限宫位叠看（限年同宫议题最重）。流月以斗君起宫（本引擎已与参照三例拟合）。")
+            Text("读法：流年命宫定当年舞台，流年四化定引动方向，小限看自身感受；与大限宫位叠看。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }.kyCard()
     }

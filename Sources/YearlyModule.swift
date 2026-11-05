@@ -79,6 +79,8 @@ enum YearEngine {
 struct YearByYearView: View {
     let chart: BaziChart
     let name: String
+    @State private var onlyKeyYears = false
+
     private var years: [Int] {
         let now = Calendar.current.component(.year, from: Date())
         if now < chart.qiyunYear {
@@ -91,29 +93,85 @@ struct YearByYearView: View {
         }
         return Array(now...(now + 9))
     }
+
+    private func levelStyle(_ level: String) -> (Color, Bool) {
+        switch level {
+        case "关口级": return (Ky.cinnabar, true)
+        case "主线": return (Ky.qingdai, false)
+        case "参考": return (Ky.gold, false)
+        default: return (Ky.sub, false)
+        }
+    }
+
     var body: some View {
+        let nowYear = Calendar.current.component(.year, from: Date())
+        let displayYears = years.filter { y in
+            if !onlyKeyYears { return true }
+            let lv = YearEngine.report(chart: chart, year: y).level
+            return lv == "关口级" || lv == "主线" || y == nowYear
+        }
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
-                ForEach(years, id: \.self) { y in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("当前运与下步运（共 \(years.count) 年）")
+                            .font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text("按「冲＞刑＞穿＞合＞破·伏吟」四查定级")
+                            .font(.caption2).foregroundStyle(Ky.sub)
+                    }
+                    Spacer()
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.16)) { onlyKeyYears.toggle() }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: onlyKeyYears ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                            Text(onlyKeyYears ? "仅看关键年" : "全部年份")
+                        }
+                        .font(.caption).fontWeight(.semibold)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(onlyKeyYears ? Ky.qingdai : Ky.elevated)
+                        .foregroundStyle(onlyKeyYears ? Color.white : Ky.ink)
+                        .clipShape(Capsule())
+                    }.buttonStyle(.plain)
+                }.kyCard()
+
+                ForEach(displayYears, id: \.self) { y in
                     let r = YearEngine.report(chart: chart, year: y)
-                    VStack(alignment: .leading, spacing: 6) {
+                    let isNow = (y == nowYear)
+                    let st = levelStyle(r.level)
+                    let age = y - chart.birthYear
+                    VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
-                            Text("\(y) · \(r.gz)").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-                            Text(r.level).font(.caption2).fontWeight(.semibold)
-                                .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(r.level == "关口级" ? Ky.cinnabar.opacity(0.16)
-                                            : r.level == "主线" ? Ky.gold.opacity(0.18) : Ky.bg)
-                                .foregroundStyle(r.level == "关口级" ? Ky.cinnabar : Ky.ink)
-                                .clipShape(Capsule())
+                            Text("\(y) · \(r.gz)年")
+                                .font(.system(.headline, design: .serif)).fontWeight(.bold)
+                                .foregroundStyle(isNow ? Ky.qingdai : Ky.ink)
+                            if age >= 0 {
+                                Text("\(age) 岁").font(KyV2.tabular(12)).foregroundStyle(Ky.sub)
+                            }
+                            if isNow {
+                                KyBadge(text: "今年", color: Ky.qingdai, filled: true)
+                            }
                             Spacer()
+                            KyBadge(text: r.level, color: st.0, filled: st.1)
                         }
                         ForEach(r.lines.indices, id: \.self) { i in
-                            Text(r.lines[i]).font(.callout).foregroundStyle(Ky.ink)
+                            HStack(alignment: .top, spacing: 6) {
+                                Circle().fill(st.0).frame(width: 5, height: 5).padding(.top, 7)
+                                Text(r.lines[i])
+                                    .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
+                            }
                         }
                     }
-                    .kyCard()
+                    .padding(15)
+                    .background(isNow ? Ky.qingdai.opacity(0.06) : Ky.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(isNow ? Ky.qingdai : (r.level == "关口级" ? Ky.cinnabar.opacity(0.55) : Ky.line),
+                                    lineWidth: isNow || r.level == "关口级" ? 1.3 : 0.8)
+                    )
                 }
-                Text("口径：逐年四查规则生成（引动分级＋岁运叠加＋干支定性），重断须 ≥2 项强引动同现；健康只给倾向、六亲生死类断语不在 App 层出现——细断以正式报告为准。")
+                Text("口径：逐年四查规则生成（引动分级＋岁运叠加＋干支定性），重断须 ≥2 项强引动同现；健康只给倾向、六亲生死类断语不在 App 层出现。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
@@ -123,12 +181,15 @@ struct YearByYearView: View {
     }
 }
 
-// MARK: - 逐年全程（1 岁到老年）＋人生规划：每一年 = 干支解说（逐年四查）＋当年规划
+// MARK: - 逐年全程（1 岁到 88 岁）＋人生八阶段过滤导航
 struct LifePlanView: View {
     let chart: BaziChart
     let name: String
     private let reps: [YearEngine.YearReport]
     private let stageList: [Stage]
+    @State private var selectedStage: Int = -1   // -1 表示全阶段，0..7 表示对应阶段
+    @State private var onlyKeyYears: Bool = false
+
     init(chart: BaziChart, name: String) {
         self.chart = chart
         self.name = name
@@ -171,60 +232,116 @@ struct LifePlanView: View {
 
     var body: some View {
         let stages = stageList
+        let filteredReps = reps.filter { r in
+            let age = r.year - chart.birthYear
+            let matchStage = selectedStage < 0 || stages[selectedStage].range.contains(age)
+            let matchKey = !onlyKeyYears || r.level == "关口级" || r.level == "主线"
+            return matchStage && matchKey
+        }
+
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("从 1 岁到 88 岁，逐年按八字说清：每一年先给干支解说（流年怎么引动你的盘），再给当年的规划——哪年进取、哪年守成、哪年攒本钱，一年一条，照着排人生大事。")
-                        .font(.callout).foregroundStyle(Ky.ink)
-                    Text("阶段规划是总纲，逐年是细则；两者冲突时以逐年定级为准（关口年优先守）。")
-                        .font(.caption).foregroundStyle(Ky.sub)
+                // 顶部阶段与关键年筛选栏（解决 88 年超长滚动迷失痛点）
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("人生八阶段 · 1至88岁全程推演")
+                            .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Spacer()
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.16)) { onlyKeyYears.toggle() }
+                        } label: {
+                            Text(onlyKeyYears ? "仅关键年" : "全部年份")
+                                .font(.caption).fontWeight(.semibold)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(onlyKeyYears ? Ky.cinnabar : Ky.elevated)
+                                .foregroundStyle(onlyKeyYears ? Color.white : Ky.ink)
+                                .clipShape(Capsule())
+                        }.buttonStyle(.plain)
+                    }
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 7) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.16)) { selectedStage = -1 }
+                            } label: {
+                                Text("全部阶段 (1–88岁)")
+                                    .font(.caption).fontWeight(selectedStage == -1 ? .bold : .medium)
+                                    .padding(.horizontal, 11).padding(.vertical, 6)
+                                    .background(selectedStage == -1 ? Ky.qingdai : Ky.elevated)
+                                    .foregroundStyle(selectedStage == -1 ? Color.white : Ky.ink)
+                                    .clipShape(Capsule())
+                            }.buttonStyle(.plain)
+
+                            ForEach(stages.indices, id: \.self) { si in
+                                let active = selectedStage == si
+                                let st = stages[si]
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.16)) { selectedStage = si }
+                                } label: {
+                                    Text("\(st.name) (\(st.range.lowerBound)–\(st.range.upperBound))")
+                                        .font(.caption).fontWeight(active ? .bold : .medium)
+                                        .padding(.horizontal, 11).padding(.vertical, 6)
+                                        .background(active ? Ky.qingdai : Ky.elevated)
+                                        .foregroundStyle(active ? Color.white : Ky.ink)
+                                        .clipShape(Capsule())
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
                 }.kyCard()
 
-                Text("人生八阶段 · 总规划").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-                ForEach(stages.indices, id: \.self) { si in
+                // 阶段总纲卡（选全部时展示全部阶段总纲，选单阶段时只置顶展示该阶段总纲）
+                KySectionTitle(title: "阶段总规划", trailing: selectedStage < 0 ? "八阶段全览" : stages[selectedStage].name)
+                ForEach(stages.indices.filter { selectedStage < 0 || $0 == selectedStage }, id: \.self) { si in
                     let st = stages[si]
                     let keys = reps.filter { st.range.contains($0.year - chart.birthYear) && ($0.level == "关口级" || $0.level == "主线") }
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 7) {
                         HStack(spacing: 8) {
-                            Text(st.name).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                            Text("\(st.range.lowerBound)–\(st.range.upperBound) 岁").font(.caption2).foregroundStyle(Ky.sub)
+                            Text(st.name).font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            KyBadge(text: "\(st.range.lowerBound)–\(st.range.upperBound) 岁", color: Ky.qingdai)
+                            Spacer()
                         }
-                        Text(st.theme).font(.callout).foregroundStyle(Ky.ink)
+                        Text(st.theme).font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                         if !keys.isEmpty {
-                            Text("关键年：" + keys.map { "\($0.year)（\($0.year - chart.birthYear) 岁，\($0.level)）" }.joined(separator: "、"))
-                                .font(.caption).foregroundStyle(Ky.cinnabar)
+                            Text("本阶段重点年份：" + keys.map { "\($0.year)（\($0.year - chart.birthYear)岁·\($0.level)）" }.joined(separator: "、"))
+                                .font(.caption).fontWeight(.medium).foregroundStyle(Ky.cinnabar)
+                                .padding(8).frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Ky.cinnabar.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 7))
                         }
                     }.kyCard()
                 }
 
-                Text("逐年细则 · 1 岁到 88 岁").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-                ForEach(reps.indices, id: \.self) { i in
-                    let r = reps[i]
+                KySectionTitle(title: "逐年细则", trailing: "当前筛选共 \(filteredReps.count) 年")
+                ForEach(filteredReps.indices, id: \.self) { i in
+                    let r = filteredReps[i]
                     let age = r.year - chart.birthYear
                     let di = YearEngine.dayunIndex(chart: chart, year: r.year)
-                    VStack(alignment: .leading, spacing: 6) {
+                    let isGate = r.level == "关口级"
+                    let isMain = r.level == "主线"
+                    VStack(alignment: .leading, spacing: 7) {
                         HStack(spacing: 8) {
-                            Text("\(r.year) · \(age) 岁 · \(r.gz)").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-                            Text(r.level).font(.caption2).fontWeight(.semibold)
-                                .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(r.level == "关口级" ? Ky.cinnabar.opacity(0.16) : r.level == "主线" ? Ky.gold.opacity(0.18) : Ky.bg)
-                                .foregroundStyle(r.level == "关口级" ? Ky.cinnabar : Ky.ink)
-                                .clipShape(Capsule())
+                            Text("\(r.year) · \(age) 岁 · \(r.gz)")
+                                .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            KyBadge(text: r.level, color: isGate ? Ky.cinnabar : (isMain ? Ky.qingdai : Ky.sub), filled: isGate)
                             Spacer()
-                            Text(di.map { chart.dayunGanZhi[$0] + "运" } ?? "童限").font(.caption2).foregroundStyle(Ky.sub)
+                            Text(di.map { chart.dayunGanZhi[$0] + "运" } ?? "童限")
+                                .font(.caption).fontWeight(.medium).foregroundStyle(Ky.sub)
                         }
                         ForEach(r.lines.indices, id: \.self) { j in
-                            Text(r.lines[j]).font(.callout).foregroundStyle(Ky.ink)
+                            Text(r.lines[j]).font(.callout).foregroundStyle(Ky.ink).lineSpacing(2.5)
                         }
-                        Text(planText(level: r.level, age: age)).font(.callout).foregroundStyle(Ky.gold)
+                        Text(planText(level: r.level, age: age))
+                            .font(.caption).fontWeight(.medium).foregroundStyle(Ky.qingdai)
+                            .padding(9).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Ky.elevated).clipShape(RoundedRectangle(cornerRadius: 8))
                     }.kyCard()
                 }
-                Text("口径：逐年解说为四查规则生成（引动分级 冲＞刑＞穿＞合＞破·伏吟＋岁运叠加＋干支定性），规划按定级与人生阶段给出；健康只给倾向、六亲生死类断语不在 App 层出现。年龄按周岁计（生年为 0 岁）。")
+                Text("口径：逐年解说为四查规则生成（引动分级 冲＞刑＞穿＞合＞破·伏吟＋岁运叠加＋干支定性），年龄按周岁计。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
         .background(Ky.bg)
-        .navigationTitle(name.isEmpty ? "逐年全程规划" : "全程 · \(name)")
+        .navigationTitle(name.isEmpty ? "1–88岁全程规划" : "全程 · \(name)")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -1180,7 +1180,7 @@ struct AppLogoView: View {
     }
 }
 
-// MARK: - 主题层（v4.4：双主题 日间宣纸 / 夜间墨金，仪器页恒深；规范见 UI-DESIGN.md）
+// MARK: - 主题层（v5.0：日间「宋纸·青黛」/ 夜间「暗夜玄金」，仪器页恒深；对齐《模板规范-2026-10-29.md》）
 
 extension Color {
     init(rgb: UInt32) {
@@ -1197,32 +1197,42 @@ extension Color {
 }
 
 enum Ky {
-    static var bg: Color { .kyDyn(0xF7F3EA, 0x14161A) }
-    static var card: Color { .kyDyn(0xFFFFFF, 0x1E2126) }
-    static var ink: Color { .kyDyn(0x1C1A17, 0xEDE8DC) }
-    static var sub: Color { .kyDyn(0x6E675C, 0x9A958A) }
-    static var gold: Color { .kyDyn(0xA87F14, 0xC9A227) }
-    static var cinnabar: Color { .kyDyn(0xB33727, 0xD95F43) }
-    static var jade: Color { .kyDyn(0x2E7D4F, 0x4CAF7D) }
-    static var qingdai: Color { .kyDyn(0x2E4A5A, 0x7FA3B5) }
-    static var line: Color { .kyDyn(0xE2DACB, 0x33373E) }
-    // 仪器页恒深色
-    static let instBg = Color(rgb: 0x14161A)
-    static let instGold = Color(rgb: 0xC9A227)
-    static let instCinnabar = Color(rgb: 0xD95F43)
+    static var bg: Color { .kyDyn(0xF7F2E7, 0x121417) }        // 宋纸暖白 / 玄夜底
+    static var card: Color { .kyDyn(0xFDFBF5, 0x1B1E24) }      // 宣纸卡面 / 墨玉卡
+    static var elevated: Color { .kyDyn(0xEFE9DA, 0x242830) }  // 浅染内嵌层
+    static var ink: Color { .kyDyn(0x2E2A26, 0xEDE8DC) }       // 徽墨主字 / 宣白字
+    static var sub: Color { .kyDyn(0x7A7268, 0x9A958A) }       // 次级暖灰
+    static var gold: Color { .kyDyn(0x9E782F, 0xD1AC53) }      // 宋式雅金
+    static var cinnabar: Color { .kyDyn(0x9A2A22, 0xE05A47) }  // 故宫朱砂红
+    static var jade: Color { .kyDyn(0x3B7A57, 0x52B788) }      // 松石玉绿
+    static var qingdai: Color { .kyDyn(0x274E5C, 0x6CA2B8) }   // 宋韵青黛（主交互色）
+    static var line: Color { .kyDyn(0xE2D9C4, 0x2F343D) }      // 宋纸发丝线
+    // 仪器页恒深色（罗盘、拍摄、AR）
+    static let instBg = Color(rgb: 0x121417)
+    static let instGold = Color(rgb: 0xD1AC53)
+    static let instCinnabar = Color(rgb: 0xE05A47)
     static let instInk = Color(rgb: 0xEDE8DC)
 }
 
 struct KyPrimaryButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.headline)
+            .font(.system(.headline, design: .serif))
+            .fontWeight(.semibold)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 13)
-            .background(Ky.gold)
-            .foregroundStyle(Color(rgb: 0x14161A))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .opacity(configuration.isPressed ? 0.72 : 1)
+            .background(
+                LinearGradient(
+                    colors: [Ky.qingdai, Ky.qingdai.opacity(0.88)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+            )
+            .foregroundStyle(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 13))
+            .shadow(color: Ky.qingdai.opacity(0.22), radius: 6, y: 3)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
+            .opacity(configuration.isPressed ? 0.86 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
 
@@ -1237,16 +1247,19 @@ extension View {
     }
 }
 
-// 进度环（金）
+// 进度环（青黛/雅金双色）
 struct KyProgressRing: View {
     var done: Int, total: Int, size: CGFloat = 46
     var body: some View {
         ZStack {
-            Circle().stroke(Ky.line, lineWidth: 5)
+            Circle().stroke(Ky.line, lineWidth: 4.5)
             Circle().trim(from: 0, to: CGFloat(done) / CGFloat(max(1, total)))
-                .stroke(Ky.gold, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .stroke(done >= total && total > 0 ? Ky.jade : Ky.qingdai,
+                        style: StrokeStyle(lineWidth: 4.5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text("\(done)/\(total)").font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text("\(done)/\(total)")
+                .font(KyV2.tabular(11, weight: .bold))
+                .foregroundStyle(Ky.ink)
         }.frame(width: size, height: size)
     }
 }
@@ -1256,28 +1269,35 @@ struct OnboardingView: View {
     var onDone: () -> Void
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 18) {
-                AppLogoView(size: 72)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("三术合参").font(.system(.largeTitle, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text("八字 · 紫微 · 风水 · 手相面相").font(.callout).foregroundStyle(Ky.sub)
+            LazyVStack(alignment: .leading, spacing: 20) {
+                HStack(spacing: 14) {
+                    AppLogoView(size: 68)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("三术合参").font(.system(.largeTitle, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text("八字 · 紫微 · 奇门 · 堪舆 · 手相面相").font(.subheadline).foregroundStyle(Ky.qingdai)
+                    }
                 }
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("这个 App 能做什么").font(.headline).foregroundStyle(Ky.ink)
-                    Text("八字 / 紫微：输入出生信息排盘解盘，逐年与合盘都在本机算。").font(.callout).foregroundStyle(Ky.ink)
-                    Text("风水勘察：按任务单拍照录像，罗盘方位随照片烙印进数据包。").font(.callout).foregroundStyle(Ky.ink)
-                    Text("手相面相：本地拍照解读，不上传原图。").font(.callout).foregroundStyle(Ky.ink)
-                }
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("数据存在哪").font(.headline).foregroundStyle(Ky.ink)
-                    Text("案件、人物、手相、前瞻都只存在本机；只有你主动点「上传数据包」时，才发往你自己的远程服务。").font(.callout).foregroundStyle(Ky.ink)
-                }
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("权限用到才申请").font(.headline).foregroundStyle(Ky.ink)
-                    Text("相机（勘察拍照与录像）、定位（罗盘真北）、运动（水平仪）都在用到时才申请；若被拒绝，相关页面会给去设置的引导，不会黑屏无提示。").font(.callout).foregroundStyle(Ky.ink)
-                }
-                Button("开始使用", action: onDone).buttonStyle(KyPrimaryButton())
-                Text("覆盖安装升级会保留本机数据；删 App 则数据全清，重要案件请先导出数据包。").font(.caption).foregroundStyle(Ky.sub)
+                    KySectionTitle(title: "核心能力", trailing: "全本机离线演算")
+                    Text("· 八字与紫微：真太阳时精准排盘、五典依据链 25 维详批、逐年四查与合婚四看。")
+                        .font(.callout).foregroundStyle(Ky.ink)
+                    Text("· 奇门与手相：拆补法时家奇门九宫断事；Vision 21 点手相几何测量与三停面相校准。")
+                        .font(.callout).foregroundStyle(Ky.ink)
+                    Text("· 风水勘察：按 SOP 任务单拍照录像，罗盘真北与二十四山随图烙印打包。")
+                        .font(.callout).foregroundStyle(Ky.ink)
+                }.kyCard()
+
+                VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "数据与隐私", trailing: "100% 本地")
+                    Text("人物档案、前瞻回验账本、手相描线与勘察案件全部只存在本机 Documents 目录；仅在你主动点击「远程上传」时才发往你自己的私有服务。")
+                        .font(.callout).foregroundStyle(Ky.ink)
+                    Text("权限用到才申请：相机、定位、运动传感器均在进入对应勘察页面时按需请求。")
+                        .font(.caption).foregroundStyle(Ky.sub)
+                }.kyCard()
+
+                Button("进入三术合参工作台", action: onDone).buttonStyle(KyPrimaryButton())
+                Text("提示：覆盖安装新版本 IPA 会完整保留本机数据；直接删除 App 会清空本地目录，重要档案请定期导出备份。")
+                    .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 28)
@@ -1293,7 +1313,9 @@ struct HomePageView: View {
     @StateObject private var forecastStore = ForecastStore()
     @StateObject private var peopleStore = PeopleStore()
     @State private var showingNew = false
+    @State private var showingNewPerson = false
     @State private var query = ""
+    @State private var hubMode = 0  // 0: 命理合参（默认）  1: 风水勘察
 
     private var filtered: [CaseData] {
         if query.isEmpty { return store.cases }
@@ -1325,176 +1347,347 @@ struct HomePageView: View {
 
     var body: some View {
         ScrollView {
-                LazyVStack(spacing: 18) {
-                    brandHeader
-                    todayCard
-                    dueCard
-                    signBanner
-                    recentPeople
-                    toolsGrid
-                    heroCard
-                    surveyLinks
-                    tipCard
-                    casesSection
+            LazyVStack(spacing: 16) {
+                brandHeader
+                signBanner
+                todayCard
+                dueCard
+                modeSelector
+                if hubMode == 0 {
+                    mingliWorkspace
+                } else {
+                    kanyuWorkspace
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .padding(.bottom, 28)
             }
-            .background(Ky.bg)
-            .navigationTitle("三术合参")
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "搜索案件名或地点")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingNew = true } label: {
-                        Image(systemName: "plus.circle.fill").font(.title3).foregroundStyle(Ky.gold)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
+        }
+        .background(Ky.bg)
+        .navigationTitle("三术合参")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button { showingNewPerson = true } label: {
+                        Label("新建人物档案", systemImage: "person.badge.plus")
                     }
+                    Button { showingNew = true } label: {
+                        Label("新建风水勘察", systemImage: "compass.drawing")
+                    }
+                } label: {
+                    Image(systemName: "plus.circle.fill").font(.title3).foregroundStyle(Ky.qingdai)
                 }
+                .accessibilityLabel("快速新建菜单")
             }
-            .sheet(isPresented: $showingNew) { NewCaseView() }
+        }
+        .sheet(isPresented: $showingNew) { NewCaseView() }
+        .sheet(isPresented: $showingNewPerson) {
+            PersonFormView(store: peopleStore, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970))
+        }
+        .onAppear {
+            peopleStore.load()
+        }
     }
 
+    // 顶部品牌栏＋工作模式胶囊
     private var brandHeader: some View {
         HStack(spacing: 12) {
-            AppLogoView(size: 46)
+            AppLogoView(size: 44)
             VStack(alignment: .leading, spacing: 2) {
-                Text("三术合参").font(.system(.title, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                Text("八字 · 紫微 · 风水 · 手相面相").font(.caption).foregroundStyle(Ky.sub)
+                HStack(spacing: 6) {
+                    Text("三术合参")
+                        .font(.system(.title2, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    KyBadge(text: "五典正法", color: Ky.qingdai)
+                }
+                Text("子平八字 · 天纪紫微 · 统宗奇门 · 实景堪舆")
+                    .font(.caption2).foregroundStyle(Ky.sub)
             }
             Spacer()
         }
     }
 
-    private var heroCard: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            Text("风水勘察工作台").font(.system(.headline, design: .serif)).foregroundStyle(Ky.instInk)
-            HStack(spacing: 26) {
-                statItem("案件", "\(store.cases.count)")
-                statItem("已定盘", "\(sitedCount)")
-                statItem("媒体素材", "\(mediaTotal)")
-            }
-            Button { showingNew = true } label: {
+    // 双工作台分段切换：解决原版 10 层模块混排堆砌痛点
+    private var modeSelector: some View {
+        HStack(spacing: 4) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { hubMode = 0 }
+            } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                    Text("新建勘察")
+                    Image(systemName: "sparkles.rectangle.stack.fill")
+                    Text("命理合参")
                 }
-                .font(.subheadline).fontWeight(.semibold)
-                .padding(.horizontal, 16).padding(.vertical, 9)
-                .background(Ky.instGold).foregroundStyle(Color(rgb: 0x14161A))
+                .font(.subheadline).fontWeight(hubMode == 0 ? .bold : .medium)
+                .frame(maxWidth: .infinity).padding(.vertical, 9)
+                .background(hubMode == 0 ? Ky.qingdai : Color.clear)
+                .foregroundStyle(hubMode == 0 ? Color.white : Ky.ink)
                 .clipShape(Capsule())
+            }.buttonStyle(.plain)
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { hubMode = 1 }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "safari.fill")
+                    Text("风水勘察（\(store.cases.count)）")
+                }
+                .font(.subheadline).fontWeight(hubMode == 1 ? .bold : .medium)
+                .frame(maxWidth: .infinity).padding(.vertical, 9)
+                .background(hubMode == 1 ? Ky.qingdai : Color.clear)
+                .foregroundStyle(hubMode == 1 ? Color.white : Ky.ink)
+                .clipShape(Capsule())
+            }.buttonStyle(.plain)
+        }
+        .padding(4)
+        .background(Ky.elevated)
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(Ky.line.opacity(0.8), lineWidth: 0.7))
+    }
+
+    // MARK: - 模式 0：命理合参工作台
+    private var mingliWorkspace: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            recentPeople
+            primaryArtsGrid
+            secondaryToolsGrid
+            archiveAndClassicsSection
+        }
+    }
+
+    // MARK: - 模式 1：风水勘察工作台
+    private var kanyuWorkspace: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            heroCard
+            casesSection
+            surveyKnowledgeSection
+            tipCard
+        }
+    }
+
+    // 四大主术核心入口（2×2 高质感宋纸卡，找回原版丢失的「手相面相」入口！）
+    private var primaryArtsGrid: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            KySectionTitle(title: "四柱 · 斗数 · 奇门 · 相法", trailing: "核心排盘与测量")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                NavigationLink { BaziHomeView() } label: {
+                    primaryArtCard(
+                        icon: "tablecells.fill",
+                        badge: "子平五典",
+                        title: "八字排盘",
+                        subtitle: "四柱五行分色 · 25维详批 · 逐年四查",
+                        accent: Ky.qingdai
+                    )
+                }.buttonStyle(.plain)
+
+                NavigationLink { ZiweiHomeView() } label: {
+                    primaryArtCard(
+                        icon: "sparkles",
+                        badge: "天纪三合",
+                        title: "紫微斗数",
+                        subtitle: "十二宫方盘 · 三方四正 · 四化大限",
+                        accent: Ky.gold
+                    )
+                }.buttonStyle(.plain)
+
+                NavigationLink { QimenHomeView() } label: {
+                    primaryArtCard(
+                        icon: "circle.grid.3x3.fill",
+                        badge: "统宗拆补",
+                        title: "奇门遁甲",
+                        subtitle: "时家九宫盘 · 值符值使 · 格局用神",
+                        accent: Ky.cinnabar
+                    )
+                }.buttonStyle(.plain)
+
+                NavigationLink { PalmHomeView() } label: {
+                    primaryArtCard(
+                        icon: "hand.raised.fingers.spread.fill",
+                        badge: "几何实测",
+                        title: "手相面相",
+                        subtitle: "21点掌型指比 · 三线手描 · 三停校准",
+                        accent: Ky.jade
+                    )
+                }.buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func primaryArtCard(icon: String, badge: String, title: String, subtitle: String, accent: Color) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(accent.opacity(0.14))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(accent)
+                }
+                Spacer()
+                KyBadge(text: badge, color: accent)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(.headline, design: .serif))
+                    .fontWeight(.bold)
+                    .foregroundStyle(Ky.ink)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(Ky.sub)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Ky.card)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Ky.line.opacity(0.85), lineWidth: 0.8))
+        .shadow(color: .black.opacity(0.035), radius: 6, y: 3)
+    }
+
+    // 专项合参工具（合婚、论财、多盘对比、五运六气）
+    private var secondaryToolsGrid: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            KySectionTitle(title: "专项合参", trailing: "双盘互动与专题")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                NavigationLink { SynastryView() } label: {
+                    compactToolTile("heart.circle.fill", "合盘合婚", "合婚四看 · 喜用互补", Ky.cinnabar)
+                }.buttonStyle(.plain)
+                NavigationLink { WealthView() } label: {
+                    compactToolTile("yensign.circle.fill", "八字论财", "财星 · 财库 · 财运大运", Ky.gold)
+                }.buttonStyle(.plain)
+                NavigationLink { CompareView() } label: {
+                    compactToolTile("person.3.fill", "多盘对比", "2–4 人并排比四柱", Ky.qingdai)
+                }.buttonStyle(.plain)
+                NavigationLink { YunQiPageView() } label: {
+                    compactToolTile("aqi.medium", "五运六气", "岁运 · 司天在泉主客气", Ky.jade)
+                }.buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func compactToolTile(_ icon: String, _ title: String, _ desc: String, _ color: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 34, height: 34)
+                .background(color.opacity(0.13))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                Text(desc).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(11)
+        .background(Ky.card)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.75), lineWidth: 0.7))
+    }
+
+    // 典籍智库与前瞻账本
+    private var archiveAndClassicsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            KySectionTitle(title: "回验账本与智库", trailing: "事前封存 · 古籍条文")
+            VStack(spacing: 10) {
+                wideLink("checkmark.seal.fill", "前瞻断语登记簿", "事前封存断语 · 到期四档回验（共 \(forecastStore.entries.count) 条）", Ky.jade) { ForecastView() }
+                wideLink("text.book.closed.fill", "五典与实务断语库", "100 条已核定类象 · 格局 · 调候 · 回测纪律可检索", Ky.qingdai) { LibraryView() }
+                wideLink("person.crop.rectangle.stack.fill", "名人命例库", "公开史料记载生辰 · 八字与紫微双盘即时对参", Ky.gold) { CelebView() }
+            }
+        }
+    }
+
+    private var surveyKnowledgeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            KySectionTitle(title: "堪舆随身手册", trailing: "离线实测与解煞")
+            VStack(spacing: 10) {
+                wideLink("books.vertical.fill", "风水知识卡", "玄空飞星 · 八宅游年 · 二十四山测法速查", Ky.gold) { KnowledgeView() }
+                wideLink("shield.lefthalf.filled", "犯煞与解煞手册", "17 类形煞识别 · 实证机理 · L1→L3 分层化解", Ky.cinnabar) { ShaHandbookView() }
+            }
+        }
+    }
+
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("风水勘察工作台")
+                        .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.instInk)
+                    Text("按 SOP 采集：罗盘定盘 · 气泡水平把关 · 照片方位烙印")
+                        .font(.caption2).foregroundStyle(Ky.instInk.opacity(0.7))
+                }
+                Spacer()
+                Button { showingNew = true } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "plus")
+                        Text("新建勘察")
+                    }
+                    .font(.caption).fontWeight(.bold)
+                    .padding(.horizontal, 13).padding(.vertical, 8)
+                    .background(Ky.instGold).foregroundStyle(Color(rgb: 0x121417))
+                    .clipShape(Capsule())
+                }
+            }
+            HStack(spacing: 28) {
+                statItem("勘察案件", "\(store.cases.count)")
+                statItem("已测坐向", "\(sitedCount)")
+                statItem("采集素材", "\(mediaTotal)")
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            LinearGradient(colors: [Color(rgb: 0x262A31), Color(rgb: 0x14161A)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [Color(rgb: 0x232830), Color(rgb: 0x14171C)], startPoint: .topLeading, endPoint: .bottomTrailing)
         )
         .overlay(alignment: .topTrailing) {
-            Circle().fill(Ky.instGold.opacity(0.15)).frame(width: 170, height: 170).offset(x: 62, y: -84)
+            Circle().fill(Ky.instGold.opacity(0.12)).frame(width: 150, height: 150).offset(x: 50, y: -70)
         }
-        .overlay(alignment: .bottomTrailing) {
-            Circle().fill(Ky.instCinnabar.opacity(0.35)).frame(width: 10, height: 10).offset(x: -18, y: -16)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.14), radius: 12, y: 6)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
     }
 
     private func statItem(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.title3).fontWeight(.bold).foregroundStyle(Ky.instInk)
-            Text(label).font(.caption2).foregroundStyle(Ky.instInk.opacity(0.65))
-        }
-    }
-
-    private var toolsGrid: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            KySectionTitle(title: "工具", trailing: "排盘 · 断事 · 查验")
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                NavigationLink { BaziHomeView() } label: { toolTile("tablecells.fill", "八字排盘", "四柱细盘 · 逐年直断", Ky.gold) }.buttonStyle(.plain)
-                NavigationLink { ZiweiHomeView() } label: { toolTile("sparkles", "紫微斗数", "方盘 · 四化 · 大限", Ky.gold) }.buttonStyle(.plain)
-                NavigationLink { PeopleView() } label: { toolTile("person.2.fill", "人物档案", "建一次 · 三术共用", Ky.jade) }.buttonStyle(.plain)
-                NavigationLink { AlmanacView() } label: { toolTile("calendar", "黄历", "宜忌 · 吉神 · 时辰", Ky.ink) }.buttonStyle(.plain)
-                NavigationLink { SynastryView() } label: { toolTile("heart.circle.fill", "合盘", "合婚四看 · 双盘互看", Ky.cinnabar) }.buttonStyle(.plain)
-                NavigationLink { ForecastView() } label: { toolTile("checkmark.seal.fill", "前瞻登记", "写下断语 · 到期回验", Ky.jade) }.buttonStyle(.plain)
-                NavigationLink { WealthView() } label: { toolTile("yensign.circle.fill", "八字论财", "财星 · 财库 · 财运大运", Ky.gold) }.buttonStyle(.plain)
-                NavigationLink { CompareView() } label: { toolTile("person.3.fill", "多盘对比", "2–4 人并排比盘", Ky.jade) }.buttonStyle(.plain)
-                NavigationLink { YunQiPageView() } label: { toolTile("aqi.medium", "五运六气", "岁运 · 司天在泉", Ky.ink) }.buttonStyle(.plain)
-                NavigationLink { QimenHomeView() } label: { toolTile("circle.grid.3x3.fill", "奇门遁甲", "时家排盘 · 九宫断事", Ky.gold) }.buttonStyle(.plain)
-            }
-        }
-    }
-
-    private func toolTile(_ icon: String, _ title: String, _ desc: String, _ color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Image(systemName: icon).font(.system(size: 17))
-                .foregroundStyle(color)
-                .frame(width: 36, height: 36)
-                .background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 8))
-            Text(title).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
-            Text(desc).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
-        .shadow(color: .black.opacity(0.04), radius: 5, y: 2)
-    }
-
-    private var surveyLinks: some View {
-        VStack(spacing: 12) {
-            wideLink("books.vertical.fill", "风水知识", "流派源流 · 勘察要点", Ky.gold) { KnowledgeView() }
-            wideLink("shield.lefthalf.filled", "解煞手册", "形煞对位 · 分层化解", Ky.cinnabar) { ShaHandbookView() }
-            wideLink("text.book.closed.fill", "断语库", "类象 · 格局 · 神煞条文可搜", Ky.gold) { LibraryView() }
-            wideLink("person.crop.rectangle.stack.fill", "名人命例库", "有据可查的名人盘 · 附可信度", Ky.ink) { CelebView() }
+            Text(value).font(KyV2.tabular(20, weight: .bold)).foregroundStyle(Ky.instGold)
+            Text(label).font(.caption2).foregroundStyle(Ky.instInk.opacity(0.7))
         }
     }
 
     private func wideLink<Dest: View>(_ icon: String, _ title: String, _ desc: String, _ color: Color, @ViewBuilder dest: @escaping () -> Dest) -> some View {
         NavigationLink(destination: dest()) {
             HStack(spacing: 12) {
-                Image(systemName: icon).font(.system(size: 16)).foregroundStyle(color)
-                    .frame(width: 34, height: 34).background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 9))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                    Text(desc).font(.caption2).foregroundStyle(Ky.sub)
+                Image(systemName: icon).font(.system(size: 16, weight: .semibold)).foregroundStyle(color)
+                    .frame(width: 36, height: 36).background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 9))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                    Text(desc).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.7), lineWidth: 0.7))
+            .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 13))
+            .overlay(RoundedRectangle(cornerRadius: 13).stroke(Ky.line.opacity(0.8), lineWidth: 0.7))
         }.buttonStyle(.plain)
     }
 
-    private func tile(_ icon: String, _ title: String, _ color: Color) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon).font(.system(size: 20)).foregroundStyle(color)
-            Text(title).font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .background(Ky.card)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
-    }
-
-    // 今日盘（工作台第一卡：干支日＋宜忌精选＋值神，点进黄历完整版）
     @ViewBuilder private var signBanner: some View {
         if signDateEpoch > 0 {
             let expiry = Date(timeIntervalSince1970: signDateEpoch).addingTimeInterval(Double(signCertDays) * 86400)
             let remain = Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 99
             if remain <= 7 {
                 HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.shield").foregroundStyle(Ky.cinnabar)
-                    Text(remain >= 0 ? "签名证书还有 \(remain) 天到期（到期后 App 打不开是证书问题、不是数据问题），请提前续签，续签后在「排盘口径设置」里更新签名日期。" : "签名证书已过期：App 随时可能打不开，请立即续签；数据都在，不必重装。")
+                    Image(systemName: "exclamationmark.shield.fill").foregroundStyle(Ky.cinnabar)
+                    Text(remain >= 0 ? "签名证书还有 \(remain) 天到期，请提前续签覆盖安装（本机数据全部保留）。" : "签名证书已到期：续签后覆盖安装即可恢复打开，切勿删除 App。")
                         .font(.caption).foregroundStyle(Ky.ink)
                 }.kyCard()
             }
         }
     }
 
+    // 今日干支日历速览条（紧凑雅致宋式眉卡）
     private var todayCard: some View {
         let now = Date()
         var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
@@ -1502,36 +1695,55 @@ struct HomePageView: View {
         let l = Solar.fromYmdHms(year: c.year!, month: c.month!, day: c.day!, hour: 12, minute: 0).lunar
         return NavigationLink { AlmanacView() } label: {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    Text("今日").font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.gold)
-                    Text(l.dayInGanZhi).font(.system(.title2, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text("\(l.monthInChinese)月\(l.dayInChinese) · \(l.zhiXing)日 · \(l.xiu)\(l.zheng)\(l.animal)")
+                HStack(spacing: 8) {
+                    KyBadge(text: "今日黄历", color: Ky.qingdai, filled: true)
+                    Text("\(l.yearInGanZhi)年 · \(l.monthInGanZhi)月 · ")
                         .font(.caption).foregroundStyle(Ky.sub)
+                    + Text("\(l.dayInGanZhi)日")
+                        .font(.system(.callout, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+                    Text("农历\(l.monthInChinese)月\(l.dayInChinese) · \(l.zhiXing)日")
+                        .font(.caption2).foregroundStyle(Ky.sub)
+                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
                 }
-                HStack(alignment: .top, spacing: 14) {
-                    Text("宜").font(.caption).fontWeight(.bold).foregroundStyle(Ky.jade)
-                    Text(l.dayYi.prefix(5).joined(separator: " ")).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
-                    Text("忌").font(.caption).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
-                    Text(l.dayJi.prefix(4).joined(separator: " ")).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Text("宜").font(.caption2).fontWeight(.bold).foregroundStyle(Ky.jade)
+                            .padding(.horizontal, 5).padding(.vertical, 1.5)
+                            .background(Ky.jade.opacity(0.14)).clipShape(RoundedRectangle(cornerRadius: 4))
+                        Text(l.dayYi.prefix(5).joined(separator: " · "))
+                            .font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    HStack(spacing: 4) {
+                        Text("忌").font(.caption2).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
+                            .padding(.horizontal, 5).padding(.vertical, 1.5)
+                            .background(Ky.cinnabar.opacity(0.14)).clipShape(RoundedRectangle(cornerRadius: 4))
+                        Text(l.dayJi.prefix(3).joined(separator: " · "))
+                            .font(.caption).foregroundStyle(Ky.sub).lineLimit(1)
+                    }
                 }
-            }.kyCard()
+            }
+            .padding(13)
+            .background(Ky.card)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Ky.line.opacity(0.85), lineWidth: 0.8))
         }.buttonStyle(.plain)
     }
 
-    // 待回验（独门：到期断语在此落判；无到期项时整卡不出现，不占版面）
+    // 待回验提醒
     @ViewBuilder private var dueCard: some View {
         let nowYear = Calendar.current.component(.year, from: Date())
         let due = forecastStore.entries.filter { $0.status == "待验" && $0.targetYear <= nowYear }
         if !due.isEmpty {
             NavigationLink { ForecastView() } label: {
                 HStack(spacing: 12) {
-                    KySeal(text: "验")
+                    KySeal(text: "回验")
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("有 \(due.count) 条断语到期待回验").font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                        Text("有 \(due.count) 条前瞻断语已到期，请核对落判")
+                            .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
                         Text(due.prefix(2).map { "\($0.personName)·\($0.targetYear)：\($0.text)" }.joined(separator: "；"))
-                            .font(.caption).foregroundStyle(Ky.sub).lineLimit(2)
+                            .font(.caption).foregroundStyle(Ky.sub).lineLimit(1)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
@@ -1540,30 +1752,70 @@ struct HomePageView: View {
         }
     }
 
-    // 最近人物（工作台直达合参页）
-    @ViewBuilder private var recentPeople: some View {
-        if !peopleStore.people.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                KySectionTitle(title: "人物", trailing: "三术共用档案")
+    // 命主档案速达横栏（支持直接进三术合参页，或点＋快速建档）
+    private var recentPeople: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                KySectionTitle(title: "命主档案", trailing: "三术一档通用")
+                NavigationLink { PeopleView() } label: {
+                    Text("全部(\(peopleStore.people.count)) ›")
+                        .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                }
+            }
+            if peopleStore.people.isEmpty {
+                Button { showingNewPerson = true } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                            .font(.title3).foregroundStyle(Ky.qingdai)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("添加第一位家人或命主档案").font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                            Text("建档一次，八字、紫微、合盘、论财直接调取，免重复输入生辰").font(.caption2).foregroundStyle(Ky.sub)
+                        }
+                        Spacer()
+                        Image(systemName: "plus.circle.fill").foregroundStyle(Ky.qingdai)
+                    }
+                    .kyCard()
+                }.buttonStyle(.plain)
+            } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
-                        ForEach(peopleStore.people.prefix(6)) { p in
+                        ForEach(peopleStore.people.prefix(8)) { p in
                             NavigationLink { PersonDetailView(person: p, store: peopleStore) } label: {
-                                VStack(spacing: 4) {
-                                    Text(String(p.name.prefix(1)))
-                                        .font(.system(.title3, design: .serif)).fontWeight(.bold)
-                                        .frame(width: 44, height: 44)
-                                        .background(Ky.gold.opacity(0.16)).clipShape(Circle())
-                                        .foregroundStyle(Ky.ink)
-                                    Text(p.name).font(.caption).foregroundStyle(Ky.ink)
-                                    if !p.relation.isEmpty {
-                                        Text(p.relation).font(.caption2).foregroundStyle(Ky.sub)
+                                HStack(spacing: 8) {
+                                    Text(String((p.name.isEmpty ? "命" : p.name).prefix(1)))
+                                        .font(.system(.callout, design: .serif)).fontWeight(.bold)
+                                        .frame(width: 36, height: 36)
+                                        .background(Ky.qingdai.opacity(0.14)).clipShape(Circle())
+                                        .foregroundStyle(Ky.qingdai)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack(spacing: 4) {
+                                            Text(p.name.isEmpty ? "未命名" : p.name)
+                                                .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                                            Text(p.gender == "M" ? "乾" : "坤")
+                                                .font(.system(size: 10, weight: .bold))
+                                                .foregroundStyle(p.gender == "M" ? Ky.qingdai : Ky.cinnabar)
+                                        }
+                                        Text(p.relation.isEmpty ? "点击合参" : p.relation)
+                                            .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
                                     }
                                 }
-                                .frame(width: 72).padding(.vertical, 10)
-                                .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+                                .padding(.horizontal, 12).padding(.vertical, 9)
+                                .background(Ky.card)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.8), lineWidth: 0.7))
                             }.buttonStyle(.plain)
                         }
+                        Button { showingNewPerson = true } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus")
+                                Text("建档")
+                            }
+                            .font(.caption).fontWeight(.semibold)
+                            .padding(.horizontal, 12).padding(.vertical, 16)
+                            .background(Ky.elevated)
+                            .foregroundStyle(Ky.qingdai)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }.buttonStyle(.plain)
                     }
                 }
             }
@@ -1572,17 +1824,11 @@ struct HomePageView: View {
 
     private var tipCard: some View {
         HStack(alignment: .top, spacing: 10) {
-            Text("每日一课")
-                .font(.caption2).fontWeight(.bold).foregroundStyle(.white)
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(Ky.cinnabar).clipShape(Capsule())
-            Text(dailyTip).font(.callout).foregroundStyle(Ky.ink)
+            KyBadge(text: "勘察要诀", color: Ky.cinnabar, filled: true)
+            Text(dailyTip).font(.caption).foregroundStyle(Ky.ink).lineSpacing(2)
             Spacer(minLength: 0)
         }
-        .padding(14)
-        .background(Ky.card)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
+        .kyCard()
     }
 
     private var casesSection: some View {
@@ -1593,23 +1839,37 @@ struct HomePageView: View {
                     .padding(10).background(Ky.cinnabar.opacity(0.10)).clipShape(RoundedRectangle(cornerRadius: 8))
             }
             HStack {
-                Text("我的案件").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-                Spacer()
-                Text("共 \(store.cases.count) 个").font(.caption).foregroundStyle(Ky.sub)
+                KySectionTitle(title: "我的勘察案件", trailing: "共 \(store.cases.count) 案")
             }
+            if !store.cases.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(Ky.sub)
+                    TextField("搜索案件名称或乡镇/小区…", text: $query)
+                        .font(.subheadline)
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(Ky.sub)
+                        }
+                    }
+                }
+                .padding(.horizontal, 12).padding(.vertical, 9)
+                .background(Ky.card)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Ky.line, lineWidth: 0.7))
+            }
+
             if store.cases.isEmpty {
                 VStack(spacing: 10) {
-                    AppLogoView(size: 62)
-                    Text("还没有案件").font(.headline).foregroundStyle(Ky.ink)
-                    Text("点上方「新建勘察」，按任务单一步步采集，\n数据可直传服务器由助手分析。")
+                    Image(systemName: "safari").font(.system(size: 38)).foregroundStyle(Ky.qingdai)
+                    Text("尚无现场勘察案件").font(.headline).foregroundStyle(Ky.ink)
+                    Text("点击上方「新建勘察」，按 SOP 任务单测罗盘坐向、拍立面与明堂，一键生成本地玄空/八宅排盘与回传数据包。")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 26)
-                .background(Ky.card)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .padding(.vertical, 24).padding(.horizontal, 16)
+                .kyCard()
             } else if filtered.isEmpty {
-                Text("没有匹配的案件")
+                Text("未找到匹配的案件")
                     .font(.callout).foregroundStyle(Ky.sub)
                     .frame(maxWidth: .infinity).padding(.vertical, 18)
             } else {
@@ -1636,20 +1896,20 @@ struct HomePageView: View {
         let sit = cd.headings.last(where: { $0.pointName == "大门外朝内" && $0.trueNorth >= 0 })
         return HStack(spacing: 13) {
             ZStack {
-                RoundedRectangle(cornerRadius: 13)
-                    .fill(LinearGradient(colors: [Ky.gold.opacity(0.95), Ky.gold.opacity(0.55)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Ky.qingdai.opacity(0.14))
                 Image(systemName: typeIcon(cd.surveyCase.type))
-                    .font(.system(size: 19, weight: .semibold)).foregroundStyle(Color(rgb: 0x14161A))
+                    .font(.system(size: 18, weight: .semibold)).foregroundStyle(Ky.qingdai)
             }
-            .frame(width: 46, height: 46)
+            .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 5) {
                 Text(cd.surveyCase.name).font(.headline).foregroundStyle(Ky.ink).lineLimit(1)
                 HStack(spacing: 6) {
-                    chip(cd.surveyCase.type.rawValue, Ky.gold)
+                    chip(cd.surveyCase.type.rawValue, Ky.qingdai)
                     if let s = sit {
                         chip("\(CompassMath.mountain(for: s.trueNorth))山坐向", Ky.jade)
                     } else {
-                        chip("未定盘", Ky.cinnabar)
+                        chip("待测罗盘", Ky.cinnabar)
                     }
                 }
                 Text("任务 \(done)/\(tasks.count) · 媒体 \(cd.media.count) · 罗盘 \(cd.headings.count)")
@@ -1659,10 +1919,7 @@ struct HomePageView: View {
             KyProgressRing(done: done, total: tasks.count, size: 44)
             Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
         }
-        .padding(14)
-        .background(Ky.card)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 9, y: 4)
+        .kyCard()
     }
 
     private func chip(_ text: String, _ color: Color) -> some View {

@@ -230,88 +230,217 @@ struct PersonDetailView: View {
     @ObservedObject var store: PeopleStore
     @StateObject private var palmStore = PalmRecordStore()
     @StateObject private var forecastStore = ForecastStore()
+    @State private var currentPerson: Person?
+    @State private var sectionTab: Int = 0   // 0: 合参总览与八字  1: 紫微命盘  2: 25维详批  3: 逐年直断
     @State private var pdfURL: URL?
+    @State private var generatingPDF = false
+
+    private var activePerson: Person { currentPerson ?? person }
+
     var body: some View {
-        let ch = BaziEngine.paipan(clock: person.birthDate, gender: person.gender,
-                                   longitude: person.useLongitude ? person.longitude : nil)
-        let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
-                                   longitude: person.useLongitude ? person.longitude : nil)
+        let p = activePerson
+        let ch = BaziEngine.paipan(clock: p.birthDate, gender: p.gender,
+                                   longitude: p.useLongitude ? p.longitude : nil)
+        let zw = ZiweiEngine.chart(clock: p.birthDate, gender: p.gender,
+                                   longitude: p.useLongitude ? p.longitude : nil)
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                overviewCard(chart: ch, ziwei: zw)
-                if let url = pdfURL {
-                    ShareLink(item: url) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "doc.richtext").foregroundStyle(Ky.gold)
-                            Text("分享命书 PDF").font(.subheadline).fontWeight(.medium)
-                            Spacer()
-                            Image(systemName: "square.and.arrow.up").font(.caption).foregroundStyle(Ky.sub)
-                        }
-                        .kyCard()
-                    }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+            LazyVStack(alignment: .leading, spacing: 14) {
+                overviewCard(person: p, chart: ch, ziwei: zw)
+                actionToolbar(person: p, chart: ch, ziwei: zw)
+
+                // 四合一分段控制器（无需反复进出子页面，一页切换八字、紫微、25维详批、逐年）
+                Picker("合参视图", selection: $sectionTab) {
+                    Text("八字命盘").tag(0)
+                    Text("紫微斗数").tag(1)
+                    Text("25维详批").tag(2)
+                    Text("逐年四查").tag(3)
                 }
-                ShareLink(item: aiPrompt(chart: ch, ziwei: zw)) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "text.badge.star").foregroundStyle(Ky.gold)
-                        Text("AI 解读提示词（复制盘面去问 AI）").font(.subheadline).fontWeight(.medium)
-                        Spacer()
-                        Image(systemName: "square.and.arrow.up").font(.caption).foregroundStyle(Ky.sub)
-                    }
-                    .kyCard()
-                }.buttonStyle(.plain).foregroundStyle(Ky.ink)
-                BaziResultView(chart: ch, name: person.name)
-                Text("风水案件在堪舆模块按案件管理；建案时以人物姓名命名，即可对人查阅。")
-                    .font(.caption2).foregroundStyle(Ky.sub)
+                .pickerStyle(.segmented)
+
+                switch sectionTab {
+                case 0:
+                    BaziResultView(chart: ch, name: p.name)
+                case 1:
+                    ZiweiBoardView(chart: zw, name: p.name)
+                    ZiweiYearView(chart: zw)
+                    ZiweiReadingView(chart: zw)
+                case 2:
+                    inlineInterpretSection(chart: ch)
+                default:
+                    inlineYearlySection(chart: ch)
+                }
             }.padding(16)
         }
         .background(Ky.bg)
-        .navigationTitle(person.name)
+        .navigationTitle(p.name.isEmpty ? "命主详情" : p.name)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { pdfURL = ReportBuilder.makePDF(for: person) }
+        .toolbar {
+            if store.people.count > 1 {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(store.people) { candidate in
+                            Button {
+                                currentPerson = candidate
+                                pdfURL = nil
+                            } label: {
+                                HStack {
+                                    Text("\(candidate.name)（\(candidate.gender == "M" ? "男" : "女")）")
+                                    if candidate.id == p.id { Image(systemName: "checkmark") }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.left.arrow.right.circle")
+                            Text("换人")
+                        }
+                        .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                    }
+                    .accessibilityLabel("切换档案人物")
+                }
+            }
+        }
     }
 
-    // 三术合参总览：八字/紫微/手相面相/前瞻四路对齐，冲突按分工明标，不和稀泥
-    private func overviewCard(chart ch: BaziChart, ziwei zw: ZiweiChart) -> some View {
+    private func actionToolbar(person p: Person, chart ch: BaziChart, ziwei zw: ZiweiChart) -> some View {
+        HStack(spacing: 10) {
+            if let url = pdfURL {
+                ShareLink(item: url) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "doc.richtext.fill").foregroundStyle(Ky.cinnabar)
+                        Text("分享命书 PDF").font(.caption).fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                    .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Ky.line, lineWidth: 0.8))
+                }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+            } else {
+                Button {
+                    generatingPDF = true
+                    let target = p
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        let u = ReportBuilder.makePDF(for: target)
+                        DispatchQueue.main.async {
+                            pdfURL = u
+                            generatingPDF = false
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        if generatingPDF {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "doc.badge.gearshape").foregroundStyle(Ky.qingdai)
+                        }
+                        Text(generatingPDF ? "生成 PDF 中…" : "生成命书 PDF").font(.caption).fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                    .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Ky.line, lineWidth: 0.8))
+                }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+            }
+
+            ShareLink(item: aiPrompt(person: p, chart: ch, ziwei: zw)) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles").foregroundStyle(Ky.gold)
+                    Text("导出 AI 解读提示词").font(.caption).fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity).padding(.vertical, 10)
+                .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Ky.line, lineWidth: 0.8))
+            }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+        }
+    }
+
+    // 三术合参总览：八字/紫微/手相面相/前瞻四路对齐
+    private func overviewCard(person p: Person, chart ch: BaziChart, ziwei zw: ZiweiChart) -> some View {
         let now = Calendar.current.component(.year, from: Date())
         let yr = YearEngine.report(chart: ch, year: now)
         let di = YearEngine.dayunIndex(chart: ch, year: now)
         let ming = zw.palaces[zw.mingGong]
-        let birthYear = Calendar.current.component(.year, from: person.birthDate)
+        let birthYear = Calendar.current.component(.year, from: p.birthDate)
         let age = now - birthYear + 1
         let curPalace = zw.palaces.first { ($0.decadal.first ?? 0) <= age && age <= ($0.decadal.last ?? 0) }
-        let palms = palmStore.records(for: person.name)
-        let fcs = forecastStore.entries.filter { $0.personName == person.name }
+        let palms = palmStore.records(for: p.name)
+        let fcs = forecastStore.entries.filter { $0.personName == p.name }
         return VStack(alignment: .leading, spacing: 10) {
-            Text("三术合参总览").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-            ovRow("八字", "现行\(di.map { ch.dayunGanZhi[$0] } ?? "童限")运；\(now) 年逐年等级［\(yr.level)］——\(yr.lines.first ?? "")")
-            ovRow("紫微", "命宫\(ming.majors.map { $0.star }.joined(separator: "、"))（\(zw.juName)）；当前大限走\(curPalace?.name ?? "—")\(curPalace.map { "（\($0.majors.map { $0.star }.joined(separator: "、"))）" } ?? "")")
-            ovRow("手相面相", palms.isEmpty ? "未记录（去手相面相页测量并保存）"
+            HStack {
+                KySectionTitle(title: "三术合参总览", trailing: "\(p.gender == "M" ? "乾造" : "坤造") · 日主\(ch.rizhu)")
+                if !p.relation.isEmpty {
+                    KyBadge(text: p.relation, color: Ky.qingdai)
+                }
+            }
+            ovRow("子平八字", "四柱 \(ch.pillars.joined(separator: " "))；现行\(di.map { ch.dayunGanZhi[$0] } ?? "童限")运；\(now)年［\(yr.level)］——\(yr.lines.first ?? "")")
+            ovRow("天纪紫微", "命宫坐\(ming.majors.isEmpty ? "无主星（借对宫）" : ming.majors.map { $0.star }.joined(separator: "、"))（\(zw.juName)）；当前大限走\(curPalace?.name ?? "—")")
+            ovRow("手相面相", palms.isEmpty ? "暂未归档（可在首页『手相面相』测量后按姓名保存）"
                         : palms.prefix(2).map { "\($0.kind)：\($0.summary)" }.joined(separator: "；"))
-            ovRow("前瞻登记", fcs.isEmpty ? "无登记"
-                        : fcs.prefix(3).map { "\($0.targetYear) 年［\($0.status)］\($0.text)" }.joined(separator: "；"))
-            Text("对读规矩：阶段主题看紫微大限、应期年份以八字逐年消歧；两边信号冲突时按此分工取主断，另一边记异议。")
+            ovRow("前瞻账本", fcs.isEmpty ? "暂无封存断语"
+                        : fcs.prefix(3).map { "\($0.targetYear)年［\($0.status)］\($0.text)" }.joined(separator: "；"))
+            Text("合参分工纪律：阶段大象看紫微大限、应期年份与六亲细推以八字逐年消歧；两术冲突时按分工取主断。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
         .kyCard()
     }
 
     private func ovRow(_ label: String, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(label).font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
-                .frame(width: 56, alignment: .leading)
-            Text(text).font(.callout).foregroundStyle(Ky.ink)
+        HStack(alignment: .top, spacing: 8) {
+            KyBadge(text: label, color: Ky.qingdai)
+                .frame(width: 68, alignment: .leading)
+            Text(text).font(.caption).foregroundStyle(Ky.ink).lineSpacing(2.5)
+        }
+    }
+
+    private func inlineInterpretSection(chart ch: BaziChart) -> some View {
+        let items = InterpretEngine.interpret(chart: ch)
+        return VStack(alignment: .leading, spacing: 12) {
+            ForEach(items.indices, id: \.self) { i in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("\(i + 1). \(items[i].title)")
+                            .font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Spacer()
+                    }
+                    EvidenceChainView(conclusion: items[i].conclusion, links: items[i].links)
+                }.kyCard()
+            }
+        }
+    }
+
+    private func inlineYearlySection(chart ch: BaziChart) -> some View {
+        let now = Calendar.current.component(.year, from: Date())
+        let di = YearEngine.dayunIndex(chart: ch, year: now) ?? 0
+        let start = ch.dayunStartYear(di)
+        return VStack(alignment: .leading, spacing: 10) {
+            ForEach(start...(start + 9), id: \.self) { y in
+                let r = YearEngine.report(chart: ch, year: y)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("\(y) · \(r.gz)年")
+                            .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        if y == now { KyBadge(text: "今年", color: Ky.qingdai, filled: true) }
+                        Spacer()
+                        KyBadge(text: r.level, color: r.level == "关口级" ? Ky.cinnabar : Ky.gold)
+                    }
+                    ForEach(r.lines, id: \.self) { ln in
+                        Text(ln).font(.callout).foregroundStyle(Ky.ink)
+                    }
+                }.kyCard()
+            }
         }
     }
 }
 
-// MARK: - AI 解读提示词（对标问真「AI 提示词」：盘面结构化文本，粘到任意 AI 即得解读）
+// MARK: - AI 解读提示词
 extension PersonDetailView {
     func aiPrompt(chart ch: BaziChart, ziwei zw: ZiweiChart) -> String {
+        aiPrompt(person: activePerson, chart: ch, ziwei: zw)
+    }
+    func aiPrompt(person p: Person, chart ch: BaziChart, ziwei zw: ZiweiChart) -> String {
         let ming = zw.palaces[zw.mingGong]
         let wx = zip(["木", "火", "土", "金", "水"], ch.wuxingPercents).map { "\($0.0)\(Int($0.1))%" }.joined(separator: " ")
         return """
         你是一位严谨的子平命理师。请依据以下已校准的盘面（真太阳时排盘）解读，每条结论给出盘面依据，不说套话：
-        命主：\(person.name)（\(person.gender == "M" ? "男" : "女")）
+        命主：\(p.name)（\(p.gender == "M" ? "男" : "女")）
         四柱：\(ch.yearPillar) \(ch.monthPillar) \(ch.dayPillar) \(ch.timePillar)，日主\(ch.rizhu)，旬空\(ch.xunKong)
         十神：\(ch.stemShiShen.joined(separator: " "))
         五行：\(wx)

@@ -269,7 +269,7 @@ enum BaziEngine {
     }
 }
 
-// MARK: - 八字排盘页（v2 双层密度盘面：基本盘/专业细盘＋五行横条＋五级时间胶囊）
+// MARK: - 八字排盘页 v5（宋纸·青黛盘面：自动折叠录入卡＋四柱干支五行分色＋无重复表头＋可折叠十二时辰）
 
 struct BaziHomeView: View {
     @State private var name = ""
@@ -281,24 +281,32 @@ struct BaziHomeView: View {
     @StateObject private var peopleStore = PeopleStore()
     @State private var chartSnapshot = ""
     @State private var savedTip = false
+    @State private var inputCollapsed = false
+
     private var inputSnapshot: String { "\(name)|\(gender)|\(birth.timeIntervalSince1970)|\(useLongitude)|\(longitudeText)" }
     private var isStale: Bool { chart != nil && chartSnapshot != inputSnapshot }
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                inputCard
-                if let ch = chart { BaziResultView(chart: ch, name: name) }
+            LazyVStack(alignment: .leading, spacing: 14) {
+                if chart != nil && inputCollapsed && !isStale {
+                    collapsedInputBar
+                } else {
+                    inputCard
+                }
+                if let ch = chart {
+                    BaziResultView(chart: ch, name: name)
+                }
                 NavigationLink { CaliberSettingsView() } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "slider.horizontal.3")
-                        Text("排盘口径设置（晚子时归日等）").font(.caption)
+                        Text("排盘口径设置（晚子时归日默认 sect=2 · 12例金标准对拍）").font(.caption)
                         Spacer()
                         Image(systemName: "chevron.right").font(.caption2)
-                    }.foregroundStyle(Ky.sub)
+                    }
+                    .foregroundStyle(Ky.sub)
+                    .padding(.horizontal, 4)
                 }.buttonStyle(.plain)
-                Text("口径：真太阳时＋晚子时归日（设置页可调，默认 sect=2）；细盘与金标准盘 12 例逐项对拍。")
-                    .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
         .background(Ky.bg)
@@ -306,36 +314,133 @@ struct BaziHomeView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    // 排盘后自动折叠为一行精致眉卡，释放首屏空间直接看盘
+    private var collapsedInputBar: some View {
+        let s = BirthInputView.solarOf(birth)
+        return HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(name.isEmpty ? "当前命盘" : name)
+                        .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    KyBadge(text: gender == "M" ? "乾造（男）" : "坤造（女）", color: gender == "M" ? Ky.qingdai : Ky.cinnabar)
+                    if savedTip {
+                        KyBadge(text: "已存档案", color: Ky.jade)
+                    }
+                }
+                Text("公历 \(s.year)-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))" + (useLongitude ? " · 东经 \(longitudeText)°" : " · 钟表时间"))
+                    .font(KyV2.tabular(12)).foregroundStyle(Ky.sub)
+            }
+            Spacer()
+            if !savedTip {
+                Button {
+                    peopleStore.upsert(Person(name: name.isEmpty ? "未命名" : name, gender: gender,
+                                              birthEpoch: birth.timeIntervalSince1970,
+                                              useLongitude: useLongitude, longitude: Double(longitudeText) ?? 107.8))
+                    savedTip = true
+                } label: {
+                    Image(systemName: "person.badge.plus")
+                        .font(.subheadline)
+                        .padding(8)
+                        .background(Ky.elevated)
+                        .foregroundStyle(Ky.qingdai)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("存入人物档案")
+            }
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = false }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "slider.horizontal.below.rectangle")
+                    Text("改生辰")
+                }
+                .font(.caption).fontWeight(.semibold)
+                .padding(.horizontal, 10).padding(.vertical, 7)
+                .background(Ky.qingdai.opacity(0.13))
+                .foregroundStyle(Ky.qingdai)
+                .clipShape(Capsule())
+            }.buttonStyle(.plain)
+        }
+        .kyCard()
+    }
+
     private var inputCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if !peopleStore.people.isEmpty {
-                Menu {
-                    ForEach(peopleStore.people) { p in
-                        Button("\(p.name)（\(p.gender == "M" ? "男" : "女")）") {
-                            name = p.name; gender = p.gender; birth = p.birthDate
-                            useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
-                        }
+            HStack {
+                KySectionTitle(title: "生辰录入", trailing: "支持公农历与真太阳时")
+                if chart != nil {
+                    Button("收起") {
+                        withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
                     }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.crop.rectangle.stack").foregroundStyle(Ky.qingdai)
-                        Text("选已有人物（免重填）").font(.subheadline).foregroundStyle(Ky.qingdai)
-                        Spacer()
-                        Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
+                    .font(.caption).foregroundStyle(Ky.qingdai)
+                }
+            }
+
+            // 档案人物一键速选横栏（取代原版隐藏式 Menu，点一下即排盘）
+            if !peopleStore.people.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Label("速选：", systemImage: "person.crop.rectangle.stack")
+                            .font(.caption2).foregroundStyle(Ky.sub)
+                        ForEach(peopleStore.people.prefix(8)) { p in
+                            Button {
+                                name = p.name; gender = p.gender; birth = p.birthDate
+                                useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
+                                chart = BaziEngine.paipan(clock: birth, gender: gender,
+                                                          longitude: useLongitude ? Double(longitudeText) : nil)
+                                chartSnapshot = inputSnapshot; savedTip = true; inputCollapsed = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(p.name.isEmpty ? "未命名" : p.name).fontWeight(.medium)
+                                    Text(p.gender == "M" ? "男" : "女").opacity(0.75)
+                                }
+                                .font(.caption)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(Ky.elevated)
+                                .foregroundStyle(Ky.ink)
+                                .clipShape(Capsule())
+                                .overlay(Capsule().stroke(Ky.line, lineWidth: 0.7))
+                            }.buttonStyle(.plain)
+                        }
                     }
                 }
             }
-            TextField("姓名（可空）", text: $name)
-            Picker("性别", selection: $gender) { Text("男").tag("M"); Text("女").tag("F") }
+
+            // 姓名与性别同行排布，干净利落
+            HStack(spacing: 10) {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.text.rectangle").foregroundStyle(Ky.sub)
+                    TextField("命主姓名（可留空）", text: $name)
+                        .font(.subheadline)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 8)
+                .background(Ky.elevated)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+
+                Picker("性别", selection: $gender) {
+                    Text("乾造（男）").tag("M")
+                    Text("坤造（女）").tag("F")
+                }
                 .pickerStyle(.segmented)
+                .frame(width: 156)
+            }
+
             BirthInputView(clock: $birth, useLongitude: $useLongitude, longitudeText: $longitudeText)
-            Button("排盘") {
+
+            Button("立即排盘") {
                 chart = BaziEngine.paipan(clock: birth, gender: gender,
                                           longitude: useLongitude ? Double(longitudeText) : nil)
                 chartSnapshot = inputSnapshot; savedTip = false
+                withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
             }.buttonStyle(KyPrimaryButton())
+
             if isStale {
-                Text("输入已改动，下面是旧盘——点「排盘」刷新。").font(.caption).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.clockwise.circle.fill")
+                    Text("上方生辰已修改，请点「立即排盘」刷新下方命盘。")
+                }
+                .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
             }
             if chart != nil {
                 HStack(spacing: 10) {
@@ -344,23 +449,26 @@ struct BaziHomeView: View {
                                                   birthEpoch: birth.timeIntervalSince1970,
                                                   useLongitude: useLongitude, longitude: Double(longitudeText) ?? 107.8))
                         savedTip = true
-                    } label: { Label("存入人物档案", systemImage: "person.crop.circle.badge.plus").font(.subheadline) }
-                    if savedTip { Text("已存，下次可直接选人").font(.caption).foregroundStyle(Ky.jade) }
+                    } label: {
+                        Label(savedTip ? "已存入人物档案" : "存入人物档案（三术共用）",
+                              systemImage: savedTip ? "checkmark.circle.fill" : "person.crop.circle.badge.plus")
+                            .font(.caption).fontWeight(.semibold)
+                            .foregroundStyle(savedTip ? Ky.jade : Ky.qingdai)
+                    }.buttonStyle(.plain)
+                    Spacer()
                 }
             }
-            Text("家里人建议到「人物档案」建档，建一次，八字、手相、案件都直接调人。")
-                .font(.caption2).foregroundStyle(Ky.sub)
         }
         .kyCard()
     }
 }
 
-// 盘面结果（录入页与人物详情共用同一块，保证两处长得一模一样）
+// 盘面结果（录入页与人物详情共用同一块）
 struct BaziResultView: View {
     let chart: BaziChart
     let name: String
-    @State private var proMode = false
-    @State private var timeLevel = 0        // 0 大运 1 流年 2 流月 3 流日（流时并入流日速查）
+    @State private var proMode = true       // 默认开启专业细盘，干支藏干十神星运一次看全
+    @State private var timeLevel = 0        // 0 大运 1 流年 2 流月 3 流日
     @State private var selectedDayun = 0
     private var safeDayun: Int { chart.dayunGanZhi.isEmpty ? 0 : min(selectedDayun, chart.dayunGanZhi.count - 1) }
     @State private var selectedYear: Int? = nil
@@ -369,149 +477,366 @@ struct BaziResultView: View {
     @State private var copied = false
     @State private var detailPillar = 0
     @State private var showDetail = false
+    @State private var showShichen = false  // 十二时辰对照默认折叠，不喧宾夺主
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             plateCard
-            shichenCard()
-            HStack(spacing: 8) {
-                Button {
-                    let dy = chart.dayunGanZhi.enumerated().map { "\(chart.dayunStartYear($0.offset)) \($0.element)" }.joined(separator: "、")
-                    UIPasteboard.general.string = "\(name.isEmpty ? "命盘" : name)：\(chart.pillars.joined(separator: " "))｜日主 \(chart.rizhu) 命宫 \(chart.mingGong) 身宫 \(chart.shenGong)｜起运 \(chart.qiyunDate)（\(chart.qiyunDirection)）｜大运：\(dy)"
-                    copied = true
-                } label: { Label(copied ? "已复制" : "复制盘面文本", systemImage: copied ? "checkmark" : "doc.on.doc").font(.caption) }
-                .foregroundStyle(Ky.qingdai)
-                Spacer()
-                Text("发给谁都能直接粘贴看盘").font(.caption2).foregroundStyle(Ky.sub)
-            }
+            deepDiveGrid
             wuxingCard
             timeCard
+            shichenCard()
             infoCard
-            interpretLink
-            yearlyLink
-            lifePlanLink
-            NavigationLink { PosterSheetView(chart: chart, name: name) } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "photo.artframe").foregroundStyle(Ky.cinnabar)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("命盘海报 · 下载分享").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
-                        Text("道教墨金风海报，1080×1920 高清导出存相册或发微信").font(.caption2).foregroundStyle(Ky.sub)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
-                }
-                .padding(12).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-            .buttonStyle(.plain).foregroundStyle(Ky.ink)
         }
         .sheet(isPresented: $showDetail) { pillarDetailView(detailPillar) }
     }
 
+    // MARK: - 核心四柱命盘卡（消除旧版重复四柱按钮行，直接在四柱列点击查看详情，干支按五行分色）
     private var plateCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name.isEmpty ? "命盘" : name).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-                    Text("日主 \(chart.rizhu) · 日柱旬空 \(chart.xunKong)")
-                        .font(.caption).foregroundStyle(Ky.sub)
+        let dayEl = KyV2.element(ofChar: chart.rizhu.first!)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(name.isEmpty ? "四柱命盘" : name)
+                            .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        KyBadge(text: "日主 \(chart.rizhu)\(dayEl)", color: KyV2.color(forChar: chart.rizhu.first!))
+                        KyBadge(text: "旬空 \(chart.xunKong)", color: Ky.gold)
+                    }
+                    Text("胎元 \(chart.taiYuan) · 命宫 \(chart.mingGong) · 身宫 \(chart.shenGong)")
+                        .font(.caption2).foregroundStyle(Ky.sub)
                 }
                 Spacer()
                 Picker("密度", selection: $proMode) {
-                    Text("基本盘").tag(false); Text("专业细盘").tag(true)
-                }.pickerStyle(.segmented).frame(width: 176)
+                    Text("简盘").tag(false)
+                    Text("细盘").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 116)
             }
-            pillarButtons()
-            Text("点任一柱，弹出该柱详情卡（藏干 / 十神 / 长生 / 纳音 / 神煞）。")
-                .font(.caption2).foregroundStyle(Ky.sub)
+
             plateGrid(chart)
+
+            HStack {
+                Text("点任意一柱可展开藏干、长生、纳音与神煞详解")
+                    .font(.caption2).foregroundStyle(Ky.sub)
+                Spacer()
+                Button {
+                    let dy = chart.dayunGanZhi.enumerated().map { "\(chart.dayunStartYear($0.offset)) \($0.element)" }.joined(separator: "、")
+                    UIPasteboard.general.string = "\(name.isEmpty ? "命盘" : name)：\(chart.pillars.joined(separator: " "))｜日主 \(chart.rizhu) 命宫 \(chart.mingGong) 身宫 \(chart.shenGong)｜起运 \(chart.qiyunDate)（\(chart.qiyunDirection)）｜大运：\(dy)"
+                    copied = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: copied ? "checkmark.circle.fill" : "doc.on.doc")
+                        Text(copied ? "已复制文本" : "复制盘面")
+                    }
+                    .font(.caption2).fontWeight(.semibold)
+                    .foregroundStyle(copied ? Ky.jade : Ky.qingdai)
+                }.buttonStyle(.plain)
+            }
         }
         .kyCard()
     }
 
-    // 四柱点击详情：柱按钮行（格子式点选，不改行式盘面排版）
-    private func pillarButtons() -> some View {
-        let names = ["年柱", "月柱", "日柱", "时柱"]
-        return HStack(spacing: 8) {
+    // 四柱并排交互卡片：每一柱是一列独立可点击的宋纸柱卡，干支自带五行色＋五行小字双编码
+    private func plateGrid(_ ch: BaziChart) -> some View {
+        let cols = ["年柱", "月柱", "日柱", "时柱"]
+        let palaces = ["祖上/根基", "父母/月令", "自身/配偶", "子女/晚景"]
+        let shaList = BaziTables.shenSha(ch)
+        return HStack(alignment: .top, spacing: 8) {
             ForEach(0..<4, id: \.self) { i in
-                Button { detailPillar = i; showDetail = true } label: {
-                    VStack(spacing: 2) {
-                        Text(names[i]).font(.caption2).foregroundStyle(Ky.sub)
-                        Text(chart.pillars[i]).font(.system(.callout, design: .serif)).fontWeight(.semibold)
+                let gz = ch.pillars[i]
+                let stem = gz.first!
+                let branch = gz.last!
+                let stemEl = KyV2.element(ofChar: stem)
+                let branchEl = KyV2.element(ofChar: branch)
+                let isDay = (i == 2)
+                Button {
+                    detailPillar = i
+                    showDetail = true
+                } label: {
+                    VStack(spacing: 6) {
+                        // 柱头＋宫位
+                        VStack(spacing: 1) {
+                            Text(cols[i])
+                                .font(.caption).fontWeight(.bold)
+                                .foregroundStyle(isDay ? Ky.cinnabar : Ky.ink)
+                            Text(palaces[i])
+                                .font(.system(size: 9))
+                                .foregroundStyle(Ky.sub)
+                        }
+                        .padding(.bottom, 2)
+
+                        // 天干十神
+                        Text(isDay ? "日主" : ch.stemShiShen[i])
+                            .font(.caption2).fontWeight(.semibold)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background((isDay ? Ky.cinnabar : Ky.qingdai).opacity(0.12))
+                            .foregroundStyle(isDay ? Ky.cinnabar : Ky.qingdai)
+                            .clipShape(Capsule())
+
+                        // 天干大字（五行分色＋五行小标）
+                        HStack(alignment: .firstTextBaseline, spacing: 2) {
+                            Text(String(stem))
+                                .font(.system(size: 28, weight: .bold, design: .serif))
+                                .foregroundStyle(KyV2.color(forChar: stem))
+                            Text(stemEl)
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(KyV2.color(forChar: stem).opacity(0.85))
+                        }
+
+                        // 地支大字（五行分色＋五行小标）
+                        HStack(alignment: .firstTextBaseline, spacing: 2) {
+                            Text(String(branch))
+                                .font(.system(size: 28, weight: .bold, design: .serif))
+                                .foregroundStyle(KyV2.color(forChar: branch))
+                            Text(branchEl)
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(KyV2.color(forChar: branch).opacity(0.85))
+                        }
+
+                        Divider().opacity(0.5)
+
+                        // 藏干与藏干十神（本气置顶加粗）
+                        VStack(spacing: 2) {
+                            ForEach(ch.hideGan[i].indices, id: \.self) { hi in
+                                let hg = ch.hideGan[i][hi]
+                                let hss = ch.hideShiShen[i].indices.contains(hi) ? ch.hideShiShen[i][hi] : ""
+                                HStack(spacing: 3) {
+                                    Text(hg)
+                                        .font(.system(size: 11, weight: hi == 0 ? .bold : .regular))
+                                        .foregroundStyle(KyV2.color(forChar: hg.first ?? "甲"))
+                                    Text(proMode ? hss : KyV2.shiShenShort(hss))
+                                        .font(.system(size: 10, weight: hi == 0 ? .medium : .regular))
+                                        .foregroundStyle(hi == 0 ? Ky.ink : Ky.sub)
+                                }
+                            }
+                        }
+                        .frame(minHeight: 46, alignment: .top)
+
+                        if proMode {
+                            Divider().opacity(0.4)
+                            // 星运（长生十二宫）＋纳音
+                            VStack(spacing: 2) {
+                                Text("长生 · \(ch.diShi[i])")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(Ky.ink)
+                                Text(ch.naYin[i])
+                                    .font(.system(size: 9.5))
+                                    .foregroundStyle(Ky.sub)
+                                if !shaList[i].isEmpty {
+                                    Text(shaList[i].prefix(2).joined(separator: " "))
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundStyle(Ky.gold)
+                                        .lineLimit(1)
+                                } else {
+                                    Text("—")
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(Ky.sub.opacity(0.4))
+                                }
+                            }
+                        }
                     }
-                    .frame(maxWidth: .infinity).padding(.vertical, 6)
-                    .background(Ky.bg).clipShape(RoundedRectangle(cornerRadius: 8))
-                }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10).padding(.horizontal, 4)
+                    .background(isDay ? Ky.cinnabar.opacity(0.04) : Ky.elevated.opacity(0.65))
+                    .clipShape(RoundedRectangle(cornerRadius: 11))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 11)
+                            .stroke(isDay ? Ky.cinnabar.opacity(0.55) : Ky.line, lineWidth: isDay ? 1.3 : 0.7)
+                    )
+                }
+                .buttonStyle(.plain)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("四柱：年柱 \(ch.pillars[0])，月柱 \(ch.pillars[1])，日柱 \(ch.pillars[2])，时柱 \(ch.pillars[3])，日主 \(ch.rizhu)")
     }
 
-    // 四柱详情卡：全部取自本盘已有字段（藏干/十神/长生/纳音/神煞），不新增断法
-    private func pillarDetailView(_ i: Int) -> some View {
-        let idx = min(max(i, 0), 3)
-        let names = ["年柱", "月柱", "日柱", "时柱"]
-        let sha = BaziTables.shenSha(chart)[idx]
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("\(names[idx]) \(chart.pillars[idx])")
-                        .font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Spacer()
-                    Button("关闭") { showDetail = false }.font(.subheadline).foregroundStyle(Ky.qingdai)
-                }
-                Text("天干十神：\(chart.stemShiShen[idx])").font(.subheadline).foregroundStyle(Ky.ink)
-                Text("藏干：\(chart.hideGan[idx].joined(separator: " "))").font(.subheadline).foregroundStyle(Ky.ink)
-                Text("藏干十神：\(chart.hideShiShen[idx].joined(separator: " "))").font(.subheadline).foregroundStyle(Ky.ink)
-                Text("长生十二宫：\(chart.diShi[idx])").font(.subheadline).foregroundStyle(Ky.ink)
-                Text("纳音：\(chart.naYin[idx])").font(.subheadline).foregroundStyle(Ky.ink)
-                Text("神煞：\(sha.isEmpty ? "无" : sha.joined(separator: "、"))").font(.subheadline).foregroundStyle(Ky.ink)
-                if idx == 2 {
-                    Text("日柱旬空：\(chart.xunKong)").font(.subheadline).foregroundStyle(Ky.ink)
-                }
-                Text("藏干按本气在前排列；神煞为通行查表，只作辅助参考，不单独定吉凶。")
-                    .font(.caption2).foregroundStyle(Ky.sub)
-            }.padding(16)
+    // MARK: - 四大深度模块 2×2 导航矩阵（解盘25维 / 逐年四查 / 1-88岁规划 / 命盘海报）
+    private var deepDiveGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+            NavigationLink { InterpretView(chart: chart, name: name) } label: {
+                hubCard(icon: "text.book.closed.fill", title: "解盘 · 25维详批",
+                        subtitle: "格局喜忌 · 六亲事业 · 依据链", color: Ky.qingdai)
+            }.buttonStyle(.plain)
+
+            NavigationLink { YearByYearView(chart: chart, name: name) } label: {
+                hubCard(icon: "calendar.badge.clock", title: "逐年直断 · 四查",
+                        subtitle: "当前运20年 · 关口与主线定级", color: Ky.cinnabar)
+            }.buttonStyle(.plain)
+
+            NavigationLink { LifePlanView(chart: chart, name: name) } label: {
+                hubCard(icon: "list.bullet.rectangle.portrait.fill", title: "1–88岁全程规划",
+                        subtitle: "人生八阶段总纲 · 逐年进退策略", color: Ky.jade)
+            }.buttonStyle(.plain)
+
+            NavigationLink { PosterSheetView(chart: chart, name: name) } label: {
+                hubCard(icon: "photo.artframe", title: "命盘海报导出",
+                        subtitle: "宋纸青黛 / 墨金 / 宣纸高清图", color: Ky.gold)
+            }.buttonStyle(.plain)
         }
     }
 
-    // 十二时辰对照：同日日干下十二时辰的时柱并排（未知时辰定盘用）
+    private func hubCard(icon: String, title: String, subtitle: String, color: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 34, height: 34)
+                .background(color.opacity(0.13))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink).lineLimit(1)
+                Text(subtitle).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Ky.card)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.85), lineWidth: 0.8))
+    }
+
+    // 四柱详情弹窗 Sheet
+    private func pillarDetailView(_ i: Int) -> some View {
+        let idx = min(max(i, 0), 3)
+        let names = ["年柱（祖上/根基宫）", "月柱（父母/提纲宫）", "日柱（自身/配偶宫）", "时柱（子女/晚景宫）"]
+        let sha = BaziTables.shenSha(chart)[idx]
+        let gz = chart.pillars[idx]
+        let stem = gz.first!
+        let branch = gz.last!
+        return NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 14) {
+                        HStack(spacing: 4) {
+                            Text(String(stem)).foregroundStyle(KyV2.color(forChar: stem))
+                            Text(String(branch)).foregroundStyle(KyV2.color(forChar: branch))
+                        }
+                        .font(.system(size: 40, weight: .bold, design: .serif))
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Ky.elevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(names[idx]).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            Text("天干：\(stem)（\(KyV2.element(ofChar: stem)) · \(chart.stemShiShen[idx])）")
+                                .font(.caption).foregroundStyle(Ky.sub)
+                            Text("地支：\(branch)（\(KyV2.element(ofChar: branch)) · 长生处「\(chart.diShi[idx])」）")
+                                .font(.caption).foregroundStyle(Ky.sub)
+                        }
+                        Spacer()
+                    }.kyCard()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        KySectionTitle(title: "藏干与人元（本气/中气/余气）")
+                        ForEach(chart.hideGan[idx].indices, id: \.self) { hi in
+                            let role = hi == 0 ? "本气（主根）" : (hi == 1 ? "中气" : "余气")
+                            let hg = chart.hideGan[idx][hi]
+                            let hss = chart.hideShiShen[idx].indices.contains(hi) ? chart.hideShiShen[idx][hi] : ""
+                            HStack {
+                                KyBadge(text: role, color: hi == 0 ? Ky.qingdai : Ky.sub)
+                                Text("\(hg)（\(KyV2.element(ofChar: hg.first ?? "甲"))）")
+                                    .font(.callout).fontWeight(.bold)
+                                    .foregroundStyle(KyV2.color(forChar: hg.first ?? "甲"))
+                                Spacer()
+                                Text(hss).font(.callout).fontWeight(.medium).foregroundStyle(Ky.ink)
+                            }
+                            .padding(.vertical, 3)
+                        }
+                    }.kyCard()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        KySectionTitle(title: "星运 · 纳音 · 神煞")
+                        HStack {
+                            Text("长生十二宫").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
+                            Text(chart.diShi[idx]).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                            Spacer()
+                        }
+                        HStack {
+                            Text("纳音五行").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
+                            Text(chart.naYin[idx]).font(.callout).foregroundStyle(Ky.ink)
+                            Spacer()
+                        }
+                        if idx == 2 {
+                            HStack {
+                                Text("日柱旬空").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
+                                Text(chart.xunKong).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
+                                Spacer()
+                            }
+                        }
+                        HStack(alignment: .top) {
+                            Text("本柱神煞").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
+                            Text(sha.isEmpty ? "无特定神煞" : sha.joined(separator: "、"))
+                                .font(.callout).foregroundStyle(sha.isEmpty ? Ky.sub : Ky.gold)
+                            Spacer()
+                        }
+                        Text("注：藏干以本气为立格与通根之主；神煞属《三命通会》辅助层，随格局增减分量，不单凭神煞定吉凶。")
+                            .font(.caption2).foregroundStyle(Ky.sub).padding(.top, 4)
+                    }.kyCard()
+                }.padding(16)
+            }
+            .background(Ky.bg)
+            .navigationTitle("\(["年柱", "月柱", "日柱", "时柱"][idx])详情")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { showDetail = false }.foregroundStyle(Ky.qingdai)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    // 十二时辰对照：改为可折叠抽屉（默认收起，保持页面清爽；点击一键展开）
     private func shichenCard() -> some View {
         let branches = BaziTables.DZ
         let hours = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
         let ranges = ["23–1", "1–3", "3–5", "5–7", "7–9", "9–11", "11–13", "13–15", "15–17", "17–19", "19–21", "21–23"]
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("十二时辰对照（同日时柱）").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                Spacer()
-                Text("本盘时柱 \(chart.timePillar)").font(.caption).foregroundStyle(Ky.sub)
-            }
-            Text("同一日干下十二时辰的时柱并排看：时辰未知时先按此表看差别，定盘后再看解盘。")
-                .font(.caption2).foregroundStyle(Ky.sub)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
-                ForEach(0..<12, id: \.self) { i in
-                    let tp = BaziTables.timeGanZhi(dayStem: chart.rizhu.first!, hour: hours[i])
-                    let isCurrent = branches[i] == chart.timePillar.last!
-                    VStack(spacing: 2) {
-                        Text("\(String(branches[i]))时 \(ranges[i])").font(.caption2).foregroundStyle(Ky.sub)
-                        Text(tp).font(.system(.callout, design: .serif)).fontWeight(.semibold)
-                        Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: tp.first!))
-                            .font(.caption2).foregroundStyle(Ky.gold)
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 6)
-                    .background(isCurrent ? Ky.gold.opacity(0.18) : Ky.bg)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+        return VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { showShichen.toggle() }
+            } label: {
+                HStack {
+                    KySectionTitle(title: "同日十二时辰对照", trailing: "本盘时柱 \(chart.timePillar)")
+                    Image(systemName: showShichen ? "chevron.up" : "chevron.down")
+                        .font(.caption).foregroundStyle(Ky.qingdai)
                 }
+            }.buttonStyle(.plain)
+
+            if showShichen {
+                Text("同一日干下十二时辰的时柱并排：生辰分钟临界或时辰不详时，可在此对照相邻时辰的十神差异。")
+                    .font(.caption2).foregroundStyle(Ky.sub)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
+                    ForEach(0..<12, id: \.self) { i in
+                        let tp = BaziTables.timeGanZhi(dayStem: chart.rizhu.first!, hour: hours[i])
+                        let isCurrent = branches[i] == chart.timePillar.last!
+                        VStack(spacing: 2) {
+                            Text("\(String(branches[i]))时 \(ranges[i])").font(.caption2).foregroundStyle(Ky.sub)
+                            Text(tp).font(.system(.callout, design: .serif)).fontWeight(.bold)
+                                .foregroundStyle(isCurrent ? Ky.qingdai : Ky.ink)
+                            Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: tp.first!))
+                                .font(.caption2).foregroundStyle(isCurrent ? Ky.cinnabar : Ky.gold)
+                        }
+                        .frame(maxWidth: .infinity).padding(.vertical, 6)
+                        .background(isCurrent ? Ky.qingdai.opacity(0.14) : Ky.elevated)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(isCurrent ? Ky.qingdai : Color.clear, lineWidth: 1.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+                Text("口径：时干按五鼠遁自日干推；夜子时（23 点后）时干按次日日干推，以本盘时柱为准。")
+                    .font(.caption2).foregroundStyle(Ky.sub)
             }
-            Text("时干按五鼠遁自日干推；夜子时（23 点后）时干按次日日干推，以本盘时柱为准。")
-                .font(.caption2).foregroundStyle(Ky.sub)
         }
         .kyCard()
     }
 
     private var wuxingCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("五行力量").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            KySectionTitle(title: "五行力量与气势", trailing: "天干＋藏干加权")
             WuxingBarsView(percents: chart.wuxingPercents)
-            Text("计法：天干各 1，藏干本气 1 / 中气 0.5 / 余气 0.3，归一化。")
+            Text("计法：天干各 1.0，地支藏干本气 1.0 / 中气 0.5 / 余气 0.3，归一化百分比；强弱取用仍以月令提纲与本气通根为纲。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
         .kyCard()
@@ -520,9 +845,7 @@ struct BaziResultView: View {
     private var timeCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("岁运").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                Spacer()
-                Text("起运 \(chart.qiyunDirection) · \(chart.qiyunDate)").font(.caption).foregroundStyle(Ky.sub)
+                KySectionTitle(title: "岁运推演", trailing: "起运 \(chart.qiyunDirection) · \(chart.qiyunDate)")
             }
             TimeCapsuleBar(levels: ["大运", "流年", "流月", "流日", "流时"],
                            enabled: [true, true, true, true, false], selection: $timeLevel)
@@ -537,19 +860,27 @@ struct BaziResultView: View {
         .kyCard()
     }
 
-    // 岁运导航：‹ › 步进＋回本命年（回到今年所在的运年）；按钮为主、手势为辅
     private func timeNavRow() -> some View {
         HStack(spacing: 8) {
             Button { stepTime(-1) } label: {
-                Label("上一步", systemImage: "chevron.left").font(.caption)
+                Label("上一步", systemImage: "chevron.left")
+                    .font(.caption).fontWeight(.medium)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Ky.elevated).clipShape(Capsule())
             }.foregroundStyle(Ky.qingdai)
             Spacer()
             Button { backToCurrentYear() } label: {
-                Label("回本命年", systemImage: "house").font(.caption)
+                Label("定位今年", systemImage: "scope")
+                    .font(.caption).fontWeight(.semibold)
+                    .padding(.horizontal, 12).padding(.vertical, 5)
+                    .background(Ky.cinnabar.opacity(0.12)).clipShape(Capsule())
             }.foregroundStyle(Ky.cinnabar)
             Spacer()
             Button { stepTime(1) } label: {
-                Label("下一步", systemImage: "chevron.right").font(.caption)
+                Label("下一步", systemImage: "chevron.right")
+                    .font(.caption).fontWeight(.medium)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Ky.elevated).clipShape(Capsule())
             }.foregroundStyle(Ky.qingdai)
         }
     }
@@ -589,23 +920,50 @@ struct BaziResultView: View {
     }
 
     private var dayunLevel: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let nowYear = Calendar.current.component(.year, from: Date())
+        return VStack(alignment: .leading, spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(chart.dayunGanZhi.indices, id: \.self) { i in
-                        Button { selectedDayun = i; selectedYear = chart.dayunStartYear(i); timeLevel = 1 } label: {
-                            VStack(spacing: 2) {
-                                Text(chart.dayunGanZhi[i]).font(.system(.callout, design: .serif)).fontWeight(.semibold)
-                                Text("\(chart.dayunStartYear(i)) 起").font(.caption2).foregroundStyle(Ky.sub)
+                        let gz = chart.dayunGanZhi[i]
+                        let startY = chart.dayunStartYear(i)
+                        let isCurYun = (nowYear >= startY && nowYear <= startY + 9)
+                        let isSel = (i == selectedDayun)
+                        let ss = BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!)
+                        Button { selectedDayun = i; selectedYear = startY; timeLevel = 1 } label: {
+                            VStack(spacing: 4) {
+                                HStack(spacing: 2) {
+                                    Text("\(startY)")
+                                        .font(KyV2.tabular(10, weight: .medium))
+                                    if isCurYun {
+                                        Text("当前").font(.system(size: 8, weight: .bold))
+                                            .padding(.horizontal, 4).padding(.vertical, 1)
+                                            .background(Ky.cinnabar).foregroundStyle(.white).clipShape(Capsule())
+                                    }
+                                }
+                                .foregroundStyle(isSel ? Color.white.opacity(0.9) : Ky.sub)
+
+                                Text(gz)
+                                    .font(.system(.title3, design: .serif)).fontWeight(.bold)
+                                    .foregroundStyle(isSel ? Color.white : Ky.ink)
+
+                                Text(ss)
+                                    .font(.caption2)
+                                    .foregroundStyle(isSel ? Color.white.opacity(0.9) : Ky.gold)
                             }
-                            .padding(.horizontal, 12).padding(.vertical, 8)
-                            .background(i == selectedDayun ? Ky.gold.opacity(0.18) : Ky.bg)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+                            .padding(.horizontal, 12).padding(.vertical, 9)
+                            .background(isSel ? Ky.qingdai : (isCurYun ? Ky.gold.opacity(0.14) : Ky.elevated))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(isCurYun && !isSel ? Ky.gold : Color.clear, lineWidth: 1.2)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }.buttonStyle(.plain)
                     }
                 }
             }
-            Text("点任一步大运，进到它的流年；也可左右滑切换大运。").font(.caption2).foregroundStyle(Ky.sub)
+            Text("点任一步大运直接下钻该运十年流年；标「当前」者为今年所在大运。")
+                .font(.caption2).foregroundStyle(Ky.sub)
         }
         .gesture(DragGesture(minimumDistance: 30).onEnded { v in
             if v.translation.width < -30 { stepTime(1) } else if v.translation.width > 30 { stepTime(-1) }
@@ -616,24 +974,35 @@ struct BaziResultView: View {
         let start = chart.dayunStartYear(safeDayun)
         let nowYear = Calendar.current.component(.year, from: Date())
         return VStack(alignment: .leading, spacing: 8) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5), spacing: 8) {
                 ForEach(0..<10, id: \.self) { k in
                     let y = start + k
                     let gz = BaziChart.yearGanZhi(y)
+                    let isNow = (y == nowYear)
+                    let isSel = (selectedYear == y)
                     Button { selectedYear = y; timeLevel = 2 } label: {
-                        VStack(spacing: 2) {
-                            Text(gz).font(.system(.callout, design: .serif)).fontWeight(.semibold)
-                            Text(String(y) + (y == nowYear ? " · 今" : "")).font(.caption2).foregroundStyle(Ky.sub)
+                        VStack(spacing: 3) {
+                            Text(String(y) + (isNow ? "·今" : ""))
+                                .font(KyV2.tabular(10, weight: isNow ? .bold : .regular))
+                                .foregroundStyle(isSel ? Color.white.opacity(0.9) : (isNow ? Ky.cinnabar : Ky.sub))
+                            Text(gz)
+                                .font(.system(.callout, design: .serif)).fontWeight(.bold)
+                                .foregroundStyle(isSel ? Color.white : Ky.ink)
                             Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!))
-                                .font(.caption2).foregroundStyle(Ky.gold)
+                                .font(.system(size: 10))
+                                .foregroundStyle(isSel ? Color.white.opacity(0.9) : Ky.gold)
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 8)
-                        .background(y == nowYear ? Ky.gold.opacity(0.18) : Ky.bg)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }.buttonStyle(.plain).foregroundStyle(Ky.ink)
+                        .background(isSel ? Ky.qingdai : (isNow ? Ky.gold.opacity(0.18) : Ky.elevated))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9)
+                                .stroke(isNow && !isSel ? Ky.cinnabar.opacity(0.6) : Color.clear, lineWidth: 1.1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                    }.buttonStyle(.plain)
                 }
             }
-            Text("\(chart.dayunGanZhi[safeDayun]) 运（\(start) 起）十年流年，干下小字为流年天干十神；点任意一年进流月，也可左右滑切换流年。")
+            Text("\(chart.dayunGanZhi[safeDayun])运（\(start)–\(start + 9)）十年流年：点任一年进流月。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
         .gesture(DragGesture(minimumDistance: 30).onEnded { v in
@@ -648,24 +1017,31 @@ struct BaziResultView: View {
             ("午", "五月"), ("未", "六月"), ("申", "七月"), ("酉", "八月"), ("戌", "九月"), ("亥", "十月"),
             ("子", "冬月"), ("丑", "腊月")]
         return VStack(alignment: .leading, spacing: 8) {
-            Text("\(year) 年（\(ygz)）流月 · 以节气为界")
-                .font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
-            ForEach(branches.indices, id: \.self) { i in
-                let gz = BaziTables.monthGanZhi(yearStem: ygz.first!, monthBranch: branches[i].0)
-                HStack(spacing: 10) {
-                    Text(branches[i].1).font(.caption).foregroundStyle(Ky.sub).frame(width: 34, alignment: .leading)
-                    Text(gz).font(.system(.callout, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                    Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!))
-                        .font(.caption2).foregroundStyle(Ky.gold)
-                    Spacer()
-                    if let rel = BaziTables.relation(gz.last!, chart.monthPillar.last!) {
-                        Text("\(rel)月令").font(.caption2).foregroundStyle(Ky.cinnabar)
-                    }
-                }
-                .padding(.vertical, 4)
-                Divider().opacity(0.35)
+            HStack {
+                Text("\(year) 年（\(ygz)）十二节气流月")
+                    .font(.callout).fontWeight(.bold).foregroundStyle(Ky.ink)
+                Spacer()
+                Button("返回流年") { timeLevel = 1 }.font(.caption).foregroundStyle(Ky.qingdai)
             }
-            Text("流月干支按五虎遁自流年干推，月份以交节为界（寅月自立春起）；与月令的冲合单独标出。")
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
+                ForEach(branches.indices, id: \.self) { i in
+                    let gz = BaziTables.monthGanZhi(yearStem: ygz.first!, monthBranch: branches[i].0)
+                    let rel = BaziTables.relation(gz.last!, chart.monthPillar.last!)
+                    VStack(spacing: 2) {
+                        Text(branches[i].1).font(.caption2).foregroundStyle(Ky.sub)
+                        Text(gz).font(.system(.callout, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!))
+                            .font(.system(size: 10)).foregroundStyle(Ky.gold)
+                        if let r = rel {
+                            Text("\(r)月令").font(.system(size: 9, weight: .bold)).foregroundStyle(Ky.cinnabar)
+                        }
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 6)
+                    .background(rel != nil ? Ky.cinnabar.opacity(0.08) : Ky.elevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+            Text("流月干支按五虎遁自流年干推，以节气交节为界（寅月自立春起）。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
     }
@@ -676,127 +1052,50 @@ struct BaziResultView: View {
             ? BaziEngine.dayPillar(for: flowDate.addingTimeInterval(86400)).first! : dp.first!
         let tp = BaziTables.timeGanZhi(dayStem: dayStemForTime, hour: flowHour)
         return VStack(alignment: .leading, spacing: 10) {
-            DatePicker("选一天", selection: $flowDate, displayedComponents: [.date])
-            Stepper("时刻：\(flowHour) 时（\(tp)）", value: $flowHour, in: 0...23)
-            HStack(spacing: 16) {
+            DatePicker("选定流日", selection: $flowDate, displayedComponents: [.date])
+            Stepper("选定流时：\(flowHour):00（\(tp)时）", value: $flowHour, in: 0...23)
+            HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("流日").font(.caption2).foregroundStyle(Ky.sub)
+                    Text("流日干支").font(.caption2).foregroundStyle(Ky.sub)
                     HStack(spacing: 6) {
                         Text(dp).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: dp.first!))
-                            .font(.caption).foregroundStyle(Ky.gold)
+                        KyBadge(text: BaziTables.shiShen(day: chart.rizhu.first!, stem: dp.first!), color: Ky.gold)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
+
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("流时").font(.caption2).foregroundStyle(Ky.sub)
+                    Text("流时干支").font(.caption2).foregroundStyle(Ky.sub)
                     HStack(spacing: 6) {
                         Text(tp).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: tp.first!))
-                            .font(.caption).foregroundStyle(Ky.gold)
+                        KyBadge(text: BaziTables.shiShen(day: chart.rizhu.first!, stem: tp.first!), color: Ky.qingdai)
                     }
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
             }
             if let rel = BaziTables.relation(dp.last!, chart.dayPillar.last!) {
-                Text("流日支与命盘日支成「\(rel)」——日子落到自身宫位的引动，细读看解盘口径。")
+                Text("流日支与命盘日支成「\(rel)」——自身与配偶宫位受引动，当日行事宜稳。")
                     .font(.caption).foregroundStyle(Ky.cinnabar)
             } else {
-                Text("流日支与命盘日支无直接冲合。").font(.caption).foregroundStyle(Ky.sub)
+                Text("流日支与命盘日支无直接刑冲合会。")
+                    .font(.caption).foregroundStyle(Ky.sub)
             }
-            Text("流日按晚子时口径（23 时后日柱不换、时干按次日日干推），与排盘一致。")
-                .font(.caption2).foregroundStyle(Ky.sub)
         }
     }
 
     private var infoCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("基本信息").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
-            Text("胎元 \(chart.taiYuan) · 胎息 \(chart.taiXi) · 命宫 \(chart.mingGong) · 身宫 \(chart.shenGong)")
-                .font(.caption).foregroundStyle(Ky.ink)
+            KySectionTitle(title: "命盘附元", trailing: "古法三垣与司令")
+            HStack(spacing: 16) {
+                Text("胎元：\(chart.taiYuan)").font(.caption).foregroundStyle(Ky.ink)
+                Text("胎息：\(chart.taiXi)").font(.caption).foregroundStyle(Ky.ink)
+                Text("命宫：\(chart.mingGong)").font(.caption).foregroundStyle(Ky.ink)
+                Text("身宫：\(chart.shenGong)").font(.caption).foregroundStyle(Ky.ink)
+            }
             if !chart.siliText.isEmpty {
-                Text("人元司令 \(chart.siliText)").font(.caption).foregroundStyle(Ky.ink)
+                Text("月令人元分野：\(chart.siliText)").font(.caption).foregroundStyle(Ky.sub)
             }
         }
         .kyCard()
-    }
-
-    private var interpretLink: some View {
-        NavigationLink { InterpretView(chart: chart, name: name) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "text.book.closed").foregroundStyle(Ky.cinnabar)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("解盘 · 全维度").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
-                    Text("25 个维度逐条说清：事业财运婚姻子女健康守年＋颜色数字方位＋注意事项与化解").font(.caption2).foregroundStyle(Ky.sub)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
-            }
-            .kyCard()
-        }.buttonStyle(.plain).foregroundStyle(Ky.ink)
-    }
-
-    private var lifePlanLink: some View {
-        NavigationLink { LifePlanView(chart: chart, name: name) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "list.bullet.rectangle.portrait").foregroundStyle(Ky.cinnabar)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("逐年全程 · 人生规划").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
-                    Text("1 岁到 88 岁逐年说清＋八阶段总规划：哪年进取、哪年守成").font(.caption2).foregroundStyle(Ky.sub)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
-            }
-            .kyCard()
-        }.buttonStyle(.plain).foregroundStyle(Ky.ink)
-    }
-
-    private var yearlyLink: some View {
-        NavigationLink { YearByYearView(chart: chart, name: name) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "calendar.badge.clock").foregroundStyle(Ky.gold)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("逐年直断").font(.system(.subheadline, design: .serif)).fontWeight(.semibold)
-                    Text("四查生成：引动分级＋岁运叠加＋喜忌称重，重断有门槛").font(.caption2).foregroundStyle(Ky.sub)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
-            }
-            .kyCard()
-        }.buttonStyle(.plain).foregroundStyle(Ky.ink)
-    }
-
-    // 四柱表格：行＝维度，列＝四柱；专业细盘多三行（藏干十神/星运/纳音）
-    private func plateGrid(_ ch: BaziChart) -> some View {
-        let cols = ["年柱", "月柱", "日柱", "时柱"]
-        return VStack(spacing: 0) {
-            plateRow(cells: cols, header: true)
-            if proMode { plateRow(cells: ch.stemShiShen, small: true) }
-            plateRow(cells: ch.pillars.map { String($0.first!) }, big: true)
-            plateRow(cells: ch.pillars.map { String($0.last!) }, big: true)
-            plateRow(cells: ch.hideGan.map { $0.joined(separator: " ") }, small: true)
-            if proMode {
-                plateRow(cells: ch.hideShiShen.map { $0.joined(separator: " ") }, small: true, dim: true)
-                plateRow(cells: ch.diShi, small: true)
-                plateRow(cells: ch.naYin, small: true, dim: true)
-                plateRow(cells: BaziTables.shenSha(ch).map { $0.joined(separator: " ") }, small: true, dim: true)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("四柱：年柱 \(ch.pillars[0])，月柱 \(ch.pillars[1])，日柱 \(ch.pillars[2])，时柱 \(ch.pillars[3])，日主 \(ch.rizhu)")
-    }
-
-    private func plateRow(cells: [String], header: Bool = false, big: Bool = false, small: Bool = false, dim: Bool = false) -> some View {
-        HStack(spacing: 6) {
-            ForEach(cells.indices, id: \.self) { i in
-                Text(cells[i])
-                    .font(header ? .caption2 : big ? .system(.title2, design: .serif).weight(.bold)
-                          : small ? .caption : .callout)
-                    .foregroundStyle(header ? Ky.sub : dim ? Ky.sub : (big && i == 2 ? Ky.cinnabar : Ky.ink))
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(.vertical, header ? 2 : big ? 5 : 3)
-        .overlay(Divider().opacity(header ? 1 : 0.35), alignment: .bottom)
     }
 }

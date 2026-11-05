@@ -174,33 +174,151 @@ struct InterpretView: View {
     let chart: BaziChart
     let name: String
     @StateObject private var speaker = Speaker()
+    @State private var selectedCategory = 0
+    @State private var searchQuery = ""
+
+    private static let categories: [(String, Set<String>)] = [
+        ("全部", []),
+        ("核心总纲", ["命局风景", "月令格局（候选）", "喜忌（扶抑初判）", "十神分布", "岁运要点"]),
+        ("性格事业", ["性格底色", "事业方向", "学业与文凭", "财运形态", "置业田宅", "名声声誉"]),
+        ("婚恋六亲", ["婚姻感情", "子女", "父母缘分", "兄弟同辈", "贵人与人际", "出行迁移"]),
+        ("身心守年", ["健康倾向", "中老年守年", "晚年光景"]),
+        ("破局调理", ["幸运颜色与数字", "适合方位", "注意事项", "如何化解（破局调理）"])
+    ]
+
+    private func categoryTag(for title: String) -> (String, Color) {
+        for (idx, cat) in Self.categories.enumerated() where idx > 0 && cat.1.contains(title) {
+            switch idx {
+            case 1: return ("核心总纲", Ky.qingdai)
+            case 2: return ("性格事业", Ky.gold)
+            case 3: return ("婚恋六亲", Ky.cinnabar)
+            case 4: return ("身心守年", Ky.jade)
+            default: return ("破局调理", Ky.qingdai)
+            }
+        }
+        return ("详批", Ky.qingdai)
+    }
+
     var body: some View {
-        let items = InterpretEngine.interpret(chart: chart)
+        let allItems = InterpretEngine.interpret(chart: chart)
+        let filteredIndices = allItems.indices.filter { idx in
+            let item = allItems[idx]
+            let matchCat = selectedCategory == 0 || Self.categories[selectedCategory].1.contains(item.title)
+            let matchQuery = searchQuery.isEmpty
+                || item.title.localizedCaseInsensitiveContains(searchQuery)
+                || item.conclusion.localizedCaseInsensitiveContains(searchQuery)
+            return matchCat && matchQuery
+        }
+
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                Button {
-                    speaker.read(items.map { "\($0.title)。\($0.conclusion)" }.joined(separator: "。"))
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: speaker.speaking ? "stop.circle.fill" : "play.circle.fill")
-                        Text(speaker.speaking ? "停止朗读" : "朗读全文（听书）").font(.subheadline).fontWeight(.medium)
-                    }.foregroundStyle(Ky.gold)
-                }.buttonStyle(.plain)
-                ForEach(items.indices, id: \.self) { i in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(items[i].title)
-                            .font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                        EvidenceChainView(conclusion: items[i].conclusion, links: items[i].links)
+            LazyVStack(alignment: .leading, spacing: 14) {
+                // 顶部总控栏：分类胶囊＋全文听书＋搜索
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(name.isEmpty ? "本盘" : name) · 25维五典详批")
+                                .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            Text("日主 \(chart.rizhu) · 四柱 \(chart.pillars.joined(separator: " ")) · 每条附盘面与典籍依据")
+                                .font(.caption2).foregroundStyle(Ky.sub)
+                        }
+                        Spacer()
+                        Button {
+                            let textToRead = filteredIndices.map { "\(allItems[$0].title)。\(allItems[$0].conclusion)" }.joined(separator: "。")
+                            speaker.read(textToRead)
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: speaker.speaking ? "stop.circle.fill" : "speaker.wave.2.circle.fill")
+                                Text(speaker.speaking ? "停止" : "听本组")
+                            }
+                            .font(.caption).fontWeight(.semibold)
+                            .padding(.horizontal, 11).padding(.vertical, 6)
+                            .background(speaker.speaking ? Ky.cinnabar : Ky.qingdai)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                        }.buttonStyle(.plain)
                     }
-                    .kyCard()
+
+                    // 分类速选胶囊条（解决 25 张卡片一字长蛇阵盲滑痛点）
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 7) {
+                            ForEach(Self.categories.indices, id: \.self) { cIdx in
+                                let active = selectedCategory == cIdx
+                                let count = cIdx == 0 ? allItems.count : Self.categories[cIdx].1.count
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.16)) { selectedCategory = cIdx }
+                                } label: {
+                                    Text("\(Self.categories[cIdx].0) \(count)")
+                                        .font(.caption).fontWeight(active ? .bold : .medium)
+                                        .padding(.horizontal, 11).padding(.vertical, 6)
+                                        .background(active ? Ky.qingdai : Ky.elevated)
+                                        .foregroundStyle(active ? Color.white : Ky.ink)
+                                        .clipShape(Capsule())
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+
+                    // 页内快速检索
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass").font(.caption).foregroundStyle(Ky.sub)
+                        TextField("搜维度或关键词（如：调候、财库、婚姻、甲减、守年）", text: $searchQuery)
+                            .font(.caption)
+                        if !searchQuery.isEmpty {
+                            Button { searchQuery = "" } label: {
+                                Image(systemName: "xmark.circle.fill").font(.caption).foregroundStyle(Ky.sub)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 7)
+                    .background(Ky.elevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }.kyCard()
+
+                if filteredIndices.isEmpty {
+                    Text("没有匹配的解盘维度，请切换上方分类或清空搜索词。")
+                        .font(.callout).foregroundStyle(Ky.sub)
+                        .frame(maxWidth: .infinity).padding(.vertical, 20)
+                } else {
+                    ForEach(filteredIndices, id: \.self) { i in
+                        let tag = categoryTag(for: allItems[i].title)
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 8) {
+                                Text(String(format: "%02d", i + 1))
+                                    .font(KyV2.tabular(11, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 24, height: 22)
+                                    .background(tag.1)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                Text(allItems[i].title)
+                                    .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                KyBadge(text: tag.0, color: tag.1)
+                                Spacer()
+                                Button {
+                                    speaker.read("\(allItems[i].title)。\(allItems[i].conclusion)")
+                                } label: {
+                                    Image(systemName: "speaker.wave.2")
+                                        .font(.caption)
+                                        .foregroundStyle(Ky.qingdai)
+                                        .padding(6)
+                                        .background(Ky.elevated)
+                                        .clipShape(Circle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("朗读\(allItems[i].title)")
+                            }
+                            EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links)
+                        }
+                        .kyCard()
+                    }
                 }
-                Text("解盘说明：以上每一项都是按盘面数据逐项算出，结论下附「盘面＋根据」可复核；所据为五典与流派通说，标注在每条根据里。健康只给部位倾向不落病名；守年只列引动最重的关口级年份，不作寿数断语。正式命书（回测校准的直断）以工作室报告为更深一层。")
+
+                Text("解盘纪律说明：以上 25 维全部由本机确定性排盘数据推导，每条结论附「盘面事实＋典籍根据」可复核；健康只给部位与代谢倾向不落病名；守年只列强引动关口级年份。回测校准级的私人详批以工作室正式报告为准。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
         .background(Ky.bg)
         .onDisappear { speaker.stop() }
-        .navigationTitle(name.isEmpty ? "解盘" : "解盘 · \(name)")
+        .navigationTitle(name.isEmpty ? "25维五典解盘" : "解盘 · \(name)")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
