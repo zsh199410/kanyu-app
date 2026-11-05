@@ -1331,12 +1331,15 @@ final class FPSMonitor: ObservableObject {
     @Published var fps: Double = 0
     @Published var isIdle = false
     private var link: CADisplayLink?
-    private var frames = 0
-    private var windowStart = CACurrentMediaTime()
+    private var stamps: [CFTimeInterval] = [] // 最近 20 帧时间戳：滚动瞬时帧率，不再用 0.5 秒平均
     private var lastTick = CACurrentMediaTime()
     private var idleElapsed = 0.0
     init() {
         link = CADisplayLink(target: self, selector: #selector(tick))
+        // 向系统要 120 量程：不设则 iPhone 上回调最高只到 60，表永远量不到 120
+        link?.preferredFrameRateRange = CAFrameRateRange(
+            minimum: 80, maximum: Float(UIScreen.main.maximumFramesPerSecond),
+            preferred: Float(UIScreen.main.maximumFramesPerSecond))
         link?.add(to: .main, forMode: .common) // .common：划动时不停表，才能量到滚动帧率
     }
     @objc private func tick() {
@@ -1345,20 +1348,18 @@ final class FPSMonitor: ObservableObject {
         lastTick = now
         if gap > 0.06 {
             // 屏幕待机中（或刚从后台回来）：丢弃本窗口，爬升过程不计入读数
-            frames = 0
-            windowStart = now
+            stamps.removeAll()
             idleElapsed += gap
             if idleElapsed > 1.0 && !isIdle { isIdle = true; fps = 0 }
             return
         }
         idleElapsed = 0
         isIdle = false
-        frames += 1
-        let dt = now - windowStart
-        if dt >= 0.5 {
-            fps = Double(frames) / dt
-            frames = 0
-            windowStart = now
+        stamps.append(now)
+        if stamps.count > 20 { stamps.removeFirst(stamps.count - 20) }
+        if stamps.count >= 2 {
+            let dt = stamps.last! - stamps.first!
+            if dt > 0 { fps = Double(stamps.count - 1) / dt }
         }
     }
     deinit { link?.invalidate() }
