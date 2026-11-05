@@ -293,6 +293,7 @@ struct BaziHomeView: View {
     @State private var chartSnapshot = ""
     @State private var savedTip = false
     @State private var inputCollapsed = false
+    @StateObject private var palmStore = PalmRecordStore()
 
     private var inputSnapshot: String { "\(name)|\(gender)|\(birth.timeIntervalSince1970)|\(useLongitude)|\(longitudeText)" }
     private var isStale: Bool { chart != nil && chartSnapshot != inputSnapshot }
@@ -307,6 +308,33 @@ struct BaziHomeView: View {
                 }
                 if let ch = chart {
                     BaziResultView(chart: ch, name: name)
+                    NavigationLink {
+                        HeCanPosterSheetView(
+                            bazi: ch,
+                            ziwei: ZiweiEngine.cachedChart(clock: birth, gender: gender,
+                                                           longitude: useLongitude ? Double(longitudeText) : nil),
+                            name: name,
+                            palmLines: palmStore.records(for: name).map { "\($0.kind)：\($0.summary)" })
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "photo.artframe")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Ky.gold)
+                                .frame(width: 34, height: 34)
+                                .background(Ky.gold.opacity(0.13))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("合参海报导出").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                Text("八字总断 · 紫微命宫 · 手相要点 一页合参").font(.caption2).foregroundStyle(Ky.sub)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
+                        }
+                        .padding(12)
+                        .background(Ky.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.85), lineWidth: 0.8))
+                    }.buttonStyle(.plain)
                 }
                 HStack(spacing: 12) {
                     NavigationLink { GanZhiLookupView() } label: {

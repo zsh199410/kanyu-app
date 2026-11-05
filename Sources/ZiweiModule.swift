@@ -245,6 +245,26 @@ struct ZiweiHomeView: View {
                     ZiweiBoardView(chart: ch, name: name)
                     ZiweiYearView(chart: ch)
                     ZiweiReadingView(chart: ch)
+                    NavigationLink { ZiweiPosterSheetView(chart: ch, name: name) } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "photo.artframe")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Ky.gold)
+                                .frame(width: 34, height: 34)
+                                .background(Ky.gold.opacity(0.13))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("紫微命盘海报导出").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                Text("方盘缩印 · 命宫主星 · 生年四化").font(.caption2).foregroundStyle(Ky.sub)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
+                        }
+                        .padding(12)
+                        .background(Ky.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line.opacity(0.85), lineWidth: 0.8))
+                    }.buttonStyle(.plain)
                 }
                 NavigationLink { CaliberSettingsView() } label: {
                     HStack(spacing: 6) {

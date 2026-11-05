@@ -361,3 +361,559 @@ struct PosterSheetView: View {
         }
     }
 }
+
+// MARK: - 紫微命盘海报（方盘缩印＋命宫主星＋生年四化）
+
+// 方盘缩印单宫（与 ZiweiBoardView 同支序：顶行巳午未申、中行辰卯/酉戌、底行寅丑子亥）
+private struct ZiweiMiniCell: View {
+    let p: ZiweiPalace
+    let pal: PosterPalette
+    let isMing: Bool
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 4) {
+                Text(p.name)
+                    .font(.system(size: 11, weight: .bold, design: .serif))
+                    .foregroundStyle(isMing ? pCin : pal.main)
+                Text("\(p.stem)\(ZiweiCore.DZ[p.branch])")
+                    .font(.system(size: 8.5)).foregroundStyle(pal.sub)
+                if p.isBody {
+                    Text("身").font(.system(size: 8, weight: .bold)).foregroundStyle(pal.accentHi)
+                }
+                Spacer(minLength: 0)
+                Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0)")
+                    .font(.system(size: 8, design: .monospaced)).foregroundStyle(pal.sub)
+            }
+            if !p.majors.isEmpty {
+                Text(p.majors.map { $0.star + ($0.mutagen.map { "化\($0)" } ?? "") }.joined(separator: "、"))
+                    .font(.system(size: 10, weight: .semibold, design: .serif))
+                    .foregroundStyle(pal.main).lineLimit(1)
+            }
+            if !p.minors.isEmpty {
+                Text(p.minors.prefix(4).map { $0.star }.joined(separator: " "))
+                    .font(.system(size: 8)).foregroundStyle(pal.sub).lineLimit(1)
+            }
+        }
+        .padding(6)
+        .frame(width: 107, height: 92, alignment: .topLeading)
+        .background(pal.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isMing ? pCin.opacity(0.6) : pal.cardStroke, lineWidth: isMing ? 1.1 : 0.7)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+// 方盘中央合并 2×2 天心宫：命宫主星＋五行局＋现行大限（虚岁落入哪步大限）
+private struct ZiweiCenterCell: View {
+    let chart: ZiweiChart
+    let pal: PosterPalette
+    var body: some View {
+        let ming = chart.palaces[chart.mingGong]
+        let stars = ming.majors.map { $0.star }.joined(separator: "、")
+        let thisYear = Calendar(identifier: .gregorian).component(.year, from: Date())
+        let age = chart.birthYear > 0 ? thisYear - chart.birthYear + 1 : 0
+        let daxian = chart.palaces.first { p in
+            age > 0 && age >= (p.decadal.first ?? 0) && age <= (p.decadal.last ?? 0)
+        }
+        return VStack(spacing: 5) {
+            Text(chart.juName)
+                .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
+            Text(ming.majors.isEmpty ? "命宫无主星（借对宫）" : "命宫主星 \(stars)")
+                .font(.system(size: 12, weight: .semibold, design: .serif)).foregroundStyle(pal.main)
+                .multilineTextAlignment(.center)
+            Text("命宫\(ming.stem)\(ZiweiCore.DZ[ming.branch]) · 身宫\(chart.palaces[chart.shenGong].name)")
+                .font(.system(size: 10)).foregroundStyle(pal.sub)
+            if let d = daxian {
+                Text("现行大限 \(d.decadal.first ?? 0)–\(d.decadal.last ?? 0) 岁 · \(d.name)")
+                    .font(.system(size: 10, weight: .medium)).foregroundStyle(pal.accent)
+            }
+            Text(chart.lunarText)
+                .font(.system(size: 9)).foregroundStyle(pal.sub).multilineTextAlignment(.center)
+        }
+        .frame(width: 219, height: 189)
+        .background(pal.card)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(pal.cardStroke, lineWidth: 0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+struct ZiweiPosterView: View {
+    let chart: ZiweiChart
+    let name: String
+    var style: PosterStyle = .songQingdai
+
+    private var pal: PosterPalette { style.palette }
+    private var mingCard: (title: String, conclusion: String, facts: String)? {
+        ZiweiReading.cards(chart: chart).first { $0.title == "命宫定型" }
+    }
+    // 生年四化：全盘主星＋辅星带化者（年干四化表恰为 4 颗，不编不凑）
+    private var huaItems: [(star: String, kind: String, palace: String)] {
+        var out: [(star: String, kind: String, palace: String)] = []
+        for p in chart.palaces {
+            for m in p.majors where m.mutagen != nil { out.append((star: m.star, kind: m.mutagen!, palace: p.name)) }
+            for s in p.minors where s.mutagen != nil { out.append((star: s.star, kind: s.mutagen!, palace: p.name)) }
+        }
+        return out
+    }
+
+    private var board: some View {
+        let c = chart.palaces
+        return VStack(spacing: 5) {
+            HStack(spacing: 5) {
+                ZiweiMiniCell(p: c[5], pal: pal, isMing: chart.mingGong == 5)
+                ZiweiMiniCell(p: c[6], pal: pal, isMing: chart.mingGong == 6)
+                ZiweiMiniCell(p: c[7], pal: pal, isMing: chart.mingGong == 7)
+                ZiweiMiniCell(p: c[8], pal: pal, isMing: chart.mingGong == 8)
+            }
+            HStack(spacing: 5) {
+                VStack(spacing: 5) {
+                    ZiweiMiniCell(p: c[4], pal: pal, isMing: chart.mingGong == 4)
+                    ZiweiMiniCell(p: c[3], pal: pal, isMing: chart.mingGong == 3)
+                }
+                ZiweiCenterCell(chart: chart, pal: pal)
+                VStack(spacing: 5) {
+                    ZiweiMiniCell(p: c[9], pal: pal, isMing: chart.mingGong == 9)
+                    ZiweiMiniCell(p: c[10], pal: pal, isMing: chart.mingGong == 10)
+                }
+            }
+            HStack(spacing: 5) {
+                ZiweiMiniCell(p: c[2], pal: pal, isMing: chart.mingGong == 2)
+                ZiweiMiniCell(p: c[1], pal: pal, isMing: chart.mingGong == 1)
+                ZiweiMiniCell(p: c[0], pal: pal, isMing: chart.mingGong == 0)
+                ZiweiMiniCell(p: c[11], pal: pal, isMing: chart.mingGong == 11)
+            }
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
+            if style != .songQingdai {
+                RadialGradient(colors: [pal.accent.opacity(0.14), .clear], center: .init(x: 0.5, y: 0.16), startRadius: 10, endRadius: 300)
+                RoundedRectangle(cornerRadius: 10).stroke(pal.accent.opacity(0.55), lineWidth: 1.1).padding(18)
+                RoundedRectangle(cornerRadius: 6).stroke(pal.accent.opacity(0.25), lineWidth: 0.7).padding(24)
+            } else {
+                RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
+                VStack {
+                    Spacer()
+                    SongMountainHeaderView(accent: pal.accent)
+                        .padding(.horizontal, 23).padding(.bottom, 23)
+                }
+            }
+
+            VStack(spacing: 0) {
+                if style == .songQingdai {
+                    Text("紫 微 斗 数 · 命 盘 雅 集")
+                        .font(.system(size: 12, weight: .medium))
+                        .tracking(4)
+                        .foregroundStyle(pal.accent)
+                        .padding(.top, 52)
+                    Text(name.isEmpty ? "紫微命盘" : name)
+                        .font(.system(size: 44, weight: .bold, design: .serif))
+                        .foregroundStyle(pal.main)
+                        .padding(.top, 16)
+                } else {
+                    BaguaRingView(size: 132, accent: pal.accent, accentHi: pal.accentHi).padding(.top, 42)
+                    Text("三 术 合 参").font(.system(size: 14, design: .serif)).tracking(2).foregroundStyle(pal.accentHi).padding(.top, 12)
+                    Text(name.isEmpty ? "紫微命盘" : name)
+                        .font(.system(size: 40, weight: .semibold, design: .serif)).foregroundStyle(pal.main).padding(.top, 18)
+                }
+
+                Text("\(chart.juName) · \(chart.lunarText)")
+                    .font(.system(size: 12)).foregroundStyle(pal.sub).padding(.top, 8)
+
+                HStack(spacing: 8) {
+                    Rectangle().fill(pal.cardStroke).frame(width: 140, height: 0.8)
+                    Rectangle().fill(pal.accent).frame(width: 5, height: 5).rotationEffect(.degrees(45))
+                    Rectangle().fill(pal.cardStroke).frame(width: 140, height: 0.8)
+                }.padding(.vertical, 16)
+
+                board
+
+                // 命宫定型（取自 ZiweiReading 第一卡，不另编断语）
+                if let mc = mingCard {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("命宫定型 · \(mc.facts)")
+                            .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
+                        Text(mc.conclusion)
+                            .font(.system(size: 12.5)).foregroundStyle(pal.main)
+                            .lineSpacing(3.5).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(14)
+                    .frame(width: 444, alignment: .leading)
+                    .background(pal.card)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(pal.cardStroke, lineWidth: 0.8))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.top, 16)
+                }
+
+                // 生年四化
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("生年四化 · 四化落哪宫，哪宫就是一生反复出题之处")
+                        .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                        ForEach(huaItems, id: \.star) { h in
+                            HStack(spacing: 4) {
+                                Text(h.star).font(.system(size: 12, weight: .semibold, design: .serif)).foregroundStyle(pal.main)
+                                Text("化\(h.kind)").font(.system(size: 12, weight: .bold)).foregroundStyle(h.kind == "忌" ? pCin : pal.accent)
+                                Text("入\(h.palace)").font(.system(size: 12)).foregroundStyle(pal.sub)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 10).padding(.vertical, 7)
+                            .background(pal.card)
+                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(pal.cardStroke, lineWidth: 0.7))
+                            .clipShape(RoundedRectangle(cornerRadius: 7))
+                        }
+                    }
+                }
+                .frame(width: 444, alignment: .leading)
+                .padding(.top, 16)
+
+                Spacer()
+
+                HStack(alignment: .bottom) {
+                    VStack(spacing: 1) {
+                        HStack(spacing: 1) {
+                            Text("三").font(.system(size: 14, weight: .bold, design: .serif))
+                            Text("术").font(.system(size: 14, weight: .bold, design: .serif))
+                        }
+                        HStack(spacing: 1) {
+                            Text("合").font(.system(size: 14, weight: .bold, design: .serif))
+                            Text("参").font(.system(size: 14, weight: .bold, design: .serif))
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(pCin)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text("三合派天纪口径 · 方盘缩印 · 生年四化")
+                            .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
+                        Text(Date.now.formatted(date: .abbreviated, time: .omitted))
+                            .font(.system(size: 10)).foregroundStyle(pal.sub.opacity(0.8))
+                    }
+                }
+                .padding(.horizontal, 48).padding(.bottom, 42)
+            }
+        }
+        .frame(width: 540, height: 960)
+    }
+}
+
+struct ZiweiPosterSheetView: View {
+    let chart: ZiweiChart
+    let name: String
+    @State private var fileURL: URL?
+    @State private var style: PosterStyle = .songQingdai
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                Picker("海报版本", selection: $style) {
+                    ForEach(PosterStyle.allCases, id: \.self) { s in Text(s.rawValue).tag(s) }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: style) { _, _ in fileURL = nil; render() }
+
+                ZiweiPosterView(chart: chart, name: name, style: style)
+                    .scaleEffect(0.62)
+                    .frame(width: 540 * 0.62, height: 960 * 0.62)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
+
+                if let u = fileURL {
+                    ShareLink(item: u) {
+                        Label("保存 / 分享高清紫微命盘海报（1080×1920）", systemImage: "square.and.arrow.down")
+                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                    }
+                    .buttonStyle(KyPrimaryButton())
+                    Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
+                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                } else {
+                    ProgressView("正在渲染 1080×1920 高清海报…")
+                }
+            }
+            .padding(20)
+        }
+        .background(Ky.bg)
+        .navigationTitle("紫微命盘海报")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { render() }
+    }
+
+    private func render() {
+        let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style))
+        renderer.scale = 2.0
+        if let img = renderer.uiImage, let data = img.pngData() {
+            let suffix: String
+            switch style {
+            case .songQingdai: suffix = "-song"
+            case .xuanPaper: suffix = "-xuan"
+            case .inkGold: suffix = "-ink"
+            }
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("ziwei-poster-\(name.isEmpty ? "chart" : name)\(suffix).png")
+            try? data.write(to: url, options: .atomic)
+            fileURL = url
+        }
+    }
+}
+
+// MARK: - 合参海报（一页三术要点：八字总断＋紫微命宫＋手相要点）
+
+struct HeCanPosterView: View {
+    let bazi: BaziChart
+    let ziwei: ZiweiChart
+    let name: String
+    var palmLines: [String] = []
+    var style: PosterStyle = .songQingdai
+
+    private var items: [InterpretItem] { InterpretEngine.interpret(chart: bazi) }
+    private var headline: String { items.first(where: { $0.title == "命局风景" })?.conclusion ?? "" }
+    private var gejuLine: String { items.first(where: { $0.title == "月令格局（候选）" })?.conclusion ?? "" }
+    private var yunLine: String { items.first(where: { $0.title == "岁运要点" })?.conclusion ?? "" }
+    private var pal: PosterPalette { style.palette }
+    private var mingCard: (title: String, conclusion: String, facts: String)? {
+        ZiweiReading.cards(chart: ziwei).first { $0.title == "命宫定型" }
+    }
+    private var huaLine: String {
+        var parts: [String] = []
+        for p in ziwei.palaces {
+            for m in p.majors where m.mutagen != nil { parts.append("\(m.star)化\(m.mutagen!)入\(p.name)") }
+            for s in p.minors where s.mutagen != nil { parts.append("\(s.star)化\(s.mutagen!)入\(p.name)") }
+        }
+        return parts.joined(separator: " · ")
+    }
+    private var mingStars: String {
+        let ming = ziwei.palaces[ziwei.mingGong]
+        return ming.majors.isEmpty ? "无主星（借对宫）" : ming.majors.map { $0.star }.joined(separator: "、")
+    }
+
+    private func sectionCard(title: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
+            content()
+        }
+        .padding(16)
+        .frame(width: 444, alignment: .leading)
+        .background(pal.card)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(pal.cardStroke, lineWidth: 0.8))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
+            if style != .songQingdai {
+                RadialGradient(colors: [pal.accent.opacity(0.14), .clear], center: .init(x: 0.5, y: 0.16), startRadius: 10, endRadius: 300)
+                RoundedRectangle(cornerRadius: 10).stroke(pal.accent.opacity(0.55), lineWidth: 1.1).padding(18)
+                RoundedRectangle(cornerRadius: 6).stroke(pal.accent.opacity(0.25), lineWidth: 0.7).padding(24)
+            } else {
+                RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
+                VStack {
+                    Spacer()
+                    SongMountainHeaderView(accent: pal.accent)
+                        .padding(.horizontal, 23).padding(.bottom, 23)
+                }
+            }
+
+            VStack(spacing: 0) {
+                if style == .songQingdai {
+                    Text("三 术 合 参 · 一 页 要 点")
+                        .font(.system(size: 12, weight: .medium))
+                        .tracking(4)
+                        .foregroundStyle(pal.accent)
+                        .padding(.top, 52)
+                    Text(name.isEmpty ? "合参总览" : name)
+                        .font(.system(size: 44, weight: .bold, design: .serif))
+                        .foregroundStyle(pal.main)
+                        .padding(.top, 16)
+                } else {
+                    BaguaRingView(size: 132, accent: pal.accent, accentHi: pal.accentHi).padding(.top, 42)
+                    Text("三 术 合 参").font(.system(size: 14, design: .serif)).tracking(2).foregroundStyle(pal.accentHi).padding(.top, 12)
+                    Text(name.isEmpty ? "合参总览" : name)
+                        .font(.system(size: 40, weight: .semibold, design: .serif)).foregroundStyle(pal.main).padding(.top, 18)
+                }
+
+                Text("日主 \(bazi.rizhu) · \(ziwei.juName) · 命宫\(ziwei.palaces[ziwei.mingGong].stem)\(ZiweiCore.DZ[ziwei.mingGong])")
+                    .font(.system(size: 12)).foregroundStyle(pal.sub).padding(.top, 8)
+
+                HStack(spacing: 8) {
+                    Rectangle().fill(pal.cardStroke).frame(width: 140, height: 0.8)
+                    Rectangle().fill(pal.accent).frame(width: 5, height: 5).rotationEffect(.degrees(45))
+                    Rectangle().fill(pal.cardStroke).frame(width: 140, height: 0.8)
+                }.padding(.vertical, 16)
+
+                // 四柱小字行（干支按五行分色，日柱描金边）
+                HStack(spacing: 12) {
+                    ForEach(0..<4, id: \.self) { i in
+                        let gz = Array(bazi.pillars[i])
+                        VStack(spacing: 4) {
+                            Text(["年柱", "月柱", "日柱", "时柱"][i])
+                                .font(.system(size: 10, weight: .medium)).foregroundStyle(pal.sub)
+                            Text(String(gz[0]))
+                                .font(.system(size: 28, weight: .bold, design: .serif))
+                                .foregroundStyle(posterCharColor(gz[0], fallback: pal.main))
+                            Text(String(gz[1]))
+                                .font(.system(size: 28, weight: .bold, design: .serif))
+                                .foregroundStyle(posterCharColor(gz[1], fallback: pal.main))
+                            Text(i == 2 ? "日主" : bazi.stemShiShen[i])
+                                .font(.system(size: 9.5, weight: .semibold))
+                                .foregroundStyle(i == 2 ? pal.accentHi : pal.accent)
+                        }
+                        .frame(width: 82, height: 122)
+                        .background(pal.card)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(i == 2 ? pal.accentHi.opacity(0.65) : pal.cardStroke, lineWidth: i == 2 ? 1.2 : 0.8)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+
+                // 八字总断
+                sectionCard(title: "八字总断") {
+                    if !headline.isEmpty {
+                        Text(headline)
+                            .font(.system(size: 13.5, design: .serif)).foregroundStyle(pal.main)
+                            .lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !gejuLine.isEmpty {
+                        Text(gejuLine)
+                            .font(.system(size: 12.5)).foregroundStyle(pal.accent)
+                            .lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !yunLine.isEmpty {
+                        Text(yunLine)
+                            .font(.system(size: 11.5)).foregroundStyle(pal.sub)
+                            .lineSpacing(3).lineLimit(2)
+                    }
+                }
+                .padding(.top, 18)
+
+                // 紫微命宫
+                sectionCard(title: "紫微命宫 · \(mingStars)") {
+                    if let mc = mingCard {
+                        Text(mc.conclusion)
+                            .font(.system(size: 12.5)).foregroundStyle(pal.main)
+                            .lineSpacing(3.5).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !huaLine.isEmpty {
+                        Text(huaLine)
+                            .font(.system(size: 11.5)).foregroundStyle(pal.accent)
+                            .lineSpacing(3).lineLimit(2)
+                    }
+                }
+                .padding(.top, 14)
+
+                // 手相面相要点（只引已存测量摘要，无记录时明言未测，不编）
+                sectionCard(title: "手相面相要点") {
+                    if palmLines.isEmpty {
+                        Text("尚未测量：在「手相面相」页测一张掌纹并按人保存后，这里会自动带上测量摘要。判读为娱乐参考。")
+                            .font(.system(size: 12)).foregroundStyle(pal.sub).lineSpacing(3.5)
+                    } else {
+                        ForEach(palmLines, id: \.self) { line in
+                            Text(line)
+                                .font(.system(size: 12.5)).foregroundStyle(pal.main)
+                                .lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding(.top, 14)
+
+                Spacer()
+
+                HStack(alignment: .bottom) {
+                    VStack(spacing: 1) {
+                        HStack(spacing: 1) {
+                            Text("三").font(.system(size: 14, weight: .bold, design: .serif))
+                            Text("术").font(.system(size: 14, weight: .bold, design: .serif))
+                        }
+                        HStack(spacing: 1) {
+                            Text("合").font(.system(size: 14, weight: .bold, design: .serif))
+                            Text("参").font(.system(size: 14, weight: .bold, design: .serif))
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(pCin)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text("八字总断 · 紫微命宫 · 手相要点 · 一页合参")
+                            .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
+                        Text(Date.now.formatted(date: .abbreviated, time: .omitted))
+                            .font(.system(size: 10)).foregroundStyle(pal.sub.opacity(0.8))
+                    }
+                }
+                .padding(.horizontal, 48).padding(.bottom, 42)
+            }
+        }
+        .frame(width: 540, height: 960)
+    }
+}
+
+struct HeCanPosterSheetView: View {
+    let bazi: BaziChart
+    let ziwei: ZiweiChart
+    let name: String
+    var palmLines: [String] = []
+    @State private var fileURL: URL?
+    @State private var style: PosterStyle = .songQingdai
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                Picker("海报版本", selection: $style) {
+                    ForEach(PosterStyle.allCases, id: \.self) { s in Text(s.rawValue).tag(s) }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: style) { _, _ in fileURL = nil; render() }
+
+                HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)
+                    .scaleEffect(0.62)
+                    .frame(width: 540 * 0.62, height: 960 * 0.62)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
+
+                if let u = fileURL {
+                    ShareLink(item: u) {
+                        Label("保存 / 分享高清合参海报（1080×1920）", systemImage: "square.and.arrow.down")
+                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                    }
+                    .buttonStyle(KyPrimaryButton())
+                    Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
+                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                } else {
+                    ProgressView("正在渲染 1080×1920 高清海报…")
+                }
+            }
+            .padding(20)
+        }
+        .background(Ky.bg)
+        .navigationTitle("合参海报")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { render() }
+    }
+
+    private func render() {
+        let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style))
+        renderer.scale = 2.0
+        if let img = renderer.uiImage, let data = img.pngData() {
+            let suffix: String
+            switch style {
+            case .songQingdai: suffix = "-song"
+            case .xuanPaper: suffix = "-xuan"
+            case .inkGold: suffix = "-ink"
+            }
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("hecan-poster-\(name.isEmpty ? "chart" : name)\(suffix).png")
+            try? data.write(to: url, options: .atomic)
+            fileURL = url
+        }
+    }
+}
