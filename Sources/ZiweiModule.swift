@@ -204,6 +204,17 @@ enum ZiweiEngine {
         ch.birthYear = c.year!
         return ch
     }
+
+    // 划动缓存：与八字同理，按（出生时刻＋性别＋经度＋闰月/晚子时口径）缓存
+    private static var chartCache: [String: ZiweiChart] = [:]
+    static func cachedChart(clock: Date, gender: String, longitude: Double?) -> ZiweiChart {
+        let key = "\(clock.timeIntervalSince1970)-\(gender)-\(longitude ?? 0)-\(AppSettings.ziweiLeapNext)-\(AppSettings.ziweiLateZiNext)"
+        if let hit = chartCache[key] { return hit }
+        let c = chart(clock: clock, gender: gender, longitude: longitude)
+        if chartCache.count > 64 { chartCache.removeAll() }
+        chartCache[key] = c
+        return c
+    }
 }
 
 // MARK: - 紫微页 v5（修复 4×4 方盘中央重复渲染 4 个小格 Bug，实现真正中央 2×2 合并天心宫＋三方四正飞线）
@@ -752,17 +763,6 @@ enum ZiweiReading {
         "天梁": "荫星：清高好管事，逢难有解，宜公职专业与长辈缘",
         "七杀": "将星：独断开创，变动里见功名，不喜被管束",
         "破军": "耗星先锋：破旧立新，大起大落中成事，先破后立"]
-    // 划动缓存：与八字同理，按（出生时刻＋性别＋经度＋闰月/晚子时口径）缓存
-    private static var chartCache: [String: ZiweiChart] = [:]
-    static func cachedChart(clock: Date, gender: String, longitude: Double?) -> ZiweiChart {
-        let key = "\(clock.timeIntervalSince1970)-\(gender)-\(longitude ?? 0)-\(AppSettings.ziweiLeapNext)-\(AppSettings.ziweiLateZiNext)"
-        if let hit = chartCache[key] { return hit }
-        let c = chart(clock: clock, gender: gender, longitude: longitude)
-        if chartCache.count > 64 { chartCache.removeAll() }
-        chartCache[key] = c
-        return c
-    }
-
     static func cards(chart ch: ZiweiChart) -> [(title: String, conclusion: String, facts: String)] {
         var out: [(String, String, String)] = []
         let ming = ch.palaces[ch.mingGong]

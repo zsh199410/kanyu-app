@@ -2,6 +2,7 @@
 // 底部 5 大核心 Tab：合参（首页总工作台） / 八字 / 紫微 / 奇门 / 堪舆（风水与档案设置）
 // 彻底替换掉原版在底部栏冗余且闪退的「日历」「黄历」Tab（黄历与择吉已修复闪退并整合至首页顶部今日黄历卡与专项工具）。
 import SwiftUI
+import UIKit
 import LunarSwift
 
 struct RootTabView: View {
@@ -13,15 +14,27 @@ struct RootTabView: View {
         TabView(selection: $tab) {
             NavigationStack { HomePageView(selectedTab: $tab) }
                 .tabItem { Label("合参", systemImage: "sparkles.rectangle.stack.fill") }.tag(0)
+                .toolbarBackground(Ky.bg, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
             NavigationStack { BaziHomeView() }
                 .tabItem { Label("八字", systemImage: "tablecells.fill") }.tag(1)
+                .toolbarBackground(Ky.bg, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
             NavigationStack { ZiweiHomeView() }
                 .tabItem { Label("紫微", systemImage: "moon.stars.fill") }.tag(2)
+                .toolbarBackground(Ky.bg, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
             NavigationStack { QimenHomeView() }
                 .tabItem { Label("奇门", systemImage: "circle.grid.3x3.fill") }.tag(3)
+                .toolbarBackground(Ky.bg, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
             NavigationStack { KanyuWorkbenchTabView() }
                 .tabItem { Label("堪舆", systemImage: "safari.fill") }.tag(4)
+                .toolbarBackground(Ky.bg, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
         }
+        .toolbarBackground(Ky.bg, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .tint(Ky.qingdai)
         .sheet(isPresented: $showingOnboarding) {
             OnboardingView(onDone: { onboardingDone = true; showingOnboarding = false })
@@ -497,6 +510,8 @@ struct MyView: View {
                     .background(Ky.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
+                Text("本机屏幕最高 \(Int(UIScreen.main.maximumFramesPerSecond))帧；静止时屏幕会降到 10 帧待机，划动时的数字才是真帧率。")
+                    .font(.caption).foregroundStyle(Ky.sub)
             }
             .padding(16)
             .padding(.bottom, 32)

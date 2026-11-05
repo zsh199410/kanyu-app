@@ -1324,23 +1324,41 @@ struct OnboardingView: View {
 }
 
 // MARK: - 实时帧率表（CADisplayLink，0.5 秒一报；只刷新小药丸自身，不触发整页重算）
+// 2026-11-05 实测纠正：静止时 ProMotion 屏幕会降到 10Hz 待机，旧表把待机也当卡顿报红（11帧）；
+// 停一会儿再划，前几个 0.5 秒窗口还混着从 10Hz 爬升的过程，读数也被拉低。现只量划动：
+// 相邻两帧间隔 >60ms 即判定屏幕在待机，丢弃该窗口，静止超 1 秒药丸显示「待机」不再报数。
 final class FPSMonitor: ObservableObject {
     @Published var fps: Double = 0
+    @Published var isIdle = false
     private var link: CADisplayLink?
     private var frames = 0
-    private var last = CACurrentMediaTime()
+    private var windowStart = CACurrentMediaTime()
+    private var lastTick = CACurrentMediaTime()
+    private var idleElapsed = 0.0
     init() {
         link = CADisplayLink(target: self, selector: #selector(tick))
         link?.add(to: .main, forMode: .common) // .common：划动时不停表，才能量到滚动帧率
     }
     @objc private func tick() {
-        frames += 1
         let now = CACurrentMediaTime()
-        let dt = now - last
+        let gap = now - lastTick
+        lastTick = now
+        if gap > 0.06 {
+            // 屏幕待机中（或刚从后台回来）：丢弃本窗口，爬升过程不计入读数
+            frames = 0
+            windowStart = now
+            idleElapsed += gap
+            if idleElapsed > 1.0 && !isIdle { isIdle = true; fps = 0 }
+            return
+        }
+        idleElapsed = 0
+        isIdle = false
+        frames += 1
+        let dt = now - windowStart
         if dt >= 0.5 {
             fps = Double(frames) / dt
             frames = 0
-            last = now
+            windowStart = now
         }
     }
     deinit { link?.invalidate() }
@@ -1349,11 +1367,11 @@ final class FPSMonitor: ObservableObject {
 struct FPSPill: View {
     @StateObject private var monitor = FPSMonitor()
     var body: some View {
-        Text("\(Int(monitor.fps))帧")
+        Text(monitor.isIdle ? "待机" : "\(Int(monitor.fps))帧")
             .font(.system(size: 11, weight: .bold, design: .monospaced))
-            .foregroundStyle(monitor.fps >= 110 ? Ky.jade : (monitor.fps >= 55 ? Ky.gold : Ky.cinnabar))
+            .foregroundStyle(monitor.isIdle ? Ky.sub : (monitor.fps >= 110 ? Ky.jade : (monitor.fps >= 55 ? Ky.gold : Ky.cinnabar)))
             .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(.ultraThinMaterial)
+            .background(Ky.elevated) // 实色底：旧版 ultraThinMaterial 每帧都要对背后内容取样模糊
             .clipShape(Capsule())
     }
 }
