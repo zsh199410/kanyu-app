@@ -123,7 +123,7 @@ enum QimenEngine {
         guard let xun = xunShou(hourPillar: hourStem + hourBranch) else { return nil }
         // 地盘干
         var di: [Int: String] = [:]
-        for i, s in seqStems.enumerated() {
+        for (i, s) in seqStems.enumerated() {
             let p = yang ? (ju - 1 + i) % 9 + 1 : ((ju - 1 - i) % 9 + 9) % 9 + 1
             di[p] = s
         }
