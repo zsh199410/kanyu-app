@@ -367,7 +367,7 @@ blueprintRoom("次卧 (南)", "14㎡", Color.indigo.opacity(0.2))
 }.frame(height: 120)
 HStack(spacing: 0) {
 blueprintRoom("主卫", "6㎡", Color.gray.opacity(0.2))
-blueprintRoom("餐厅 · 玄关入户", "16㎡", Color.amber.opacity(0.2))
+blueprintRoom("餐厅 · 玄关入户", "16㎡", Color.orange.opacity(0.2))
 blueprintRoom("客卫", "5㎡", Color.gray.opacity(0.2))
 }.frame(height: 80)
 HStack(spacing: 0) {
