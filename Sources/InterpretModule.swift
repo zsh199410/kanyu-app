@@ -1131,7 +1131,6 @@ extension InterpretEngine {
                           "比劫": "注意一：合伙与冲动是你的暗耗——忌担保、忌共同账户，钱的事一律白纸黑字。"][topGroup]!
         notes.append(excessText)
         notes.append("注意二：\(weakest)弱是先天短板（\(organ[weakest]!)一线），这一项写进每年的固定体检单，别等有感觉了才查。")
-        let nowY = Calendar.current.component(.year, from: Date())
         var nearGate: String? = nil
         for y in nowY...(nowY + 5) {
             let r = YearEngine.report(chart: ch, year: y)
