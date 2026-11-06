@@ -1186,8 +1186,8 @@ ForEach(rows.indices, id: \.self) { j in
 .lineLimit(nil)
 }
 }
-}
 .fixedSize(horizontal: false, vertical: true)
+}
 }
 
 struct PosterSheetView: View {
