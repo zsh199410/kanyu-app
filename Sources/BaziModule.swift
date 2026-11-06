@@ -360,6 +360,8 @@ struct BaziHomeView: View {
         .background(Ky.bg)
         .navigationTitle("八字排盘")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Ky.bg, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
 
     // 排盘后自动折叠为一行精致眉卡，释放首屏空间直接看盘

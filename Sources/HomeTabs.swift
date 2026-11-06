@@ -14,24 +14,14 @@ struct RootTabView: View {
         TabView(selection: $tab) {
             NavigationStack { HomePageView(selectedTab: $tab) }
                 .tabItem { Label("合参", systemImage: "sparkles.rectangle.stack.fill") }.tag(0)
-                .toolbarBackground(Ky.bg, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
             NavigationStack { BaziHomeView() }
                 .tabItem { Label("八字", systemImage: "tablecells.fill") }.tag(1)
-                .toolbarBackground(Ky.bg, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
             NavigationStack { ZiweiHomeView() }
                 .tabItem { Label("紫微", systemImage: "moon.stars.fill") }.tag(2)
-                .toolbarBackground(Ky.bg, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
             NavigationStack { QimenHomeView() }
                 .tabItem { Label("奇门", systemImage: "circle.grid.3x3.fill") }.tag(3)
-                .toolbarBackground(Ky.bg, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
             NavigationStack { KanyuWorkbenchTabView() }
                 .tabItem { Label("堪舆", systemImage: "safari.fill") }.tag(4)
-                .toolbarBackground(Ky.bg, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
         }
         .toolbarBackground(Ky.bg, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)

@@ -281,6 +281,8 @@ struct ZiweiHomeView: View {
         .background(Ky.bg)
         .navigationTitle("紫微斗数")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Ky.bg, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
 
     private var collapsedInputBar: some View {

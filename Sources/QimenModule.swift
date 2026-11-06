@@ -329,6 +329,8 @@ struct QimenHomeView: View {
         }
         .background(Ky.bg)
         .navigationTitle("奇门遁甲").navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Ky.bg, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
 
     private func infoCard(_ ch: QimenEngine.Chart) -> some View {

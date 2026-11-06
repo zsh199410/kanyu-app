@@ -1360,7 +1360,11 @@ final class FPSMonitor: ObservableObject {
         if stamps.count > 20 { stamps.removeFirst(stamps.count - 20) }
         if stamps.count >= 2 {
             let dt = stamps.last! - stamps.first!
-            if dt > 0 { fps = Double(stamps.count - 1) / dt }
+            if dt > 0 {
+                // 药丸每帧都刷新会拖着工具栏每帧重排：整数变了才发布
+                let v = Double(stamps.count - 1) / dt
+                if Int(v) != Int(fps) { fps = v }
+            }
         }
     }
     deinit { link?.invalidate() }
@@ -1411,6 +1415,8 @@ struct HomePageView: View {
         }
         .background(Ky.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Ky.bg, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 6) {
@@ -1862,6 +1868,8 @@ struct KanyuWorkbenchTabView: View {
         .background(Ky.bg)
         .navigationTitle("堪舆与设置")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Ky.bg, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showingNew = true } label: {
