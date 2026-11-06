@@ -973,7 +973,7 @@ pillarRow(label: "纳音", cells: chart.pillars.map { BaziTables.naYin($0) }, si
 .clipShape(RoundedRectangle(cornerRadius: 6, style:.continuous))
 .overlay(RoundedRectangle(cornerRadius: 6, style:.continuous).stroke(pal.cardStroke, lineWidth: 0.6))
 }
-private func pillarRow(label: String, cells: [String], size: CGFloat, weight: Font.Weight, color: (Int) -> Color) -> some View {
+private func pillarRow(label: String, cells: [String], size: CGFloat, weight: Font.Weight, color: @escaping (Int) -> Color) -> some View {
 HStack(spacing: 0) {
 Text(label).font(.system(size: 9, weight:.medium)).foregroundStyle(pal.sub).frame(width: 44, alignment:.trailing).padding(.trailing, 6)
 ForEach(0..<4, id: \.self) { i in
