@@ -386,7 +386,7 @@ private var wheelYears: [(branch: Character, year: Int, age: Int, glyph: String,
 let nowYear = Calendar.current.component(.year, from: Date())
 let birthBranch = chart.yearPillar.last!
 var start = nowYear
-while BaziChart.yearGanZhi(start).last!!= birthBranch { start += 1}
+while BaziChart.yearGanZhi(start).last! != birthBranch { start += 1 }
 return (0..<12).map { k in
 let y = start + k
 let br = BaziChart.yearGanZhi(y).last!
@@ -528,7 +528,7 @@ ForEach(wheelYears, id: \.branch) { w in
 let order = Array("子丑寅卯辰巳午未申酉戌亥")
 let pos = order.firstIndex(of: w.branch) ?? 0
 let angle = Double(pos) * 30.0 - 90.0
-let rad = angle *.pi / 180.0
+let rad = angle * Double.pi / 180.0
 VStack(spacing: 0) {
 Text(String(w.branch))
 .font(.system(size: 9, weight:.bold, design:.serif))
@@ -572,7 +572,7 @@ Text("喜用神：\(xiNames.isEmpty ? "—": xiNames) ✓")
 .font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
 Text("忌神：\(jiNames.isEmpty ? "—": jiNames) ×")
 .font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
-if!xj.neutral.isEmpty && xj.level!= "中和" {
+if !xj.neutral.isEmpty && xj.level != "中和" {
 Text("\(xj.neutral.map { Self.wxNames[$0]}.joined(separator: "、"))：中性（可用）")
 .font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
 }
