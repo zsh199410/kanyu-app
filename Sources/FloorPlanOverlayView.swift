@@ -6,8 +6,8 @@ struct FloorPlanOverlayView: View {
 @State private var selectedOrientationIndex: Int = 0 // 默认子山午向
 @State private var overlayMode: Int = 0 // 0: 玄空飞星, 1: 八宅大游年
 @State private var overlayOpacity: Double = 0.55
-@State private var centerOffset: CGSize =.zero // 中宫立极拖拽偏移量
-@State private var lastOffset: CGSize =.zero // 上一轮拖拽结束后的累计偏移（防新一轮拖拽跳回）
+@State private var centerOffset: CGSize = .zero // 中宫立极拖拽偏移量
+@State private var lastOffset: CGSize = .zero // 上一轮拖拽结束后的累计偏移（防新一轮拖拽跳回）
 @State private var selectedPalace: String = "离" // 默认聚焦正南向星
 @State private var selectedPhotoItem: PhotosPickerItem? = nil
 @State private var userImage: UIImage? = nil
@@ -136,7 +136,7 @@ HStack {
 Text("📐 户型图透视压盘区（南上北下）").font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(Ky.sub)
 Spacer()
 Button {
-withAnimation(.spring()) { centerOffset =.zero; lastOffset =.zero}
+withAnimation(.spring()) { centerOffset = .zero; lastOffset = .zero}
 } label: {
 HStack(spacing: 3) {
 Image(systemName: "arrow.counterclockwise")
