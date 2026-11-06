@@ -398,7 +398,7 @@ private var xiNums: String { xj.xi.compactMap { Self.numMap[Self.wxNames[$0]]}.j
 private var xiNames: String { xj.xi.map { Self.wxNames[$0]}.joined(separator: "、")}
 private var jiNames: String { xj.ji.map { Self.wxNames[$0]}.joined(separator: "、")}
 private var floors: String {
-let base = xj.xi.flatMap { (Self.numMap[Self.wxNames[$0]]?? "").split(separator: "、").compactMap { Int($0)}}
+let base = xj.xi.flatMap { (Self.numMap[Self.wxNames[$0]] ?? "").split(separator: "、").compactMap { Int($0)}}
 let all = (base + base.map { $0 + 10}).sorted()
 return all.map { String($0)}.joined(separator: "、") + " 层"
 }
@@ -443,10 +443,10 @@ Spacer()
 Text("出生：\(Self.birthFmt.string(from: chart.birthDate))\(trueSolarSuffix)")
 }
 HStack(spacing: 0) {
-Text("农历：\(chart.lunarText.isEmpty? "—": chart.lunarText)")
-Text("　上一节 \(chart.prevJieQiText.isEmpty? "—": chart.prevJieQiText)　下一节 \(chart.nextJieQiText.isEmpty? "—": chart.nextJieQiText)")
+Text("农历：\(chart.lunarText.isEmpty ? "—": chart.lunarText)")
+Text("　上一节 \(chart.prevJieQiText.isEmpty ? "—": chart.prevJieQiText)　下一节 \(chart.nextJieQiText.isEmpty ? "—": chart.nextJieQiText)")
 Spacer()
-Text("\(chart.gender == "M"? "男（乾造）": "女（坤造）")　\(name.isEmpty? "命主": name)　\(chart.naYin.first?? "")命")
+Text("\(chart.gender == "M" ? "男（乾造）": "女（坤造）")　\(name.isEmpty ? "命主": name)　\(chart.naYin.first ?? "")命")
 }
 }
 .font(.system(size: 9, weight:.medium, design:.serif))
@@ -471,7 +471,7 @@ Text(["年", "月", "日", "时"][i])
 .font(.system(size: 8.5)).foregroundStyle(pal.sub)
 Text(chart.stemShiShen[i])
 .font(.system(size: 7.5, weight:.medium))
-.foregroundStyle(i == 2? pal.accentHi: pal.accent)
+.foregroundStyle(i == 2 ? pal.accentHi : pal.accent)
 Text(String(gz[0]))
 .font(.system(size: 15, weight:.bold, design:.serif))
 .foregroundStyle(posterCharColor(gz[0], fallback: pal.main))
@@ -487,7 +487,7 @@ Text(chart.diShi[i])
 .frame(width: 34)
 .padding(.vertical, 3)
 .background(pal.card)
-.overlay(RoundedRectangle(cornerRadius: 4, style:.continuous).stroke(i == 2? pal.accentHi.opacity(0.8): pal.cardStroke, lineWidth: 0.6))
+.overlay(RoundedRectangle(cornerRadius: 4, style:.continuous).stroke(i == 2 ? pal.accentHi.opacity(0.8) : pal.cardStroke, lineWidth: 0.6))
 }
 }
 }
@@ -526,7 +526,7 @@ Circle().stroke(pal.cardStroke, lineWidth: 0.8)
 Circle().stroke(pal.cardStroke.opacity(0.5), lineWidth: 0.5).frame(width: 62, height: 62)
 ForEach(wheelYears, id: \.branch) { w in
 let order = Array("子丑寅卯辰巳午未申酉戌亥")
-let pos = order.firstIndex(of: w.branch)?? 0
+let pos = order.firstIndex(of: w.branch) ?? 0
 let angle = Double(pos) * 30.0 - 90.0
 let rad = angle *.pi / 180.0
 VStack(spacing: 0) {
@@ -568,9 +568,9 @@ Text("四季五行：春木 · 夏火 · 秋金 · 冬水；农历三、九月�
 // 4. 喜忌神独立横幅（大字定调＋中性说明＋调候依据）
 VStack(alignment:.leading, spacing: 2) {
 HStack(spacing: 10) {
-Text("喜用神：\(xiNames.isEmpty? "—": xiNames) ✓")
+Text("喜用神：\(xiNames.isEmpty ? "—": xiNames) ✓")
 .font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
-Text("忌神：\(jiNames.isEmpty? "—": jiNames) ×")
+Text("忌神：\(jiNames.isEmpty ? "—": jiNames) ×")
 .font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
 if!xj.neutral.isEmpty && xj.level!= "中和" {
 Text("\(xj.neutral.map { Self.wxNames[$0]}.joined(separator: "、"))：中性（可用）")
@@ -608,8 +608,8 @@ yuceSection(num: "四", title: "婚姻", rows: [
 ("4. 问题与解法", conclusion("如何化解（破局调理）", "注意事项")),
 ])
 yuceSection(num: "五", title: "吉祥数", rows: [
-("1. 手机尾号", xj.xi.isEmpty? "流通为要，不拘固定数": "宜含 \(xiNums)（\(xiNames)数）"),
-("2. 楼层", xj.xi.isEmpty? "流通为要，不拘固定数": "宜选 \(floors)"),
+("1. 手机尾号", xj.xi.isEmpty ? "流通为要，不拘固定数" : "宜含 \(xiNums)（\(xiNames)数）"),
+("2. 楼层", xj.xi.isEmpty ? "流通为要，不拘固定数" : "宜选 \(floors)"),
 ("3. 颜色车色", conclusion("幸运颜色与数字")),
 ])
 yuceSection(num: "六", title: "流年运势", rows: liunianStageRows)
@@ -650,7 +650,7 @@ Text("吉")
 // MARK: - 收据派生
 private var receiptCity: String {
 guard let lon = chart.longitude else { return "—"}
-return BirthInputView.placeLabel(longitude: lon)?? "—"
+return BirthInputView.placeLabel(longitude: lon) ?? "—"
 }
 private var receiptLongitude: String {
 guard let lon = chart.longitude else { return "—"}
@@ -664,7 +664,7 @@ private var xiJiBasis: String {
 if xj.level == "中和" { return "；同党异党接近，贵在流通，不预设固定喜忌"}
 let thNames = xj.tiaoHou.map { Self.wxNames[$0]}.joined(separator: "、")
 if thNames.isEmpty { return ""}
-return "；调候喜\(thNames)（\(chart.monthPillar.last?? "—")月，调候优先）"
+return "；调候喜\(thNames)（\(chart.monthPillar.last ?? "—")月，调候优先）"
 }
 /// 六·流年运势分段：前 5 步大运为段，每段标岁数区间、运干十神、✓/× 与运势旺弱
 private var liunianStageRows: [(String, String)] {
@@ -674,8 +674,8 @@ let ss = BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!)
 let startAge = chart.dayunStartYear(i) - chart.birthYear
 let (g, _) = dayunGlyph(i)
 let mark = InterpretEngine.dayunMark(chart: chart, index: i)
-let verdict = mark == "喜"? "运势旺": (mark == "忌"? "运势弱": "运势平")
-let note = mark == "喜"? "喜用当令，宜进取": (mark == "忌"? "忌神当道，宜守成": "平运可用，宜稳进")
+let verdict = mark == "喜" ? "运势旺" : (mark == "忌" ? "运势弱" : "运势平")
+let note = mark == "喜" ? "喜用当令，宜进取" : (mark == "忌" ? "忌神当道，宜守成" : "平运可用，宜稳进")
 let markWord = mark == "中性" ? "中性" : (mark == "喜" ? "吉" : "忌")
 return ("\(startAge)~\(startAge + 10)岁", "行\(gz)运（运干\(ss)）\(g)\(markWord)（\(verdict)），\(note)")
 }

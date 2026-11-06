@@ -575,8 +575,8 @@ let colorMap = ["木": "绿、青", "火": "红", "土": "黄", "金": "白、�
 let xiNums = xj.xi.compactMap { numMap[wxNames[$0]]}.joined(separator: "、")
 let xiColors = xj.xi.compactMap { colorMap[wxNames[$0]]}.joined(separator: "、")
 let dayStem = chart.rizhu.first!
-let dayWx = BaziTables.wx[dayStem]?.0?? ""
-let ku = ["木": "未", "火": "戌", "土": "辰", "金": "丑", "水": "辰"][dayWx]?? ""
+let dayWx = BaziTables.wx[dayStem]?.0 ?? ""
+let ku = ["木": "未", "火": "戌", "土": "辰", "金": "丑", "水": "辰"][dayWx] ?? ""
 let kuCount = chart.pillars.filter { $0.hasSuffix(ku)}.count
 let items = InterpretEngine.interpret(chart: chart)
 
@@ -596,15 +596,15 @@ Text("出预测单海报 ›")
 VStack(alignment:.leading, spacing: 6) {
 HStack(spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
-Text(xj.level == "中和"? "同党异党接近，贵在流通，不预设固定喜忌": "喜 \(xiNames) ✓　忌 \(jiNames) ×\(xj.neutral.isEmpty? "": "　\(neutralNames)：中性可用")")
+Text(xj.level == "中和" ? "同党异党接近，贵在流通，不预设固定喜忌": "喜 \(xiNames) ✓　忌 \(jiNames) ×\(xj.neutral.isEmpty ? "": "　\(neutralNames)：中性可用")")
 .font(.caption).foregroundStyle(Ky.ink)
 Spacer()
-KyBadge(text: "身\(xj.level)", color: xj.level == "偏弱"? Ky.gold: Ky.qingdai)
+KyBadge(text: "身\(xj.level)", color: xj.level == "偏弱" ? Ky.gold : Ky.qingdai)
 }
 
 HStack(spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
-Text((kuCount > 0? "原局见真财库「\(ku)」\(kuCount)处；": "原局无特定财库，周转流通为主；") + InterpretEngine.conclusion(items: items, titles: "财富量级蓄水池"))
+Text((kuCount > 0 ? "原局见真财库「\(ku)」\(kuCount)处；": "原局无特定财库，周转流通为主；") + InterpretEngine.conclusion(items: items, titles: "财富量级蓄水池"))
 .font(.caption).foregroundStyle(Ky.ink).lineLimit(2)
 }
 
@@ -616,7 +616,7 @@ Text(InterpretEngine.conclusion(items: items, titles: "行业赛道深断", "事
 
 HStack(spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.jade)
-Text(xj.xi.isEmpty? "流通为要，不拘固定数": "日常喜用 \(xiNums)（\(xiNames)）数；穿衣家居宜\(xiColors)")
+Text(xj.xi.isEmpty ? "流通为要，不拘固定数" : "日常喜用 \(xiNums)（\(xiNames)）数；穿衣家居宜\(xiColors)")
 .font(.caption).foregroundStyle(Ky.ink)
 }
 
