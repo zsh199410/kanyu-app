@@ -19,7 +19,7 @@ struct BirthInputView: View {
 
     private static let branches = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
     // 出生地省市两级（城市中心值 0.1°）
-    private static let provinceCities: [(String, [(String, Double)])] = [
+    fileprivate static let provinceCities: [(String, [(String, Double)])] = [
         ("重庆", [("梁平", 107.8), ("重庆主城", 106.5), ("万州", 108.4), ("涪陵", 107.4), ("永川", 105.9),
                   ("合川", 106.3), ("江津", 106.3), ("长寿", 107.1), ("垫江", 107.4), ("忠县", 108.0),
                   ("开州", 108.4), ("云阳", 108.7), ("奉节", 109.5), ("巫山", 109.9), ("黔江", 108.8),
@@ -69,7 +69,7 @@ struct BirthInputView: View {
         ("澳门", [("澳门", 113.5)]),
         ("台湾", [("台北", 121.6), ("台中", 120.7), ("高雄", 120.3)]),    ]
     private static var places: [(String, Double)] { provinceCities.flatMap { $0.1 } }
-    private static func province(of city: String) -> String? {
+    fileprivate static func province(of city: String) -> String? {
         provinceCities.first(where: { $0.1.contains(where: { $0.0 == city }) })?.0
     }
     private static let lunarMonths = ["正月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "冬月", "腊月"]
@@ -140,7 +140,7 @@ struct BirthInputView: View {
             }
             .buttonStyle(.plain)
             .sheet(isPresented: $showSheet) {
-                TimePickerSheet(initial: clock, mode: $mode, useLongitude: useLongitude, longitudeText: longitudeText) { date, unknown in
+                TimePickerSheet(initial: clock, mode: $mode, useLongitude: useLongitude, longitudeText: $longitudeText) { date, unknown in
                     clock = date; unknownHour = unknown; showSheet = false
                 }
             }
@@ -160,67 +160,69 @@ struct BirthInputView: View {
                 }
                 .tint(Ky.qingdai)
 
-                if useLongitude {
-                    HStack(spacing: 8) {
-                        // 省份选择
-                        Menu {
-                            ForEach(Self.provinceCities, id: \.0) { prov in
-                                Button(prov.0) {
-                                    provinceSel = prov.0
-                                    if let firstCity = prov.1.first {
-                                        longitudeText = String(format: "%.1f", firstCity.1)
-                                    }
+                HStack(spacing: 6) {
+                    Image(systemName: "mappin.and.ellipse").foregroundStyle(Ky.gold)
+                    Text("出生地（省市二级 · 经度自动代入）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                }
+                HStack(spacing: 8) {
+                    // 省份选择
+                    Menu {
+                        ForEach(Self.provinceCities, id: \.0) { prov in
+                            Button(prov.0) {
+                                provinceSel = prov.0
+                                if let firstCity = prov.1.first {
+                                    longitudeText = String(format: "%.1f", firstCity.1)
                                 }
                             }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(provinceSel.isEmpty ? "选省份" : provinceSel)
-                                    .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
-                                Spacer()
-                                Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
-                            }
-                            .padding(.horizontal, 10).padding(.vertical, 8)
-                            .background(Ky.card)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Ky.line, lineWidth: 0.7))
                         }
-
-                        // 城市选择
-                        Menu {
-                            ForEach(cityOptions, id: \.0) { p in
-                                Button("\(p.0)（东经 \(String(format: "%.1f", p.1))°）") {
-                                    longitudeText = String(format: "%.1f", p.1)
-                                    if let prov = Self.province(of: p.0) { provinceSel = prov }
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(placeName)
-                                    .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
-                                Spacer()
-                                Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
-                            }
-                            .padding(.horizontal, 10).padding(.vertical, 8)
-                            .background(Ky.card)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Ky.line, lineWidth: 0.7))
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(provinceSel.isEmpty ? "选省份" : provinceSel)
+                                .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
                         }
-
-                        // 经度微调框
-                        HStack(spacing: 2) {
-                            Text("东经").font(.caption2).foregroundStyle(Ky.sub)
-                            TextField("107.8", text: $longitudeText)
-                                .keyboardType(.decimalPad)
-                                .font(KyV2.tabular(13, weight: .semibold))
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 50)
-                            Text("°").font(.caption).foregroundStyle(Ky.sub)
-                        }
-                        .padding(.horizontal, 8).padding(.vertical, 7)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(Ky.card)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Ky.line, lineWidth: 0.7))
                     }
+
+                    // 城市选择
+                    Menu {
+                        ForEach(cityOptions, id: \.0) { p in
+                            Button("\(p.0)（东经 \(String(format: "%.1f", p.1))°）") {
+                                longitudeText = String(format: "%.1f", p.1)
+                                if let prov = Self.province(of: p.0) { provinceSel = prov }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(placeName)
+                                .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(Ky.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Ky.line, lineWidth: 0.7))
+                    }
+
+                    // 经度微调框
+                    HStack(spacing: 2) {
+                        Text("东经").font(.caption2).foregroundStyle(Ky.sub)
+                        TextField("107.8", text: $longitudeText)
+                            .keyboardType(.decimalPad)
+                            .font(KyV2.tabular(13, weight: .semibold))
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 50)
+                        Text("°").font(.caption).foregroundStyle(Ky.sub)
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 7)
+                    .background(Ky.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Ky.line, lineWidth: 0.7))
                 }
             }
             .kySubCard()
@@ -303,7 +305,7 @@ private struct TimePickerSheet: View {
     let initial: Date
     @Binding var mode: Int
     let useLongitude: Bool
-    let longitudeText: String
+    @Binding var longitudeText: String
     let onConfirm: (Date, Bool) -> Void
     @Environment(\.dismiss) private var dismiss
     @FocusState private var yearFieldFocused: Bool
@@ -313,6 +315,7 @@ private struct TimePickerSheet: View {
     @State private var ly = 2000; @State private var lmo = 1; @State private var ld = 1
     @State private var lh = 12; @State private var lmi = 0; @State private var leap = false
     @State private var unknown = false
+    @State private var provinceSel = ""
     @State private var useWheel = false  // 输入方式：false 点选日历 / true 紧凑滚轮
     @State private var yearText = ""
     @State private var seeded = false
@@ -328,6 +331,16 @@ private struct TimePickerSheet: View {
         ("40后", 1945), ("50后", 1955), ("60后", 1965), ("70后", 1975),
         ("80后", 1985), ("90后", 1994), ("00后", 2004), ("10后", 2015), ("20后", 2024)
     ]
+
+    private var sheetCities: [(String, Double)] {
+        if let prov = BirthInputView.provinceCities.first(where: { $0.0 == provinceSel }) { return prov.1 }
+        return BirthInputView.provinceCities.first?.1 ?? []
+    }
+    private var sheetPlaceName: String {
+        if let v = Double(longitudeText),
+           let p = BirthInputView.provinceCities.flatMap({ $0.1 }).first(where: { abs($0.1 - v) < 0.051 }) { return p.0 }
+        return "选城市"
+    }
 
     private var curHour: Int { mode == 0 ? sh : lh }
     private var curMinute: Int { mode == 0 ? smi : lmi }
@@ -380,6 +393,58 @@ private struct TimePickerSheet: View {
                     .pickerStyle(.segmented)
 
                     previewCard
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "mappin.and.ellipse").foregroundStyle(Ky.gold)
+                            Text("出生地（省市二级 · 经度自动代入）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                            Spacer()
+                            Text("东经 \(longitudeText)°").font(.caption).foregroundStyle(Ky.qingdai)
+                        }
+                        HStack(spacing: 8) {
+                            Menu {
+                                ForEach(BirthInputView.provinceCities, id: \.0) { prov in
+                                    Button(prov.0) {
+                                        provinceSel = prov.0
+                                        if let f = prov.1.first { longitudeText = String(format: "%.1f", f.1) }
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(provinceSel.isEmpty ? "选省份" : provinceSel)
+                                        .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
+                                    Spacer()
+                                    Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
+                                }
+                                .padding(.horizontal, 10).padding(.vertical, 8)
+                                .background(Ky.card)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Ky.line, lineWidth: 0.7))
+                            }
+                            Menu {
+                                ForEach(sheetCities, id: \.0) { p in
+                                    Button("\(p.0)（东经 \(String(format: "%.1f", p.1))°）") {
+                                        longitudeText = String(format: "%.1f", p.1)
+                                        if let prov = BirthInputView.province(of: p.0) { provinceSel = prov }
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(sheetPlaceName)
+                                        .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
+                                    Spacer()
+                                    Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
+                                }
+                                .padding(.horizontal, 10).padding(.vertical, 8)
+                                .background(Ky.card)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Ky.line, lineWidth: 0.7))
+                            }
+                        }
+                        if !useLongitude {
+                            Text("当前未开启真太阳时校正：经度已记下，打开主页面开关后即按此经度校正。").font(.caption2).foregroundStyle(Ky.sub)
+                        }
+                    }.kyCard()
+
 
                     VStack(alignment: .leading, spacing: 12) {
                         if useWheel {
@@ -416,7 +481,7 @@ private struct TimePickerSheet: View {
                             .font(.caption2).foregroundStyle(Ky.cinnabar)
                         }
                     }.kyCard()
-                }.padding(16)
+                }.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 16)
             }
             .background(Ky.bg)
             .navigationTitle("选择出生时间").navigationBarTitleDisplayMode(.inline)
@@ -452,6 +517,9 @@ private struct TimePickerSheet: View {
                 ly = l.year; lmo = abs(l.month); ld = l.day; lh = l.hour; lmi = l.minute; leap = l.month < 0
                 yearText = "\(sy)"
                 seeded = true
+                if provinceSel.isEmpty, let v = Double(longitudeText),
+                   let p = BirthInputView.provinceCities.flatMap({ $0.1 }).first(where: { abs($0.1 - v) < 0.051 }),
+                   let prov = BirthInputView.province(of: p.0) { provinceSel = prov }
             }
         }
     }
@@ -828,7 +896,7 @@ private struct TimePickerSheet: View {
             Text("农历 \(BaziChart.yearGanZhi(l.year)) 年\(l.month < 0 ? "闰" : "")\(lm)\(ldName) · \(br)时")
                 .font(.caption).foregroundStyle(Ky.sub)
         }
-        .padding(12)
+        .padding(.horizontal, 14).padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Ky.card)
         .clipShape(RoundedRectangle(cornerRadius: 12))

@@ -7,12 +7,22 @@ import PhotosUI
 import Vision
 
 struct PalmHomeView: View {
+    @State private var quickPerson: Person?
     var body: some View {
         List {
-            NavigationLink { HandMeasureView() } label: {
+            Section {
+                PersonQuickBar(store: PeopleStore.shared) { p in quickPerson = p }
+                if let q = quickPerson {
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.fill").foregroundStyle(Ky.qingdai)
+                        Text("当前命主：\(q.name.isEmpty ? "未命名" : q.name)（测量记录按此人归档）").font(.caption).foregroundStyle(Ky.ink)
+                    }
+                }
+            }
+            NavigationLink { HandMeasureView(personName: quickPerson?.name ?? "") } label: {
                 Label("手相 · 测量与描线", systemImage: "hand.raised")
             }
-            NavigationLink { FaceMeasureView() } label: {
+            NavigationLink { FaceMeasureView(personName: quickPerson?.name ?? "") } label: {
                 Label("面相 · 三停校准", systemImage: "face.smiling")
             }
             NavigationLink { PalmRecordListView() } label: {
@@ -79,6 +89,7 @@ struct HandMeasureView: View {
     ]
     @State private var selectedLine = 0
     @State private var personName = ""
+    init(personName: String = "") { _personName = State(initialValue: personName) }
     @State private var savedTip = false
     private let lineNames = ["感情线", "智慧线", "生命线"]
     private let lineCards = [
@@ -268,6 +279,7 @@ struct FaceMeasureView: View {
     @StateObject private var box = PhotoBox()
     @State private var item: PhotosPickerItem?
     @State private var personName = ""
+    init(personName: String = "") { _personName = State(initialValue: personName) }
     @State private var savedTip = false
     @State private var marks: [Double] = [0.14, 0.40, 0.63, 0.93]  // 发际/眉/鼻底/下颌（相对图高）
     private let labels = ["发际线", "眉线", "鼻底", "下颌"]
@@ -479,6 +491,26 @@ struct PalmRecordDetailView: View {
                     }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 Text(record.summary).font(.callout).foregroundStyle(Ky.ink)
+                NavigationLink { PalmPosterSheetView(record: record, store: store) } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "photo.artframe")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Ky.gold)
+                            .frame(width: 34, height: 34)
+                            .background(Ky.gold.opacity(0.13))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("生成鉴定海报").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            Text("三线测量图 · 掌型指比／三停比例 · 相法综合断语").font(.caption2).foregroundStyle(Ky.sub)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 12)
+                    .background(Ky.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
+                }.buttonStyle(.plain)
                 Text("记录时间：\(Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .shortened)) · 描线为当时人工修正的点位，已冻结存档。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
@@ -486,5 +518,174 @@ struct PalmRecordDetailView: View {
         .background(Ky.bg)
         .navigationTitle("\(record.personName) · \(record.kind)")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - 手相面相鉴定海报（540 宽自适应长图：三线测量图＋掌型指比／三停比例＋相法综合断语）
+struct PalmPosterView: View {
+    let record: PalmRecord
+    let image: UIImage?
+    private let paper = Color(red: 0.968, green: 0.949, blue: 0.906)
+    private let cardBg = Color(red: 0.992, green: 0.984, blue: 0.961)
+    private let ink = Color(red: 0.18, green: 0.165, blue: 0.15)
+    private let sub = Color(red: 0.46, green: 0.42, blue: 0.35)
+    private let cin = Color(red: 0.604, green: 0.165, blue: 0.133)
+    private let gold = Color(red: 0.78, green: 0.64, blue: 0.36)
+    private var dateText: String {
+        Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .omitted)
+    }
+    private var lineCards: [String] {
+        [
+            "感情线看情感表达的方式：走向、深浅、终点位置三项，须以你修正后的描线为准细读。",
+            "智慧线看思维与决断的方式：起止、倾斜、长短三项，须以你修正后的描线为准细读。",
+            "生命线看体力与生活节奏的纹路：弧度、包围范围、清晰度三项，须以你修正后的描线为准细读；与寿命长短无关。",
+        ]
+    }
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [cardBg, paper], startPoint: .top, endPoint: .bottom)
+            RoundedRectangle(cornerRadius: 4).stroke(cin.opacity(0.55), lineWidth: 1.1).padding(18)
+            VStack(spacing: 0) {
+                Text("手 相 面 相 鉴 定")
+                    .font(.system(size: 12, weight: .medium))
+                    .tracking(4)
+                    .foregroundStyle(cin)
+                    .padding(.top, 48)
+                Text(record.personName.isEmpty ? "未命名" : record.personName)
+                    .font(.system(size: 40, weight: .bold, design: .serif))
+                    .foregroundStyle(ink)
+                    .padding(.top, 14)
+                Text("\(record.kind) · \(dateText)")
+                    .font(.system(size: 12)).foregroundStyle(sub).padding(.top, 6)
+                HStack(spacing: 8) {
+                    Rectangle().fill(cin.opacity(0.35)).frame(width: 140, height: 0.8)
+                    Rectangle().fill(cin).frame(width: 5, height: 5).rotationEffect(.degrees(45))
+                    Rectangle().fill(cin.opacity(0.35)).frame(width: 140, height: 0.8)
+                }.padding(.vertical, 16)
+                if let img = image {
+                    FittedImage(image: img) { rect in
+                        Canvas { ctx, _ in
+                            let flatN = record.linesFlat.count / 2 * 2
+                            let pts = stride(from: 0, to: flatN, by: 2).map {
+                                CGPoint(x: record.linesFlat[$0], y: record.linesFlat[$0 + 1])
+                            }
+                            for li in 0..<3 {
+                                let seg = Array(pts.dropFirst(li * 4).prefix(4))
+                                guard seg.count == 4 else { continue }
+                                var path = Path()
+                                for (k, pt) in seg.enumerated() {
+                                    let v = CGPoint(x: rect.minX + pt.x * rect.width, y: rect.minY + pt.y * rect.height)
+                                    if k == 0 { path.move(to: v) } else { path.addLine(to: v) }
+                                }
+                                ctx.stroke(path, with: .color(gold), lineWidth: 2.0)
+                            }
+                        }
+                    }
+                    .frame(width: 444, height: 300)
+                    .background(cardBg)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(cin.opacity(0.35), lineWidth: 0.8))
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("测量数据")
+                        .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(cin)
+                    Text(record.summary)
+                        .font(.system(size: 12.5)).foregroundStyle(ink)
+                        .lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(width: 444, alignment: .leading)
+                .padding(.top, 18)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(record.kind == "手相" ? "三线断语" : "三停断语")
+                        .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(cin)
+                    if record.kind == "手相" {
+                        ForEach(lineCards, id: \.self) { t in
+                            Text(t)
+                                .font(.system(size: 11.5)).foregroundStyle(ink)
+                                .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                        }
+                    } else {
+                        Text("三停比例为几何事实：上停看早年根基，中停看中年事业，下停看晚年归宿；判读按相书通说、娱乐参考，不套成人断语于儿童。")
+                            .font(.system(size: 11.5)).foregroundStyle(ink)
+                            .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text("气色与相法古籍综合断语：相法以形定神、以神定气，掌纹观走势、面相观气色，皆为传统相法参考，不作定论、不落病名灾祸。")
+                        .font(.system(size: 11.5)).foregroundStyle(sub)
+                        .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(width: 444, alignment: .leading)
+                .padding(.top, 16)
+                Spacer()
+                HStack(alignment: .bottom) {
+                    Text("三术合参")
+                        .font(.system(size: 14, weight: .bold, design: .serif))
+                        .foregroundStyle(.white)
+                        .frame(width: 42, height: 42)
+                        .background(cin)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text("传统相法参考 · 不作定论")
+                            .font(.system(size: 11, design: .serif)).foregroundStyle(cin)
+                        Text(dateText)
+                            .font(.system(size: 10)).foregroundStyle(sub.opacity(0.8))
+                    }
+                }
+                .padding(.horizontal, 48).padding(.bottom, 42)
+            }
+        }
+        .frame(width: 540)
+    }
+}
+
+struct PalmPosterSheetView: View {
+    let record: PalmRecord
+    @ObservedObject var store: PalmRecordStore
+    @State private var fileURL: URL?
+    @State private var previewImage: UIImage?
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                if let img = previewImage {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
+                } else {
+                    ProgressView("正在渲染鉴定海报…")
+                        .frame(maxWidth: .infinity)
+                }
+                if let u = fileURL {
+                    ShareLink(item: u) {
+                        Label("保存 / 分享鉴定海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
+                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                    }
+                    .buttonStyle(KyPrimaryButton())
+                    Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
+                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                }
+            }
+            .padding(20)
+        }
+        .background(Ky.bg)
+        .navigationTitle("手相面相鉴定海报").navigationBarTitleDisplayMode(.inline)
+        .task { render() }
+    }
+    private func render() {
+        let img = store.image(of: record)
+        let view = PalmPosterView(record: record, image: img)
+        Task.detached(priority: .userInitiated) {
+            let renderer = ImageRenderer(content: view)
+            renderer.scale = 2.0
+            guard let out = renderer.uiImage, let data = out.pngData() else { return }
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("palm-poster-\(record.id.uuidString).png")
+            try? data.write(to: url, options: .atomic)
+            await MainActor.run {
+                previewImage = out
+                fileURL = url
+            }
+        }
     }
 }

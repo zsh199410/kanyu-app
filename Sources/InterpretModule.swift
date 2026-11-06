@@ -10,6 +10,22 @@ struct InterpretItem {
     let links: [(label: String, text: String)]
 }
 
+/// 解盘验真打标：每条断语一键标「已验准／待核验」，沉淀个人准确率；随备份导出。
+enum VerifyStore {
+    private static let key = "kanyu.verifyMarks.v1"
+    static func mark(for title: String) -> Bool? {
+        (UserDefaults.standard.dictionary(forKey: key) as? [String: Bool])?[title]
+    }
+    static func set(_ title: String, _ value: Bool) {
+        var d = (UserDefaults.standard.dictionary(forKey: key) as? [String: Bool]) ?? [:]
+        d[title] = value
+        UserDefaults.standard.set(d, forKey: key)
+    }
+    static func verifiedCount(titles: [String]) -> Int {
+        titles.filter { mark(for: $0) == true }.count
+    }
+}
+
 enum InterpretEngine {
     private static let wxNames = ["木", "火", "土", "金", "水"]
     private static func wxIndex(of stem: Character) -> Int {
@@ -409,6 +425,7 @@ struct InterpretView: View {
     @State private var selectedCategory = 0
     @State private var searchQuery = ""
     @State private var showGlossary = false
+    @State private var verifyTick = 0
 
     private static let categories: [(String, Set<String>)] = [
         ("全部", []),
@@ -449,7 +466,7 @@ struct InterpretView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(name.isEmpty ? "本盘" : name) · 30 条五典详批")
+                            Text("\(name.isEmpty ? "本盘" : name) · 30 条五典详批 · 已验准 \(VerifyStore.verifiedCount(titles: allItems.map { $0.title })) 条")
                                 .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             Text("日主 \(chart.rizhu) · 四柱 \(chart.pillars.joined(separator: " ")) · 每条附盘面与典籍依据")
                                 .font(.caption2).foregroundStyle(Ky.sub)
@@ -557,6 +574,7 @@ struct InterpretView: View {
                             if !InterpretEngine.coreTitles.contains(allItems[i].title) {
                                 threePartRows(chart: chart, item: allItems[i], allItems: allItems)
                             }
+                            verificationFooter(item: allItems[i])
                         }
                         .kyCard()
                     }
@@ -571,6 +589,39 @@ struct InterpretView: View {
         .navigationTitle(name.isEmpty ? "30 条五典解盘" : "解盘 · \(name)")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showGlossary) { glossarySheet }
+    }
+
+    private func verificationFooter(item: InterpretItem) -> some View {
+        let _ = verifyTick
+        return VStack(alignment: .leading, spacing: 6) {
+            Divider()
+            HStack(spacing: 6) {
+                Text("验真溯源").font(.caption2).fontWeight(.bold).foregroundStyle(Ky.gold)
+                Text("紫金山天文台节气 · 真太阳时校正 · 五典卷目见上方「法则」").font(.caption2).foregroundStyle(Ky.sub)
+            }
+            HStack(spacing: 8) {
+                Button("已验准") { VerifyStore.set(item.title, true); verifyTick += 1 }
+                    .font(.caption2).fontWeight(.bold)
+                    .padding(.horizontal, 9).padding(.vertical, 5)
+                    .background(VerifyStore.mark(for: item.title) == true ? Ky.jade : Ky.elevated)
+                    .foregroundStyle(VerifyStore.mark(for: item.title) == true ? Color.white : Ky.ink)
+                    .clipShape(Capsule())
+                    .buttonStyle(.plain)
+                Button("待核验") { VerifyStore.set(item.title, false); verifyTick += 1 }
+                    .font(.caption2).fontWeight(.bold)
+                    .padding(.horizontal, 9).padding(.vertical, 5)
+                    .background(VerifyStore.mark(for: item.title) == false ? Ky.cinnabar : Ky.elevated)
+                    .foregroundStyle(VerifyStore.mark(for: item.title) == false ? Color.white : Ky.ink)
+                    .clipShape(Capsule())
+                    .buttonStyle(.plain)
+                if let m = VerifyStore.mark(for: item.title) {
+                    Text(m ? "已标：验准 ✓" : "已标：待核验").font(.caption2).foregroundStyle(m ? Ky.jade : Ky.cinnabar)
+                }
+                Spacer()
+                Text("打标计入个人准确率").font(.caption2).foregroundStyle(Ky.sub)
+            }
+        }
+        .padding(.top, 2)
     }
 
     private func threePartRows(chart: BaziChart, item: InterpretItem, allItems: [InterpretItem]) -> some View {

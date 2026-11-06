@@ -2051,6 +2051,7 @@ struct KanyuWorkbenchTabView: View {
             KySectionTitle(title: "档案设置", trailing: "口径 · 证书 · 备份")
             VStack(spacing: 10) {
                 kanyuLink("person.2.fill", "人物档案管理", "家人与客户生辰建档 · 数据导入导出备份", Ky.qingdai) { PeopleView() }
+                kanyuLink("archivebox.fill", "数据备份与恢复", "本地 ZIP 导出导入 · iCloud 云端同步", Ky.gold) { BackupView() }
                 kanyuLink("slider.horizontal.3", "排盘口径与签名证书设置", "晚子时归日 · 紫微闰月 · 侧载证书到期提醒", Ky.jade) { CaliberSettingsView() }
             }
         }

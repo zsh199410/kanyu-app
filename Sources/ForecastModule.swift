@@ -43,6 +43,17 @@ final class ForecastStore: ObservableObject {
     func exportData() -> Data {
         (try? JSONEncoder().encode(ForecastExport(schemaVersion: StoreSchema.current, entries: entries))) ?? Data()
     }
+    @discardableResult
+    func importData(_ data: Data) -> Int {
+        let list: [ForecastEntry]?
+        if let wrapped = try? JSONDecoder().decode(ForecastExport.self, from: data) { list = wrapped.entries }
+        else { list = try? JSONDecoder().decode([ForecastEntry].self, from: data) }
+        guard let list = list else { return 0 }
+        var n = 0
+        for e in list where !entries.contains(where: { $0.id == e.id }) { entries.append(e); n += 1 }
+        if n > 0 { save() }
+        return n
+    }
 }
 
 struct ForecastView: View {

@@ -231,8 +231,8 @@ context.draw(Text("↑ \(chart.ascSign.rawValue)").font(.system(size: 8.5)).fore
 
 // MARK: - 5. 星命合参交互主页面 (AstroHomeView)
 struct AstroHomeView: View {
-let person: Person
-let chart: BaziChart
+@State var person: Person
+@State var chart: BaziChart
 @State private var selectedTab: Int = 0
 
 private var astro: AstroChart {
@@ -242,6 +242,10 @@ AstroEngine.calculate(birthDate: person.birthDate, longitude: person.useLongitud
 var body: some View {
 ScrollView {
 VStack(alignment:.leading, spacing: 14) {
+PersonQuickBar(store: PeopleStore.shared) { p in
+person = p
+chart = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
+}
 // 顶部命主东西双模概览卡
 VStack(alignment:.leading, spacing: 10) {
 HStack {

@@ -281,6 +281,7 @@ enum QimenGlossary {
 
 struct QimenHomeView: View {
     @State private var date = Date()
+    @State private var qmPersonName = ""
     // 起局只在时间变时算一次：排盘是纯计算但不便宜，body 每求值一次就重算会拖滑动；
     // 初值直接起局，避免首帧先闪一下「未能起局」
     @State private var cachedChart: QimenEngine.Chart? = QimenEngine.chart(for: Date())
@@ -297,9 +298,16 @@ struct QimenHomeView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                PersonQuickBar(store: PeopleStore.shared) { p in
+                    date = p.birthDate
+                    qmPersonName = p.name
+                }
                 // 时间选择
                 VStack(alignment: .leading, spacing: 10) {
                     Text("起局时间：\(dateText) \(weekdayText)").font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                    if !qmPersonName.isEmpty {
+                        Text("起局命主：\(qmPersonName)（已按其生辰起局）").font(.caption).foregroundStyle(Ky.qingdai)
+                    }
                     HStack {
                         DatePicker("起局时间", selection: $date, displayedComponents: [.date, .hourAndMinute])
                             .labelsHidden()

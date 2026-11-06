@@ -86,6 +86,14 @@ struct MonthCalendarTabView: View {
 
 // MARK: - 择吉：按事项查近 30 天宜日（结果缓存化，滚动零重算）
 struct ZejiView: View {
+    @EnvironmentObject var peopleStore: PeopleStore
+    @State private var zejiPersonID: UUID?
+    @State private var filteredCount = 0
+    private var zejiPerson: Person? {
+        if let id = zejiPersonID { return peopleStore.people.first(where: { $0.id == id }) }
+        return peopleStore.people.first
+    }
+
     @State private var event = "嫁娶"
     @State private var cachedMatches: [ZejiItem] = []
     private static let events = ["嫁娶", "纳采", "开市", "入宅", "移徙", "安葬", "动土", "出行", "祈福", "修造", "立券", "交易"]
@@ -100,17 +108,41 @@ struct ZejiView: View {
         let ganZhiZhiXing: String
         let yiLine: String
         let jiLine: String
+        let isSpecial: Bool
     }
 
     private func computeMatches(for ev: String) {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
         let start = cal.startOfDay(for: Date())
+        // 命主八字：日支／年支用于冲克过滤，喜用神用于专属大吉日判定
+        let person = zejiPerson
+        let pchart: BaziChart? = person.map { BaziEngine.cachedPaipan(clock: $0.birthDate, gender: $0.gender, longitude: $0.useLongitude ? $0.longitude : nil) }
+        let xi: [Int] = pchart.map { InterpretEngine.posterXiJi(chart: $0).xi } ?? []
+        let dayBr: String? = pchart.map { String($0.pillars[2].last ?? "?") }
+        let yearBr: String? = pchart.map { String($0.pillars[0].last ?? "?") }
         var out: [ZejiItem] = []
+        var filtered = 0
         for i in 0..<30 {
             guard let d = cal.date(byAdding: .day, value: i, to: start) else { continue }
             let info = AlmanacLunarCache.dayInfo(for: d)
             if info.dayYi.contains(ev) {
+                let gz = info.dayInGanZhi
+                let dStem = String(gz.first ?? "?")
+                let dBranch = String(gz.last ?? "?")
+                // 冲克命主日支或年支的日子直接过滤
+                if let db = dayBr, let yb = yearBr, person != nil {
+                    if Self.clashMap[dBranch] == db || Self.clashMap[dBranch] == yb { filtered += 1; continue }
+                }
+                // 专属大吉日：日干支生扶喜用神，或与命主日支三合六合
+                var special = false
+                if person != nil, !xi.isEmpty, let db = dayBr {
+                    let sWx = Self.stemWx(dStem), bWx = Self.branchWx(dBranch)
+                    if xi.contains(sWx) || xi.contains(bWx) { special = true }
+                    if xi.contains((sWx + 1) % 5) || xi.contains((bWx + 1) % 5) { special = true }
+                    if Self.liuHeMap[dBranch] == db { special = true }
+                    if Self.sanHe.contains(where: { $0.contains(dBranch) && $0.contains(db) }) { special = true }
+                }
                 let c = cal.dateComponents([.year, .month, .day], from: d)
                 out.append(ZejiItem(
                     id: "\(c.year ?? 2026)-\(c.month ?? 1)-\(c.day ?? 1)",
@@ -121,16 +153,39 @@ struct ZejiView: View {
                     lunarTitle: "农历\(info.monthInChinese)月\(info.dayInChinese)",
                     ganZhiZhiXing: "\(info.dayInGanZhi)日 · \(info.zhiXing)",
                     yiLine: "宜：" + info.dayYi.prefix(7).joined(separator: " "),
-                    jiLine: "忌：" + info.dayJi.prefix(4).joined(separator: " ") + " · 冲" + info.chongShaText
+                    jiLine: "忌：" + info.dayJi.prefix(4).joined(separator: " ") + " · 冲" + info.chongShaText,
+                    isSpecial: special
                 ))
             }
         }
         cachedMatches = out
+        filteredCount = filtered
+    }
+
+    private static let clashMap: [String: String] = ["子": "午", "午": "子", "丑": "未", "未": "丑", "寅": "申", "申": "寅", "卯": "酉", "酉": "卯", "辰": "戌", "戌": "辰", "巳": "亥", "亥": "巳"]
+    private static let liuHeMap: [String: String] = ["子": "丑", "丑": "子", "寅": "亥", "亥": "寅", "卯": "戌", "戌": "卯", "辰": "酉", "酉": "辰", "巳": "申", "申": "巳", "午": "未", "未": "午"]
+    private static let sanHe: [[String]] = [["申", "子", "辰"], ["寅", "午", "戌"], ["巳", "酉", "丑"], ["亥", "卯", "未"]]
+    private static func stemWx(_ s: String) -> Int {
+        switch s { case "甲", "乙": return 0; case "丙", "丁": return 1; case "戊", "己": return 2; case "庚", "辛": return 3; default: return 4 }
+    }
+    private static func branchWx(_ b: String) -> Int {
+        switch b { case "寅", "卯": return 0; case "巳", "午": return 1; case "辰", "戌", "丑", "未": return 2; case "申", "酉": return 3; default: return 4 }
     }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                PersonQuickBar(store: peopleStore, selectedID: zejiPerson?.id) { p in
+                    zejiPersonID = p.id
+                    computeMatches(for: event)
+                }
+                if let zp = zejiPerson {
+                    Text("命主：\(zp.name.isEmpty ? "未命名" : zp.name) · 已自动过滤冲克其日支／年支的日子\(filteredCount > 0 ? "（\(filteredCount) 天）" : "")，金色徽章为命主专属大吉日。")
+                        .font(.caption).foregroundStyle(Ky.sub)
+                } else {
+                    Text("从上方选一位命主，自动过滤冲克其日支／年支的日子并标出专属大吉日。")
+                        .font(.caption).foregroundStyle(Ky.sub)
+                }
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "择吉事项", trailing: "近 30 天历书初筛")
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
@@ -179,6 +234,7 @@ struct ZejiView: View {
                                     HStack(spacing: 6) {
                                         Text(item.lunarTitle).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
                                         KyBadge(text: item.ganZhiZhiXing, color: Ky.gold)
+                                        if item.isSpecial { KyBadge(text: "命主专属大吉日", color: Ky.cinnabar, filled: true) }
                                     }
                                     Text(item.yiLine).font(.caption).foregroundStyle(Ky.jade).lineLimit(1)
                                     Text(item.jiLine).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
@@ -190,7 +246,7 @@ struct ZejiView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                Text("口径说明：择吉只按历书日宜忌初筛；婚嫁、入宅、开市等大事须结合当事人命局喜忌与冲合综合裁定。")
+                Text("口径说明：已按所选命主过滤冲克其日支／年支的日子；专属大吉日＝日干支生扶命主喜用神或与日支三合六合；婚嫁、入宅、开市等大事仍须结合全盘综合裁定。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(16)
@@ -229,26 +285,7 @@ struct WealthView: View {
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 24).kyCard()
                 } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(peopleStore.people) { p in
-                                let active = person?.id == p.id
-                                Button { selectedID = p.id } label: {
-                                    HStack(spacing: 5) {
-                                        Text(p.name.isEmpty ? "未命名" : p.name)
-                                            .font(.subheadline).fontWeight(active ? .bold : .medium)
-                                        Text(p.gender == "M" ? "男" : "女")
-                                            .font(.caption2).opacity(0.8)
-                                    }
-                                    .padding(.horizontal, 12).padding(.vertical, 7)
-                                    .background(active ? Ky.qingdai : Ky.card)
-                                    .foregroundStyle(active ? Color.white : Ky.ink)
-                                    .clipShape(Capsule())
-                                    .overlay(Capsule().stroke(active ? Ky.qingdai : Ky.line, lineWidth: 0.8))
-                                }.buttonStyle(.plain)
-                            }
-                        }
-                    }
+                    PersonQuickBar(store: peopleStore, selectedID: selectedID) { p in selectedID = p.id }
                     if let p = person, let ch = chart {
                         wealthCard(p: p, ch: ch)
                     }
@@ -338,6 +375,10 @@ struct CompareView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                PersonQuickBar(store: peopleStore) { p in
+                    if selected.contains(p.id) { selected.remove(p.id) }
+                    else if selected.count < 4 { selected.insert(p.id) }
+                }
                 Text("在档案里勾选 2–4 位命主并排比盘；日主或日柱相同的会高亮标出。")
                     .font(.caption).foregroundStyle(Ky.sub)
                 if peopleStore.people.isEmpty {

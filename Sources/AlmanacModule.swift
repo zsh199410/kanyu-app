@@ -115,12 +115,30 @@ enum AlmanacLunarCache {
 
 struct AlmanacView: View {
     @State private var date: Date
+    @State private var zejiPerson: Person? = nil
     init(initialDate: Date = Date()) { _date = State(initialValue: initialDate) }
 
     var body: some View {
         let info = AlmanacLunarCache.dayInfo(for: date)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                PersonQuickBar(store: PeopleStore.shared) { p in zejiPerson = p }
+                if let zp = zejiPerson {
+                    let zch = BaziEngine.cachedPaipan(clock: zp.birthDate, gender: zp.gender, longitude: zp.useLongitude ? zp.longitude : nil)
+                    let zdb = String(zch.pillars[2].last ?? "?")
+                    let yb = String(info.dayInGanZhi.last ?? "?")
+                    let clash: [String: String] = ["子": "午", "午": "子", "丑": "未", "未": "丑", "寅": "申", "申": "寅", "卯": "酉", "酉": "卯", "辰": "戌", "戌": "辰", "巳": "亥", "亥": "巳"]
+                    let liuHe: [String: String] = ["子": "丑", "丑": "子", "寅": "亥", "亥": "寅", "卯": "戌", "戌": "卯", "辰": "酉", "酉": "辰", "巳": "申", "申": "巳", "午": "未", "未": "午"]
+                    let verdict = clash[zdb] == yb ? "相冲 · 当日避大事" : (liuHe[zdb] == yb ? "六合 · 吉" : "无刑冲")
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.fill").foregroundStyle(Ky.qingdai)
+                        Text("命主 \(zp.name.isEmpty ? "未命名" : zp.name)日支 \(zdb)：今日日支 \(yb)——\(verdict)").font(.caption).foregroundStyle(Ky.ink)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12).padding(.vertical, 9)
+                    .background(Ky.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
                 AlmanacCalendarCard(date: $date)
 
                 // 头卡：干支日＋农历＋宿

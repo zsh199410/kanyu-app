@@ -602,37 +602,14 @@ struct BaziHomeView: View {
                 }
             }
 
-            // 档案人物一键速选横栏（取代原版隐藏式 Menu，点一下即排盘）
-            if !peopleStore.people.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        Label("速选：", systemImage: "person.crop.rectangle.stack")
-                            .font(.caption2).foregroundStyle(Ky.sub)
-                        ForEach(peopleStore.people.prefix(8)) { p in
-                            Button {
-                                // 速选回填：姓名／性别／生辰／经度全部取自所点档案记录的本地值，
-                                // 排盘与快照也用同一份本地值现算，不依赖刚写入的 @State 重读，保证姓名栏同步回填、快照与输入一致
-                                name = p.name; gender = p.gender; birth = p.birthDate
-                                useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
-                                chart = BaziEngine.paipan(clock: p.birthDate, gender: p.gender,
-                                                          longitude: p.useLongitude ? p.longitude : nil)
-                                chartSnapshot = "\(p.name)|\(p.gender)|\(p.birthDate.timeIntervalSince1970)|\(p.useLongitude)|\(String(format: "%.1f", p.longitude))"
-                                savedTip = true; inputCollapsed = true
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Text(p.name.isEmpty ? "未命名" : p.name).fontWeight(.medium)
-                                    Text(p.gender == "M" ? "男" : "女").opacity(0.75)
-                                }
-                                .font(.caption)
-                                .padding(.horizontal, 10).padding(.vertical, 5)
-                                .background(Ky.elevated)
-                                .foregroundStyle(Ky.ink)
-                                .clipShape(Capsule())
-                                .overlay(Capsule().stroke(Ky.line, lineWidth: 0.7))
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                }
+            // 档案人物一键调取（统一组件；点一下即排盘）
+            PersonQuickBar(store: peopleStore) { p in
+                name = p.name; gender = p.gender; birth = p.birthDate
+                useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
+                chart = BaziEngine.paipan(clock: p.birthDate, gender: p.gender,
+                                          longitude: p.useLongitude ? p.longitude : nil)
+                chartSnapshot = "\(p.name)|\(p.gender)|\(p.birthDate.timeIntervalSince1970)|\(p.useLongitude)|\(String(format: "%.1f", p.longitude))"
+                savedTip = true; inputCollapsed = true
             }
 
             // 姓名与性别同行排布，干净利落

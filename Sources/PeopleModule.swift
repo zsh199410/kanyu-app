@@ -136,6 +136,7 @@ struct PeopleView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 14) {
+                    NavigationLink { BackupView() } label: { Image(systemName: "archivebox") }.accessibilityLabel("数据备份与恢复")
                     Menu {
                         if let u = exportCache {
                             ShareLink(item: u) { Label("导出命例（JSON）", systemImage: "square.and.arrow.up") }

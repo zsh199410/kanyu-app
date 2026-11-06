@@ -26,6 +26,11 @@ struct SynastryView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                PersonQuickBar(store: store) { p in
+                    if aId == nil { aId = p.id }
+                    else if bId == nil { bId = p.id }
+                    else { aId = p.id }
+                }
                 pickerCard
                 if let a = selected(aId), let b = selected(bId), a.id != b.id {
                     resultCards(a: a, b: b)
