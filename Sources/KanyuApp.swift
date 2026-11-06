@@ -1696,27 +1696,36 @@ struct HomePageView: View {
     // 专项推演 2×3 矩阵（新增「干支反查」重磅工具！）
     private var specialToolsBento: some View {
         VStack(alignment: .leading, spacing: 10) {
-            KySectionTitle(title: "专项推演", trailing: "反查 · 合婚 · 论财 · 对比")
+            KySectionTitle(title: "专项推演", trailing: "星命 · 反查 · 合婚 · 论财 · 对比")
             HStack(spacing: 10) {
+                NavigationLink {
+                    let p = peopleStore.people.first(where: { $0.relation == "本人" }) ?? peopleStore.people.first ?? Person(name: "命主", relation: "本人", gender: "M", birthEpoch: Date().timeIntervalSince1970)
+                    let ch = BaziEngine.paipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
+                    AstroHomeView(person: p, chart: ch)
+                } label: {
+                    compactBentoTile("sparkles", "星命合参", "八字 × 西洋星盘 · 双术印证", Ky.gold)
+                }.buttonStyle(.plain)
                 NavigationLink { GanZhiLookupView() } label: {
                     compactBentoTile("magnifyingglass.circle.fill", "干支反查", "由四柱反推公历生辰", Ky.qingdai)
                 }.buttonStyle(.plain)
+            }
+            HStack(spacing: 10) {
                 NavigationLink { SynastryView() } label: {
                     compactBentoTile("heart.circle.fill", "合盘合婚", "合婚四看 · 喜用互补", Ky.cinnabar)
                 }.buttonStyle(.plain)
-            }
-            HStack(spacing: 10) {
                 NavigationLink { WealthView() } label: {
                     compactBentoTile("yensign.circle.fill", "八字论财", "财星 · 财库 · 财运大运", Ky.gold)
                 }.buttonStyle(.plain)
+            }
+            HStack(spacing: 10) {
                 NavigationLink { CompareView() } label: {
                     compactBentoTile("person.3.fill", "多盘对比", "2–4 人并排比四柱", Ky.jade)
                 }.buttonStyle(.plain)
-            }
-            HStack(spacing: 10) {
                 NavigationLink { YunQiPageView() } label: {
                     compactBentoTile("aqi.medium", "五运六气", "岁运 · 司天在泉主客气", Ky.qingdai)
                 }.buttonStyle(.plain)
+            }
+            HStack(spacing: 10) {
                 Button { selectedTab = 4 } label: {
                     compactBentoTile("safari.fill", "风水勘察", "罗盘定盘 · 玄空八宅", Ky.gold)
                 }.buttonStyle(.plain)

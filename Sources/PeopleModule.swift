@@ -249,6 +249,26 @@ struct PersonDetailView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
                 overviewCard(person: p, chart: ch, ziwei: zw)
+                NavigationLink {
+                    AstroHomeView(person: p, chart: ch)
+                } label: {
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(Ky.gold)
+                        Text("查看星命合参（东西双模本命盘） ›")
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(Ky.ink)
+                        Spacer()
+                        Text("太阳 · 月亮 · 上升")
+                            .font(.caption2)
+                            .foregroundStyle(Ky.sub)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(Ky.card)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.gold.opacity(0.4), lineWidth: 0.8))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
                 actionToolbar(person: p, chart: ch, ziwei: zw)
                 CrossCheckCard(bazi: ch, ziwei: zw)
 
