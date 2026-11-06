@@ -1826,6 +1826,7 @@ struct KanyuWorkbenchTabView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
                 heroCard
+                floorPlanToolCard
                 casesSection
                 surveyKnowledgeSection
                 systemSettingsSection
@@ -1853,6 +1854,47 @@ struct KanyuWorkbenchTabView: View {
             }
         }
         .sheet(isPresented: $showingNew) { NewCaseView() }
+    }
+
+    // 户型图立极压盘入口卡片
+    private var floorPlanToolCard: some View {
+        NavigationLink {
+            FloorPlanOverlayView()
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Ky.gold.opacity(0.15))
+                    Image(systemName: "square.split.diagonal.2x2")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(Ky.gold)
+                }
+                .frame(width: 48, height: 48)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text("户型图立极压盘器")
+                            .font(.system(.subheadline, design: .serif))
+                            .fontWeight(.bold)
+                            .foregroundStyle(Ky.ink)
+                        KyBadge(text: "九运飞星", color: Ky.cinnabar)
+                    }
+                    Text("导入户型平面图 · 拖拽立极中宫 · 透视分室吉凶")
+                        .font(.caption2)
+                        .foregroundStyle(Ky.sub)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Ky.sub)
+            }
+            .padding(12)
+            .background(Ky.card)
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.gold.opacity(0.4), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private var heroCard: some View {
