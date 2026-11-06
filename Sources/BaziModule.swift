@@ -25,6 +25,13 @@ struct BaziChart {
     var birthYear: Int = 0
     var gender: String = "M"
     var siliText: String = ""
+    // 预测单收据字段（排盘时一次算好，海报与速览卡直接取用）
+    var birthDate: Date = Date()       // 出生钟表时间（输入原值）
+    var trueSolarDate: Date? = nil     // 真太阳时校正后时间（未给经度时为 nil）
+    var longitude: Double? = nil       // 排盘所用经度（未给时为 nil）
+    var lunarText: String = ""         // 农历：甲辰年冬月廿一
+    var prevJieQiText: String = ""     // 上一节：大雪 12-06 23:17
+    var nextJieQiText: String = ""     // 下一节：冬至 12-21 17:20
     var pillars: [String] { [yearPillar, monthPillar, dayPillar, timePillar] }
     var qiyunYear: Int { Int(qiyunDate.prefix(4)) ?? 0 }
     func dayunStartYear(_ i: Int) -> Int { qiyunYear + i * 10 }
@@ -233,7 +240,20 @@ enum BaziEngine {
                          wuxingPercents: BaziTables.wuxingPercents(pillars: pillars),
                          birthYear: c.year!, gender: gender)
         chart.siliText = sili(lunar: solar.lunar, monthBranch: mg.last!, birth: solar)
+        // 预测单收据：出生时刻（钟表＋真太阳时）、农历、前后两节交节精确时刻
+        chart.birthDate = clock
+        chart.trueSolarDate = longitude != nil ? used : nil
+        chart.longitude = longitude
+        let lunar = solar.lunar
+        chart.lunarText = "\(lunar.yearInGanZhi)年\(lunar.monthInChinese)月\(lunar.dayInChinese)"
+        chart.prevJieQiText = Self.jieQiText(name: lunar.prevJieQi.name, solar: lunar.prevJieQi.solar)
+        chart.nextJieQiText = Self.jieQiText(name: lunar.nextJieQi.name, solar: lunar.nextJieQi.solar)
         return chart
+    }
+
+    // 交节时刻文本：「大雪 12-06 23:17」
+    static func jieQiText(name: String, solar s: Solar) -> String {
+        return "\(name) \(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))"
     }
 
     // 划动缓存：body 每求值一次就重算全盘是卡顿主因之一；按（出生时刻＋性别＋经度＋晚子时口径）缓存，口径改了即换键
@@ -542,71 +562,90 @@ struct BaziResultView: View {
         .sheet(isPresented: $showDetail) { pillarDetailView(detailPillar) }
     }
 
-    // MARK: - 易辰预测单式直断速览卡（对标预测单 7 大实务项：喜忌/行业/婚姻/财库一目了然；吉数吉色按喜用五行现算，不写死）
-    private var yucedanSummaryCard: some View {
-        let dayStem = chart.rizhu.first!
-        let dayWx = BaziTables.wx[dayStem]?.0 ?? ""
-        let pct = chart.wuxingPercents
-        let shengWo = { switch dayWx { case "木": return "水"; case "火": return "木"; case "土": return "火"; case "金": return "土"; default: return "金" } }()
-        let tong = (pct[KyV2.elementIndex(dayWx) ?? 0] + pct[KyV2.elementIndex(shengWo) ?? 0])
-        let level = tong >= 55 ? "偏强" : (tong <= 40 ? "偏弱" : "中和")
-        let ku = ["木": "未", "火": "戌", "土": "辰", "金": "丑", "水": "辰"][dayWx] ?? ""
-        let kuCount = chart.pillars.filter { $0.hasSuffix(ku) }.count
-        // 吉数吉色按喜用五行现算：偏弱喜生扶（印星＋比劫），否则喜克泄耗（食伤＋财＋官）
-        let wxOrder = ["木", "火", "土", "金", "水"]
-        let dayIdx = wxOrder.firstIndex(of: dayWx) ?? 2
-        let xiWx: [String] = level == "偏弱" ? [shengWo, dayWx] : [wxOrder[(dayIdx + 1) % 5], wxOrder[(dayIdx + 2) % 5], wxOrder[(dayIdx + 3) % 5]]
-        let numMap = ["木": "3、8", "火": "2、7", "土": "5、0", "金": "4、9", "水": "1、6"]
-        let colorMap = ["木": "绿、青", "火": "红", "土": "黄", "金": "白、金", "水": "黑、蓝"]
-        let xiNums = xiWx.compactMap { numMap[$0] }.joined(separator: "、")
-        let xiColors = xiWx.compactMap { colorMap[$0] }.joined(separator: "、")
+// MARK: - 易辰预测单式直断速览卡（对标预测单 7 大实务项：喜忌/财库/赛道/七项提炼一目了然；
+// 喜忌口径与预测单海报一致：InterpretEngine.posterXiJi（扶抑初判＋调候优先），不写死）
+private var yucedanSummaryCard: some View {
+let xj = InterpretEngine.posterXiJi(chart: chart)
+let wxNames = ["木", "火", "土", "金", "水"]
+let xiNames = xj.xi.map { wxNames[$0]}.joined(separator: "、")
+let jiNames = xj.ji.map { wxNames[$0]}.joined(separator: "、")
+let neutralNames = xj.neutral.map { wxNames[$0]}.joined(separator: "、")
+let numMap = ["木": "3、8", "火": "2、7", "土": "5、0", "金": "4、9", "水": "1、6"]
+let colorMap = ["木": "绿、青", "火": "红", "土": "黄", "金": "白、金", "水": "黑、蓝"]
+let xiNums = xj.xi.compactMap { numMap[wxNames[$0]]}.joined(separator: "、")
+let xiColors = xj.xi.compactMap { colorMap[wxNames[$0]]}.joined(separator: "、")
+let dayStem = chart.rizhu.first!
+let dayWx = BaziTables.wx[dayStem]?.0?? ""
+let ku = ["木": "未", "火": "戌", "土": "辰", "金": "丑", "水": "辰"][dayWx]?? ""
+let kuCount = chart.pillars.filter { $0.hasSuffix(ku)}.count
+let items = InterpretEngine.interpret(chart: chart)
 
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                KySectionTitle(title: "八字预测单直断速览", trailing: "实务七项要诀")
-                Spacer()
-                NavigationLink { PosterSheetView(chart: chart, name: name) } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "photo.artframe")
-                        Text("出预测单海报 ›")
-                    }
-                    .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
-                }.buttonStyle(.plain)
-            }
+return VStack(alignment:.leading, spacing: 10) {
+HStack {
+KySectionTitle(title: "八字预测单直断速览", trailing: "实务七项要诀")
+Spacer()
+NavigationLink { PosterSheetView(chart: chart, name: name)} label: {
+HStack(spacing: 3) {
+Image(systemName: "photo.artframe")
+Text("出预测单海报 ›")
+}
+.font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+}.buttonStyle(.plain)
+}
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Text("【喜用神】").font(.caption).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
-                    Text(level == "偏弱" ? "喜生扶（印星\(shengWo)、比劫\(dayWx)）· 调候温润为先" : "喜克泄耗（食伤、财星、官杀）· 忌再添重党")
-                        .font(.caption).foregroundStyle(Ky.ink)
-                    Spacer()
-                    KyBadge(text: "身\(level)", color: level == "偏弱" ? Ky.gold : Ky.qingdai)
-                }
+VStack(alignment:.leading, spacing: 6) {
+HStack(spacing: 8) {
+Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
+Text(xj.level == "中和"? "同党异党接近，贵在流通，不预设固定喜忌": "喜 \(xiNames) ✓　忌 \(jiNames) ×\(xj.neutral.isEmpty? "": "　\(neutralNames)：中性可用")")
+.font(.caption).foregroundStyle(Ky.ink)
+Spacer()
+KyBadge(text: "身\(xj.level)", color: xj.level == "偏弱"? Ky.gold: Ky.qingdai)
+}
 
-                HStack(spacing: 8) {
-                    Text("【财星财库】").font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
-                    Text(kuCount > 0 ? "原局见真财库「\(ku)」\(kuCount)处，财运聚散有存，防库逢冲动荡" : "原局无特定财库，周转流通为主，宜配置固定资产")
-                        .font(.caption).foregroundStyle(Ky.ink)
-                }
+HStack(spacing: 8) {
+Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
+Text((kuCount > 0? "原局见真财库「\(ku)」\(kuCount)处；": "原局无特定财库，周转流通为主；") + InterpretEngine.conclusion(items: items, titles: "财富量级蓄水池"))
+.font(.caption).foregroundStyle(Ky.ink).lineLimit(2)
+}
 
-                HStack(spacing: 8) {
-                    Text("【事业赛道】").font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
-                    Text("优先契合喜用五行与强神行业：规矩平台/技术变现两利，方位宜向喜用方扩展")
-                        .font(.caption).foregroundStyle(Ky.ink)
-                }
+HStack(spacing: 8) {
+Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+Text(InterpretEngine.conclusion(items: items, titles: "行业赛道深断", "事业方向"))
+.font(.caption).foregroundStyle(Ky.ink).lineLimit(2)
+}
 
-                HStack(spacing: 8) {
-                    Text("【吉数吉色】").font(.caption).fontWeight(.bold).foregroundStyle(Ky.jade)
-                    Text("日常喜用 \(xiNums)（\(xiWx.joined(separator: "、"))）数；穿衣家居宜\(xiColors)")
-                        .font(.caption).foregroundStyle(Ky.ink)
-                }
-            }
-            .padding(11)
-            .background(Ky.elevated)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .kyCard()
-    }
+HStack(spacing: 8) {
+Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.jade)
+Text(xj.xi.isEmpty? "流通为要，不拘固定数": "日常喜用 \(xiNums)（\(xiNames)）数；穿衣家居宜\(xiColors)")
+.font(.caption).foregroundStyle(Ky.ink)
+}
+
+Divider().opacity(0.5)
+
+Text("七项实务提炼").font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+VStack(alignment:.leading, spacing: 4) {
+summaryRow("一、性格", InterpretEngine.conclusion(items: items, titles: "性格性情"))
+summaryRow("二、事业", InterpretEngine.conclusion(items: items, titles: "行业赛道深断", "事业方向"))
+summaryRow("三、财运", InterpretEngine.conclusion(items: items, titles: "财运形态"))
+summaryRow("四、婚姻", InterpretEngine.conclusion(items: items, titles: "婚姻感情"))
+summaryRow("五、吉祥数", InterpretEngine.conclusion(items: items, titles: "幸运颜色与数字"))
+summaryRow("六、岁运", InterpretEngine.conclusion(items: items, titles: "岁运要点"))
+summaryRow("七、建议", InterpretEngine.conclusion(items: items, titles: "如何化解（破局调理）", "注意事项"))
+}
+}
+.padding(11)
+.background(Ky.elevated)
+.clipShape(RoundedRectangle(cornerRadius: 12, style:.continuous))
+}
+.kyCard()
+}
+
+private func summaryRow(_ label: String, _ text: String) -> some View {
+HStack(alignment:.top, spacing: 6) {
+Text(label).font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai).frame(width: 52, alignment:.leading)
+Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
+}
+}
 
     // MARK: - 核心四柱命盘卡（消除旧版重复四柱按钮行，直接在四柱列点击查看详情，干支按五行分色）
     private var plateCard: some View {

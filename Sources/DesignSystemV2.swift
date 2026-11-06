@@ -97,18 +97,22 @@ struct WuxingBarsView: View {
         return ("缺显", Ky.sub)
     }
     var body: some View {
-        VStack(spacing: 9) {
-            ForEach(0..<min(KyV2.wuxingNames.count, percents.count), id: \.self) { i in
-                let p = percents[i]
-                let st = stateLabel(p)
-                HStack(spacing: 10) {
-                    Text(KyV2.wuxingNames[i])
-                        .font(.system(size: 13, weight: .bold, design: .serif))
-                        .foregroundStyle(KyV2.wuxingColors[i])
-                        .frame(width: 24, height: 24)
-                        .background(KyV2.wuxingColors[i].opacity(0.14))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    GeometryReader { geo in
+        // 一个 GeometryReader 量整组宽度（原先每行一个，共 5 次布局）；行高定死 24，容器高由行数算出；
+        // 整组光栅化一次（.drawingGroup）：滑动只是位移，不触发重绘
+        let rows = min(KyV2.wuxingNames.count, percents.count)
+        return GeometryReader { geo in
+            let trackW = max(40, geo.size.width - 128)  // 24 名称＋38 百分比＋36 标签＋3×10 间距
+            VStack(spacing: 9) {
+                ForEach(0..<rows, id: \.self) { i in
+                    let p = percents[i]
+                    let st = stateLabel(p)
+                    HStack(spacing: 10) {
+                        Text(KyV2.wuxingNames[i])
+                            .font(.system(size: 13, weight: .bold, design: .serif))
+                            .foregroundStyle(KyV2.wuxingColors[i])
+                            .frame(width: 24, height: 24)
+                            .background(KyV2.wuxingColors[i].opacity(0.14))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 5).fill(Ky.line.opacity(0.45))
                             RoundedRectangle(cornerRadius: 5)
@@ -118,21 +122,25 @@ struct WuxingBarsView: View {
                                         startPoint: .leading, endPoint: .trailing
                                     )
                                 )
-                                .frame(width: max(4, geo.size.width * CGFloat(min(max(p, 0), 100)) / 100))
+                                .frame(width: max(4, trackW * CGFloat(min(max(p, 0), 100)) / 100))
                         }
-                    }.frame(height: 10)
-                    Text(String(format: "%.0f%%", p))
-                        .font(KyV2.tabular(13, weight: .semibold)).foregroundStyle(Ky.ink)
-                        .frame(width: 38, alignment: .trailing)
-                    Text(st.0)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(st.1)
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(st.1.opacity(0.12))
-                        .clipShape(Capsule())
+                        .frame(width: trackW, height: 10)
+                        Text(String(format: "%.0f%%", p))
+                            .font(KyV2.tabular(13, weight: .semibold)).foregroundStyle(Ky.ink)
+                            .frame(width: 38, alignment: .trailing)
+                        Text(st.0)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(st.1)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(st.1.opacity(0.12))
+                            .clipShape(Capsule())
+                            .frame(width: 36, alignment: .leading)
+                    }
                 }
             }
         }
+        .frame(height: CGFloat(rows) * 24 + CGFloat(max(0, rows - 1)) * 9)
+        .drawingGroup()
     }
 }
 

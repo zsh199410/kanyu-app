@@ -281,15 +281,19 @@ enum QimenGlossary {
 
 struct QimenHomeView: View {
     @State private var date = Date()
-    private var chart: QimenEngine.Chart? { QimenEngine.chart(for: date) }
-    private var dateText: String {
+    // 起局只在时间变时算一次：排盘是纯计算但不便宜，body 每求值一次就重算会拖滑动；
+    // 初值直接起局，避免首帧先闪一下「未能起局」
+    @State private var cachedChart: QimenEngine.Chart? = QimenEngine.chart(for: Date())
+    private static let dateFmt: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "yyyy年M月d日 HH:mm"; f.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
-        return f.string(from: date)
-    }
-    private var weekdayText: String {
+        return f
+    }()
+    private static let weekdayFmt: DateFormatter = {
         let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.dateFormat = "EEEE"
-        return f.string(from: date)
-    }
+        return f
+    }()
+    private var dateText: String { Self.dateFmt.string(from: date) }
+    private var weekdayText: String { Self.weekdayFmt.string(from: date) }
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
@@ -312,7 +316,7 @@ struct QimenHomeView: View {
                     Text("默认此刻；改时间即重起局。时辰按北京时间取，晚子时口径与八字排盘一致。")
                         .font(.caption2).foregroundStyle(Ky.sub)
                 }.kyCard()
-                if let ch = chart {
+                if let ch = cachedChart {
                     infoCard(ch)
                     boardCard(ch)
                     patternCard(ch)
@@ -331,6 +335,8 @@ struct QimenHomeView: View {
         .navigationTitle("奇门遁甲").navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .onAppear { cachedChart = QimenEngine.chart(for: date) }
+        .onChange(of: date) { _, new in cachedChart = QimenEngine.chart(for: new) }
     }
 
     private func infoCard(_ ch: QimenEngine.Chart) -> some View {

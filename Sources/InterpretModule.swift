@@ -16,6 +16,74 @@ enum InterpretEngine {
         switch stem { case "甲", "乙": return 0; case "丙", "丁": return 1
         case "戊", "己": return 2; case "庚", "辛": return 3; default: return 4 }
     }
+
+    // 扶抑分档（喜忌条、C8、预测单的唯一来源）：同党＝日主行＋印行
+    static func fuYi(chart ch: BaziChart) -> (level: String, shengWo: Int, tongDang: Double) {
+        let dayWx = wxIndex(of: ch.rizhu.first!)
+        let shengWo = (dayWx + 4) % 5  // 生我者：木←水 火←木 土←火 金←土 水←金
+        let tongDang = ch.wuxingPercents[dayWx] + ch.wuxingPercents[shengWo]
+        let level = tongDang >= 55 ? "偏强" : (tongDang <= 40 ? "偏弱" : "中和")
+        return (level, shengWo, tongDang)
+    }
+
+    // 调候喜用元素（按提及顺序）：穷通精选查表命中则取表述所指五行，否则寒月[火]、热月[水]
+    static func tiaoHouWx(chart ch: BaziChart) -> [Int] {
+        let dayStem = ch.rizhu.first!
+        let monthBranch = ch.monthPillar.last!
+        if let hit = tiaoHouTable[dayStem]?[monthBranch] {
+            var out: [Int] = []
+            for c in hit where "甲乙丙丁戊己庚辛壬癸".contains(c) {
+                let w = wxIndex(of: c)
+                if !out.contains(w) { out.append(w) }
+            }
+            return out
+        }
+        if ["亥", "子", "丑"].contains(monthBranch) { return [1] }
+        if ["巳", "午", "未"].contains(monthBranch) { return [4] }
+        return []
+    }
+
+    /// 预测单喜忌（本工作室定论）：扶抑初判＋调候优先。
+    /// 规则：调候喜用（查表＞寒热粗筛）直接入喜；扶抑喜用中与调候冲突者（寒月金水、热月火土）剔除；
+    /// 扶抑忌用中被调候点名者、及调候喜用所生之行，不入忌；其余为中性（可用）。
+    /// 例·周囿廷（己未日、子月、偏强）：调候[火木]、冲突[金水] → 喜[火木]、忌[金水]、中性[土]，与案例档定论一致。
+    static func posterXiJi(chart ch: BaziChart) -> (xi: [Int], ji: [Int], neutral: [Int], level: String, tongDang: Double, tiaoHou: [Int]) {
+        let dayWx = wxIndex(of: ch.rizhu.first!)
+        let (level, shengWo, tongDang) = fuYi(chart: ch)
+        let th = tiaoHouWx(chart: ch)
+        if level == "中和" { return ([], [], [0, 1, 2, 3, 4], level, tongDang, th) }
+        let monthBranch = ch.monthPillar.last!
+        var conflict: Set<Int> = []
+        if ["亥", "子", "丑"].contains(monthBranch) { conflict = [3, 4] }
+        else if ["巳", "午", "未"].contains(monthBranch) { conflict = [1, 2] }
+        conflict.subtract(th)
+        let fuYiXi: Set<Int> = level == "偏强" ? [(dayWx + 1) % 5, (dayWx + 2) % 5, (dayWx + 3) % 5] : [shengWo, dayWx]
+        let fuYiJi: Set<Int> = level == "偏强" ? [shengWo, dayWx] : [(dayWx + 1) % 5, (dayWx + 2) % 5, (dayWx + 3) % 5]
+        let generated: Set<Int> = Set(th.map { ($0 + 1) % 5 })  // 生：木→火 火→土 土→金 金→水 水→木
+        let xi = Set(th).union(fuYiXi.subtracting(conflict))
+        let ji = conflict.union(fuYiJi.subtracting(th).subtracting(generated))
+        let neutral = Set([0, 1, 2, 3, 4]).subtracting(xi).subtracting(ji)
+        return (xi.sorted(), ji.sorted(), neutral.sorted(), level, tongDang, th)
+    }
+
+    /// 大运逐运喜忌（与预测单同口径：调候优先；中和盘标中性）
+    static func dayunMark(chart ch: BaziChart, index i: Int) -> String {
+        guard i < ch.dayunGanZhi.count else { return "中性" }
+        let xj = posterXiJi(chart: ch)
+        if xj.level == "中和" { return "中性" }
+        let w = wxIndex(of: ch.dayunGanZhi[i].first!)
+        if xj.xi.contains(w) { return "喜" }
+        if xj.ji.contains(w) { return "忌" }
+        return "中性"
+    }
+
+    /// 取解盘条目结论（按标题顺序回退），供海报与速览卡共用；调用方先算一次 interpret() 再传 items
+    static func conclusion(items: [InterpretItem], titles: String...) -> String {
+        for t in titles {
+            if let c = items.first(where: { $0.title == t })?.conclusion, !c.isEmpty { return c }
+        }
+        return ""
+    }
     // 穷通调候精选查表（2026-10-31 批次二）：只收有把握的寒月／热月格子，共 19 格；
     // 未入表的格子一律回落寒热粗筛并标注层级，不许凭记忆补填。表述为通说要点，非原文照录。
     private static let tiaoHouTable: [Character: [Character: String]] = [
@@ -64,9 +132,7 @@ enum InterpretEngine {
             links: [("盘面", "月柱 \(ch.monthPillar)，本气 \(benQi)（\(benQiSS)）；四柱透干查 \(touIdx != nil ? "见透" : "未透")"),
                     ("法则", "《子平真诠》：格以月令本气为纲，透干则格明；月令为比劫不立十神格，取建禄／羊刃")]))
         // 3 扶抑＋调候喜忌（初判）
-        let shengWo = (dayWx + 4) % 5  // 生我者：木←水 火←木 土←火 金←土 水←金
-        let tongDang = pct[dayWx] + pct[shengWo]
-        let level = tongDang >= 55 ? "偏强" : (tongDang <= 40 ? "偏弱" : "中和")
+        let (level, shengWo, tongDang) = fuYi(chart: ch)
         let xiText: String
         switch level {
         case "偏强": xiText = "扶抑上喜克、泄、耗——\(wxNames[(dayWx + 1) % 5])（食伤）\(wxNames[(dayWx + 2) % 5])（财）\(wxNames[(dayWx + 3) % 5])（官杀）方向可用，忌再添\(wxNames[shengWo])\(wxNames[dayWx])。"
@@ -148,24 +214,17 @@ enum InterpretEngine {
         var relText = "与日支\(dayBranch)无直接冲合，属平流年。"
         if chongPairs[dayBranch] == lnBranch { relText = "流年\(lnBranch)冲日支\(dayBranch)：先动自身——身体、迁居、行程一线先有动象，其次才及亲密关系；宜主动求变、忌被动挨冲。" }
         if hePairs[dayBranch] == lnBranch { relText = "流年\(lnBranch)合日支\(dayBranch)：牵合之象，多应关系靠近、意向达成；是否落到缔约，还要看流年干与大运是否同推。" }
-        // C8 大运逐运喜忌标记（只看运干五行，套扶抑初判标喜／忌／中性，与喜忌条同口径、带初判标注）
-        let shengWo2 = (dayWx + 4) % 5
-        let tong2 = pct[dayWx] + pct[shengWo2]
-        let level2 = tong2 >= 55 ? "偏强" : (tong2 <= 40 ? "偏弱" : "中和")
+        // C8 大运逐运喜忌标记（运干五行，扶抑初判叠加调候优先，与喜忌条同口径；中和盘标中性）
         let yunMarks = ch.dayunGanZhi.indices.map { i -> String in
             let gz = ch.dayunGanZhi[i]
             let ss = BaziTables.shiShen(day: dayStem, stem: gz.first!)
-            let w = wxIndex(of: gz.first!)
-            let mark: String
-            if level2 == "偏弱" { mark = (w == shengWo2 || w == dayWx) ? "喜" : "忌" }
-            else if level2 == "偏强" { mark = (w == (dayWx + 1) % 5 || w == (dayWx + 2) % 5 || w == (dayWx + 3) % 5) ? "喜" : "忌" }
-            else { mark = "中性" }
-            return "\(gz)（\(ch.dayunStartYear(i))起，运干\(ss)，扶抑初判\(mark)）"
+            let mark = dayunMark(chart: ch, index: i)
+            return "\(gz)（\(ch.dayunStartYear(i))起，运干\(ss)，喜忌\(mark)）"
         }.joined(separator: "、")
         items.append(InterpretItem(
             title: "岁运要点",
-            conclusion: "\(yunText) \(nowYear) 年流年\(ln)：\(relText)逐运喜忌（扶抑初判）：\(yunMarks)。",
-            links: [("盘面", yunFacts), ("法则", "应期看引动：冲合落到哪一宫，哪一线的事先动；逐运标记只看运干五行套扶抑初判，中和盘标中性，不升格为定论")]))
+            conclusion: "\(yunText) \(nowYear) 年流年\(ln)：\(relText)逐运喜忌（调候优先）：\(yunMarks)。",
+            links: [("盘面", yunFacts), ("法则", "应期看引动：冲合落到哪一宫，哪一线的事先动；逐运标记看运干五行：扶抑初判叠加调候优先（寒月去金水、热月去火土），中和盘标中性，不升格为定论")]))
         return items + dimensions(ch)
     }
 }

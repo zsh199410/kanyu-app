@@ -86,6 +86,16 @@ struct BirthInputView: View {
         if let p = Self.places.first(where: { abs($0.1 - (Double(longitudeText) ?? -999)) < 0.051 }) { return p.0 }
         return "自定义"
     }
+
+    /// 经度 → 「省·城市」标签（供预测单题头用；与输入页同表同口径，误差 0.051° 内匹配）
+    static func placeLabel(longitude: Double) -> String? {
+        for (prov, cities) in provinceCities {
+            if let c = cities.first(where: { abs($0.1 - longitude) < 0.051 }) {
+                return "\(prov)·\(c.0)"
+            }
+        }
+        return nil
+    }
     private var cityOptions: [(String, Double)] {
         if let prov = Self.provinceCities.first(where: { $0.0 == provinceSel }) { return prov.1 }
         return Self.places
