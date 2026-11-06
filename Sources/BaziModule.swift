@@ -32,6 +32,7 @@ struct BaziChart {
     var lunarText: String = ""         // 农历：甲辰年冬月廿一
     var prevJieQiText: String = ""     // 上一节：大雪 12-06 23:17
     var nextJieQiText: String = ""     // 下一节：冬至 12-21 17:20
+    var nextJieQiGapText: String = ""  // 出生距下一节：距下一节冬至约 3 小时（48 小时内写小时，否则写天数）
     var pillars: [String] { [yearPillar, monthPillar, dayPillar, timePillar] }
     var qiyunYear: Int { Int(qiyunDate.prefix(4)) ?? 0 }
     func dayunStartYear(_ i: Int) -> Int { qiyunYear + i * 10 }
@@ -248,6 +249,16 @@ enum BaziEngine {
         chart.lunarText = "\(lunar.yearInGanZhi)年\(lunar.monthInChinese)月\(lunar.dayInChinese)"
         chart.prevJieQiText = Self.jieQiText(name: lunar.prevJieQi.name, solar: lunar.prevJieQi.solar)
         chart.nextJieQiText = Self.jieQiText(name: lunar.nextJieQi.name, solar: lunar.nextJieQi.solar)
+        // 出生距下一节：48 小时内写小时数，否则写天数（囿廷：距冬至约 3 小时）
+        let ns = lunar.nextJieQi.solar
+        if let nd = Calendar.current.date(from: DateComponents(year: ns.year, month: ns.month, day: ns.day, hour: ns.hour, minute: ns.minute)) {
+            let hours = nd.timeIntervalSince(clock) / 3600
+            if hours >= 0, hours < 48 {
+                chart.nextJieQiGapText = "距下一节\(lunar.nextJieQi.name)约 \(Int(hours.rounded())) 小时"
+            } else if hours >= 48 {
+                chart.nextJieQiGapText = "距下一节\(lunar.nextJieQi.name)约 \(Int((hours / 24).rounded())) 天"
+            }
+        }
         return chart
     }
 
@@ -309,7 +320,7 @@ struct BaziHomeView: View {
     @State private var useLongitude = true
     @State private var longitudeText = "107.8"
     @State private var chart: BaziChart?
-    @StateObject private var peopleStore = PeopleStore()
+    @EnvironmentObject var peopleStore: PeopleStore
     @State private var chartSnapshot = ""
     @State private var savedTip = false
     @State private var inputCollapsed = false
@@ -1121,9 +1132,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
             Text("点任一步大运直接下钻该运十年流年；标「当前」者为今年所在大运。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
-        .gesture(DragGesture(minimumDistance: 30).onEnded { v in
-            if v.translation.width < -30 { stepTime(1) } else if v.translation.width > 30 { stepTime(-1) }
-        })
+
     }
 
     private var liunianLevel: some View {
@@ -1161,9 +1170,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
             Text("\(chart.dayunGanZhi[safeDayun])运（\(start)–\(start + 9)）十年流年：点任一年进流月。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
-        .gesture(DragGesture(minimumDistance: 30).onEnded { v in
-            if v.translation.width < -30 { stepTime(1) } else if v.translation.width > 30 { stepTime(-1) }
-        })
+
     }
 
     private var liuyueLevel: some View {

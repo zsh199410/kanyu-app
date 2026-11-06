@@ -225,7 +225,7 @@ struct ZiweiHomeView: View {
     @State private var useLongitude = true
     @State private var longitudeText = "107.8"
     @State private var chart: ZiweiChart?
-    @StateObject private var peopleStore = PeopleStore()
+    @EnvironmentObject var peopleStore: PeopleStore
     @State private var chartSnapshot = ""
     @State private var savedTip = false
     @State private var inputCollapsed = false

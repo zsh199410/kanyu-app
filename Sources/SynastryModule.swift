@@ -3,7 +3,7 @@
 import SwiftUI
 
 struct SynastryView: View {
-    @StateObject private var store = PeopleStore()
+    @EnvironmentObject var store: PeopleStore
     @State private var aId: UUID?
     @State private var bId: UUID?
 

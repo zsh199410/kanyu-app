@@ -41,6 +41,9 @@ struct Person: Codable, Identifiable, Equatable {
 
 @MainActor
 final class PeopleStore: ObservableObject {
+    // 全局唯一单例：人物档案只读一次盘（people.json），各页共用同一份内存数据；
+    // 旧写法每页 @StateObject 新建一个 PeopleStore，各读各的盘、改完还不同步
+    static let shared = PeopleStore()
     @Published var people: [Person] = []
     private(set) var loadedSchemaVersion = 0   // 读档时 meta 的版本（无 meta 的旧档为 0）；将来改形状时按此分支迁移
     private var fileURL: URL {
@@ -88,7 +91,7 @@ final class PeopleStore: ObservableObject {
 }
 
 struct PeopleView: View {
-    @StateObject private var store = PeopleStore()
+    @EnvironmentObject var store: PeopleStore
     @State private var editing: Person?
     @State private var showingNew = false
     @State private var exportCache: URL?

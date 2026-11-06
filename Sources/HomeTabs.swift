@@ -206,7 +206,7 @@ struct ZejiView: View {
 
 // MARK: - 八字论财：财星 / 财库 / 五行占比 / 财运大运
 struct WealthView: View {
-    @StateObject private var peopleStore = PeopleStore()
+    @EnvironmentObject var peopleStore: PeopleStore
     @State private var selectedID: UUID?
     private var person: Person? {
         peopleStore.people.first(where: { $0.id == selectedID }) ?? peopleStore.people.first
@@ -329,7 +329,7 @@ struct WealthView: View {
 
 // MARK: - 多盘对比：档案里挑 2–4 人并排比四柱 / 日主 / 命宫身宫 / 旬空
 struct CompareView: View {
-    @StateObject private var peopleStore = PeopleStore()
+    @EnvironmentObject var peopleStore: PeopleStore
     @State private var selected: Set<UUID> = []
     private var picked: [Person] { peopleStore.people.filter { selected.contains($0.id) } }
     private func chart(_ p: Person) -> BaziChart {

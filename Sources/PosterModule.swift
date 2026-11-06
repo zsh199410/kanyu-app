@@ -433,6 +433,10 @@ Text("易辰取名社八字预测单")
 .foregroundStyle(pal.main)
 }
 .padding(.top, 22)
+Text("\(receiptCity) · \(receiptLongitude)E · \(chart.naYin.first ?? "")命")
+.font(.system(size: 11.5, weight: .bold, design: .serif))
+.foregroundStyle(pal.accent)
+.padding(.top, 4)
 
 // 2. 双行生辰收据（城市/经度/出生时刻/农历/前后两节/性别/姓名/年命）
 VStack(spacing: 2) {
@@ -448,8 +452,15 @@ Text("　上一节 \(chart.prevJieQiText.isEmpty ? "—": chart.prevJieQiText)�
 Spacer()
 Text("\(chart.gender == "M" ? "男（乾造）": "女（坤造）")　\(name.isEmpty ? "命主": name)　\(chart.naYin.first ?? "")命")
 }
+if !chart.nextJieQiGapText.isEmpty {
+HStack(spacing: 0) {
+Text("★ \(chart.nextJieQiGapText)")
+.foregroundStyle(pal.accentHi)
+Spacer()
 }
-.font(.system(size: 9, weight:.medium, design:.serif))
+}
+}
+.font(.system(size: 10, weight:.medium, design:.serif))
 .foregroundStyle(pal.sub)
 .padding(.horizontal, 28)
 .padding(.top, 8)
@@ -461,28 +472,28 @@ HStack(alignment:.top, spacing: 6) {
 // (A) 四柱：十神／干支大字／藏干十神／长生
 VStack(spacing: 2) {
 Text("四柱")
-.font(.system(size: 10, weight:.bold, design:.serif))
+.font(.system(size: 11.5, weight:.bold, design:.serif))
 .foregroundStyle(pal.accent)
 HStack(spacing: 3) {
 ForEach(0..<4, id: \.self) { i in
 let gz = Array(chart.pillars[i])
 VStack(spacing: 1) {
 Text(["年", "月", "日", "时"][i])
-.font(.system(size: 8.5)).foregroundStyle(pal.sub)
+.font(.system(size: 9.5)).foregroundStyle(pal.sub)
 Text(chart.stemShiShen[i])
-.font(.system(size: 7.5, weight:.medium))
+.font(.system(size: 8, weight:.medium))
 .foregroundStyle(i == 2 ? pal.accentHi : pal.accent)
 Text(String(gz[0]))
-.font(.system(size: 15, weight:.bold, design:.serif))
+.font(.system(size: 16, weight:.bold, design:.serif))
 .foregroundStyle(posterCharColor(gz[0], fallback: pal.main))
 Text(String(gz[1]))
-.font(.system(size: 15, weight:.bold, design:.serif))
+.font(.system(size: 16, weight:.bold, design:.serif))
 .foregroundStyle(posterCharColor(gz[1], fallback: pal.main))
 Text(chart.hideShiShen[i].joined(separator: "·"))
-.font(.system(size: 6.5)).foregroundStyle(pal.accentHi)
+.font(.system(size: 7)).foregroundStyle(pal.accentHi)
 .lineLimit(2).multilineTextAlignment(.center)
 Text(chart.diShi[i])
-.font(.system(size: 7)).foregroundStyle(pal.sub)
+.font(.system(size: 7.5)).foregroundStyle(pal.sub)
 }
 .frame(width: 34)
 .padding(.vertical, 3)
@@ -495,7 +506,7 @@ Text(chart.diShi[i])
 // (B) 大运：✓/×（调候优先口径）＋运干五行＋干支＋岁数区间
 VStack(alignment:.leading, spacing: 2) {
 Text("大运")
-.font(.system(size: 10, weight:.bold, design:.serif))
+.font(.system(size: 11.5, weight:.bold, design:.serif))
 .foregroundStyle(pal.accent)
 VStack(alignment:.leading, spacing: 1.5) {
 ForEach(0..<min(7, chart.dayunGanZhi.count), id: \.self) { i in
@@ -503,13 +514,13 @@ let gz = chart.dayunGanZhi[i]
 let (g, c) = dayunGlyph(i)
 let startAge = chart.dayunStartYear(i) - chart.birthYear
 HStack(spacing: 3) {
-Text(g).font(.system(size: 9, weight:.bold)).foregroundStyle(c).frame(width: 10)
+Text(g).font(.system(size: 10, weight:.bold)).foregroundStyle(c).frame(width: 12)
 Text(Self.wxNames[wxIdx(ofStem: gz.first!)])
-.font(.system(size: 8)).foregroundStyle(pal.sub).frame(width: 10)
+.font(.system(size: 9)).foregroundStyle(pal.sub).frame(width: 10)
 Text(gz)
-.font(.system(size: 9.5, weight:.bold, design:.serif)).foregroundStyle(pal.main)
+.font(.system(size: 10, weight:.bold, design:.serif)).foregroundStyle(pal.main)
 Text("\(startAge)~\(startAge + 10)岁")
-.font(.system(size: 8, design:.monospaced)).foregroundStyle(pal.sub)
+.font(.system(size: 8.5, design:.monospaced)).foregroundStyle(pal.sub)
 }
 }
 }
@@ -519,7 +530,7 @@ Text("\(startAge)~\(startAge + 10)岁")
 // (C) 流年地支轮：子北午南、顺时针环列；每支标年份、周岁与 ✓/×，盘心定向指针；红点＝原局四支
 VStack(spacing: 2) {
 Text("流年地支轮")
-.font(.system(size: 10, weight:.bold, design:.serif))
+.font(.system(size: 11.5, weight:.bold, design:.serif))
 .foregroundStyle(pal.accent)
 ZStack {
 Circle().stroke(pal.cardStroke, lineWidth: 0.8)
@@ -531,12 +542,12 @@ let angle = Double(pos) * 30.0 - 90.0
 let rad = angle * Double.pi / 180.0
 VStack(spacing: 0) {
 Text(String(w.branch))
-.font(.system(size: 9, weight:.bold, design:.serif))
+.font(.system(size: 10, weight:.bold, design:.serif))
 .foregroundStyle(posterCharColor(w.branch, fallback: pal.main))
 Text("\(w.year)")
-.font(.system(size: 6, design:.monospaced)).foregroundStyle(pal.sub)
+.font(.system(size: 7, design:.monospaced)).foregroundStyle(pal.sub)
 Text("\(w.age)岁 \(w.glyph)")
-.font(.system(size: 6.5, weight:.bold)).foregroundStyle(w.color)
+.font(.system(size: 7.5, weight:.bold)).foregroundStyle(w.color)
 if chart.pillars.contains(where: { $0.last! == w.branch}) {
 Circle().fill(pal.accentHi).frame(width: 3, height: 3)
 }
@@ -562,23 +573,23 @@ Circle().fill(pal.main).frame(width: 5, height: 5)
 
 // 四季五行对照（真迹右侧栏，作一行点缀）
 Text("四季五行：春木 · 夏火 · 秋金 · 冬水；农历三、九月土")
-.font(.system(size: 8, design:.serif)).foregroundStyle(pal.sub)
+.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
 .padding(.vertical, 3)
 
 // 4. 喜忌神独立横幅（大字定调＋中性说明＋调候依据）
 VStack(alignment:.leading, spacing: 2) {
 HStack(spacing: 10) {
 Text("喜用神：\(xiNames.isEmpty ? "—": xiNames) ✓")
-.font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
+.font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
 Text("忌神：\(jiNames.isEmpty ? "—": jiNames) ×")
-.font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
+.font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
 if !xj.neutral.isEmpty && xj.level != "中和" {
 Text("\(xj.neutral.map { Self.wxNames[$0]}.joined(separator: "、"))：中性（可用）")
-.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
+.font(.system(size: 10, design:.serif)).foregroundStyle(pal.sub)
 }
 }
 Text("依据：日主\(xj.level)（同党约\(Int(xj.tongDang.rounded()))%）\(xiJiBasis)")
-.font(.system(size: 8.5, design:.serif)).foregroundStyle(pal.sub)
+.font(.system(size: 9.5, design:.serif)).foregroundStyle(pal.sub)
 }
 .padding(.horizontal, 28)
 .padding(.vertical, 5)
@@ -625,16 +636,16 @@ VStack(spacing: 3) {
 Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24)
 HStack(alignment:.bottom) {
 Text("依据五典推演，仅供娱乐参考；断语可回测验证，不作医疗、寿数与具体事件定断。")
-.font(.system(size: 8, design:.serif)).foregroundStyle(pal.sub)
+.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
 .fixedSize(horizontal: false, vertical: true)
 Spacer()
 Text("三术堂　\(Self.dateFmt.string(from: Date()))")
-.font(.system(size: 9, weight:.bold, design:.serif)).foregroundStyle(pal.main)
+.font(.system(size: 10, weight:.bold, design:.serif)).foregroundStyle(pal.main)
 ZStack {
 RoundedRectangle(cornerRadius: 3, style:.continuous)
 .stroke(pal.accentHi, lineWidth: 1.2)
 Text("吉")
-.font(.system(size: 9, weight:.bold, design:.serif))
+.font(.system(size: 10, weight:.bold, design:.serif))
 .foregroundStyle(pal.accentHi)
 }
 .frame(width: 16, height: 16)
@@ -692,15 +703,15 @@ private func yuceSection(num: String, title: String, rows: [(String, String)], n
 VStack(alignment:.leading, spacing: 2) {
 HStack(spacing: 6) {
 Text("\(num)、\(title)")
-.font(.system(size: 10, weight:.bold, design:.serif))
+.font(.system(size: 11.5, weight:.bold, design:.serif))
 .foregroundStyle(pal.accent)
 if let note {
-Text(note).font(.system(size: 8)).foregroundStyle(pal.sub)
+Text(note).font(.system(size: 9)).foregroundStyle(pal.sub)
 }
 }
 ForEach(rows.indices, id: \.self) { j in
-(Text("\(rows[j].0)：").font(.system(size: 8.5, weight:.bold, design:.serif)).foregroundStyle(pal.accent)
-+ Text(rows[j].1).font(.system(size: 8.5)).foregroundStyle(pal.main))
+(Text("\(rows[j].0)：").font(.system(size: 9.5, weight:.bold, design:.serif)).foregroundStyle(pal.accent)
++ Text(rows[j].1).font(.system(size: 9.5)).foregroundStyle(pal.main))
 .lineSpacing(1.5)
 .lineLimit(2)
 .fixedSize(horizontal: false, vertical: true)

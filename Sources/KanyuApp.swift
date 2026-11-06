@@ -687,19 +687,30 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         manager.requestWhenInUseAuthorization()
     }
 
+    // 按需启停（需求计数）：只有罗盘/拍照/轨迹/扫描页在前台时才跑 GPS＋磁力计；
+    // 根视图不再自启，退出页面即 stop，计数归零才真正停（多页叠加时不互相掐断）
+    private var demand = 0
     func start() {
-        manager.startUpdatingLocation()
-        if CLLocationManager.headingAvailable() { manager.startUpdatingHeading() }
+        demand += 1
+        if demand == 1 { applyStart() }
     }
     func stop() {
-        manager.stopUpdatingLocation()
-        manager.stopUpdatingHeading()
+        guard demand > 0 else { return }
+        demand -= 1
+        if demand == 0 {
+            manager.stopUpdatingLocation()
+            manager.stopUpdatingHeading()
+        }
+    }
+    private func applyStart() {
+        manager.startUpdatingLocation()
+        if CLLocationManager.headingAvailable() { manager.startUpdatingHeading() }
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             self.authorized = (manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways)
-            if self.authorized { self.start() }
+            if self.authorized, self.demand > 0 { self.applyStart() }
         }
     }
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -742,7 +753,11 @@ final class MotionManager: ObservableObject {
     // 磁场强度明显超出地磁场范围＝附近有磁干扰（汽车/钢筋/磁吸壳/电器）
     var fieldAbnormal: Bool { fieldMicroTesla >= 0 && (fieldMicroTesla < 20 || fieldMicroTesla > 80) }
 
+    // 按需启停（需求计数）：10Hz 设备运动回调只在罗盘/拍照页在前台时跑，退出即停
+    private var demand = 0
     func start() {
+        demand += 1
+        guard demand == 1 else { return }
         guard motion.isDeviceMotionAvailable, !motion.isDeviceMotionActive else { return }
         motion.deviceMotionUpdateInterval = 0.1
         // 用真北参考系（重力读数与参考系无关，另可拿到校准磁场强度做干扰检测）
@@ -768,6 +783,12 @@ final class MotionManager: ObservableObject {
                 if dm.magneticField.accuracy.rawValue >= 0 { self?.fieldMicroTesla = mag }  // 精度有效（非 invalid=-1）才更新磁场强度
             }
         }
+    }
+
+    func stop() {
+        guard demand > 0 else { return }
+        demand -= 1
+        if demand == 0 { motion.stopDeviceMotionUpdates() }
     }
 }
 
@@ -1019,7 +1040,7 @@ struct ARTrackView: View {
         .navigationTitle(task.title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { location.start() }
-        .onDisappear { recorder.stop() }
+        .onDisappear { recorder.stop(); location.stop() }
     }
 }
 
@@ -1123,7 +1144,7 @@ struct RoomScanView: View {
         .navigationTitle(task.title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { location.start() }
-        .onDisappear { controller.stop() }
+        .onDisappear { controller.stop(); location.stop() }
     }
 
     private func save() {
@@ -1154,13 +1175,14 @@ struct KanyuSurveyApp: App {
     @StateObject private var store = SurveyStore()
     @StateObject private var location = LocationManager()
     @StateObject private var motion = MotionManager()
+    @StateObject private var peopleStore = PeopleStore.shared
     var body: some Scene {
         WindowGroup {
             RootTabView()
                 .environmentObject(store)
                 .environmentObject(location)
                 .environmentObject(motion)
-                .onAppear { location.start(); motion.start() }
+                .environmentObject(peopleStore)
         }
     }
 }
@@ -1388,7 +1410,7 @@ struct HomePageView: View {
     @AppStorage("signDateEpoch") private var signDateEpoch: Double = 0
     @AppStorage("signCertDays") private var signCertDays: Int = 365
     @StateObject private var forecastStore = ForecastStore()
-    @StateObject private var peopleStore = PeopleStore()
+    @EnvironmentObject var peopleStore: PeopleStore
     @State private var showingNewPerson = false
     @AppStorage("showFPS") private var showFPS = true
 
@@ -2408,7 +2430,7 @@ struct CompassView: View {
         .preferredColorScheme(.dark)
         .navigationTitle("罗盘定向")
         .onAppear { location.start(); motion.start() }
-        .onDisappear { collectTask?.cancel() }
+        .onDisappear { collectTask?.cancel(); location.stop(); motion.stop() }
     }
 
     // 采样循环用 Task 驱动（v1.3 用视图层 Timer 发布者，真机上不触发导致永远 0/8，已改）
@@ -3442,7 +3464,7 @@ struct CaptureView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             if cameraDenied { checkCameraAccess() }
         }
-        .onDisappear { sampleTask?.cancel() }
+        .onDisappear { sampleTask?.cancel(); location.stop(); motion.stop() }
         // 水平达标震动一下（苹果相机同款反馈）：进 ≤1° 触发，出到 >2° 重新布防
         .onChange(of: motion.horizonTilt) { _, newV in
             if abs(newV) <= 1 && levelHapticArmed {
