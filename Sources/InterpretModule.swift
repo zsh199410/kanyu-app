@@ -209,6 +209,95 @@ enum InterpretEngine {
         "壬": ["子": "丙火为先，戊土次之", "亥": "丙火为先，戊土次之"],
         "癸": ["子": "丙火解冻为先", "午": "庚金发源为先"],
     ]
+
+    // C2 格局成败核查（2026-11-07，学习日志第 49 轮回灌）：
+    // 来源：《子平正法》之十六〈论用神格局成败救应〉（后学陈氏，新浪博客，现代博客对《子平真诠》〈论用神成败救应〉的逐格展开，非典籍原文）。
+    // 只查十神见否（透干＋藏干）；合、冲、刑与身旺量级未入本查，未见忌字不等于全格无破。
+    // 输出三档：格有成象／成中有败／有败有救，并点名在局的忌字与救字。
+    private static func chengBaiCheck(chart ch: BaziChart, benQiSS: String) -> String {
+        let posNames = ["年", "月", "日", "时"]
+        func whereIs(_ ss: String) -> String {
+            if let i = ch.stemShiShen.firstIndex(of: ss) {
+                return "透于\(posNames[i])干"
+            }
+            for i in 0..<4 {
+                if let j = ch.hideShiShen[i].firstIndex(of: ss) {
+                    return "藏于\(posNames[i])支\(ch.hideGan[i][j])"
+                }
+            }
+            return "在局"
+        }
+        func present(_ ss: String) -> Bool {
+            return ch.stemShiShen.contains(ss) || ch.hideShiShen.flatMap { $0 }.contains(ss)
+        }
+        func found(_ names: [String]) -> [String] {
+            return names.filter { present($0) }
+        }
+        func describe(_ names: [String]) -> String {
+            return names.map { "\($0)（\(whereIs($0))）" }.joined(separator: "、")
+        }
+        // 伤官格：忌形态为「生财带煞」（财与煞同现）；救形态「生财透杀而杀逢合」涉及合化，本查不判定
+        if benQiSS == "伤官" {
+            let cai = found(["正财", "偏财"])
+            let sha = found(["七杀"])
+            if cai.isEmpty || sha.isEmpty {
+                return "格有成象：本查常见形态内未见「生财带煞」（财与七杀须同现才计忌）。"
+            }
+            return "成中有败：生财带煞——\(describe(cai))与\(describe(sha))同现；救形态「生财透杀而杀逢合」涉及合化，本查不判定。"
+        }
+        // 羊刃格：忌形态为「无官煞」与「透官被伤」；救为重印护官杀；「透杀被合」涉及合化，本查不判定
+        if benQiSS == "劫财" {
+            let guan = found(["正官"])
+            let sha = found(["七杀"])
+            let shang = found(["伤官"])
+            let yin = found(["正印", "偏印"])
+            if guan.isEmpty && sha.isEmpty {
+                return "成中有败：刃格无官煞（正官、七杀皆未在局）；救形态「重印护官杀」须先有官杀可护，本查未见救字。"
+            }
+            if !guan.isEmpty && !shang.isEmpty {
+                if yin.isEmpty {
+                    return "成中有败：透官被伤——\(describe(shang))坏官，未见印星护官。"
+                }
+                return "有败有救：透官被伤——\(describe(shang))坏官，\(describe(yin))在局可护官。"
+            }
+            return "格有成象：官杀在局，本查常见形态内未见「透官被伤」；「透杀被合」涉及合化，本查不判定。"
+        }
+        // 建禄格：忌形态为「无财官透煞印」；救形态「伤被合／煞被合」涉及合化，本查不判定
+        if benQiSS == "比肩" {
+            let caiGuan = found(["正财", "偏财", "正官"])
+            let shaYin = found(["七杀", "正印", "偏印"])
+            if caiGuan.isEmpty && !shaYin.isEmpty {
+                return "成中有败：无财官而透煞印——\(describe(shaYin))在局；救形态「用官遇伤而伤被合／用财带煞而煞被合」涉及合化，本查不判定。"
+            }
+            return "格有成象：本查常见形态内未见「无财官透煞印」。"
+        }
+        // 其余七格：按附录逐格忌／救表查十神见否
+        let table: [String: (ji: [String], jiu: [String])] = [
+            "正官": (["伤官"], ["正印", "偏印"]),
+            "正财": (["比肩", "劫财", "七杀"], ["食神", "伤官", "正官"]),
+            "偏财": (["比肩", "劫财", "七杀"], ["食神", "伤官", "正官"]),
+            "正印": (["正财", "偏财"], ["比肩", "劫财"]),
+            "偏印": (["正财", "偏财"], ["比肩", "劫财"]),
+            "食神": (["偏印"], ["七杀"]),
+            "七杀": (["正财", "偏财", "正印", "偏印"], ["食神", "伤官"]),
+        ]
+        guard let entry = table[benQiSS] else {
+            return "本查未覆盖该格。"
+        }
+        let jiFound = found(entry.ji)
+        let jiuFound = found(entry.jiu)
+        if jiFound.isEmpty {
+            return "格有成象：本查常见形态内未见忌字。"
+        }
+        if jiuFound.isEmpty {
+            return "成中有败：忌字\(describe(jiFound))在局坏格，未见救字。"
+        }
+        if benQiSS == "食神" {
+            return "有败有救：忌字\(describe(jiFound))在局，\(describe(jiuFound))在局可就杀成格（格转煞格，另按煞格看）。"
+        }
+        return "有败有救：忌字\(describe(jiFound))在局，救字\(describe(jiuFound))在局。"
+    }
+
     static func interpret(chart ch: BaziChart) -> [InterpretItem] {
         var items: [InterpretItem] = []
         let pct = ch.wuxingPercents
@@ -237,11 +326,13 @@ enum InterpretEngine {
         let benQiSS = BaziTables.shiShen(day: dayStem, stem: benQi)
         let touIdx = ch.stemShiShen.firstIndex(of: benQiSS)
         let geName = benQiSS == "比肩" ? "建禄格" : (benQiSS == "劫财" ? "羊刃格" : "\(benQiSS)格")
+        let chengBai = chengBaiCheck(chart: ch, benQiSS: benQiSS)
         items.append(InterpretItem(
             title: "月令格局（候选）",
-            conclusion: "月令\(monthBranch)本气\(benQi)对日主为\(benQiSS)，先按\(geName)候选看。\(touIdx != nil ? "本气已透于\(["年", "月", "日", "时"][touIdx!])干，格象较明。" : "本气未透干，格象要结合透藏与岁运再定，此处只作候选。")",
+            conclusion: "月令\(monthBranch)本气\(benQi)对日主为\(benQiSS)，先按\(geName)候选看。\(touIdx != nil ? "本气已透于\(["年", "月", "日", "时"][touIdx!])干，格象较明。" : "本气未透干，格象要结合透藏与岁运再定，此处只作候选。")成败核查：\(chengBai)",
             links: [("盘面", "月柱 \(ch.monthPillar)，本气 \(benQi)（\(benQiSS)）；四柱透干查 \(touIdx != nil ? "见透" : "未透")"),
-                    ("法则", "《子平真诠》：格以月令本气为纲，透干则格明；月令为比劫不立十神格，取建禄／羊刃")]))
+                    ("法则", "《子平真诠》：格以月令本气为纲，透干则格明；月令为比劫不立十神格，取建禄／羊刃"),
+                    ("成败核查", "《子平正法》之十六成败救应四态核查清单（现代博客展开，非典籍原文）；只查十神见否（透干＋藏干），合／冲／刑与身旺量级未入本查，未见忌字不等于全格无破")]))
         // 3 扶抑＋调候喜忌（初判）
         let (level, shengWo, tongDang) = fuYi(chart: ch)
         let xiText: String
