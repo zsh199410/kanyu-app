@@ -317,7 +317,14 @@ struct PosterView: View {
 struct YucedanPosterLayout: View {
     let chart: BaziChart
     let name: String
-    let pal: PosterPalette
+    // pal 必须是 fileprivate：PosterPalette 是 private 类型，internal 属性/初始化器会编译不过
+    fileprivate let pal: PosterPalette
+
+    fileprivate init(chart: BaziChart, name: String, pal: PosterPalette) {
+        self.chart = chart
+        self.name = name
+        self.pal = pal
+    }
 
     private var items: [InterpretItem] { InterpretEngine.interpret(chart: chart) + InterpretEngine.dimensions(chart: chart) }
     private func itemConclusion(_ titles: String...) -> String {
