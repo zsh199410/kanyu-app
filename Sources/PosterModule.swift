@@ -15,7 +15,7 @@ private let pTeal = Color(red: 0.153, green: 0.306, blue: 0.361)  // #274E5C 青
 // MARK: - 海报版本：宋纸青黛版（定版规范） / 宣纸浅色版 / 墨金版
 enum PosterStyle: String, CaseIterable {
     case songQingdai = "宋纸青黛版"
-    case yuceDan = "传统预测单版"
+    case yuceDan = "三术合参预测单版"
     case xuanPaper = "宣纸朱砂版"
     case inkGold = "玄夜墨金版"
 }
@@ -313,7 +313,7 @@ struct PosterView: View {
     }
 }
 
-// MARK: - 传统预测单海报布局（复刻易辰取名社经典预测单：太极八卦头 + 双行信息栏 + 四柱十神表格 + 大运喜忌列 + 十二支罗盘时轮 + 7大详析节 + 补五行建议清单；七节断语与喜忌行全部取自本机解盘引擎逐人现算，不写死）
+// MARK: - 三术合参预测单海报布局（加长版长图：太极头＋生辰凭证＋四柱细盘＋五行雷达＋神煞全表＋紫微合参＋格局喜忌＋六维详批＋大运时轮＋破局指南＋防伪钤印；2026-11-06 起题头正名为三术合参，不再用旧社名；断语与喜忌全部取自本机解盘引擎逐人现算，不写死）
 struct YucedanPosterLayout: View {
 let chart: BaziChart
 let name: String
@@ -338,7 +338,7 @@ InterpretEngine.posterXiJi(chart: chart)
 private static let wxNames = ["木", "火", "土", "金", "水"]
 private static let numMap = ["木": "3、8", "火": "2、7", "土": "5、0", "金": "4、9", "水": "1、6"]
 private static let colorMap = ["木": "绿、青", "火": "红", "土": "黄", "金": "白、金", "水": "黑、蓝"]
-// 七·建议五项原文：易辰取名社手写单真迹措辞（cases/周囿廷-取名社预测单.jpg）；✓/× 按本工作室喜忌现算，栏目标明传统应用参考
+// 八·调理五项原文：用户提供的手写单真迹措辞（cases/周囿廷-取名社预测单.jpg）；✓/× 按本工作室喜忌现算，栏目标明传统应用参考
 private static let buTexts = [
 "宜养花草、穿绿色衣服、佩戴或摆放木质工艺品，如绿檀、紫檀、黄花梨手串。",
 "宜穿红色衣服，佩戴红色工艺品，如床头挂红色中国结。",
@@ -378,10 +378,10 @@ private func dayunGlyph(_ i: Int) -> (String, Color) {
 let m = InterpretEngine.dayunMark(chart: chart, index: i)
 if m == "喜" { return ("✓", pal.accentHi)}
 if m == "忌" { return ("×", pal.accentHi)}
-return ("～", pal.sub)
+return ("—", pal.sub)
 }
 /// 流年地支轮：以出生年支为起点的下一个完整十二年轮（当前年份之后的首个该支年份起，连续 12 年）；
-/// 每支标关联年份、周岁岁数与 ✓/×（地支五行套喜忌）。周囿廷：2036–2047，12–23 岁，与真迹 13–24 虚岁差一岁（口径：工作室标周岁）。
+/// 每支标关联年份、周岁岁数与 ✓/×（地支五行套喜忌）。例：2024 年生人轮次 2036–2047，周岁 12–23，与真迹 13–24 虚岁差一岁（口径：工作室标周岁）。
 private var wheelYears: [(branch: Character, year: Int, age: Int, glyph: String, color: Color)] {
 let nowYear = Calendar.current.component(.year, from: Date())
 let birthBranch = chart.yearPillar.last!
@@ -415,7 +415,8 @@ RoundedRectangle(cornerRadius: 4, style:.continuous)
 .padding(18)
 
 VStack(spacing: 0) {
-// 1. 顶部太极图与标题（复刻真迹题头）
+// ① 尊享天头：太极双鱼＋三术合参尊享预测单
+VStack(spacing: 3) {
 HStack(spacing: 10) {
 ZStack {
 Circle().stroke(Color.black, lineWidth: 1.2)
@@ -427,10 +428,15 @@ Circle().fill(Color.black).frame(width: 4, height: 4).offset(x: 6.5)
 }
 .frame(width: 26, height: 26)
 
-Text("易辰取名社八字预测单")
+Text("三术合参 · 四柱命理尊享预测单")
 .font(.system(size: 20, weight:.bold, design:.serif))
-.tracking(2)
+.tracking(1)
 .foregroundStyle(pal.main)
+}
+Text("五典正法 · 实务详批")
+.font(.system(size: 11.5, weight:.semibold, design:.serif))
+.tracking(4)
+.foregroundStyle(pal.accent)
 }
 .padding(.top, 22)
 Text("\(receiptCity) · \(receiptLongitude)E · \(chart.naYin.first ?? "")命")
@@ -438,7 +444,7 @@ Text("\(receiptCity) · \(receiptLongitude)E · \(chart.naYin.first ?? "")命")
 .foregroundStyle(pal.accent)
 .padding(.top, 4)
 
-// 2. 双行生辰收据（城市/经度/出生时刻/农历/前后两节/性别/姓名/年命）
+// 2. 三行生辰收据（城市/经度/出生时刻/农历/前后两节/性别/姓名/年命/真太阳时校正量）
 VStack(spacing: 2) {
 HStack(spacing: 0) {
 Text("城市：\(receiptCity)")
@@ -451,6 +457,12 @@ Text("农历：\(chart.lunarText.isEmpty ? "—": chart.lunarText)")
 Text("　上一节 \(chart.prevJieQiText.isEmpty ? "—": chart.prevJieQiText)　下一节 \(chart.nextJieQiText.isEmpty ? "—": chart.nextJieQiText)")
 Spacer()
 Text("\(chart.gender == "M" ? "男（乾造）": "女（坤造）")　\(name.isEmpty ? "命主": name)　\(chart.naYin.first ?? "")命")
+}
+HStack(spacing: 0) {
+Text("真太阳时校正：\(correctionText)")
+Text("　年命：\(chart.naYin.first ?? "—")命")
+Spacer()
+Text("旬空：\(chart.xunKong.isEmpty ? "—": chart.xunKong)")
 }
 if !chart.nextJieQiGapText.isEmpty {
 HStack(spacing: 0) {
@@ -467,129 +479,125 @@ Spacer()
 
 Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24).padding(.vertical, 6)
 
-// 3. 核心排盘区：四柱纵表 + 大运序列 + 流年地支轮
-HStack(alignment:.top, spacing: 6) {
-// (A) 四柱：十神／干支大字／藏干十神／长生
-VStack(spacing: 2) {
-Text("四柱")
-.font(.system(size: 11.5, weight:.bold, design:.serif))
-.foregroundStyle(pal.accent)
-HStack(spacing: 3) {
-ForEach(0..<4, id: \.self) { i in
-let gz = Array(chart.pillars[i])
-VStack(spacing: 1) {
-Text(["年", "月", "日", "时"][i])
-.font(.system(size: 9.5)).foregroundStyle(pal.sub)
-Text(chart.stemShiShen[i])
-.font(.system(size: 8, weight:.medium))
-.foregroundStyle(i == 2 ? pal.accentHi : pal.accent)
-Text(String(gz[0]))
-.font(.system(size: 16, weight:.bold, design:.serif))
-.foregroundStyle(posterCharColor(gz[0], fallback: pal.main))
-Text(String(gz[1]))
-.font(.system(size: 16, weight:.bold, design:.serif))
-.foregroundStyle(posterCharColor(gz[1], fallback: pal.main))
-Text(chart.hideShiShen[i].joined(separator: "·"))
-.font(.system(size: 7)).foregroundStyle(pal.accentHi)
-.lineLimit(2).multilineTextAlignment(.center)
-Text(chart.diShi[i])
-.font(.system(size: 7.5)).foregroundStyle(pal.sub)
-}
-.frame(width: 34)
-.padding(.vertical, 3)
-.background(pal.card)
-.overlay(RoundedRectangle(cornerRadius: 4, style:.continuous).stroke(i == 2 ? pal.accentHi.opacity(0.8) : pal.cardStroke, lineWidth: 0.6))
-}
-}
-}
-
-// (B) 大运：✓/×（调候优先口径）＋运干五行＋干支＋岁数区间
-VStack(alignment:.leading, spacing: 2) {
-Text("大运")
-.font(.system(size: 11.5, weight:.bold, design:.serif))
-.foregroundStyle(pal.accent)
-VStack(alignment:.leading, spacing: 1.5) {
-ForEach(0..<min(7, chart.dayunGanZhi.count), id: \.self) { i in
-let gz = chart.dayunGanZhi[i]
-let (g, c) = dayunGlyph(i)
-let startAge = chart.dayunStartYear(i) - chart.birthYear
-HStack(spacing: 3) {
-Text(g).font(.system(size: 10, weight:.bold)).foregroundStyle(c).frame(width: 12)
-Text(Self.wxNames[wxIdx(ofStem: gz.first!)])
-.font(.system(size: 9)).foregroundStyle(pal.sub).frame(width: 10)
-Text(gz)
-.font(.system(size: 10, weight:.bold, design:.serif)).foregroundStyle(pal.main)
-Text("\(startAge)~\(startAge + 10)岁")
-.font(.system(size: 8.5, design:.monospaced)).foregroundStyle(pal.sub)
-}
-}
-}
-}
-.frame(width: 108)
-
-// (C) 流年地支轮：子北午南、顺时针环列；每支标年份、周岁与 ✓/×，盘心定向指针；红点＝原局四支
-VStack(spacing: 2) {
-Text("流年地支轮")
-.font(.system(size: 11.5, weight:.bold, design:.serif))
-.foregroundStyle(pal.accent)
-ZStack {
-Circle().stroke(pal.cardStroke, lineWidth: 0.8)
-Circle().stroke(pal.cardStroke.opacity(0.5), lineWidth: 0.5).frame(width: 62, height: 62)
-ForEach(wheelYears, id: \.branch) { w in
-let order = Array("子丑寅卯辰巳午未申酉戌亥")
-let pos = order.firstIndex(of: w.branch) ?? 0
-let angle = Double(pos) * 30.0 - 90.0
-let rad = angle * Double.pi / 180.0
+// ② 四柱细盘（全宽表：宫位／十神／干支／藏干本中余／长生／纳音；旬空见收据行）
 VStack(spacing: 0) {
-Text(String(w.branch))
-.font(.system(size: 10, weight:.bold, design:.serif))
-.foregroundStyle(posterCharColor(w.branch, fallback: pal.main))
-Text("\(w.year)")
-.font(.system(size: 7, design:.monospaced)).foregroundStyle(pal.sub)
-Text("\(w.age)岁 \(w.glyph)")
-.font(.system(size: 7.5, weight:.bold)).foregroundStyle(w.color)
-if chart.pillars.contains(where: { $0.last! == w.branch}) {
-Circle().fill(pal.accentHi).frame(width: 3, height: 3)
+Text("专业四柱细盘")
+.font(.system(size: 12.5, weight:.bold, design:.serif))
+.foregroundStyle(pal.accent)
+.padding(.bottom, 4)
+pillarTable
 }
-}
-.position(x: 58 + 44 * cos(rad), y: 58 + 44 * sin(rad))
-}
-// 盘心定向指针（指北/子）
-Path { p in
-p.move(to: CGPoint(x: 58, y: 38))
-p.addLine(to: CGPoint(x: 63, y: 58))
-p.addLine(to: CGPoint(x: 53, y: 58))
-p.closeSubpath()
-}
-.fill(pal.accentHi)
-Circle().fill(pal.main).frame(width: 5, height: 5)
-}
-.frame(width: 116, height: 116)
-.drawingGroup()
-}
-}
-.padding(.horizontal, 24)
+.padding(.horizontal, 28)
 .padding(.vertical, 4)
 
-// 四季五行对照（真迹右侧栏，作一行点缀）
-Text("四季五行：春木 · 夏火 · 秋金 · 冬水；农历三、九月土")
-.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
-.padding(.vertical, 3)
+// ③ 五行气运雷达（五行占比图谱＋同党异党量化比率＋日主强弱定档＋通关气势）
+VStack(alignment:.leading, spacing: 4) {
+Text("五行气运雷达")
+.font(.system(size: 12.5, weight:.bold, design:.serif))
+.foregroundStyle(pal.accent)
+HStack(alignment:.top, spacing: 14) {
+wuxingRadar
+VStack(alignment:.leading, spacing: 3) {
+Text("同党 \(Int(xj.tongDang.rounded()))% · 异党 \(Int((100 - xj.tongDang).rounded()))%")
+.font(.system(size: 10.5, weight:.bold, design:.serif)).foregroundStyle(pal.main)
+Text("日主强弱定档：身\(xj.level)（同党约\(Int(xj.tongDang.rounded()))%）")
+.font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
+Text(tongGuanText)
+.font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
+.fixedSize(horizontal: false, vertical: true)
+Text("五行占比：\(wxShareText)")
+.font(.system(size: 10, design:.serif)).foregroundStyle(pal.sub)
+.fixedSize(horizontal: false, vertical: true)
+}
+}
+}
+.padding(.horizontal, 28)
+.padding(.vertical, 4)
 
-// 4. 喜忌神独立横幅（大字定调＋中性说明＋调候依据）
-VStack(alignment:.leading, spacing: 2) {
+// 3b. 神煞全表（原局见到的全部神煞，按柱排列；太极贵人已入引擎）
+VStack(alignment:.leading, spacing: 3) {
+Text("神煞全表")
+.font(.system(size: 12.5, weight:.bold, design:.serif))
+.foregroundStyle(pal.accent)
+ForEach(0..<4, id: \.self) { i in
+HStack(alignment:.top, spacing: 6) {
+Text(["年柱", "月柱", "日柱", "时柱"][i] + " " + chart.pillars[i])
+.font(.system(size: 10, weight:.bold, design:.serif)).foregroundStyle(i == 2 ? pal.accentHi : pal.main).frame(width: 78, alignment:.leading)
+Text(shenShaList[i].isEmpty ? "—" : shenShaList[i].joined(separator: "、"))
+.font(.system(size: 10)).foregroundStyle(pal.main)
+.fixedSize(horizontal: false, vertical: true)
+}
+}
+}
+.padding(.horizontal, 28)
+.padding(.vertical, 4)
+
+// ⑤ 紫微斗数合参提炼（命宫身宫主星及庙旺＋生年四化＋三方四正核心星曜）
+VStack(alignment:.leading, spacing: 3) {
+Text("紫微斗数合参提炼")
+.font(.system(size: 12.5, weight:.bold, design:.serif))
+.foregroundStyle(pal.accent)
+ForEach(ziweiRows, id: \.0) { row in
+HStack(alignment:.top, spacing: 6) {
+Text(row.0)
+.font(.system(size: 10, weight:.bold, design:.serif)).foregroundStyle(pal.accent).frame(width: 62, alignment:.leading)
+Text(row.1)
+.font(.system(size: 10)).foregroundStyle(pal.main)
+.fixedSize(horizontal: false, vertical: true)
+}
+}
+}
+.padding(.horizontal, 28)
+.padding(.vertical, 4)
+
+// ④ 月令正格与调候精断（月令本气透藏考据＋穷通寒暖燥湿查表用神＋喜用忌神判标）
+VStack(alignment:.leading, spacing: 5) {
+Text("月令正格与调候精断")
+.font(.system(size: 12.5, weight:.bold, design:.serif))
+.foregroundStyle(pal.accent)
+Text(yueLingText)
+.font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
+.fixedSize(horizontal: false, vertical: true)
+Text("调候用神（《穷通宝鉴》）：\(tiaoHouNames.isEmpty ? "—" : tiaoHouNames)（\(chart.monthPillar.last ?? "—")月，寒暖燥湿查表，调候优先）")
+.font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
+.fixedSize(horizontal: false, vertical: true)
+Text(conclusion("月令格局（候选）"))
+.font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
+.lineSpacing(2.0).fixedSize(horizontal: false, vertical: true)
+ForEach(Array(["木", "火", "土", "金", "水"].enumerated()), id: \.offset) { idx, e in
+let v = chart.wuxingPercents[idx]
+HStack(spacing: 8) {
+Text(e)
+.font(.system(size: 11, weight:.bold, design:.serif))
+.foregroundStyle(wxColor[e] ?? pal.main)
+.frame(width: 16)
+ZStack(alignment:.leading) {
+RoundedRectangle(cornerRadius: 3).fill(pal.track)
+RoundedRectangle(cornerRadius: 3)
+.fill(wxColor[e] ?? pal.accent)
+.frame(width: max(3, 364 * CGFloat(min(v, 100)) / 100.0))
+}
+.frame(width: 364, height: 7)
+Text("\(Int(v.rounded()))%")
+.font(.system(size: 10.5, design:.monospaced))
+.foregroundStyle(pal.sub)
+.frame(width: 36, alignment:.trailing)
+}
+}
+Text("四季五行：春木 · 夏火 · 秋金 · 冬水；农历三、九月土（个数分布仅供参考，强弱以月令格局为准）")
+.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
 HStack(spacing: 10) {
 Text("喜用神：\(xiNames.isEmpty ? "—": xiNames) ✓")
-.font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
+.font(.system(size: 13, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
 Text("忌神：\(jiNames.isEmpty ? "—": jiNames) ×")
-.font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
+.font(.system(size: 13, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
 if !xj.neutral.isEmpty && xj.level != "中和" {
 Text("\(xj.neutral.map { Self.wxNames[$0]}.joined(separator: "、"))：中性（可用）")
 .font(.system(size: 10, design:.serif)).foregroundStyle(pal.sub)
 }
 }
 Text("依据：日主\(xj.level)（同党约\(Int(xj.tongDang.rounded()))%）\(xiJiBasis)")
-.font(.system(size: 9.5, design:.serif)).foregroundStyle(pal.sub)
+.font(.system(size: 10, design:.serif)).foregroundStyle(pal.sub)
 }
 .padding(.horizontal, 28)
 .padding(.vertical, 5)
@@ -597,65 +605,202 @@ Text("依据：日主\(xj.level)（同党约\(Int(xj.tongDang.rounded()))%）\(x
 
 Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24).padding(.vertical, 4)
 
-// 5. 七大实务断语（结构化分段，拒绝挤成一团；正文取自解盘引擎，逐人现算）
-VStack(alignment:.leading, spacing: 6) {
-yuceSection(num: "一", title: "性格", rows: [
-("1. 气势底色", conclusion("命局风景")),
-("2. 禀赋行事", conclusion("性格性情")),
+// ⑥ 全维深度精选直断（六大精选板块；正文取自解盘引擎与实算，逐人现算；不设行数上限，禁止省略号截断）
+VStack(alignment:.leading, spacing: 8) {
+yuceSection(num: "一", title: "性格天赋", rows: [
+("1. 日主五行底色", "\(chart.rizhu)日主，\(BaziTables.wx[chart.rizhu.first!]?.0 ?? "")行，身\(xj.level)（同党约\(Int(xj.tongDang.rounded()))%）"),
+("2. 主导十神心性", "主导十神为\(BaziTables.dominantShiShen(chart: chart))——\(conclusion("性格性情"))"),
+("3. 天赋取向", conclusion("天赋能力")),
+("4. 十神做功", conclusion("十神做功")),
+("5. 优点特长", conclusion("命局风景")),
+("6. 盲点防范", conclusion("注意事项")),
 ])
-yuceSection(num: "二", title: "事业", rows: [
-("1. 选择", conclusion("行业赛道深断", "事业方向")),
-("2. 方向", conclusion("适合方位", "事业方向")),
-("3. 建议", conclusion("注意事项", "如何化解（破局调理）")),
+yuceSection(num: "二", title: "学业考运", rows: [
+("1. 学业文书", conclusion("学业文书")),
 ])
-yuceSection(num: "三", title: "财运", rows: [
-("1. 财星源流", conclusion("财运形态")),
-("2. 财库蓄水", conclusion("财富量级蓄水池")),
+yuceSection(num: "三", title: "事业赛道", rows: [
+("1. 适合行业", conclusion("行业赛道深断", "事业方向")),
+("2. 五阶段路线", conclusion("事业方向")),
+("3. 工作形态", conclusion("工作形态")),
+("4. 发展方位", conclusion("适合方位", "事业方向")),
+("5. 贵人指引", conclusion("贵人与人际")),
 ])
-yuceSection(num: "四", title: "婚姻", rows: [
-("1. 选择", conclusion("婚姻感情")),
-("2. 方向", conclusion("六亲情境深读", "婚姻感情")),
-("3. 建议", conclusion("注意事项", "婚姻感情")),
-("4. 问题与解法", conclusion("如何化解（破局调理）", "注意事项")),
+yuceSection(num: "四", title: "财富蓄水池", rows: [
+("1. 财运源流", conclusion("财运形态")),
+("2. 财气通门户", BaziTables.caiQiMenHu(chart: chart)),
+("3. 真假财库", BaziTables.caiKuReport(chart: chart)),
+("4. 资产沉淀", conclusion("财富量级蓄水池")),
 ])
-yuceSection(num: "五", title: "吉祥数", rows: [
-("1. 手机尾号", xj.xi.isEmpty ? "流通为要，不拘固定数" : "宜含 \(xiNums)（\(xiNames)数）"),
-("2. 楼层", xj.xi.isEmpty ? "流通为要，不拘固定数" : "宜选 \(floors)"),
-("3. 颜色车色", conclusion("幸运颜色与数字")),
+yuceSection(num: "五", title: "婚恋感情", rows: [
+("1. 配偶星与配偶宫", "配偶星\(peiOu.names.joined(separator: "／"))\(peiOu.present ? "入局" : "未入原局")；配偶宫日支\(chart.dayPillar.last!)本气\(peiOu.palace)"),
+("2. 婚龄与伴侣", conclusion("婚姻感情")),
+("3. 相处之道", conclusion("六亲情境深读", "婚姻感情")),
+("4. 感情关口与解法", conclusion("如何化解（破局调理）", "婚姻感情")),
 ])
-yuceSection(num: "六", title: "流年运势", rows: liunianStageRows)
-yuceSection(num: "七", title: "建议", rows: buXingRows, note: "传统应用参考")
+yuceSection(num: "六", title: "健康调理", rows: [
+("1. 体质弱项", conclusion("健康倾向")),
+("2. 调理与化解", conclusion("如何化解（破局调理）")),
+("3. 注意事项", conclusion("注意事项")),
+])
 }
 .padding(.horizontal, 28)
 .padding(.vertical, 4)
 
 Spacer(minLength: 0)
 
-// 6. 底部落款：免责口径（本工作室）＋三术堂钤印＋落款日期
-VStack(spacing: 3) {
+// ⑦ 终身大运流年推演（全 8 步大运＋起运岁数＋运干十神＋扶抑喜忌标记＋十年宏观课题；时轮并排）
+HStack(alignment:.top, spacing: 12) {
+
+// (B) 大运走势：✓/×（调候优先口径）＋运干十神＋干支＋岁数区间
+VStack(alignment:.leading, spacing: 3) {
+Text("终身大运")
+.font(.system(size: 12.5, weight:.bold, design:.serif))
+.foregroundStyle(pal.accent)
+if !chart.dayunGanZhi.isEmpty {
+Text("起运：\(chart.dayunStartYear(0)) 年（约 \(chart.dayunStartYear(0) - chart.birthYear) 岁）起 \(chart.dayunGanZhi[0])运")
+.font(.system(size: 10, design:.serif)).foregroundStyle(pal.sub)
+}
+VStack(alignment:.leading, spacing: 2.5) {
+ForEach(0..<min(8, chart.dayunGanZhi.count), id: \.self) { i in
+let gz = chart.dayunGanZhi[i]
+let (g, c) = dayunGlyph(i)
+let startAge = chart.dayunStartYear(i) - chart.birthYear
+let ss = BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!)
+HStack(spacing: 4) {
+Text(g).font(.system(size: 11, weight:.bold)).foregroundStyle(c).frame(width: 13)
+Text(gz)
+.font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(pal.main)
+Text(ss)
+.font(.system(size: 10)).foregroundStyle(pal.accent)
+Text("\(startAge)~\(startAge + 10)岁")
+.font(.system(size: 10, design:.monospaced)).foregroundStyle(pal.sub)
+Text(dayunTheme(gz.first!))
+.font(.system(size: 9.5)).foregroundStyle(pal.sub)
+}
+}
+}
+}
+.frame(width: 218, alignment:.leading)
+
+// (C) 十二地支罗盘时轮（放大：子北午南、顺时针环列；每支标年份、周岁与 ✓/×，盘心定向指针；红点＝原局四支）
+VStack(spacing: 2) {
+Text("十二地支罗盘时轮")
+.font(.system(size: 12.5, weight:.bold, design:.serif))
+.foregroundStyle(pal.accent)
+ZStack {
+Circle().stroke(pal.cardStroke, lineWidth: 0.8)
+Circle().stroke(pal.cardStroke.opacity(0.5), lineWidth: 0.5).frame(width: 104, height: 104)
+ForEach(wheelYears, id: \.branch) { w in
+let order = Array("子丑寅卯辰巳午未申酉戌亥")
+let pos = order.firstIndex(of: w.branch) ?? 0
+let angle = Double(pos) * 30.0 - 90.0
+let rad = angle * Double.pi / 180.0
+VStack(spacing: 0) {
+Text(String(w.branch))
+.font(.system(size: 13, weight:.bold, design:.serif))
+.foregroundStyle(posterCharColor(w.branch, fallback: pal.main))
+Text("\(w.year)")
+.font(.system(size: 9, design:.monospaced)).foregroundStyle(pal.sub)
+Text("\(w.age)岁 \(w.glyph)")
+.font(.system(size: 9.5, weight:.bold)).foregroundStyle(w.color)
+if chart.pillars.contains(where: { $0.last! == w.branch}) {
+Circle().fill(pal.accentHi).frame(width: 4, height: 4)
+}
+}
+.position(x: 100 + 76 * cos(rad), y: 100 + 76 * sin(rad))
+}
+// 盘心定向指针（指北/子）
+Path { p in
+p.move(to: CGPoint(x: 100, y: 66))
+p.addLine(to: CGPoint(x: 108, y: 100))
+p.addLine(to: CGPoint(x: 92, y: 100))
+p.closeSubpath()
+}
+.fill(pal.accentHi)
+Circle().fill(pal.main).frame(width: 7, height: 7)
+}
+.frame(width: 200, height: 200)
+.drawingGroup()
+}
+.frame(width: 230)
+}
+.padding(.horizontal, 24)
+.padding(.vertical, 4)
+
+// 未来三年流年直断（当年起连续三年，逐年顺逆动象与行事指南）
+VStack(alignment:.leading, spacing: 3) {
+Text("未来三年流年直断")
+.font(.system(size: 12.5, weight:.bold, design:.serif))
+.foregroundStyle(pal.accent)
+ForEach(threeYearRows, id: \.0) { row in
+HStack(alignment:.top, spacing: 6) {
+Text(row.0)
+.font(.system(size: 10, weight:.bold, design:.serif)).foregroundStyle(pal.main).frame(width: 78, alignment:.leading)
+Text(row.1)
+.font(.system(size: 10)).foregroundStyle(pal.main)
+.fixedSize(horizontal: false, vertical: true)
+}
+}
+}
+.padding(.horizontal, 28)
+.padding(.vertical, 4)
+
+// ⑧ 破局调理五行通关指南（生旺五行＋适宜方位＋吉祥数字＋幸运色彩＋贵人属相＋修心建议）
+yuceSection(num: "七", title: "破局调理五行通关指南", rows: [
+("1. 生旺五行", xj.xi.isEmpty ? "流通为要，不拘固定五行" : "喜用 \(xiNames)（✓）；忌 \(jiNames.isEmpty ? "无" : jiNames + "（×）")"),
+("2. 适宜方位", conclusion("适合方位")),
+("3. 吉祥数字", xj.xi.isEmpty ? "流通为要，不拘固定数" : "宜含 \(xiNums)（\(xiNames)数）；楼层宜选 \(floors)"),
+("4. 幸运色彩", conclusion("幸运颜色与数字") + (jiNames.isEmpty ? "" : "；忌\(jiNames)色系（\(jiColors)）")),
+("5. 贵人属相", guiRenShengXiao),
+("6. 手机尾号吉数", xj.xi.isEmpty ? "流通为要，不拘固定数" : "宜含 \(xiNums)（\(xiNames)数）"),
+("7. 修心建议", conclusion("如何化解（破局调理）")),
+("8. 传统补五行", buXingInline),
+], note: "传统应用参考")
+
+// ⑨ 防伪验真标识：官方落款＋副标＋篆体印鉴＋公农历时间戳＋防伪验真码
+VStack(spacing: 4) {
 Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24)
-HStack(alignment:.bottom) {
+HStack(alignment:.bottom, spacing: 10) {
+VStack(alignment:.leading, spacing: 2) {
+Text("三术合参 · 堪舆命理院 谨制")
+.font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accent)
+Text("据子平五典与天纪三合推演 · 传统命理研习参考")
+.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
+.fixedSize(horizontal: false, vertical: true)
+Text("典籍依据：《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》")
+.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
+.fixedSize(horizontal: false, vertical: true)
 Text("依据五典推演，仅供娱乐参考；断语可回测验证，不作医疗、寿数与具体事件定断。")
 .font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
 .fixedSize(horizontal: false, vertical: true)
+Text("防伪验真码：\(antiFakeCode)")
+.font(.system(size: 9, weight:.bold, design:.monospaced)).foregroundStyle(pal.main)
+}
 Spacer()
-Text("三术堂　\(Self.dateFmt.string(from: Date()))")
+VStack(alignment:.trailing, spacing: 2) {
+Text("报告日期：\(Self.dateFmt.string(from: Date()))")
 .font(.system(size: 10, weight:.bold, design:.serif)).foregroundStyle(pal.main)
+Text(chart.lunarText.isEmpty ? "" : "农历：\(chart.lunarText)")
+.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
+}
 ZStack {
 RoundedRectangle(cornerRadius: 3, style:.continuous)
-.stroke(pal.accentHi, lineWidth: 1.2)
-Text("吉")
-.font(.system(size: 10, weight:.bold, design:.serif))
-.foregroundStyle(pal.accentHi)
+.fill(pal.accentHi.opacity(0.12))
+.overlay(RoundedRectangle(cornerRadius: 3, style:.continuous).stroke(pal.accentHi, lineWidth: 1.4))
+VStack(spacing: 1) {
+Text("三术").font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
+Text("合参").font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
 }
-.frame(width: 16, height: 16)
+}
+.frame(width: 40, height: 40)
 }
 .padding(.horizontal, 28)
 }
 .padding(.bottom, 22)
 }
 }
-.frame(width: 540, height: 960)
+// 加长版长图：只定宽 540，高随内容自适应（九大板块全量展开，约 3000pt；渲染 scale 2 → 1080 宽超清长图），禁止定死 960 裁切内容
+.frame(width: 540)
 }
 
 // MARK: - 收据派生
@@ -671,24 +816,179 @@ private var trueSolarSuffix: String {
 guard let t = chart.trueSolarDate else { return ""}
 return "（真太阳时 \(Self.timeFmt.string(from: t))）"
 }
+/// 真太阳时校正量（实算：真太阳时 − 钟表时间，分钟；囿廷 −48 分钟）
+private var correctionText: String {
+guard let t = chart.trueSolarDate else { return "未校正" }
+let m = Int((t.timeIntervalSince(chart.birthDate) / 60).rounded())
+return "\(m >= 0 ? "+" : "")\(m)分钟"
+}
 private var xiJiBasis: String {
 if xj.level == "中和" { return "；同党异党接近，贵在流通，不预设固定喜忌"}
 let thNames = xj.tiaoHou.map { Self.wxNames[$0]}.joined(separator: "、")
 if thNames.isEmpty { return ""}
 return "；调候喜\(thNames)（\(chart.monthPillar.last ?? "—")月，调候优先）"
 }
-/// 六·流年运势分段：前 5 步大运为段，每段标岁数区间、运干十神、✓/× 与运势旺弱
-private var liunianStageRows: [(String, String)] {
-(0..<min(5, chart.dayunGanZhi.count)).map { i in
-let gz = chart.dayunGanZhi[i]
-let ss = BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!)
-let startAge = chart.dayunStartYear(i) - chart.birthYear
-let (g, _) = dayunGlyph(i)
-let mark = InterpretEngine.dayunMark(chart: chart, index: i)
-let verdict = mark == "喜" ? "运势旺" : (mark == "忌" ? "运势弱" : "运势平")
-let note = mark == "喜" ? "喜用当令，宜进取" : (mark == "忌" ? "忌神当道，宜守成" : "平运可用，宜稳进")
-let markWord = mark == "中性" ? "中性" : (mark == "喜" ? "吉" : "忌")
-return ("\(startAge)~\(startAge + 10)岁", "行\(gz)运（运干\(ss)）\(g)\(markWord)（\(verdict)），\(note)")
+/// 神煞全表（按柱；太极贵人已入 BaziTables.shenSha）
+private var shenShaList: [[String]] { BaziTables.shenSha(chart) }
+/// 配偶星与配偶宫（男财女官；配偶宫＝日支本气十神）
+private var peiOu: (names: [String], present: Bool, palace: String) { BaziTables.peiOuXing(chart: chart) }
+/// 忌色（忌神五行对应色）
+private var jiColors: String { xj.ji.compactMap { Self.colorMap[Self.wxNames[$0]] }.joined(separator: "、") }
+/// 紫微斗数（与八字同盘：同一生辰、同一经度）
+private var zw: ZiweiChart { ZiweiEngine.cachedChart(clock: chart.birthDate, gender: chart.gender, longitude: chart.longitude) }
+/// 紫微三行（命宫身宫／生年四化／三方四正）
+private var ziweiRows: [(String, String)] {
+    func palace(_ name: String) -> ZiweiPalace { zw.palaces.first { $0.name == name }! }
+    func starLine(_ p: ZiweiPalace) -> String {
+        p.majors.isEmpty ? "无主星（借对宫）" : p.majors.map { m in
+            let b = ZiweiBrightness.of(m.star, branch: p.branch)
+            return m.star + (b.isEmpty ? "" : "（\(b)）") + (m.mutagen.map { "化\($0)" } ?? "")
+        }.joined(separator: "、")
+    }
+    let ming = zw.palaces[zw.mingGong]
+    let shen = zw.palaces[zw.shenGong]
+    var huaLines: [String] = []
+    for p in zw.palaces {
+        for m in (p.majors + p.minors) where m.mutagen != nil {
+            huaLines.append("\(m.star)化\(m.mutagen!)入\(p.name)")
+        }
+    }
+    let cai = palace("财帛"), guan = palace("官禄"), qian = palace("迁移"), fu = palace("夫妻")
+    return [
+        ("命宫身宫", "命宫\(ming.stem)\(ZiweiCore.DZ[ming.branch])坐\(starLine(ming))；身宫\(shen.name)\(shen.stem)\(ZiweiCore.DZ[shen.branch])坐\(starLine(shen))；\(zw.juName)"),
+        ("生年四化", huaLines.isEmpty ? "—" : huaLines.joined(separator: "；")),
+        ("三方四正", "财帛\(starLine(cai)) · 官禄\(starLine(guan)) · 迁移\(starLine(qian)) · 夫妻\(starLine(fu))"),
+    ]
+}
+/// 五行雷达（五边形：木火土金水顺时针；按占比归一化，最大者满半径）
+private var wuxingRadar: some View {
+    let pcts = chart.wuxingPercents
+    let maxV = max(pcts.max() ?? 1, 1)
+    return ZStack {
+        Path { p in
+            for i in 0..<5 { let q = radarPoint(i, scale: 1.0); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } }
+            p.closeSubpath()
+        }.stroke(pal.cardStroke, lineWidth: 0.8)
+        Path { p in
+            for i in 0..<5 { let q = radarPoint(i, scale: 0.5); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } }
+            p.closeSubpath()
+        }.stroke(pal.cardStroke.opacity(0.5), lineWidth: 0.5)
+        Path { p in
+            for i in 0..<5 { p.move(to: CGPoint(x: 75, y: 75)); p.addLine(to: radarPoint(i, scale: 1.0)) }
+        }.stroke(pal.cardStroke.opacity(0.35), lineWidth: 0.5)
+        Path { p in
+            for i in 0..<5 {
+                let q = radarPoint(i, scale: CGFloat(pcts[i] / maxV))
+                if i == 0 { p.move(to: q) } else { p.addLine(to: q) }
+            }
+            p.closeSubpath()
+        }.fill(pal.accentHi.opacity(0.18))
+        Path { p in
+            for i in 0..<5 {
+                let q = radarPoint(i, scale: CGFloat(pcts[i] / maxV))
+                if i == 0 { p.move(to: q) } else { p.addLine(to: q) }
+            }
+            p.closeSubpath()
+        }.stroke(pal.accentHi, lineWidth: 1.2)
+        ForEach(0..<5, id: \.self) { i in
+            Text("\(Self.wxNames[i])\(Int(pcts[i].rounded()))%")
+                .font(.system(size: 9, weight:.bold, design:.serif))
+                .foregroundStyle(wxColor[Self.wxNames[i]] ?? pal.main)
+                .position(radarPoint(i, scale: 1.18))
+        }
+    }
+    .frame(width: 150, height: 150)
+}
+private func radarPoint(_ i: Int, scale: CGFloat) -> CGPoint {
+    let a = (-90.0 + Double(i) * 72.0) * Double.pi / 180.0
+    return CGPoint(x: 75 + 58 * scale * CGFloat(cos(a)), y: 75 + 58 * scale * CGFloat(sin(a)))
+}
+/// 通关气势：占比最高的两个五行，前者克后者时给出通关之神
+private var tongGuanText: String {
+    let order = chart.wuxingPercents.indices.sorted { chart.wuxingPercents[$0] > chart.wuxingPercents[$1] }
+    let a = order[0], b = order[1]
+    let ke: [Int: Int] = [0: 2, 2: 4, 4: 1, 1: 3, 3: 0]
+    if ke[a] == b {
+        let c = (a + 1) % 5
+        return "气势：\(Self.wxNames[a])\(Self.wxNames[b])相战，以\(Self.wxNames[c])通关（\(Self.wxNames[a])生\(Self.wxNames[c])、\(Self.wxNames[c])生\(Self.wxNames[b])）"
+    }
+    return "气势：\(Self.wxNames[a])\(Self.wxNames[b])并旺流通，无强战克，通关不急。"
+}
+/// 五行占比一行
+private var wxShareText: String {
+    (0..<5).map { "\(Self.wxNames[$0])\(Int(chart.wuxingPercents[$0].rounded()))%" }.joined(separator: " · ")
+}
+/// 月令本气透藏考据：月支本气干及其十神，透干／藏支
+private var yueLingText: String {
+    let mb = chart.monthPillar.last!
+    let benQi = BaziTables.cangGan[mb]!.first!
+    let ss = BaziTables.shiShen(day: chart.rizhu.first!, stem: benQi)
+    let tou = chart.pillars.contains { $0.first! == benQi }
+    return "月令\(mb)支，本气\(benQi)（\(ss)）\(tou ? "透干" : "藏支")；月令格局见下。"
+}
+/// 调候用神（《穷通宝鉴》查表）
+private var tiaoHouNames: String { xj.tiaoHou.map { Self.wxNames[$0] }.joined(separator: "、") }
+/// 贵人属相（日支三合贵人，传统应用参考）
+private var guiRenShengXiao: String {
+    let sanHe: [Character: [String]] = ["申": ["猴", "鼠", "龙"], "子": ["猴", "鼠", "龙"], "辰": ["猴", "鼠", "龙"], "寅": ["虎", "马", "狗"], "午": ["虎", "马", "狗"], "戌": ["虎", "马", "狗"], "巳": ["蛇", "鸡", "牛"], "酉": ["蛇", "鸡", "牛"], "丑": ["蛇", "鸡", "牛"], "亥": ["猪", "兔", "羊"], "卯": ["猪", "兔", "羊"], "未": ["猪", "兔", "羊"]]
+    let gx = sanHe[chart.dayPillar.last!] ?? []
+    return gx.isEmpty ? "—" : "\(gx.joined(separator: "、"))（日支三合贵人，传统应用参考）"
+}
+/// 传统补五行一行（真迹五项原文＋现算 ✓/×）
+private var buXingInline: String { buXingRows.map { "\($0.0)：\($0.1)" }.joined(separator: "；") }
+/// 防伪验真码（由本盘干支＋生年生成，核对请认准三术合参）
+private var antiFakeCode: String {
+    let src = chart.pillars.joined() + String(chart.birthYear) + chart.lunarText
+    var h = 0
+    for s in src.unicodeScalars { h = (h * 31 + Int(s.value)) % 2176782336 }
+    let chars = Array("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
+    var code = ""
+    var v = h
+    for _ in 0..<6 { code.append(chars[v % 32]); v /= 32 }
+    return "SSHC-\(code)"
+}
+/// 大运十年宏观课题（按运干十神取象）
+private func dayunTheme(_ stem: Character) -> String {
+    let ss = BaziTables.shiShen(day: chart.rizhu.first!, stem: stem)
+    return ["正官": "事业平台", "七杀": "事业平台", "正印": "学习积累", "偏印": "学习积累", "正财": "求财经营", "偏财": "求财经营", "食神": "输出变现", "伤官": "输出变现", "比肩": "合作竞争", "劫财": "合作竞争"][ss] ?? "稳进"
+}
+/// 七·未来三年流年直断（当年起连续三年，干支＋十神＋大运喜忌＋牵动＋指南）
+private var threeYearRows: [(String, String)] {
+InterpretEngine.nextThreeYears(chart: chart).map { y in
+("\(y.year) \(y.ganzhi)年", y.note)
+}
+}
+/// 专业四柱细盘表（标签列 44＋四柱各 110＝484，正好等于画布 540 − 两侧 28 留白）
+private var pillarTable: some View {
+VStack(spacing: 0) {
+pillarRow(label: "", cells: ["年柱", "月柱", "日柱", "时柱"], size: 10, weight: .bold, color: { _ in pal.accent })
+pillarRow(label: "十神", cells: chart.stemShiShen, size: 9.5, weight: .medium, color: { i in i == 2 ? pal.accentHi : pal.accent })
+pillarRow(label: "天干", cells: chart.pillars.map { String($0.first!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].first!, fallback: pal.main) })
+pillarRow(label: "地支", cells: chart.pillars.map { String($0.last!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].last!, fallback: pal.main) })
+pillarRow(label: "藏干", cells: cangGanCells, size: 8.5, weight: .regular, color: { _ in pal.main })
+pillarRow(label: "长生", cells: chart.diShi, size: 9.5, weight: .regular, color: { _ in pal.sub })
+pillarRow(label: "纳音", cells: chart.pillars.map { BaziTables.naYin($0) }, size: 9.5, weight: .regular, color: { _ in pal.main })
+}
+.background(pal.card.opacity(0.8))
+.clipShape(RoundedRectangle(cornerRadius: 6, style:.continuous))
+.overlay(RoundedRectangle(cornerRadius: 6, style:.continuous).stroke(pal.cardStroke, lineWidth: 0.6))
+}
+private func pillarRow(label: String, cells: [String], size: CGFloat, weight: Font.Weight, color: (Int) -> Color) -> some View {
+HStack(spacing: 0) {
+Text(label).font(.system(size: 9, weight:.medium)).foregroundStyle(pal.sub).frame(width: 44, alignment:.trailing).padding(.trailing, 6)
+ForEach(0..<4, id: \.self) { i in
+Text(cells[i]).font(.system(size: size, weight: weight)).foregroundStyle(color(i)).frame(width: 110).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).padding(.vertical, 2)
+}
+}
+}
+/// 藏干格：本气／中气／余气各配十神（藏干首位即本气，与 BaziTables.cangGan 同序）
+private var cangGanCells: [String] {
+(0..<4).map { i in
+let br = chart.pillars[i].last!
+let roles = ["本气", "中气", "余气"]
+return zip(BaziTables.cangGan[br] ?? [], chart.hideShiShen[i]).enumerated().map { (j, pair) in
+"\(pair.0)·\(roles[min(j, 2)])·\(pair.1)"
+}.joined(separator: "\n")
 }
 }
 /// 七·补五行五项：真迹原文＋按喜忌打 ✓/×（中性按可用打 ✓）
@@ -700,20 +1000,19 @@ return ("补\(Self.wxNames[i])大吉", "\(Self.buTexts[i]) \(g)")
 }
 
 private func yuceSection(num: String, title: String, rows: [(String, String)], note: String? = nil) -> some View {
-VStack(alignment:.leading, spacing: 2) {
+VStack(alignment:.leading, spacing: 3) {
 HStack(spacing: 6) {
 Text("\(num)、\(title)")
-.font(.system(size: 11.5, weight:.bold, design:.serif))
+.font(.system(size: 12.5, weight:.bold, design:.serif))
 .foregroundStyle(pal.accent)
 if let note {
 Text(note).font(.system(size: 9)).foregroundStyle(pal.sub)
 }
 }
 ForEach(rows.indices, id: \.self) { j in
-(Text("\(rows[j].0)：").font(.system(size: 9.5, weight:.bold, design:.serif)).foregroundStyle(pal.accent)
-+ Text(rows[j].1).font(.system(size: 9.5)).foregroundStyle(pal.main))
+(Text("\(rows[j].0)：").font(.system(size: 10.5, weight:.bold, design:.serif)).foregroundStyle(pal.accent)
++ Text(rows[j].1).font(.system(size: 10.5)).foregroundStyle(pal.main))
 .lineSpacing(2.0)
-.lineLimit(2)
 .fixedSize(horizontal: false, vertical: true)
 }
 }
@@ -745,13 +1044,13 @@ struct PosterSheetView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
-                    ProgressView("正在渲染海报…")
-                        .frame(width: 540 * 0.62, height: 960 * 0.62)
+                    ProgressView(style == .yuceDan ? "正在渲染 1080宽长图海报…" : "正在渲染海报…")
+                        .frame(width: 540 * 0.62)
                 }
 
                 if let u = fileURL {
                     ShareLink(item: u) {
-                        Label("保存 / 分享高清命盘海报（1080×1920）", systemImage: "square.and.arrow.down")
+                        Label(style == .yuceDan ? "保存 / 分享高清长图海报（1080宽 · 自适应长图）" : "保存 / 分享高清命盘海报（1080×1920）", systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
                     .buttonStyle(KyPrimaryButton())

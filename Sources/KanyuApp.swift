@@ -1318,7 +1318,7 @@ struct OnboardingView: View {
                 }
                 VStack(alignment: .leading, spacing: 12) {
                     KySectionTitle(title: "核心能力", trailing: "全本机离线演算")
-                    Text("· 八字与紫微：真太阳时精准排盘、四柱干支反查生辰、五典依据链 25 维详批、逐年四查与合婚四看。")
+                    Text("· 八字与紫微：真太阳时精准排盘、四柱干支反查生辰、五典依据链 30 条详批、逐年四查与合婚四看。")
                         .font(.callout).foregroundStyle(Ky.ink)
                     Text("· 奇门与相法：拆补法时家奇门九宫断事；Vision 21 点手相几何测量与三停面相校准。")
                         .font(.callout).foregroundStyle(Ky.ink)
@@ -1345,65 +1345,6 @@ struct OnboardingView: View {
     }
 }
 
-// MARK: - 实时帧率表（CADisplayLink，0.5 秒一报；只刷新小药丸自身，不触发整页重算）
-// 2026-11-05 实测纠正：静止时 ProMotion 屏幕会降到 10Hz 待机，旧表把待机也当卡顿报红（11帧）；
-// 停一会儿再划，前几个 0.5 秒窗口还混着从 10Hz 爬升的过程，读数也被拉低。现只量划动：
-// 相邻两帧间隔 >60ms 即判定屏幕在待机，丢弃该窗口，静止超 1 秒药丸显示「待机」不再报数。
-final class FPSMonitor: ObservableObject {
-    @Published var fps: Double = 0
-    @Published var isIdle = false
-    private var link: CADisplayLink?
-    private var stamps: [CFTimeInterval] = [] // 最近 20 帧时间戳：滚动瞬时帧率，不再用 0.5 秒平均
-    private var lastTick = CACurrentMediaTime()
-    private var idleElapsed = 0.0
-    init() {
-        link = CADisplayLink(target: self, selector: #selector(tick))
-        // 向系统要 120 量程：不设则 iPhone 上回调最高只到 60，表永远量不到 120
-        // 下限须钳住本机上限：模拟器最高只有 60，下限写死 80 会因 80>60 非法直接崩溃
-        let maxFPS = Float(UIScreen.main.maximumFramesPerSecond)
-        link?.preferredFrameRateRange = CAFrameRateRange(
-            minimum: min(80, maxFPS), maximum: maxFPS, preferred: maxFPS)
-        link?.add(to: .main, forMode: .common) // .common：划动时不停表，才能量到滚动帧率
-    }
-    @objc private func tick() {
-        let now = CACurrentMediaTime()
-        let gap = now - lastTick
-        lastTick = now
-        if gap > 0.06 {
-            // 屏幕待机中（或刚从后台回来）：丢弃本窗口，爬升过程不计入读数
-            stamps.removeAll()
-            idleElapsed += gap
-            if idleElapsed > 1.0 && !isIdle { isIdle = true; fps = 0 }
-            return
-        }
-        idleElapsed = 0
-        isIdle = false
-        stamps.append(now)
-        if stamps.count > 20 { stamps.removeFirst(stamps.count - 20) }
-        if stamps.count >= 2 {
-            let dt = stamps.last! - stamps.first!
-            if dt > 0 {
-                // 药丸每帧都刷新会拖着工具栏每帧重排：整数变了才发布
-                let v = Double(stamps.count - 1) / dt
-                if Int(v) != Int(fps) { fps = v }
-            }
-        }
-    }
-    deinit { link?.invalidate() }
-}
-
-struct FPSPill: View {
-    @StateObject private var monitor = FPSMonitor()
-    var body: some View {
-        Text(monitor.isIdle ? "待机" : "\(Int(monitor.fps))帧")
-            .font(.system(size: 11, weight: .bold, design: .monospaced))
-            .foregroundStyle(monitor.isIdle ? Ky.sub : (monitor.fps >= 110 ? Ky.jade : (monitor.fps >= 55 ? Ky.gold : Ky.cinnabar)))
-            .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(Ky.elevated) // 实色底：旧版 ultraThinMaterial 每帧都要对背后内容取样模糊
-            .clipShape(Capsule())
-    }
-}
-
 // MARK: - Tab 0：「合参」首页总工作台（iOS 27 Bento 布局 · 120Hz 零卡顿 · 无重复标题）
 struct HomePageView: View {
     @Binding var selectedTab: Int
@@ -1412,7 +1353,6 @@ struct HomePageView: View {
     @StateObject private var forecastStore = ForecastStore()
     @EnvironmentObject var peopleStore: PeopleStore
     @State private var showingNewPerson = false
-    @AppStorage("showFPS") private var showFPS = true
 
     init(selectedTab: Binding<Int> = .constant(0)) {
         self._selectedTab = selectedTab
@@ -1450,7 +1390,6 @@ struct HomePageView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 8) {
-                    if showFPS { FPSPill() }
                     Button { showingNewPerson = true } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "person.badge.plus")
@@ -1601,7 +1540,7 @@ struct HomePageView: View {
                         icon: "tablecells.fill",
                         badge: "子平五典",
                         title: "八字排盘",
-                        subtitle: "四柱五行分色 · 25维详批",
+                        subtitle: "四柱五行分色 · 30条详批",
                         accent: Ky.qingdai
                     )
                 }.buttonStyle(.plain)

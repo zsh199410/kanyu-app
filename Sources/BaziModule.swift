@@ -85,6 +85,9 @@ enum BaziTables {
         func add(_ name: String, _ branch: String) { for i in 0..<4 where brs[i] == branch { out[i].append(name) } }
         let tianyi: [String: [String]] = ["甲": ["丑", "未"], "戊": ["丑", "未"], "乙": ["子", "申"], "己": ["子", "申"], "丙": ["亥", "酉"], "丁": ["亥", "酉"], "壬": ["卯", "巳"], "癸": ["卯", "巳"], "庚": ["寅", "午"], "辛": ["寅", "午"]]
         tianyi[ds]?.forEach { add("天乙贵人", $0) }
+        // 太极贵人（日干查地支）：甲乙子午、丙丁卯酉、戊己辰戌丑未、庚辛寅亥、壬癸巳申
+        let taiji: [String: [String]] = ["甲": ["子", "午"], "乙": ["子", "午"], "丙": ["卯", "酉"], "丁": ["卯", "酉"], "戊": ["辰", "戌", "丑", "未"], "己": ["辰", "戌", "丑", "未"], "庚": ["寅", "亥"], "辛": ["寅", "亥"], "壬": ["巳", "申"], "癸": ["巳", "申"]]
+        taiji[ds]?.forEach { add("太极贵人", $0) }
         let stemBranch: [(String, [String: String])] = [
             ("文昌", ["甲": "巳", "乙": "午", "丙": "申", "丁": "酉", "戊": "申", "己": "酉", "庚": "亥", "辛": "子", "壬": "寅", "癸": "卯"]),
             ("学堂", ["甲": "亥", "乙": "午", "丙": "寅", "丁": "酉", "戊": "寅", "己": "酉", "庚": "巳", "辛": "子", "壬": "申", "癸": "卯"]),
@@ -139,6 +142,56 @@ enum BaziTables {
         let i = gzIndex(dayPillar); let head = i - i % 10; let hb = head % 12
         var covered = Set<Int>(); for k in 0..<10 { covered.insert((hb + k) % 12) }
         return DZ.enumerated().filter { !covered.contains($0.offset) }.map { String($0.element) }.joined()
+    }
+
+    // MARK: - 预测单长图共用测算（海报与速览卡同口径，全部逐人现算，不写死）
+    /// 财库支（日主五行定：《三命通会》墓库说，木未、火戌、土辰、水辰、金丑）
+    static func caiKuBranch(dayWx: Int) -> Character { ["未", "戌", "辰", "丑", "辰"][dayWx] }
+    /// 真假财库：库支见几处、逢冲、落空亡——三条实算拼成一句，不另编
+    static func caiKuReport(chart: BaziChart) -> String {
+        let dayWx = ["木", "火", "土", "金", "水"].firstIndex(of: wx[chart.rizhu.first!]?.0 ?? "") ?? 2
+        let ku = caiKuBranch(dayWx: dayWx)
+        let hits = chart.pillars.filter { $0.last! == ku }
+        if hits.isEmpty { return "原局不见财库\(ku)支，钱来钱去偏活，聚散靠规则外置（单独账户、固定转存）。" }
+        let chonged = chart.pillars.contains { p in p.last! != ku && relationFull(p.last!, ku)?.0 == "冲" }
+        let konged = chart.xunKong.contains(ku)
+        var verdict = "原局见真财库「\(ku)」\(hits.count)处"
+        if chonged && konged { verdict += "，但库逢冲又落空亡——财进出都猛、留存偏虚，须靠制度锁财" }
+        else if chonged { verdict += "，库逢冲——逢冲库之年财动大、进出都猛" }
+        else if konged { verdict += "，库落空亡（旬空\(chart.xunKong)）——聚财须防虚，见财先落袋" }
+        else { verdict += "——财有入库之象，攒钱靠制度（自动储蓄、不动产、定期）" }
+        return verdict + "。"
+    }
+    /// 财气通门户检验（《滴天髓》何知章口径，与解盘引擎财运形态同判）：财星透干／有根／通月令日支门户
+    static func caiQiMenHu(chart: BaziChart) -> String {
+        let day = chart.rizhu.first!
+        let allSS = chart.stemShiShen + chart.hideShiShen.flatMap { $0 }
+        let shi = allSS.filter { $0 == "食神" || $0 == "伤官" }.count
+        let cai = allSS.filter { $0 == "正财" || $0 == "偏财" }.count
+        let caiWx = Set(Array("甲乙丙丁戊己庚辛壬癸").filter { shiShen(day: day, stem: $0) == "正财" || shiShen(day: day, stem: $0) == "偏财" }.compactMap { wx[$0]?.0 })
+        let tou = chart.pillars.contains { p in caiWx.contains(wx[p.first!]?.0 ?? "") }
+        let gen = chart.pillars.contains { p in (cangGan[p.last!] ?? []).contains { caiWx.contains(wx[$0]?.0 ?? "") } }
+        let menhu = [chart.monthPillar.last!, chart.dayPillar.last!].contains { b in (cangGan[b] ?? []).contains { caiWx.contains(wx[$0]?.0 ?? "") } }
+        let facts = "财星\(tou ? "透干" : "藏而不透")、\(gen ? "有根" : "无根")、\(menhu ? "通月令／日支门户" : "未通门户")"
+        if shi > 0 && cai > 0 && gen { return facts + "——财气通门户：食伤生财链连通、财有根，量级往上看一档。" }
+        if shi > 0 && (cai == 0 || !gen) { return facts + "——食伤有气但财路未通（财不见或无根），量级按现有档看，不宜高估。" }
+        return facts + "——食伤未现，财气通门户一查未通，量级按现有档看。"
+    }
+    /// 主导十神：四干（除日主）＋全部藏干十神计频最高者；并列时按十神固定序取首位（确定性，不随字典序漂移）
+    static func dominantShiShen(chart: BaziChart) -> String {
+        var cnt: [String: Int] = [:]
+        for (i, s) in chart.stemShiShen.enumerated() where i != 2 { cnt[s, default: 0] += 1 }
+        for arr in chart.hideShiShen { for s in arr { cnt[s, default: 0] += 1 } }
+        let order = ["比肩", "劫财", "食神", "伤官", "偏财", "正财", "七杀", "正官", "偏印", "正印"]
+        return order.max(by: { (cnt[$0] ?? 0) < (cnt[$1] ?? 0) }) ?? "—"
+    }
+    /// 配偶星与配偶宫：男财女官是否入局；配偶宫＝日支本气十神
+    static func peiOuXing(chart: BaziChart) -> (names: [String], present: Bool, palace: String) {
+        let names = chart.gender == "M" ? ["正财", "偏财"] : ["正官", "七杀"]
+        let all = chart.stemShiShen + chart.hideShiShen.flatMap { $0 }
+        let present = names.contains { all.contains($0) }
+        let palace = chart.hideShiShen[2].first ?? "—"
+        return (names, present, palace)
     }
     static func relationFull(_ a: Character, _ b: Character) -> (String, Int)? {
         if a == b {
@@ -658,6 +711,7 @@ struct BaziResultView: View {
         VStack(alignment: .leading, spacing: 14) {
             plateCard
             yucedanSummaryCard
+            CrossCheckCard(bazi: chart, ziwei: ZiweiEngine.cachedChart(clock: chart.birthDate, gender: chart.gender, longitude: chart.longitude))
             deepDiveGrid
             wuxingCard
             timeCard
@@ -754,7 +808,7 @@ struct BaziResultView: View {
         }
     }
 
-// MARK: - 易辰预测单式直断速览卡（对标预测单 7 大实务项：喜忌/财库/赛道/七项提炼一目了然；
+// MARK: - 三术合参预测单式直断速览卡（对标预测单 7 大实务项：喜忌/财库/赛道/七项提炼一目了然；
 // 喜忌口径与预测单海报一致：InterpretEngine.posterXiJi（扶抑初判＋调候优先），不写死）
 private var yucedanSummaryCard: some View {
 let xj = InterpretEngine.posterXiJi(chart: chart)
@@ -766,15 +820,14 @@ let numMap = ["木": "3、8", "火": "2、7", "土": "5、0", "金": "4、9", "�
 let colorMap = ["木": "绿、青", "火": "红", "土": "黄", "金": "白、金", "水": "黑、蓝"]
 let xiNums = xj.xi.compactMap { numMap[wxNames[$0]]}.joined(separator: "、")
 let xiColors = xj.xi.compactMap { colorMap[wxNames[$0]]}.joined(separator: "、")
-let dayStem = chart.rizhu.first!
-let dayWx = BaziTables.wx[dayStem]?.0 ?? ""
-let ku = ["木": "未", "火": "戌", "土": "辰", "金": "丑", "水": "辰"][dayWx] ?? ""
-let kuCount = chart.pillars.filter { $0.hasSuffix(ku)}.count
 let items = InterpretEngine.interpret(chart: chart)
+let shenShaText = BaziTables.shenSha(chart).enumerated().map { (i, arr) in
+    "\(["年柱", "月柱", "日柱", "时柱"][i])\(arr.isEmpty ? "—" : arr.joined(separator: "、"))"
+}.joined(separator: "；")
 
 return VStack(alignment:.leading, spacing: 10) {
 HStack {
-KySectionTitle(title: "八字预测单直断速览", trailing: "实务七项要诀")
+KySectionTitle(title: "八字预测单直断速览", trailing: "实务八项要诀")
 Spacer()
 NavigationLink { PosterSheetView(chart: chart, name: name)} label: {
 HStack(spacing: 3) {
@@ -796,14 +849,30 @@ KyBadge(text: "身\(xj.level)", color: xj.level == "偏弱" ? Ky.gold : Ky.qingd
 
 HStack(spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
-Text((kuCount > 0 ? "原局见真财库「\(ku)」\(kuCount)处；": "原局无特定财库，周转流通为主；") + InterpretEngine.conclusion(items: items, titles: "财富量级蓄水池"))
-.font(.caption).foregroundStyle(Ky.ink).lineLimit(2)
+Text(BaziTables.caiKuReport(chart: chart) + " " + InterpretEngine.conclusion(items: items, titles: "财富量级蓄水池"))
+.font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
 }
 
 HStack(spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
 Text(InterpretEngine.conclusion(items: items, titles: "行业赛道深断", "事业方向"))
-.font(.caption).foregroundStyle(Ky.ink).lineLimit(2)
+.font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
+}
+
+HStack(alignment:.top, spacing: 8) {
+Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
+Text("神煞一览：" + shenShaText)
+.font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
+}
+
+HStack(alignment:.top, spacing: 8) {
+Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
+VStack(alignment:.leading, spacing: 2) {
+ForEach(InterpretEngine.nextThreeYears(chart: chart), id: \.year) { y in
+Text("\(y.year) \(y.ganzhi)年（\(y.mark)）：\(y.note)")
+.font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
+}
+}
 }
 
 HStack(spacing: 8) {
@@ -814,15 +883,16 @@ Text(xj.xi.isEmpty ? "流通为要，不拘固定数" : "日常喜用 \(xiNums)�
 
 Divider().opacity(0.5)
 
-Text("七项实务提炼").font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+Text("八项实务提炼").font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
 VStack(alignment:.leading, spacing: 4) {
 summaryRow("一、性格", InterpretEngine.conclusion(items: items, titles: "性格性情"))
 summaryRow("二、事业", InterpretEngine.conclusion(items: items, titles: "行业赛道深断", "事业方向"))
 summaryRow("三、财运", InterpretEngine.conclusion(items: items, titles: "财运形态"))
 summaryRow("四、婚姻", InterpretEngine.conclusion(items: items, titles: "婚姻感情"))
-summaryRow("五、吉祥数", InterpretEngine.conclusion(items: items, titles: "幸运颜色与数字"))
-summaryRow("六、岁运", InterpretEngine.conclusion(items: items, titles: "岁运要点"))
-summaryRow("七、建议", InterpretEngine.conclusion(items: items, titles: "如何化解（破局调理）", "注意事项"))
+summaryRow("五、子女晚景", InterpretEngine.conclusion(items: items, titles: "子女缘分") + " " + InterpretEngine.conclusion(items: items, titles: "晚年光景"))
+summaryRow("六、吉祥指引", InterpretEngine.conclusion(items: items, titles: "幸运颜色与数字"))
+summaryRow("七、未来三年流年", InterpretEngine.conclusion(items: items, titles: "岁运要点"))
+summaryRow("八、调理建议", InterpretEngine.conclusion(items: items, titles: "如何化解（破局调理）", "注意事项"))
 }
 }
 .padding(11)
@@ -835,7 +905,7 @@ summaryRow("七、建议", InterpretEngine.conclusion(items: items, titles: "如
 private func summaryRow(_ label: String, _ text: String) -> some View {
 HStack(alignment:.top, spacing: 6) {
 Text(label).font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai).frame(width: 52, alignment:.leading)
-Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
+Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
 }
 }
 
@@ -1019,11 +1089,11 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
         .accessibilityLabel("四柱：年柱 \(ch.pillars[0])，月柱 \(ch.pillars[1])，日柱 \(ch.pillars[2])，时柱 \(ch.pillars[3])，日主 \(ch.rizhu)")
     }
 
-    // MARK: - 四大深度模块 2×2 导航矩阵（解盘28条 / 逐年四查 / 1-88岁规划 / 命盘海报）
+    // MARK: - 四大深度模块 2×2 导航矩阵（解盘30条 / 逐年四查 / 1-88岁规划 / 命盘海报）
     private var deepDiveGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
             NavigationLink { InterpretView(chart: chart, name: name) } label: {
-                hubCard(icon: "text.book.closed.fill", title: "解盘 · 28 条详批",
+                hubCard(icon: "text.book.closed.fill", title: "解盘 · 30 条详批",
                         subtitle: "格局喜忌 · 六亲事业 · 依据链", color: Ky.qingdai)
             }.buttonStyle(.plain)
 

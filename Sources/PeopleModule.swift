@@ -234,7 +234,7 @@ struct PersonDetailView: View {
     @StateObject private var palmStore = PalmRecordStore()
     @StateObject private var forecastStore = ForecastStore()
     @State private var currentPerson: Person?
-    @State private var sectionTab: Int = 0   // 0: 合参总览与八字  1: 紫微命盘  2: 25维详批  3: 逐年直断
+    @State private var sectionTab: Int = 0   // 0: 合参总览与八字  1: 紫微命盘  2: 30条详批  3: 逐年直断
     @State private var pdfURL: URL?
     @State private var generatingPDF = false
 
@@ -250,12 +250,13 @@ struct PersonDetailView: View {
             LazyVStack(alignment: .leading, spacing: 14) {
                 overviewCard(person: p, chart: ch, ziwei: zw)
                 actionToolbar(person: p, chart: ch, ziwei: zw)
+                CrossCheckCard(bazi: ch, ziwei: zw)
 
-                // 四合一分段控制器（无需反复进出子页面，一页切换八字、紫微、25维详批、逐年）
+                // 四合一分段控制器（无需反复进出子页面，一页切换八字、紫微、30条详批、逐年）
                 Picker("合参视图", selection: $sectionTab) {
                     Text("八字命盘").tag(0)
                     Text("紫微斗数").tag(1)
-                    Text("25维详批").tag(2)
+                    Text("30条详批").tag(2)
                     Text("逐年四查").tag(3)
                 }
                 .pickerStyle(.segmented)

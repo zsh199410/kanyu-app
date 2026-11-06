@@ -157,6 +157,28 @@ enum InterpretEngine {
         }
         return conclusion(items: items, titles: "注意事项")
     }
+    /// 未来三年流年直断（海报七节与速览卡共用）：逐年干支＋流年干支十神＋所在大运喜忌＋流年支与原局最强牵动＋行事指南
+    static func nextThreeYears(chart ch: BaziChart) -> [(year: Int, ganzhi: String, stemSS: String, branchSS: String, mark: String, note: String)] {
+        let nowYear = Calendar.current.component(.year, from: Date())
+        let day = ch.rizhu.first!
+        return (0..<3).map { k in
+            let y = nowYear + k
+            let gz = BaziChart.yearGanZhi(y)
+            let stemSS = BaziTables.shiShen(day: day, stem: gz.first!)
+            let branchSS = BaziTables.shiShen(day: day, stem: BaziTables.cangGan[gz.last!]!.first!)
+            let di = ch.dayunGanZhi.isEmpty ? 0 : max(0, min(ch.dayunGanZhi.count - 1, (y - ch.qiyunYear) / 10))
+            let mark = ch.dayunGanZhi.isEmpty ? "中性" : dayunMark(chart: ch, index: di)
+            let yb = gz.last!
+            var best = 0; var bestName = ""; var bestPillar = ""
+            for p in ch.pillars {
+                if let r = BaziTables.relationFull(p.last!, yb), r.1 > best { best = r.1; bestName = r.0; bestPillar = p }
+            }
+            let rel = best > 0 ? "流年\(yb)与原局\(bestPillar)支\(bestName)" : "与原局四支无刑冲合会牵动"
+            let guide = mark == "喜" ? "喜用当令，宜进取" : (mark == "忌" ? "忌神当道，宜守成" : "平运可用，宜稳进")
+            let note = "流年干\(stemSS)、支\(branchSS)；\(rel)；\(mark)（\(guide)）"
+            return (y, gz, stemSS, branchSS, mark, note)
+        }
+    }
     // 穷通调候精选查表（2026-10-31 批次二）：只收有把握的寒月／热月格子，共 19 格；
     // 未入表的格子一律回落寒热粗筛并标注层级，不许凭记忆补填。表述为通说要点，非原文照录。
     private static let tiaoHouTable: [Character: [Character: String]] = [
@@ -427,7 +449,7 @@ struct InterpretView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(name.isEmpty ? "本盘" : name) · 28 条五典详批")
+                            Text("\(name.isEmpty ? "本盘" : name) · 30 条五典详批")
                                 .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             Text("日主 \(chart.rizhu) · 四柱 \(chart.pillars.joined(separator: " ")) · 每条附盘面与典籍依据")
                                 .font(.caption2).foregroundStyle(Ky.sub)
@@ -540,13 +562,13 @@ struct InterpretView: View {
                     }
                 }
 
-                Text("解盘纪律说明：以上 28 条（5 条总纲＋23 维）全部由本机确定性排盘数据推导，每条结论附「盘面事实＋典籍根据」可复核；健康只给部位与代谢倾向不落病名；守年只列强引动关口级年份。回测校准级的私人详批以工作室正式报告为准。")
+                Text("解盘纪律说明：以上 30 条（5 条总纲＋25 维）全部由本机确定性排盘数据推导，每条结论附「盘面事实＋典籍根据」可复核；健康只给部位与代谢倾向不落病名；守年只列强引动关口级年份。回测校准级的私人详批以工作室正式报告为准。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
         .background(Ky.bg)
         .onDisappear { speaker.stop() }
-        .navigationTitle(name.isEmpty ? "28 条五典解盘" : "解盘 · \(name)")
+        .navigationTitle(name.isEmpty ? "30 条五典解盘" : "解盘 · \(name)")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showGlossary) { glossarySheet }
     }
@@ -677,10 +699,28 @@ extension InterpretEngine {
             domText = "对钱与结果敏感，但比劫透干同在——钱容易经同辈与合伙之手进出，财权必须握在自己手里，分账先于交情"
             zhiNote = "；财星最重而比劫透干同夺，定性须带此戒"
         }
+        // 内外向／思维／执行力（取象参考：主导十神＋日主五行）
+        let neiWai = (dom.0 == "食伤" || dom.0 == "比劫" || dom.0 == "财星") ? "外向" : "内向"
+        let siWei = yin >= 2 ? "系统逻辑型（印星主收纳归纳）" : (shi >= 2 ? "发散联想型（食伤主生发）" : (guan >= 2 ? "结构执行型（官杀主秩序）" : "直觉综合型"))
+        let zhiXing = guan >= 2 ? "执行力强（官杀给目标与压力）" : (bi >= 2 ? "执行力靠自我驱动（比劫给冲劲）" : "执行力随兴趣走（对味才快）")
         out.append(item("性格性情",
-            "盘里分量最重的是\(dom.0)——\(domText)。底色上，日主属\(wxN[dayWx])：\(natureWx)。",
+            "盘里分量最重的是\(dom.0)——\(domText)。底色上，日主属\(wxN[dayWx])：\(natureWx)。内外向\(neiWai)：思维偏\(siWei)；\(zhiXing)。",
             "日主 \(ch.rizhu)（\(wxN[dayWx])）；\(cntText)\(zhiNote)；主导按加权定（透干×2、藏本气×1、余气×0.5、月柱×1.5）",
             "性格先全局后日主（纪律）：主导十神（含制化）定行为模式，日主五行（《滴天髓》干象）只作底色；伤官见印透先按制化，不按裸象直读（回测纪律）"))
+
+        // 十神做功（哪组十神在干活：透干成链者为做功主体；只按透藏与制化定，不另编）
+        var zuoGong = ""
+        let guanTou = touSet.contains("正官") || touSet.contains("七杀")
+        let yinTou = touSet.contains("正印") || touSet.contains("偏印")
+        if guanTou && yinTou { zuoGong = "官印相生在做功：官星生印、印星护身，名分、平台、凭靠三者连成链——主战场在体制与专业资历里，越规范越出成绩。" }
+        else if shi >= 2 && cai >= 1 { zuoGong = "食伤生财在做功：技术、表达、产品是变现的发动机，靠输出换钱是主业态；守成要靠制度，不靠感觉。" }
+        else if cai >= 2 && guan >= 1 { zuoGong = "财官相生在做功：经营与名分互相抬轿，生意场与职场可以两条腿走，忌只押一边。" }
+        else if (cnt["七杀"] ?? 0) >= 1 && yin >= 1 { zuoGong = "杀印相生在做功：压力被印星化掉，越压越能扛，适合在高压行业里拿结果；透支是底线。" }
+        else if bi >= 3 && cai >= 1 { zuoGong = "比劫夺财在做功（偏负面）：同辈与合伙是钱财进出的主变量，财权与分账机制必须先立，忌先交情后算账。" }
+        else { zuoGong = "没有单一十神组合压场做功：各路十神分力，成事靠组合——平台、手艺、机会三样至少占两样。" }
+        out.append(item("十神做功", zuoGong,
+            cntText + "；主导 \(dom.0)；官透 \(guanTou ? "见" : "不见")、印透 \(yinTou ? "见" : "不见")",
+            "做功看透干成链与制化（《子平真诠》格局应用）；单星计数只作底数，不下做功定论"))
 
         // 学业文书（学历三查：印根气定底、财克印降档、大运补印升档；文昌学堂只作旁证）
         let yinR = rootInfo(["正印", "偏印"])
@@ -702,9 +742,34 @@ extension InterpretEngine {
         var xue = xueParts.joined(separator: "；") + "。"
         if sha.contains("文昌") { xue += "盘带文昌，考试临场与文字关口有旁证助力。" }
         if sha.contains("学堂") { xue += "另带学堂，正统学业缘有旁证。" }
+        // 文理倾向＋考证运（取象参考：印主文、食伤主技、财主商；考证窗口只列大运，不下年份定数）
+        let wenLi = (yin >= 2 && guan >= 2) ? "文史哲教、政法管理一类（印官双见）" : (yin >= 2 ? "文史哲教一类（印星主文）" : (guan >= 2 ? "政法管理一类（官杀主权）" : (shi >= 2 ? "理工技艺一类（食伤主技）" : (cai >= 2 ? "商科财经一类（财星主商）" : "文理兼修，凭兴趣定"))))
+        xue += "文理倾向：\(wenLi)。"
+        var kaoNote = ""
+        for i in ch.dayunGanZhi.indices {
+            let st = ch.dayunStartYear(i)
+            if st <= ch.birthYear + 40 && st + 9 >= ch.birthYear + 22 {
+                let ss = BaziTables.shiShen(day: dayStem, stem: ch.dayunGanZhi[i].first!)
+                if ss == "正印" || ss == "偏印" || ss == "正官" || ss == "七杀" { kaoNote = "考证运：\(ch.dayunGanZhi[i])运（\(st)起，\(st - ch.birthYear)~\(st - ch.birthYear + 10)岁）运干\(ss)，是拿证、评职称的窗口期\((ss == "正印" || ss == "偏印") ? "，深造（考研／读研）亦利" : "")"; break }
+            }
+        }
+        if !kaoNote.isEmpty { xue += kaoNote + "。" }
         out.append(item("学业文书", xue,
             "印星根气：\(rootText(yinR))；财星计数 \(cai)；文昌\(sha.contains("文昌") ? "见" : "不见")、学堂\(sha.contains("学堂") ? "见" : "不见")",
             "学历三查（工作室纪律 27＋第 38 轮修正）：印星根气定底、财克印降档、大运补印升档并叠加时代基线；文昌学堂只作旁证（《三命通会》印绶论、神煞表）"))
+
+        // 天赋能力（主导十神＋日主五行定天赋取向；天赋须岁运引动，不作定数与等级）
+        let talent: String
+        switch dom.0 {
+        case "食伤": talent = "表达创造型天赋：理解快、表达强、动手欲旺，适合需要输出的领域（写作、设计、技术、教学表达）；弱在久坐积累，须配一个长线基本盘。"
+        case "印星": talent = "学习研究型天赋：吸收扎实、记性好、耐得住冷板凳，适合研究、教育、医疗、技术权威路线；弱在变现慢，须配一个出口。"
+        case "官杀": talent = "管理执行型天赋：对规则与目标敏感，执行力与抗压性强，适合带团队、做项目、走管理线；弱在弹性，须留一块自由地。"
+        case "财星": talent = "经营交易型天赋：对价值与机会敏感，谈判、运营、生意场是主场；弱在守成，须配制度锁财。"
+        default: talent = "竞争协作型天赋：自我驱动强、不服输，适合竞争性、开拓性事务；弱在单打独斗，须配互补型搭档。"
+        }
+        out.append(item("天赋能力", talent + "日主\(wxN[dayWx])的底色是\(natureWx)。",
+            "主导十神 \(dom.0)；日主 \(ch.rizhu)（\(wxN[dayWx])）",
+            "天赋取向按主导十神定（类象通说）；天赋只作取向，不作定数与等级"))
 
         // 事业方向
         let hangYe = ["木": "教育、文创、医药、园林纺织", "火": "能源、电子、餐饮、传媒娱乐", "土": "地产、建筑、农业、仓储", "金": "金融、机械、五金、法务军警", "水": "物流、贸易、旅游、水产航运"]
@@ -720,6 +785,15 @@ extension InterpretEngine {
         if (touSet.contains("正官") || touSet.contains("七杀")) && (touSet.contains("正印") || touSet.contains("偏印")) {
             career += "官印有理会：官星生印、印星护身的链条在透干上连通，平台给你的名分能落到实处。"
         }
+        // 五阶段发展路线（前五步大运各标喜忌；体制内外与创业合伙只按十神结构定取向）
+        let phaseNames = ["积累期", "起步期", "爆发期", "转型期", "守成期"]
+        let stages = (0..<min(5, ch.dayunGanZhi.count)).map { i in
+            let sa = ch.dayunStartYear(i) - ch.birthYear
+            return "\(phaseNames[i])\(sa)~\(sa + 10)岁\(ch.dayunGanZhi[i])运\(dayunMark(chart: ch, index: i))"
+        }
+        career += "五阶段路线：\(stages.joined(separator: "；"))（喜运宜进取、忌运宜守成，中性运宜稳进）。"
+        let tiZhi = guan >= 3 ? "体制内、大机构是主场" : (shi >= 3 && cai >= 1 ? "创业、自营、手艺变现是主场" : "体制内外皆可，凭平台与手艺两条腿走")
+        career += tiZhi + "；" + (bi >= 3 ? "合伙须谨慎（比劫重，账目、分工、退出机制先立字据）" : "合伙可为，宜选互补型搭档") + "。"
         out.append(item("事业方向", career,
             cntText + "；身\(level)（扶抑初判），喜用先取\(xiWx)",
             "十神定事业形态（类象通说）；行业以喜用五行取象（五行类象通说，与调候无关）；官印理会出《滴天髓》何知章"))
@@ -740,7 +814,7 @@ extension InterpretEngine {
         else if level == "偏弱" && cai >= 3 { wealth = "财多身弱：机会和钱的动静都不小，但自己兜不住——求财忌贪大，先练承载（身体、团队、现金流），能守住的才是你的财。" }
         else if level == "偏强" && cai >= 2 { wealth = "身强财旺：能扛财、能聚财，求财路子正大光明地走就行；偏财机会看得懂才取，看不懂的放过。" }
         else { wealth = "财星有根有度：正业收入是主干，偏财是点缀；钱的进出节奏平稳，败在人情与冲动，不败在没机会。" }
-        let kuBranch: Character = ["未", "戌", "戌", "丑", "辰"][dayWx]
+        let kuBranch: Character = ["未", "戌", "辰", "丑", "辰"][dayWx]
         let ku = ch.pillars.filter { $0.last! == kuBranch }.count
         wealth += ku > 0 ? "你的财库在\(kuBranch)支，盘里见 \(ku) 处——财有入库之象：攒钱靠制度（自动储蓄、不动产、定期），逢冲库之年财动大、进出都猛。" : "盘里不见你的财库（\(kuBranch)支），钱来钱去偏活，攒钱全靠规则外置（单独账户、固定转存）。"
         // C1 财气通门户（《滴天髓》何知章）：食伤生财链连通且财有根才算通，量级升一档；不通则不升档
@@ -750,9 +824,24 @@ extension InterpretEngine {
         } else if shi > 0 && (cai == 0 || caiR.rootIdx.isEmpty) {
             wealth += "何知章「财气通门户」一查：食伤有气但财路未通（财不见或无根），量级先按现有档看，不宜高估。"
         }
+        // 破耗年份预警（近十二年内前三处：冲财库／冲日支／流年干比劫夺财；只列类型与年份，不下定数）
+        var poHao: [String] = []
+        let nowY = Calendar.current.component(.year, from: Date())
+        for y in nowY...(nowY + 11) {
+            let gz = YearEngine.report(chart: ch, year: y).gz
+            let yb = gz.last!
+            var reasons: [String] = []
+            if BaziTables.relationFull(yb, kuBranch)?.0 == "冲" { reasons.append("冲财库\(kuBranch)") }
+            if BaziTables.relationFull(yb, ch.dayPillar.last!)?.0 == "冲" { reasons.append("冲日支") }
+            let yss = BaziTables.shiShen(day: dayStem, stem: gz.first!)
+            if yss == "比肩" || yss == "劫财" { reasons.append("流年干比劫夺财") }
+            if !reasons.isEmpty { poHao.append("\(y)年\(gz)（\(reasons.joined(separator: "、"))）") }
+            if poHao.count >= 3 { break }
+        }
+        if !poHao.isEmpty { wealth += "破耗年份预警：\(poHao.joined(separator: "；"))——这些年份钱财进出大，忌借贷担保与冲动置产。" }
         out.append(item("财运形态", wealth,
             "财星合计 \(cai)，日主\(level)（扶抑初判）；财库\(kuBranch)支见 \(ku) 处；财根气：\(rootText(caiR))",
-            "财星量级看身与财的任受（扶抑通说）；财库随日主五行定（木未、火戌、土戌、水辰、金丑，《三命通会》墓库说）；财气通门户出《滴天髓》何知章"))
+            "财星量级看身与财的任受（扶抑通说）；财库随日主五行定（木未、火戌、土辰、水辰、金丑，《三命通会》墓库说）；财气通门户出《滴天髓》何知章"))
 
         // 婚姻感情
         let spouseNames = ch.gender == "M" ? ["正财", "偏财"] : ["正官", "七杀"]
@@ -797,6 +886,21 @@ extension InterpretEngine {
         }
         love += dayRels.isEmpty ? "夫妻宫（日支）安静无冲合：婚姻主打一个稳，波动多来自外部节奏而非结构本身。" : "夫妻宫有牵动：\(dayRels.joined(separator: "、"))——关系里有动象，相处要留沟通的余地，忌冷战积压。"
         if sha.contains("桃花") { love += "带桃花，人缘魅力在线，已婚后更要立边界。" }
+        // 相处模式＋配偶象义（取象参考，非典籍断法；应期口径见上 C9）
+        let spWxIdx = ch.gender == "M" ? (dayWx + 2) % 5 : (dayWx + 3) % 5
+        let spMode: String
+        switch ch.hideShiShen[2].first ?? "" {
+        case "正官", "七杀": spMode = "规矩守约型：相处讲分寸与承诺，忌翻旧账、忌冷战"
+        case "正印", "偏印": spMode = "照顾包容型：相处靠体贴与退让，忌把付出当筹码"
+        case "食神", "伤官": spMode = "表达直接型：有话直说、情绪外放，忌话赶话升级"
+        case "正财", "偏财": spMode = "务实经营型：相处重过日子与分工，忌为钱伤情"
+        case "比肩", "劫财": spMode = "朋友伙伴型：相处像队友、重平等与空间，忌互相较劲"
+        default: spMode = "平稳相处型：按日支本气看不出强取向，沟通节奏最重要"
+        }
+        let spXiang = ["木": "仁厚上进，文教、园林、医药一类", "火": "热情明快，传媒、能源、餐饮一类", "土": "稳重务实，实业、地产、仓储一类", "金": "利落果断，金融、法务、军警一类", "水": "灵活善变，贸易、物流、旅游一类"][wxN[spWxIdx]]!
+        love += "配偶象义：配偶星\(wxN[spWxIdx])行，伴侣偏\(spXiang)气质。相处模式：\(spMode)。"
+        let qingGuan = spouse == 0 ? "感情观随缘：不强求、等运来" : (spouseR.rootIdx.isEmpty ? "感情观重感觉：先动心、后落地" : "感情观务实：重承诺、重过日子")
+        love += "感情观：\(qingGuan)。"
         out.append(item("婚姻感情", love,
             "\(ch.gender == "M" ? "男命以财为配偶星" : "女命以官杀为配偶星")，合计 \(spouse)，根气：\(rootText(spouseR))；日支 \(db)",
             "配偶星定位（《三命通会》六亲论）；夫妻宫看日支冲合（通说）；藏星应期口径（禄地／填实／冲库年份类型）出纪律 43③、42③"))
@@ -865,6 +969,7 @@ extension InterpretEngine {
         if bi == 0 { sib = "比劫不现：手足缘薄，独生或与兄弟姐妹疏远的信息强；人生路上同辈助力少，靠自己。" }
         else if bi >= 4 { sib = "比劫成势：兄弟姐妹多或同辈圈子重——助力大，分账与边界也要清；手足是你一生的重要变量。" }
         else { sib = "比劫有根：手足缘分在正常档，同辈之间守望相助型；具体个数不凭一星下定数。" }
+        sib += bi >= 3 ? "合作原则：可合作但须白纸黑字（分工、分账、退出机制先立）。" : "合作原则：宜选互补型搭档，分工清楚、账目分明。"
         out.append(item("兄弟姐妹", sib, "比劫合计 \(bi)；月柱 \(ch.monthPillar)",
             "比劫为手足星、月柱为兄弟宫（六亲通说）；只给缘分厚薄，不下个数定数"))
 
@@ -891,6 +996,16 @@ extension InterpretEngine {
             healthChecks.append("印星受克之运段：\(keYinYun.prefix(2).joined(separator: "、"))运干为财克印，恢复力低谷的提醒放在这些年段")
         }
         if !healthChecks.isEmpty { health += "三查另见：" + healthChecks.joined(separator: "；") + "。" }
+        // 调养防范期（忌神当令的大运段，只列前两步；只作提醒，不落病名）
+        var fangFan: [String] = []
+        for i in ch.dayunGanZhi.indices {
+            if dayunMark(chart: ch, index: i) == "忌" { fangFan.append("\(ch.dayunGanZhi[i])运（\(ch.dayunStartYear(i) - ch.birthYear)岁起）") }
+            if fangFan.count >= 2 { break }
+        }
+        if !fangFan.isEmpty { health += "调养防范期：\(fangFan.joined(separator: "、"))为忌神当令之运，作息、体检与慢性消耗要提前安排。" }
+        // 节气养生（按最弱五行取象，非医疗建议）
+        let yangSheng = ["木": "春季养肝（早睡、少怒、护眼）", "火": "夏季养心（午休、静心、少熬夜）", "土": "长夏养脾（规律饮食、少生冷）", "金": "秋季养肺（润燥、早睡、护呼吸道）", "水": "冬季养肾（藏精、保暖、少透支）"][weakest]!
+        health += "节气养生：\(yangSheng)。"
         out.append(item("健康倾向", health,
             "五行占比 " + (0..<5).map { "\(wxN[$0])\(Int(pct[$0].rounded()))" }.joined(separator: " ") + "；日主\(level)",
             "五行配脏腑五窍（《素问》：肝开窍于目、心开窍于舌）；三查出工作室《健康与寿元》十神与健康（枭神夺食／杀旺攻身／印星受克之运）；只给部位倾向，不落病名"))
@@ -924,6 +1039,9 @@ extension InterpretEngine {
             ? "带天乙贵人：这是命理里第一贵人星——你一生不缺关键时刻拉一把的人，贵人运在线，平时要经营、要惜福。"
             : "不带天乙贵人：贵人运不靠天给，靠事后口碑攒——把每件小事做漂亮，就是你的贵人制造机。"
         if yin >= 2 { noble += "印星又有根，长辈缘与师长缘双在线，遇事多问一句长辈不吃亏。" }
+        // 贵人属相（日支三合贵人，传统应用参考）
+        let sanHeXiao: [Character: [String]] = ["申": ["猴", "鼠", "龙"], "子": ["猴", "鼠", "龙"], "辰": ["猴", "鼠", "龙"], "寅": ["虎", "马", "狗"], "午": ["虎", "马", "狗"], "戌": ["虎", "马", "狗"], "巳": ["蛇", "鸡", "牛"], "酉": ["蛇", "鸡", "牛"], "丑": ["蛇", "鸡", "牛"], "亥": ["猪", "兔", "羊"], "卯": ["猪", "兔", "羊"], "未": ["猪", "兔", "羊"]]
+        if let gx = sanHeXiao[ch.dayPillar.last!] { noble += "贵人属相：\(gx.joined(separator: "、"))（日支三合贵人，传统应用参考）。" }
         out.append(item("贵人与人际", noble,
             "贵人类神煞：\(sha.filter { $0.contains("贵人") || $0.contains("德") || $0 == "文昌" || $0 == "学堂" }.isEmpty ? "不见" : sha.filter { $0.contains("贵人") || $0.contains("德") || $0 == "文昌" || $0 == "学堂" }.sorted().joined(separator: "、"))；印星 \(yin)",
             "天乙贵人为贵人总星（《三命通会》神煞论）"))
@@ -942,6 +1060,13 @@ extension InterpretEngine {
         else if yin >= 2 { home = "印星主房产凭靠：置业多得长辈助力或政策红利，买房看文书与产权，手续齐全比价格更重要。" }
         else { home = "田宅不是你的强项宫：置业顺其自然，有闲钱再置，不必为买房压垮现金流；租房与置业的福气差不大。" }
         if motherR.rootIdx.contains(0) || motherR.rootIdx.contains(1) { home += "年月印星有根，置业一事多有长辈或家族助力之象。" }
+        // 置业时机（只列大运窗口，不下年份定数）
+        var zhiYeWin = ""
+        for i in ch.dayunGanZhi.indices {
+            let ss = BaziTables.shiShen(day: dayStem, stem: ch.dayunGanZhi[i].first!)
+            if ss == "正印" || ss == "偏印" || ss == "正财" || ss == "偏财" { zhiYeWin = "置业窗口：\(ch.dayunGanZhi[i])运（\(ch.dayunStartYear(i))起）运干\(ss)，是置业、换房易动的运段"; break }
+        }
+        if !zhiYeWin.isEmpty { home += zhiYeWin + "。" }
         out.append(item("置业田宅", home,
             "土占比 \(Int(pct[2].rounded()))%，印星 \(yin)，财库\(kuBranch)支见 \(ku) 处",
             "土为田宅之象、印为房产文书（类象通说）"))

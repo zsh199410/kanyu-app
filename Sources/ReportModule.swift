@@ -37,8 +37,8 @@ enum ReportBuilder {
             for line in r.lines { L.append("  · \(line)") }
         }
         L.append("")
-        // 2026-10-31 批次二核对结论：此前命书只含四柱／大运／逐年／紫微摘要，未含解盘 25 维；
-        // 此处补一页「维度摘要」：25 维逐条标题＋该维首行结论（首句按「。」切分），不改已验证的排盘字段引用。
+        // 2026-10-31 批次二核对结论：此前命书只含四柱／大运／逐年／紫微摘要，未含解盘 30 条；
+        // 此处补一页「维度摘要」：30 条逐条标题＋该维首行结论（首句按「。」切分），不改已验证的排盘字段引用。
         let dims = InterpretEngine.interpret(chart: ch)
         L.append("【解盘维度摘要（\(dims.count)维）】")
         for (i, it) in dims.enumerated() {
@@ -46,14 +46,20 @@ enum ReportBuilder {
             L.append("\(i + 1). \(it.title)：\(first)")
         }
         L.append("")
-        L.append("【紫微摘要】")
+        L.append("【双术合参 · 交叉印证】")
         let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
                                    longitude: person.useLongitude ? person.longitude : nil)
+        for v in BaziZiweiCrossEngine.verdicts(bazi: ch, ziwei: zw) {
+            L.append("\(v.title)［\(v.kind.rawValue)］：\(v.verdict)")
+            L.append("  八字：\(v.bazi)；紫微：\(v.ziwei)")
+        }
+        L.append("")
+        L.append("【紫微摘要】")
         let ming = zw.palaces[zw.mingGong]
         L.append("\(zw.juName)，命宫在\(ming.stem)\(ZiweiCore.DZ[ming.branch])，主星：\(ming.majors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: "、"))；身宫在\(zw.palaces[zw.shenGong].name)")
         for c in ZiweiReading.cards(chart: zw) { L.append("\(c.title)：\(c.conclusion)") }
         L.append("")
-        L.append("口径：八字五典为据、结论带依据链；逐年为四查规则生成，重断须多项引动同现，健康只给倾向、六亲生死不在此列。紫微为三合派。娱乐与研习参考。")
+        L.append("口径：八字五典为据、结论带依据链；逐年为四查规则生成，重断须多项引动同现，健康只给倾向、非西医疾病诊断、六亲生死不在此列。紫微为三合派。娱乐与研习参考。")
         return L
     }
 

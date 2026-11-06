@@ -464,7 +464,6 @@ struct YunQiPageView: View {
 
 // MARK: - 我的与系统设置页
 struct MyView: View {
-    @AppStorage("showFPS") private var showFPS = true
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
@@ -494,14 +493,6 @@ struct MyView: View {
                     myLink("books.vertical.fill", "风水知识与解煞手册", "玄空八宅测法 · 17类形煞L1-L3分层化解", Ky.cinnabar) { ShaHandbookView() }
                 }
 
-                Toggle("首页显示实时帧率", isOn: $showFPS)
-                    .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                    .padding(.horizontal, 14).padding(.vertical, 12)
-                    .background(Ky.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
-                Text("本机屏幕最高 \(Int(UIScreen.main.maximumFramesPerSecond))帧；静止时屏幕会降到 10 帧待机，划动时的数字才是真帧率。")
-                    .font(.caption).foregroundStyle(Ky.sub)
             }
             .padding(16)
             .padding(.bottom, 32)
