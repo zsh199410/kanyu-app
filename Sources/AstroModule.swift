@@ -112,7 +112,7 @@ let ramcRad = lst * .pi / 180.0
 let epsRad = 23.4392911 * .pi / 180.0
 let latRad = latitude * .pi / 180.0
 
-let ascDeg = (atan2(cos(ramcRad), -(sin(ramcRad) * cos(epsRad) + tan(latRad) * sin(epsRad))) * 180.0 /.pi + 360.0).truncatingRemainder(dividingBy: 360.0)
+let ascDeg = (atan2(cos(ramcRad), -(sin(ramcRad) * cos(epsRad) + tan(latRad) * sin(epsRad))) * 180.0 / .pi + 360.0).truncatingRemainder(dividingBy: 360.0)
 
 func signInfo(_ deg: Double) -> (ZodiacSign, Double) {
 let i = Int(deg / 30.0) % 12
