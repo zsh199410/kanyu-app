@@ -326,7 +326,8 @@ struct YucedanPosterLayout: View {
         self.pal = pal
     }
 
-    private var items: [InterpretItem] { InterpretEngine.interpret(chart: chart) + InterpretEngine.dimensions(chart: chart) }
+    // interpret() 内部已含 dimensions() 的 23 维（见 InterpretModule.swift:169），不必再拼一次
+    private var items: [InterpretItem] { InterpretEngine.interpret(chart: chart) }
     private func itemConclusion(_ titles: String...) -> String {
         for t in titles {
             if let c = items.first(where: { $0.title == t })?.conclusion, !c.isEmpty { return c }
