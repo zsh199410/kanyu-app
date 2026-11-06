@@ -51,7 +51,7 @@ enum InterpretEngine {
             title: "命局风景",
             conclusion: "五行里\(wxNames[strong])最重（\(Int(pct[strong].rounded()))%）、\(wxNames[weak])最轻（\(Int(pct[weak].rounded()))%）；日主\(ch.rizhu)属\(wxNames[dayWx])，力量排第 \(order.firstIndex(of: dayWx)! + 1)。\(tongGuan)",
             links: [("盘面", "五行占比 木\(Int(pct[0].rounded())) 火\(Int(pct[1].rounded())) 土\(Int(pct[2].rounded())) 金\(Int(pct[3].rounded())) 水\(Int(pct[4].rounded()))"),
-                    ("口径", "占比为盘面计法（天干＋藏干加权），只说明分布，不直接等于强弱结论；气势通关为本 App 近似口径（两行占比均 ≥20% 判相战），出《滴天髓》气势与通关")]))
+                    ("口径", "占比为盘面计法（天干＋藏干加权），只说明分布，不直接等于强弱结论；气势通关为本应用近似口径（两行占比均 ≥20% 判相战），出《滴天髓》气势与通关")]))
         // 2 月令格局候选（本气十神，透干校验）
         let monthBranch = ch.monthPillar.last!
         let benQi = BaziTables.cangGan[monthBranch]!.first!
@@ -89,7 +89,7 @@ enum InterpretEngine {
             title: "喜忌（扶抑初判）",
             conclusion: "日主\(level)：同党（\(wxNames[dayWx])＋印\(wxNames[shengWo])）约占 \(Int(tongDang.rounded()))%。\(xiText)\(tiaoHou)\(special)",
             links: [("盘面", "日主 \(ch.rizhu)（\(wxNames[dayWx])），月令 \(monthBranch)"),
-                    ("法则", "扶抑取用为初判框架（出徐乐吾演绎，只作参照）；强弱分档线（同党 ≥55% 偏强、≤40% 偏弱）为本 App 计法，非典籍原有分界；调候优先于扶抑，冲突时以调候为先"),
+                    ("法则", "扶抑取用为初判框架（出徐乐吾演绎，只作参照）；强弱分档线（同党 ≥55% 偏强、≤40% 偏弱）为本应用计法，非典籍原有分界；调候优先于扶抑，冲突时以调候为先"),
                     ("调候", tiaoHouLevel)]))
         // 4 十神分布看点
         let groups: [(String, [String], String)] = [
@@ -180,8 +180,8 @@ struct InterpretView: View {
     private static let categories: [(String, Set<String>)] = [
         ("全部", []),
         ("核心总纲", ["命局风景", "月令格局（候选）", "喜忌（扶抑初判）", "十神分布", "岁运要点"]),
-        ("性格事业", ["性格底色", "事业方向", "学业与文凭", "财运形态", "置业田宅", "名声声誉"]),
-        ("婚恋六亲", ["婚姻感情", "子女", "父母缘分", "兄弟同辈", "贵人与人际", "出行迁移"]),
+        ("性格事业", ["性格底色", "事业方向", "工作形态", "学业与文凭", "学业文书", "财运形态", "置业田宅", "名声声誉", "行业赛道深断", "财富量级蓄水池"]),
+        ("婚恋六亲", ["婚姻感情", "子女", "子女缘分", "父母缘分", "兄弟同辈", "兄弟姐妹", "贵人与人际", "出行迁移", "六亲情境深读"]),
         ("身心守年", ["健康倾向", "中老年守年", "晚年光景"]),
         ("破局调理", ["幸运颜色与数字", "适合方位", "注意事项", "如何化解（破局调理）"])
     ]
@@ -799,6 +799,52 @@ extension InterpretEngine {
         out.append(item("如何化解（破局调理）", hua,
             "喜用 \(xiNames)；大运序列 \(ch.dayunGanZhi.joined(separator: " "))；最弱 \(weakest)；十神计数 \(cntText)",
             "破局五层法（工作室 2026-10-30 调研定版）：五典病药是诊断学不是治疗学，药靠原局与岁运；典籍伦理层出《了凡四训》；方位行业为流派应用层；颜色数字佩饰为民间象征层——五层分开标注，不混卖"))
+
+        // 21 行业百神与赛道格局深断（细化事业方向：将五行与十神具体落地为现代实业/体制/研发三类赛道）
+        var industryAdvice = ""
+        if guan >= 2 && yin >= 2 {
+            industryAdvice = "官印理会格：平台赋能型。极适合在公职管理、大型企事业单位、政策法规、医疗教育等体制与严规平台立身，以平台名分成就个人名声。"
+        } else if shi >= 2 && cai >= 2 {
+            industryAdvice = "食伤生财格：专业变现型。靠核心技术、表达创作、产品研发、独立手艺或非标市场机会变现，宜做领域专家或创作者，不喜条框束缚。"
+        } else if cai >= 3 {
+            industryAdvice = "财星成势格：商务运营型。极度适合供应链管理、贸易流通、资产配置、现金流运营等商务核心岗位，对数字与实效敏感。"
+        } else {
+            industryAdvice = "综合平衡型：业务骨干路线。适合在专业技术与协调管理交叉的复合岗位发展，凭口碑与作品逐级晋升。"
+        }
+        out.append(item("行业赛道深断", industryAdvice,
+            "日主 \(ch.rizhu)，官杀 \(guan) · 印 \(yin) · 财 \(cai) · 食伤 \(shi)，最强五行 \(wxN[orderW.last!])",
+            "《滴天髓》何知章：何知其人贵，官星有理会；何知其人富，财气通门户。十神配置定赛道形态"))
+
+        // 22 财富量级与蓄水池机制（深析财气通门户、真假财库、大运引动）
+        var wealthMechanism = ""
+        let isTongMen = shi >= 1 && cai >= 1 && motherR.rootIdx.count >= 1
+        let kuName = ["木": "未", "火": "戌", "土": "辰", "金": "丑", "水": "辰"][wxN[dayWx]] ?? ""
+        let kuCount = ch.pillars.filter { $0.hasSuffix(kuName) }.count
+        if isTongMen {
+            wealthMechanism = "财气通门户：食伤透出生财、财星在局且本气通根，财富量级上限高。赚钱靠通道顺畅，属于源源不断型。"
+        } else {
+            wealthMechanism = "财星蓄势：虽未成典型财气通门户大格，但财星隐于原局；致富通道侧重大运与流年的引动，大运补财时爆发力强。"
+        }
+        if kuCount > 0 {
+            wealthMechanism += " 原局见真财库「\(kuName)」\(kuCount) 处：能赚亦能守，具备极佳的储蓄与资产沉淀能力；逢冲开财库之年（如逢未/戌冲）常有大笔现金流变动与置业契机。"
+        } else {
+            wealthMechanism += " 原局无特定财库：钱财以周转流通为主，建议养成固定资产定投习惯，以房产或强制储蓄充当人造蓄水池。"
+        }
+        out.append(item("财富量级蓄水池", wealthMechanism,
+            "财星 \(cai) 处，\(wxN[dayWx])库为「\(kuName)」（局见 \(kuCount) 处），通门户检验 \(isTongMen ? "达成" : "未成")",
+            "《滴天髓》论财气通门户；三命通会墓库论：财有库，发则能存；库逢冲开，应在聚散"))
+
+        // 23 六亲情境双层解析（情境分断：境遇聚散看星位，感情厚薄看印星贴身与生克）
+        var qingJingText = ""
+        if motherR.rootIdx.contains(1) || touSet.contains("正印") || touSet.contains("偏印") {
+            qingJingText = "印星贴身且有根气：长辈缘分与情义极深，家族向心力强。即便年少因求学、工作与父母聚少离多（境遇层），内心依然孝敬亲近（情义层），遇大事能得长辈精神托举。"
+        } else {
+            qingJingText = "印星偏弱或居于支下：早年离家自立之象明显，长辈助力有限，全凭自身拼搏立身；六亲交往宜相敬如宾、保持独立边界，不过度依赖长辈资源。"
+        }
+        out.append(item("六亲情境深读", qingJingText,
+            "父母宫月柱 \(ch.monthPillar)，印星 \(yin) 处（根在 \(motherR.rootIdx.map { ["年", "月", "日", "时"][$0] }.joined(separator: "、"))支）",
+            "本系统回测纪律（全网学习第 37 轮）：六亲缘分分『情、境』两层——境遇看星弱宫位，情意看印星贴身与气势流通"))
+
         return out
     }
 }

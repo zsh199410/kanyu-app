@@ -257,7 +257,7 @@ struct BirthInputView: View {
             if s.hour == 23 {
                 HStack(spacing: 5) {
                     Image(systemName: "moon.stars").foregroundStyle(Ky.cinnabar)
-                    Text("夜子时（23:00–24:00）：当前按口径设置（默认日柱算当日、时干按次日推）")
+                    Text("夜子时（23:00–24:00）：当前按口径设置（默认 sect=2 日柱算当日、时干按次日推）")
                 }.foregroundStyle(Ky.cinnabar)
             }
             if let jq = Self.nearestJieQiText(lunar: l, clock: clock) {
@@ -314,8 +314,8 @@ private struct TimePickerSheet: View {
                                     "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"]
     private static let weekdays = ["日", "一", "二", "三", "四", "五", "六"]
     private static let decades: [(String, Int)] = [
-        ("60后", 1965), ("70后", 1975), ("80后", 1985), ("90后", 1994),
-        ("00后", 2004), ("10后", 2015), ("20后", 2024)
+        ("40后", 1945), ("50后", 1955), ("60后", 1965), ("70后", 1975),
+        ("80后", 1985), ("90后", 1994), ("00后", 2004), ("10后", 2015), ("20后", 2024)
     ]
 
     private var curHour: Int { mode == 0 ? sh : lh }

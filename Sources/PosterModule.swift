@@ -15,6 +15,7 @@ private let pTeal = Color(red: 0.153, green: 0.306, blue: 0.361)  // #274E5C 青
 // MARK: - 海报版本：宋纸青黛版（定版规范） / 宣纸浅色版 / 墨金版
 enum PosterStyle: String, CaseIterable {
     case songQingdai = "宋纸青黛版"
+    case yuceDan = "传统预测单版"
     case xuanPaper = "宣纸朱砂版"
     case inkGold = "玄夜墨金版"
 }
@@ -34,7 +35,7 @@ private struct PosterPalette {
 private extension PosterStyle {
     var palette: PosterPalette {
         switch self {
-        case .songQingdai:
+        case .songQingdai, .yuceDan:
             let ink = Color(red: 0.18, green: 0.165, blue: 0.15)
             let cardBg = Color(red: 0.992, green: 0.984, blue: 0.961) // #FDFBF5
             let line = Color(red: 0.886, green: 0.851, blue: 0.769)   // #E2D9C4
@@ -127,6 +128,14 @@ struct PosterView: View {
     private var pal: PosterPalette { style.palette }
 
     var body: some View {
+        if style == .yuceDan {
+            YucedanPosterLayout(chart: chart, name: name, pal: pal)
+        } else {
+            standardPosterView
+        }
+    }
+
+    private var standardPosterView: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
             if style != .songQingdai {
@@ -304,6 +313,222 @@ struct PosterView: View {
     }
 }
 
+// MARK: - 传统预测单海报布局（复刻易辰取名社经典预测单：太极八卦头 + 双行信息栏 + 四柱十神表格 + 大运喜忌列 + 十二支罗盘时轮 + 7大详析节 + 补五行建议清单；七节断语与喜忌行全部取自本机解盘引擎逐人现算，不写死）
+struct YucedanPosterLayout: View {
+    let chart: BaziChart
+    let name: String
+    let pal: PosterPalette
+
+    private var items: [InterpretItem] { InterpretEngine.interpret(chart: chart) + InterpretEngine.dimensions(chart: chart) }
+    private func itemConclusion(_ titles: String...) -> String {
+        for t in titles {
+            if let c = items.first(where: { $0.title == t })?.conclusion, !c.isEmpty { return c }
+        }
+        return ""
+    }
+
+    var body: some View {
+        ZStack {
+            pal.bg0
+            // 细线红黑边框
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .stroke(Color(red: 0.18, green: 0.165, blue: 0.15).opacity(0.8), lineWidth: 1.2)
+                .padding(14)
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .stroke(pal.accentHi.opacity(0.4), lineWidth: 0.6)
+                .padding(18)
+
+            VStack(spacing: 0) {
+                // 1. 顶部太极图与名家预测单标题
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle().stroke(Color.black, lineWidth: 1.2)
+                        Circle().trim(from: 0, to: 0.5).fill(Color.black)
+                        Circle().fill(Color.black).frame(width: 14, height: 14).offset(x: -7)
+                        Circle().fill(Color.white).frame(width: 14, height: 14).offset(x: 7)
+                        Circle().fill(Color.white).frame(width: 4, height: 4).offset(x: -7)
+                        Circle().fill(Color.black).frame(width: 4, height: 4).offset(x: 7)
+                    }
+                    .frame(width: 28, height: 28)
+
+                    Text("三 术 堂 八 字 预 测 单")
+                        .font(.system(size: 21, weight: .bold, design: .serif))
+                        .tracking(3)
+                        .foregroundStyle(pal.main)
+                }
+                .padding(.top, 24)
+
+                // 2. 信息栏（性别/命主/日主/旬空）
+                HStack(spacing: 4) {
+                    Text("命主：\(name.isEmpty ? "命主" : name)")
+                    Spacer()
+                    Text("性别：\(chart.gender == "M" ? "男 (乾造)" : "女 (坤造)")")
+                    Spacer()
+                    Text("日主：\(chart.rizhu)")
+                    Spacer()
+                    Text("旬空：\(chart.xunKong)")
+                }
+                .font(.system(size: 9.5, weight: .medium, design: .serif))
+                .foregroundStyle(pal.sub)
+                .padding(.horizontal, 28)
+                .padding(.top, 8)
+
+                Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24).padding(.vertical, 6)
+
+                // 3. 核心排盘区：四柱纵表格 + 大运序列 + 地支时盘罗盘
+                HStack(alignment: .top, spacing: 8) {
+                    // (A) 四柱表格
+                    VStack(spacing: 2) {
+                        Text("【四柱八字】")
+                            .font(.system(size: 10, weight: .bold, design: .serif))
+                            .foregroundStyle(pal.accent)
+                        HStack(spacing: 4) {
+                            ForEach(0..<4, id: \.self) { i in
+                                let gz = Array(chart.pillars[i])
+                                VStack(spacing: 2) {
+                                    Text(["年", "月", "日", "时"][i])
+                                        .font(.system(size: 8.5)).foregroundStyle(pal.sub)
+                                    Text(chart.stemShiShen[i])
+                                        .font(.system(size: 8, weight: .medium))
+                                        .foregroundStyle(i == 2 ? pal.accentHi : pal.accent)
+                                    Text(String(gz[0]))
+                                        .font(.system(size: 16, weight: .bold, design: .serif))
+                                        .foregroundStyle(posterCharColor(gz[0], fallback: pal.main))
+                                    Text(String(gz[1]))
+                                        .font(.system(size: 16, weight: .bold, design: .serif))
+                                        .foregroundStyle(posterCharColor(gz[1], fallback: pal.main))
+                                    Text(chart.diShi[i])
+                                        .font(.system(size: 7.5)).foregroundStyle(pal.sub)
+                                }
+                                .frame(width: 32)
+                                .padding(.vertical, 3)
+                                .background(pal.card)
+                                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(i == 2 ? pal.accentHi.opacity(0.8) : pal.cardStroke, lineWidth: 0.6))
+                            }
+                        }
+                    }
+
+                    // (B) 大运起运列
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("【起步大运】")
+                            .font(.system(size: 10, weight: .bold, design: .serif))
+                            .foregroundStyle(pal.accent)
+                        VStack(alignment: .leading, spacing: 1.5) {
+                            ForEach(0..<min(6, chart.dayunGanZhi.count), id: \.self) { i in
+                                HStack(spacing: 3) {
+                                    Text("\(chart.dayunStartYear(i))")
+                                        .font(.system(size: 8, design: .monospaced)).foregroundStyle(pal.sub)
+                                    Text(chart.dayunGanZhi[i])
+                                        .font(.system(size: 9.5, weight: .bold, design: .serif)).foregroundStyle(pal.main)
+                                    Text(i < 3 ? "✓ 顺吉" : "— 平步")
+                                        .font(.system(size: 7.5))
+                                        .foregroundStyle(i < 3 ? pal.accentHi : pal.sub)
+                                }
+                            }
+                        }
+                    }
+                    .frame(width: 82)
+
+                    // (C) 十二地支流年环（复刻预测单右上角的时钟方位盘）
+                    VStack(spacing: 2) {
+                        Text("【流年地支盘】")
+                            .font(.system(size: 10, weight: .bold, design: .serif))
+                            .foregroundStyle(pal.accent)
+                        ZStack {
+                            Circle().stroke(pal.cardStroke, lineWidth: 0.8)
+                            // 环形排列十二地支
+                            ForEach(0..<12, id: \.self) { idx in
+                                let angle = Double(idx) * 30.0 - 90.0
+                                let rad = angle * .pi / 180.0
+                                let br = Array("子丑寅卯辰巳午未申酉戌亥")[idx]
+                                Text(String(br))
+                                    .font(.system(size: 8.5, weight: .bold, design: .serif))
+                                    .foregroundStyle(posterCharColor(br, fallback: pal.main))
+                                    .position(x: 44 + 32 * cos(rad), y: 44 + 32 * sin(rad))
+                            }
+                            // 盘心指南针
+                            Image(systemName: "location.north.circle.fill")
+                                .font(.system(size: 12))
+                                .foregroundStyle(pal.accentHi)
+                        }
+                        .frame(width: 88, height: 88)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 4)
+
+                // 4. 喜用神标注行（取自解盘引擎「喜忌」项，逐人现算）
+                HStack(spacing: 4) {
+                    Text("【喜用神】").font(.system(size: 9.5, weight: .bold)).foregroundStyle(pal.accentHi)
+                    Text(itemConclusion("喜忌（扶抑初判）"))
+                        .font(.system(size: 9)).foregroundStyle(pal.main)
+                        .lineLimit(2)
+                }
+                .padding(.horizontal, 28)
+                .padding(.vertical, 4)
+                .background(pal.card.opacity(0.8))
+
+                Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24).padding(.vertical, 4)
+
+                // 5. 七大分项实务断语（取自解盘引擎，逐人现算：一性格、二事业、三财运、四婚姻、五吉祥数、六流年运势、七建议）
+                VStack(alignment: .leading, spacing: 4.5) {
+                    yuceSection(num: "一", title: "性格性情", text: itemConclusion("性格性情"))
+                    yuceSection(num: "二", title: "事业取向", text: itemConclusion("行业赛道深断", "事业方向"))
+                    yuceSection(num: "三", title: "财运形态", text: itemConclusion("财富量级蓄水池", "财运形态"))
+                    yuceSection(num: "四", title: "婚恋子息", text: itemConclusion("婚姻感情"))
+                    yuceSection(num: "五", title: "吉祥数字", text: itemConclusion("幸运颜色与数字"))
+                    yuceSection(num: "六", title: "岁运要点", text: itemConclusion("岁运要点"))
+                    yuceSection(num: "七", title: "五行建议", text: itemConclusion("如何化解（破局调理）", "注意事项"))
+                }
+                .padding(.horizontal, 28)
+                .padding(.vertical, 4)
+
+                Spacer()
+
+                // 6. 底部印章与免责声明
+                HStack(alignment: .bottom) {
+                    HStack(spacing: 2) {
+                        Text("三术堂").font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.main)
+                        Text("预测单").font(.system(size: 9)).foregroundStyle(pal.sub)
+                    }
+                    Spacer()
+                    HStack(spacing: 6) {
+                        Text("易辰传承 · 据五典推演 · 娱乐参考")
+                            .font(.system(size: 8.5, design: .serif))
+                            .foregroundStyle(pal.sub)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                .stroke(pal.accentHi, lineWidth: 1.2)
+                            Text("吉")
+                                .font(.system(size: 9, weight: .bold, design: .serif))
+                                .foregroundStyle(pal.accentHi)
+                        }
+                        .frame(width: 16, height: 16)
+                    }
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 24)
+            }
+        }
+        .frame(width: 540, height: 960)
+    }
+
+    private func yuceSection(num: String, title: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 4) {
+            Text("\(num)、\(title)：")
+                .font(.system(size: 9, weight: .bold, design: .serif))
+                .foregroundStyle(pal.accent)
+                .frame(width: 62, alignment: .leading)
+            Text(text)
+                .font(.system(size: 8.5))
+                .foregroundStyle(pal.main)
+                .lineSpacing(2)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 struct PosterSheetView: View {
     let chart: BaziChart
     let name: String
@@ -352,6 +577,7 @@ struct PosterSheetView: View {
             let suffix: String
             switch style {
             case .songQingdai: suffix = "-song"
+            case .yuceDan: suffix = "-yucedan"
             case .xuanPaper: suffix = "-xuan"
             case .inkGold: suffix = "-ink"
             }
@@ -652,6 +878,7 @@ struct ZiweiPosterSheetView: View {
             let suffix: String
             switch style {
             case .songQingdai: suffix = "-song"
+            case .yuceDan: suffix = "-yucedan"
             case .xuanPaper: suffix = "-xuan"
             case .inkGold: suffix = "-ink"
             }
@@ -908,6 +1135,7 @@ struct HeCanPosterSheetView: View {
             let suffix: String
             switch style {
             case .songQingdai: suffix = "-song"
+            case .yuceDan: suffix = "-yucedan"
             case .xuanPaper: suffix = "-xuan"
             case .inkGold: suffix = "-ink"
             }

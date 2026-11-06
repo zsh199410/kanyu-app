@@ -532,6 +532,7 @@ struct BaziResultView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             plateCard
+            yucedanSummaryCard
             deepDiveGrid
             wuxingCard
             timeCard
@@ -539,6 +540,72 @@ struct BaziResultView: View {
             infoCard
         }
         .sheet(isPresented: $showDetail) { pillarDetailView(detailPillar) }
+    }
+
+    // MARK: - 易辰预测单式直断速览卡（对标预测单 7 大实务项：喜忌/行业/婚姻/财库一目了然；吉数吉色按喜用五行现算，不写死）
+    private var yucedanSummaryCard: some View {
+        let dayStem = chart.rizhu.first!
+        let dayWx = BaziTables.wx[dayStem]?.0 ?? ""
+        let pct = chart.wuxingPercents
+        let shengWo = { switch dayWx { case "木": return "水"; case "火": return "木"; case "土": return "火"; case "金": return "土"; default: return "金" } }()
+        let tong = (pct[KyV2.elementIndex(dayWx) ?? 0] + pct[KyV2.elementIndex(shengWo) ?? 0])
+        let level = tong >= 55 ? "偏强" : (tong <= 40 ? "偏弱" : "中和")
+        let ku = ["木": "未", "火": "戌", "土": "辰", "金": "丑", "水": "辰"][dayWx] ?? ""
+        let kuCount = chart.pillars.filter { $0.hasSuffix(ku) }.count
+        // 吉数吉色按喜用五行现算：偏弱喜生扶（印星＋比劫），否则喜克泄耗（食伤＋财＋官）
+        let wxOrder = ["木", "火", "土", "金", "水"]
+        let dayIdx = wxOrder.firstIndex(of: dayWx) ?? 2
+        let xiWx: [String] = level == "偏弱" ? [shengWo, dayWx] : [wxOrder[(dayIdx + 1) % 5], wxOrder[(dayIdx + 2) % 5], wxOrder[(dayIdx + 3) % 5]]
+        let numMap = ["木": "3、8", "火": "2、7", "土": "5、0", "金": "4、9", "水": "1、6"]
+        let colorMap = ["木": "绿、青", "火": "红", "土": "黄", "金": "白、金", "水": "黑、蓝"]
+        let xiNums = xiWx.compactMap { numMap[$0] }.joined(separator: "、")
+        let xiColors = xiWx.compactMap { colorMap[$0] }.joined(separator: "、")
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                KySectionTitle(title: "八字预测单直断速览", trailing: "实务七项要诀")
+                Spacer()
+                NavigationLink { PosterSheetView(chart: chart, name: name) } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "photo.artframe")
+                        Text("出预测单海报 ›")
+                    }
+                    .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                }.buttonStyle(.plain)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text("【喜用神】").font(.caption).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
+                    Text(level == "偏弱" ? "喜生扶（印星\(shengWo)、比劫\(dayWx)）· 调候温润为先" : "喜克泄耗（食伤、财星、官杀）· 忌再添重党")
+                        .font(.caption).foregroundStyle(Ky.ink)
+                    Spacer()
+                    KyBadge(text: "身\(level)", color: level == "偏弱" ? Ky.gold : Ky.qingdai)
+                }
+
+                HStack(spacing: 8) {
+                    Text("【财星财库】").font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
+                    Text(kuCount > 0 ? "原局见真财库「\(ku)」\(kuCount)处，财运聚散有存，防库逢冲动荡" : "原局无特定财库，周转流通为主，宜配置固定资产")
+                        .font(.caption).foregroundStyle(Ky.ink)
+                }
+
+                HStack(spacing: 8) {
+                    Text("【事业赛道】").font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+                    Text("优先契合喜用五行与强神行业：规矩平台/技术变现两利，方位宜向喜用方扩展")
+                        .font(.caption).foregroundStyle(Ky.ink)
+                }
+
+                HStack(spacing: 8) {
+                    Text("【吉数吉色】").font(.caption).fontWeight(.bold).foregroundStyle(Ky.jade)
+                    Text("日常喜用 \(xiNums)（\(xiWx.joined(separator: "、"))）数；穿衣家居宜\(xiColors)")
+                        .font(.caption).foregroundStyle(Ky.ink)
+                }
+            }
+            .padding(11)
+            .background(Ky.elevated)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .kyCard()
     }
 
     // MARK: - 核心四柱命盘卡（消除旧版重复四柱按钮行，直接在四柱列点击查看详情，干支按五行分色）
