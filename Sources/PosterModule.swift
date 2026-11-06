@@ -598,7 +598,7 @@ Text("依据：日主\(xj.level)（同党约\(Int(xj.tongDang.rounded()))%）\(x
 Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24).padding(.vertical, 4)
 
 // 5. 七大实务断语（结构化分段，拒绝挤成一团；正文取自解盘引擎，逐人现算）
-VStack(alignment:.leading, spacing: 5) {
+VStack(alignment:.leading, spacing: 6) {
 yuceSection(num: "一", title: "性格", rows: [
 ("1. 气势底色", conclusion("命局风景")),
 ("2. 禀赋行事", conclusion("性格性情")),
@@ -712,7 +712,7 @@ Text(note).font(.system(size: 9)).foregroundStyle(pal.sub)
 ForEach(rows.indices, id: \.self) { j in
 (Text("\(rows[j].0)：").font(.system(size: 9.5, weight:.bold, design:.serif)).foregroundStyle(pal.accent)
 + Text(rows[j].1).font(.system(size: 9.5)).foregroundStyle(pal.main))
-.lineSpacing(1.5)
+.lineSpacing(2.0)
 .lineLimit(2)
 .fixedSize(horizontal: false, vertical: true)
 }

@@ -313,6 +313,7 @@ private struct TimePickerSheet: View {
     @State private var ly = 2000; @State private var lmo = 1; @State private var ld = 1
     @State private var lh = 12; @State private var lmi = 0; @State private var leap = false
     @State private var unknown = false
+    @State private var useWheel = false  // 输入方式：false 点选日历 / true 紧凑滚轮
     @State private var yearText = ""
     @State private var seeded = false
 
@@ -372,15 +373,28 @@ private struct TimePickerSheet: View {
                     .pickerStyle(.segmented)
                     .onChange(of: mode) { _ in convertDraft() }
 
+                    Picker("输入方式", selection: $useWheel) {
+                        Text("点选日历").tag(false)
+                        Text("年月日时滚轮").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+
                     previewCard
 
                     VStack(alignment: .leading, spacing: 12) {
-                        yearRow
-                        decadeBar
-                        Divider()
-                        monthRow
-                        dayGrid
+                        if useWheel {
+                            eraBar
+                            wheelView
+                        } else {
+                            yearRow
+                            decadeBar
+                            eraBar
+                            Divider()
+                            monthRow
+                            dayGrid
+                        }
                         if mode == 1 {
+                            leapChip
                             if hasLeapChoice {
                                 Toggle("闰\(Self.lunarMonths[lmo - 1])", isOn: $leap)
                                     .tint(Ky.qingdai)
@@ -507,6 +521,109 @@ private struct TimePickerSheet: View {
                 }
             }
         }
+    }
+
+    // MARK: 年代快跳（长辈时代／新生儿）——点一下跳到该段中位年份，免反复点按
+    private var eraBar: some View {
+        HStack(spacing: 6) {
+            eraButton("长辈时代", "1930–1959", 1930...1959, 1945)
+            eraButton("新生儿", "2020–2026", 2020...2026, 2023)
+            Spacer()
+        }
+    }
+    private func eraButton(_ label: String, _ rangeText: String, _ range: ClosedRange<Int>, _ yr: Int) -> some View {
+        let curY = mode == 0 ? sy : ly
+        let active = range.contains(curY)
+        return Button {
+            if mode == 0 { sy = yr; sd = min(sd, solarDayCount) }
+            else { ly = yr; ld = min(ld, lunarDayCount) }
+            yearText = "\(yr)"
+            yearFieldFocused = false
+        } label: {
+            HStack(spacing: 4) {
+                Text(label).font(.caption2).fontWeight(.semibold)
+                Text(rangeText).font(.caption2)
+            }
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(active ? Ky.gold : Ky.gold.opacity(0.12))
+            .foregroundStyle(active ? Color.white : Ky.ink)
+            .clipShape(Capsule())
+        }.buttonStyle(.plain)
+    }
+
+    // MARK: 闰月快捷芯片——当年有闰月即浮现，点一下直跳闰月（原 Toggle 只在已选闰月时才出现）
+    private var leapChip: some View {
+        Group {
+            if mode == 1, leapMonthOfYear != 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "moon.fill").font(.caption2).foregroundStyle(Ky.qingdai)
+                    Text("今年闰\(Self.lunarMonths[leapMonthOfYear - 1])")
+                        .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
+                    Spacer()
+                    if lmo == leapMonthOfYear, leap {
+                        Text("已在闰月").font(.caption2).foregroundStyle(Ky.sub)
+                    } else {
+                        Button("跳至闰月") {
+                            lmo = leapMonthOfYear; leap = true; ld = min(ld, lunarDayCount)
+                        }
+                        .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                    }
+                }
+                .padding(.horizontal, 10).padding(.vertical, 7)
+                .background(Ky.qingdai.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+    }
+
+    // MARK: 年月日时紧凑滚轮——与点选日历双轨并存，随历法切换公历／农历
+    private var yearBinding: Binding<Int> {
+        Binding(get: { mode == 0 ? sy : ly }, set: { y in
+            if mode == 0 { sy = y; sd = min(sd, solarDayCount) }
+            else { ly = y; ld = min(ld, lunarDayCount) }
+            yearText = "\(y)"
+        })
+    }
+    private var monthBinding: Binding<Int> {
+        Binding(get: { mode == 0 ? smo : lmo }, set: { m in
+            if mode == 0 { smo = m; sd = min(sd, solarDayCount) }
+            else { lmo = m; leap = false; ld = min(ld, lunarDayCount) }
+        })
+    }
+    private var dayBinding: Binding<Int> {
+        Binding(get: { mode == 0 ? sd : ld }, set: { d in
+            if mode == 0 { sd = d } else { ld = d }
+        })
+    }
+    private var wheelBranch: Binding<Int> {
+        Binding(get: { curBranch }, set: { pickBranch($0) })
+    }
+    private var wheelView: some View {
+        HStack(spacing: 2) {
+            Picker("年", selection: yearBinding) {
+                ForEach(1920...2035, id: \.self) { y in Text("\(y)").tag(y) }
+            }
+            .pickerStyle(.wheel).frame(width: 84, height: 132).clipped()
+            Picker("月", selection: monthBinding) {
+                ForEach(1...12, id: \.self) { m in
+                    Text(mode == 0 ? "\(m)月" : Self.lunarMonths[m - 1]).tag(m)
+                }
+            }
+            .pickerStyle(.wheel).frame(width: 66, height: 132).clipped()
+            Picker("日", selection: dayBinding) {
+                ForEach(1...dayCount, id: \.self) { d in
+                    Text(mode == 0 ? "\(d)日" : Self.lunarDays[d - 1]).tag(d)
+                }
+            }
+            .pickerStyle(.wheel).frame(width: 66, height: 132).clipped()
+            Picker("时辰", selection: wheelBranch) {
+                ForEach(0..<12, id: \.self) { i in
+                    Text("\(Self.branches[i]) \(Self.branchRange[i])").tag(i)
+                }
+            }
+            .pickerStyle(.wheel).frame(width: 96, height: 132).clipped()
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func stepYear(_ d: Int) {

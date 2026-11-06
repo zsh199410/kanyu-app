@@ -164,6 +164,97 @@ enum BaziTables {
         if he[a] == b { return "合" }
         return nil
     }
+
+    // MARK: - 原局刑冲合会动态高亮（build-95）
+    // 规则源：knowledge/刑冲合会害破.md——天干五合化气、六合化气、三合（中神铁则）、六冲要旨、六害（穿）、三刑。
+    // 只算指令列的六种：天干五合、地支六合、三合局、六冲、相刑、穿害（六破与伏吟不入高亮）。
+    struct PillarRelation: Hashable {
+        let kind: String      // 五合 / 六合 / 三合 / 六冲 / 相刑 / 穿害
+        let pillars: [Int]    // 原局中被牵动的柱下标（0 年 1 月 2 日 3 时）
+        let text: String      // 白话提示句
+    }
+    static let wuHeMap: [Character: (Character, String)] = [
+        "甲": ("己", "土"), "己": ("甲", "土"),
+        "乙": ("庚", "金"), "庚": ("乙", "金"),
+        "丙": ("辛", "水"), "辛": ("丙", "水"),
+        "丁": ("壬", "木"), "壬": ("丁", "木"),
+        "戊": ("癸", "火"), "癸": ("戊", "火")
+    ]
+    // 三合按生—旺—墓顺序列（与知识库一致）；center 为中神，缺中神不成局
+    static let sanHeGroups: [(display: String, members: Set<Character>, center: Character, wx: String)] = [
+        ("申子辰", ["申", "子", "辰"], "子", "水"),
+        ("亥卯未", ["亥", "卯", "未"], "卯", "木"),
+        ("寅午戌", ["寅", "午", "戌"], "午", "火"),
+        ("巳酉丑", ["巳", "酉", "丑"], "酉", "金")
+    ]
+    // 六合化气（午未合土从通说，另有合火一说见知识库）
+    static let liuHeWx: [Character: String] = [
+        "子": "土", "丑": "土", "寅": "木", "亥": "木", "卯": "火", "戌": "火",
+        "辰": "金", "酉": "金", "巳": "水", "申": "水", "午": "土", "未": "土"
+    ]
+    // 六冲白话要旨（知识库原文缩写）
+    static let chongNote: [String: String] = [
+        "子午": "谋动变迁，日常秩序易动", "丑未": "谋事不遂，宜缓不宜急",
+        "寅申": "道路相冲，人事易动", "卯酉": "门户分异，失脱更改",
+        "辰戌": "悲喜交集，进出都猛", "巳亥": "事多反复，重求轻得"
+    ]
+    static let palaceNames = ["年柱", "提纲", "夫妻宫", "子女宫"]
+    static func wxIdxOfName(_ n: String) -> Int { ["木", "火", "土", "金", "水"].firstIndex(of: n) ?? 0 }
+    // 五行相对日主的十神类别：0 比劫 1 食伤 2 财 3 官 4 印
+    static func wxRoleName(dayWx: Int, keyWx: Int) -> String {
+        ["比劫", "食伤", "财", "官", "印"][(keyWx - dayWx + 5) % 5]
+    }
+    /// 点一柱（或下钻某步大运／某年流年）时，算出与之发生五合／六合／三合／冲／刑／穿的原局柱。
+    /// sourcePillar 为点柱下标；下钻大运流年时为 nil（源不在原局内，sourceLabel 为 "丁丑运" / "2026 丙午年"）。
+    static func pillarRelations(pillars: [String], dayWx: Int, sourcePillar: Int?, sourceStem: Character, sourceBranch: Character, sourceLabel: String) -> [PillarRelation] {
+        var out: [PillarRelation] = []
+        let cols = ["年柱", "月柱", "日柱", "时柱"]
+        let srcName = sourceLabel.isEmpty ? cols[sourcePillar ?? 0] : sourceLabel
+        // 天干五合
+        if let (partner, huaWx) = wuHeMap[sourceStem] {
+            for (i, p) in pillars.enumerated() where i != sourcePillar && p.first! == partner {
+                let role = wxRoleName(dayWx: dayWx, keyWx: wxIdxOfName(huaWx))
+                out.append(PillarRelation(kind: "五合", pillars: [i], text: "\(srcName)\(sourceStem)与\(cols[i])\(partner)五合化\(huaWx)，合入\(role)"))
+            }
+        }
+        // 地支六合／六冲／相刑／穿害（逐柱对）
+        for (i, p) in pillars.enumerated() where i != sourcePillar {
+            let b = p.last!
+            if let r = relationFull(sourceBranch, b) {
+                switch r.0 {
+                case "合":
+                    let huaWx = liuHeWx[sourceBranch] ?? ""
+                    let role = wxRoleName(dayWx: dayWx, keyWx: wxIdxOfName(huaWx))
+                    out.append(PillarRelation(kind: "六合", pillars: [i], text: "\(srcName)\(sourceBranch)与\(cols[i])\(b)六合化\(huaWx)，合入\(role)"))
+                case "冲":
+                    let note = chongNote["\(sourceBranch)\(b)"] ?? chongNote["\(b)\(sourceBranch)"] ?? "谋动变迁"
+                    out.append(PillarRelation(kind: "六冲", pillars: [i], text: "\(srcName)\(sourceBranch)冲\(cols[i])\(b)，\(palaceNames[i])受冲：\(note)"))
+                case "刑":
+                    out.append(PillarRelation(kind: "相刑", pillars: [i], text: "\(srcName)\(sourceBranch)刑\(cols[i])\(b)，\(palaceNames[i])有刑：上下不相合，宜缓不宜急"))
+                case "穿":
+                    out.append(PillarRelation(kind: "穿害", pillars: [i], text: "\(srcName)\(sourceBranch)穿\(cols[i])\(b)，\(palaceNames[i])有穿：事多阻抑，宜守不宜进"))
+                default:
+                    break
+                }
+            }
+        }
+        // 地支三合局（源支＋其余柱支凑齐三支、且中神在列才成局；下钻时源支可补第三支）
+        var present = Set<Character>([sourceBranch])
+        for (i, p) in pillars.enumerated() where i != sourcePillar { present.insert(p.last!) }
+        for g in sanHeGroups where g.members.contains(sourceBranch) {
+            if g.members.isSubset(of: present), present.contains(g.center) {
+                var idxs: [Int] = []
+                if let sp = sourcePillar { idxs.append(sp) }
+                for (i, p) in pillars.enumerated() where i != sourcePillar && g.members.contains(p.last!) { idxs.append(i) }
+                let role = wxRoleName(dayWx: dayWx, keyWx: wxIdxOfName(g.wx))
+                let text = sourceLabel.isEmpty
+                    ? "\(g.display)三合\(g.wx)局，引动\(role)"
+                    : "\(srcName)与原局成\(g.display)三合\(g.wx)局，引动\(role)"
+                out.append(PillarRelation(kind: "三合", pillars: idxs, text: text))
+            }
+        }
+        return out
+    }
     static func monthGanZhi(yearStem: Character, monthBranch: Character) -> String {
         let startMap: [Character: Int] = ["甲":2,"己":2,"乙":4,"庚":4,"丙":6,"辛":6,"丁":8,"壬":8,"戊":0,"癸":0]
         let off = (DZ.firstIndex(of: monthBranch)! - DZ.firstIndex(of: "寅")! + 12) % 12
@@ -559,6 +650,9 @@ struct BaziResultView: View {
     @State private var detailPillar = 0
     @State private var showDetail = false
     @State private var showShichen = false  // 十二时辰对照默认折叠，不喧宾夺主
+    @State private var selectedPillar: Int? = nil  // 点柱牵动源（nil＝未选）
+    @State private var yunSource: YunSource? = nil  // 下钻大运／流年牵动源（与点柱互斥）
+    @State private var pulse = false  // 呼吸高光相位
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -571,6 +665,90 @@ struct BaziResultView: View {
             infoCard
         }
         .sheet(isPresented: $showDetail) { pillarDetailView(detailPillar) }
+        .onAppear { pulse = true }
+    }
+
+    // MARK: - 刑冲合会动态高亮（build-95：点柱／下钻大运流年，牵动柱呼吸高光＋白话提示）
+    private struct YunSource: Equatable {
+        let stem: Character
+        let branch: Character
+        let label: String  // "丁丑运" / "2026 丙午年"
+    }
+    private func tapHaptic() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+    private var dayWxIdx: Int {
+        ["木", "火", "土", "金", "水"].firstIndex(of: BaziTables.wx[chart.rizhu.first!]?.0 ?? "") ?? 0
+    }
+    private var currentRelations: [BaziTables.PillarRelation] {
+        if let y = yunSource {
+            return BaziTables.pillarRelations(pillars: chart.pillars, dayWx: dayWxIdx, sourcePillar: nil, sourceStem: y.stem, sourceBranch: y.branch, sourceLabel: y.label)
+        }
+        if let p = selectedPillar {
+            let gz = chart.pillars[p]
+            return BaziTables.pillarRelations(pillars: chart.pillars, dayWx: dayWxIdx, sourcePillar: p, sourceStem: gz.first!, sourceBranch: gz.last!, sourceLabel: "")
+        }
+        return []
+    }
+    private var highlightedPillars: Set<Int> {
+        var s = Set<Int>()
+        for r in currentRelations { s.formUnion(r.pillars) }
+        return s
+    }
+    private func highlightColor(for i: Int) -> Color {
+        if selectedPillar == i { return Ky.qingdai }
+        if highlightedPillars.contains(i) { return Ky.cinnabar }
+        return Color.clear
+    }
+    private func highlightOpacity(for i: Int) -> Double {
+        if selectedPillar == i { return 1 }
+        if highlightedPillars.contains(i) { return pulse ? 0.3 : 0.95 }
+        return 0
+    }
+    private var relationTitle: String {
+        if let y = yunSource { return "\(y.label)牵动" }
+        if let p = selectedPillar { return "\(chart.pillars[p])（\([\"年柱\", \"月柱\", \"日柱\", \"时柱\"][p])）牵动" }
+        return ""
+    }
+    private var relationHintView: some View {
+        Group {
+            if !currentRelations.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "link").font(.caption2).foregroundStyle(Ky.qingdai)
+                        Text(relationTitle).font(.caption).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Spacer()
+                        Button("清除") { selectedPillar = nil; yunSource = nil }
+                            .font(.caption2).foregroundStyle(Ky.sub)
+                    }
+                    ForEach(currentRelations, id: \.self) { r in
+                        HStack(alignment: .top, spacing: 6) {
+                            Text(r.kind).font(.caption2).fontWeight(.bold).foregroundStyle(.white)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Ky.qingdai).clipShape(Capsule())
+                            Text(r.text).font(.caption).foregroundStyle(Ky.ink)
+                        }
+                    }
+                }
+                .padding(10)
+                .background(Ky.qingdai.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else if selectedPillar != nil || yunSource != nil {
+                Text("本柱与他柱暂无五合、六合、三合、冲、刑、穿牵动。")
+                    .font(.caption2).foregroundStyle(Ky.sub)
+            }
+        }
+    }
+    private func refreshYunSource() {
+        guard yunSource != nil else { return }
+        if timeLevel == 0 {
+            let gz = chart.dayunGanZhi[safeDayun]
+            yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(gz)运")
+        } else {
+            let y = selectedYear ?? chart.dayunStartYear(safeDayun)
+            let gz = BaziChart.yearGanZhi(y)
+            yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(y) \(gz)年")
+        }
     }
 
 // MARK: - 易辰预测单式直断速览卡（对标预测单 7 大实务项：喜忌/财库/赛道/七项提炼一目了然；
@@ -684,8 +862,10 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
 
             plateGrid(chart)
 
+            relationHintView
+
             HStack {
-                Text("点任意一柱可展开藏干、长生、纳音与神煞详解")
+                Text("点一柱看生克牵动 · 长按看柱位详情 · 点十神／星运看释义")
                     .font(.caption2).foregroundStyle(Ky.sub)
                 Spacer()
                 Button {
@@ -718,11 +898,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
                 let stemEl = KyV2.element(ofChar: stem)
                 let branchEl = KyV2.element(ofChar: branch)
                 let isDay = (i == 2)
-                Button {
-                    detailPillar = i
-                    showDetail = true
-                } label: {
-                    VStack(spacing: 6) {
+                VStack(spacing: 6) {
                         // 柱头＋宫位
                         VStack(spacing: 1) {
                             Text(cols[i])
@@ -734,8 +910,8 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
                         }
                         .padding(.bottom, 2)
 
-                        // 天干十神
-                        Text(isDay ? "日主" : ch.stemShiShen[i])
+                        // 天干十神（点一下弹出释义气泡）
+                        TermButton(term: isDay ? "日主" : ch.stemShiShen[i], display: isDay ? "日主" : ch.stemShiShen[i])
                             .font(.caption2).fontWeight(.semibold)
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background((isDay ? Ky.cinnabar : Ky.qingdai).opacity(0.12))
@@ -773,9 +949,13 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
                                     Text(hg)
                                         .font(.system(size: 11, weight: hi == 0 ? .bold : .regular))
                                         .foregroundStyle(KyV2.color(forChar: hg.first ?? "甲"))
-                                    Text(proMode ? hss : KyV2.shiShenShort(hss))
-                                        .font(.system(size: 10, weight: hi == 0 ? .medium : .regular))
-                                        .foregroundStyle(hi == 0 ? Ky.ink : Ky.sub)
+                                    if hss.isEmpty {
+                                        Text("")
+                                    } else {
+                                        TermButton(term: hss, display: proMode ? hss : KyV2.shiShenShort(hss))
+                                            .font(.system(size: 10, weight: hi == 0 ? .medium : .regular))
+                                            .foregroundStyle(hi == 0 ? Ky.ink : Ky.sub)
+                                    }
                                 }
                             }
                         }
@@ -785,9 +965,12 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
                             Divider().opacity(0.4)
                             // 星运（长生十二宫）＋纳音
                             VStack(spacing: 2) {
-                                Text("长生 · \(ch.diShi[i])")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundStyle(Ky.ink)
+                                HStack(spacing: 0) {
+                                    Text("长生 · ")
+                                    TermButton(term: ch.diShi[i], display: ch.diShi[i])
+                                }
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(Ky.ink)
                                 Text(ch.naYin[i])
                                     .font(.system(size: 9.5))
                                     .foregroundStyle(Ky.sub)
@@ -812,19 +995,32 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
                         RoundedRectangle(cornerRadius: 11)
                             .stroke(isDay ? Ky.cinnabar.opacity(0.55) : Ky.line, lineWidth: isDay ? 1.3 : 0.7)
                     )
-                }
-                .buttonStyle(.plain)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 11)
+                            .stroke(highlightColor(for: i), lineWidth: 1.6)
+                            .opacity(highlightOpacity(for: i))
+                            .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: pulse)
+                    )
+                    .onTapGesture {
+                        tapHaptic()
+                        if selectedPillar == i { selectedPillar = nil } else { selectedPillar = i }
+                        yunSource = nil
+                    }
+                    .onLongPressGesture {
+                        detailPillar = i
+                        showDetail = true
+                    }
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("四柱：年柱 \(ch.pillars[0])，月柱 \(ch.pillars[1])，日柱 \(ch.pillars[2])，时柱 \(ch.pillars[3])，日主 \(ch.rizhu)")
     }
 
-    // MARK: - 四大深度模块 2×2 导航矩阵（解盘25维 / 逐年四查 / 1-88岁规划 / 命盘海报）
+    // MARK: - 四大深度模块 2×2 导航矩阵（解盘28条 / 逐年四查 / 1-88岁规划 / 命盘海报）
     private var deepDiveGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
             NavigationLink { InterpretView(chart: chart, name: name) } label: {
-                hubCard(icon: "text.book.closed.fill", title: "解盘 · 25维详批",
+                hubCard(icon: "text.book.closed.fill", title: "解盘 · 28 条详批",
                         subtitle: "格局喜忌 · 六亲事业 · 依据链", color: Ky.qingdai)
             }.buttonStyle(.plain)
 
@@ -1071,6 +1267,8 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
                 selectedYear = min(max(y, start), start + 9)
             }
         }
+        tapHaptic()
+        refreshYunSource()
     }
 
     private func backToCurrentYear() {
@@ -1084,6 +1282,8 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
         selectedDayun = di
         selectedYear = target
         timeLevel = 1
+        tapHaptic()
+        refreshYunSource()
     }
 
     private var dayunLevel: some View {
@@ -1097,7 +1297,12 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
                         let isCurYun = (nowYear >= startY && nowYear <= startY + 9)
                         let isSel = (i == selectedDayun)
                         let ss = BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!)
-                        Button { selectedDayun = i; selectedYear = startY; timeLevel = 1 } label: {
+                        Button {
+                            tapHaptic()
+                            selectedDayun = i; selectedYear = startY; timeLevel = 1
+                            selectedPillar = nil
+                            yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(gz)运")
+                        } label: {
                             VStack(spacing: 4) {
                                 HStack(spacing: 2) {
                                     Text("\(startY)")
@@ -1145,7 +1350,12 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
                     let gz = BaziChart.yearGanZhi(y)
                     let isNow = (y == nowYear)
                     let isSel = (selectedYear == y)
-                    Button { selectedYear = y; timeLevel = 2 } label: {
+                    Button {
+                        tapHaptic()
+                        selectedYear = y; timeLevel = 2
+                        selectedPillar = nil
+                        yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(y) \(gz)年")
+                    } label: {
                         VStack(spacing: 3) {
                             Text(String(y) + (isNow ? "·今" : ""))
                                 .font(KyV2.tabular(10, weight: isNow ? .bold : .regular))

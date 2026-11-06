@@ -84,6 +84,79 @@ enum InterpretEngine {
         }
         return ""
     }
+
+    // MARK: - 解盘三段式（build-95）
+    /// 核心总纲 5 条不参与三段（本身已是总纲层）；三段只用于 23 维
+    static let coreTitles: Set<String> = ["命局风景", "月令格局（候选）", "喜忌（扶抑初判）", "十神分布", "岁运要点"]
+    /// 每维的关键行：财→财星、官→官星、印→印星、食伤→食伤、日主→比劫；喜用类维取喜用首行
+    static func keyWxIndex(chart ch: BaziChart, title: String) -> Int {
+        let dayWx = wxIndex(of: ch.rizhu.first!)
+        let xiFirst = posterXiJi(chart: ch).xi.first
+        switch title {
+        case "学业文书", "父母缘分", "置业田宅", "贵人与人际", "六亲情境深读", "中老年守年":
+            return (dayWx + 4) % 5  // 印
+        case "事业方向", "工作形态", "名声声誉":
+            return (dayWx + 3) % 5  // 官
+        case "财运形态", "财富量级蓄水池":
+            return (dayWx + 2) % 5  // 财
+        case "婚姻感情":
+            return ch.gender == "M" ? (dayWx + 2) % 5 : (dayWx + 3) % 5  // 男财女官
+        case "子女缘分":
+            return ch.gender == "M" ? (dayWx + 3) % 5 : (dayWx + 1) % 5  // 男官女食伤
+        case "出行迁移", "晚年光景":
+            return (dayWx + 1) % 5  // 食伤
+        case "幸运颜色与数字", "适合方位", "行业赛道深断":
+            return xiFirst ?? dayWx  // 喜用首行；中和盘回落日主
+        default:
+            return dayWx  // 性格性情、兄弟姐妹、健康倾向、注意事项、如何化解等：日主（比劫）
+        }
+    }
+    /// 现行大运下标（今年所在运；未起运取 0，超出取末运）
+    static func currentDayunIndex(chart ch: BaziChart) -> Int {
+        if ch.dayunGanZhi.isEmpty { return 0 }
+        let nowYear = Calendar.current.component(.year, from: Date())
+        var di = 0
+        for i in ch.dayunGanZhi.indices where ch.dayunStartYear(i) <= nowYear { di = i }
+        return di
+    }
+    /// 【岁运引动】句：现行大运干支＋十神＋喜忌标，＋未来三步运里关键行当令情况（运干或运支本气为该行）
+    static func yunHint(chart ch: BaziChart, title: String) -> String {
+        if ch.dayunGanZhi.isEmpty { return "未起运：岁运引动待起运后看。" }
+        let wxN = ["木", "火", "土", "金", "水"]
+        let keyWx = keyWxIndex(chart: ch, title: title)
+        let ci = currentDayunIndex(chart: ch)
+        let gz = ch.dayunGanZhi[ci]
+        let start = ch.dayunStartYear(ci)
+        let ss = BaziTables.shiShen(day: ch.rizhu.first!, stem: gz.first!)
+        let mark = dayunMark(chart: ch, index: ci)
+        let markText = mark == "喜" ? "调候喜用" : (mark == "忌" ? "调候所忌" : "中性")
+        var hits: [String] = []
+        if ci + 1 < ch.dayunGanZhi.count {
+            for j in (ci + 1)...min(ci + 3, ch.dayunGanZhi.count - 1) {
+                let gj = ch.dayunGanZhi[j]
+                let stemWx = wxIndex(of: gj.first!)
+                let branchBen = BaziTables.cangGan[gj.last!]!.first!
+                let branchWx = wxIndex(of: branchBen)
+                if stemWx == keyWx || branchWx == keyWx {
+                    hits.append("\(gj)运（\(ch.dayunStartYear(j))–\(ch.dayunStartYear(j) + 9)）\(dayunMark(chart: ch, index: j))")
+                }
+            }
+        }
+        let hitText = hits.isEmpty
+            ? "未来三步运里\(wxN[keyWx])行未直接当令，靠流年引动"
+            : "未来三步运里\(wxN[keyWx])行当令的有：\(hits.joined(separator: "、"))"
+        return "现行\(gz)运（\(start)–\(start + 9)），运干\(gz.first!)为\(ss)，\(markText)。\(hitText)。"
+    }
+    /// 【现实避坑指南】：风险类维取「如何化解（破局调理）」，其余取「注意事项」（均为引擎已有结论，不另编）
+    static func guideHint(items: [InterpretItem], title: String) -> String {
+        if title == "注意事项" { return conclusion(items: items, titles: "如何化解（破局调理）") }
+        if title == "如何化解（破局调理）" { return conclusion(items: items, titles: "注意事项") }
+        let riskTitles: Set<String> = ["财运形态", "婚姻感情", "子女缘分", "健康倾向", "工作形态", "事业方向", "置业田宅", "中老年守年", "晚年光景", "兄弟姐妹"]
+        if riskTitles.contains(title) {
+            return conclusion(items: items, titles: "如何化解（破局调理）")
+        }
+        return conclusion(items: items, titles: "注意事项")
+    }
     // 穷通调候精选查表（2026-10-31 批次二）：只收有把握的寒月／热月格子，共 19 格；
     // 未入表的格子一律回落寒热粗筛并标注层级，不许凭记忆补填。表述为通说要点，非原文照录。
     private static let tiaoHouTable: [Character: [Character: String]] = [
@@ -229,12 +302,91 @@ enum InterpretEngine {
     }
 }
 
+// MARK: - 术语释义气泡（build-95：点十神／长生／核心术语弹出白话释义；释义取自本系统知识库表达层，不另编断语）
+enum TermGlossary {
+    static let texts: [String: String] = [
+        // 十神（十种关系语言，见 knowledge/类象表.md「十神五关系一句话」）
+        "正官": "克我的力量里最讲规矩的一种：责任、名声、体制内的位置。得位得用为贵，不得制为压。",
+        "七杀": "克我最烈的一种：压力、挑战、魄力。化之为权，不化为压；有制化才可用。",
+        "正印": "生我的力量：学习、庇护、长辈、证照、靠山。印旺主稳，印弱主靠自己。",
+        "偏印": "生我但偏一路：偏门才智、谋略、冷门学问；也主孤僻、想得多。",
+        "比肩": "与我同类的力量：自己、同辈、朋友。帮身也分财，合作先分账。",
+        "劫财": "与我同类但偏争的一路：争财夺利的同辈，钱经同辈之手进出时要先立规矩。",
+        "食神": "我生的温和输出：才华、表达、福气、口福。主顺、主享受、主把本事变现。",
+        "伤官": "我生的锋利输出：主见、才华、不服管。见印收敛成内秀，无制则锋芒外露。",
+        "正财": "我克的正财：正业收入、稳定可控的钱。财要身能任，任不起反为累。",
+        "偏财": "我克的偏财：流动的钱、机会与投机。来得快去得也快，看得懂才取。",
+        "日主": "我，日干。整张盘以日主为中心：其余干支按生克关系定十神，再论强弱喜忌。",
+        // 长生十二宫（只作日主根气辅助参量，不单独断事；见 knowledge/长生十二宫.md）
+        "长生": "十二宫之首：日主刚得生气，根气初萌。只作根气强弱的参考，不单独断事。",
+        "沐浴": "气渐盛而未稳，像刚出浴——易动摇，须防桃花与反复。",
+        "冠带": "气渐成：宜立业、宜穿戴整齐见人，凡事讲体面。",
+        "临官": "气正旺，如官临任：得禄、有位置，是日主最得力的状态之一。",
+        "帝旺": "气最旺：盛极。旺到顶反而要防过头，须有泄有制才稳。",
+        "衰": "气渐退：由旺转弱，宜收不宜扩。",
+        "病": "气弱：根气不足，宜养不宜争。",
+        "死": "气尽：根气断档，须靠岁运补救。",
+        "墓": "气入库收藏：收而不发，待冲开才动。",
+        "绝": "气断：根气全无，须靠岁运引动。",
+        "胎": "气初孕：新气在孕育，未成形，宜等。",
+        "养": "气受养：渐长渐养，宜积累。",
+        // 核心术语
+        "喜用神": "让命局平衡的关键力量（扶正）。喜用不是吉凶判决，是「加水让咖啡顺口」的那个动作。",
+        "忌神": "让命局更失衡的力量，宜避、宜制、宜泄。",
+        "调候": "先看月令寒暖燥湿取用：寒要暖、热要凉、燥要润、湿要燥。调候在格局之前。",
+        "格局": "月令定格：以月令主星看命局的骨架（官、财、印、食神、七杀皆可为格）。",
+        "身强身弱": "日主得不得令、得不得地、得不得势的称重，不是数票。强弱只为取用，不是结论。",
+        "旬空": "旬中空亡的两支：力量落空，逢冲填实才动。",
+        "大运": "十年一换的运程：每步十年，看运干支与原局的生克引动。",
+        "流年": "一年一换的太岁：流年干支与原局、大运三层叠加看应期。",
+        "纳音": "年柱干支的纳音五行，如覆灯火命、长流水命。是年命的别名，不参与生克取用。",
+        "胎元": "受胎之月所落之柱：先天禀赋的底色。",
+        "命宫": "命主之宫：命盘的落点，随盘输出。",
+        "身宫": "身主之宫：身体与晚运的落点，随盘输出。",
+        "神煞": "吉凶神煞（如天乙、文昌、桃花）：只作参考，先格局后神煞。",
+        "三合": "三支成局：申子辰合水、亥卯未合木、寅午戌合火、巳酉丑合金；中神不在，局不成。",
+        "六合": "两支相合：子丑、寅亥、卯戌、辰酉、巳申、午未；合中有生有克，非全吉。",
+        "六冲": "两支相冲：子午、丑未、寅申、卯酉、辰戌、巳亥；冲是克的动态，主变动。",
+        "相刑": "三刑：寅巳申、丑戌未、子卯（无礼），加辰午酉亥自刑；主上下不相合。",
+        "穿害": "六害又称穿：子未、丑午、寅巳、卯辰、申亥、酉戌；主侵损阻抑。",
+        "六破": "六破：子酉、丑辰、寅亥、卯午、巳申、未戌；主破散，破中有生有合。",
+        "伏吟": "同字重现：干支伏吟主同类事反复、动象加倍。",
+        "通关": "两气相战时，中间一行调和：如金木战而水通关。",
+        "扶抑": "扶弱抑强：取用神的基本法，扶日主所弱、抑日主所强。"
+    ]
+    static func text(for term: String) -> String {
+        texts[term] ?? "本术语暂无释义。"
+    }
+}
+
+struct TermButton: View {
+    let term: String
+    let display: String
+    @State private var show = false
+    var body: some View {
+        Button(display) { show = true }
+            .buttonStyle(.plain)
+            .popover(isPresented: $show) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(term).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text(TermGlossary.text(for: term)).font(.callout).foregroundStyle(Ky.ink)
+                    Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。")
+                        .font(.caption2).foregroundStyle(Ky.sub)
+                }
+                .padding(16)
+                .frame(maxWidth: 320)
+                .presentationCompactAdaptation(.popover)
+            }
+    }
+}
+
 struct InterpretView: View {
     let chart: BaziChart
     let name: String
     @StateObject private var speaker = Speaker()
     @State private var selectedCategory = 0
     @State private var searchQuery = ""
+    @State private var showGlossary = false
 
     private static let categories: [(String, Set<String>)] = [
         ("全部", []),
@@ -275,12 +427,23 @@ struct InterpretView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(name.isEmpty ? "本盘" : name) · 25维五典详批")
+                            Text("\(name.isEmpty ? "本盘" : name) · 28 条五典详批")
                                 .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             Text("日主 \(chart.rizhu) · 四柱 \(chart.pillars.joined(separator: " ")) · 每条附盘面与典籍依据")
                                 .font(.caption2).foregroundStyle(Ky.sub)
                         }
                         Spacer()
+                        Button { showGlossary = true } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: "book.fill")
+                                Text("术语")
+                            }
+                            .font(.caption).fontWeight(.semibold)
+                            .padding(.horizontal, 11).padding(.vertical, 6)
+                            .background(Ky.elevated)
+                            .foregroundStyle(Ky.qingdai)
+                            .clipShape(Capsule())
+                        }.buttonStyle(.plain)
                         Button {
                             let textToRead = filteredIndices.map { "\(allItems[$0].title)。\(allItems[$0].conclusion)" }.joined(separator: "。")
                             speaker.read(textToRead)
@@ -297,7 +460,7 @@ struct InterpretView: View {
                         }.buttonStyle(.plain)
                     }
 
-                    // 分类速选胶囊条（解决 25 张卡片一字长蛇阵盲滑痛点）
+                    // 分类速选胶囊条（解决 28 张卡片一字长蛇阵盲滑痛点）
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 7) {
                             ForEach(Self.categories.indices, id: \.self) { cIdx in
@@ -365,20 +528,55 @@ struct InterpretView: View {
                                 .buttonStyle(.plain)
                                 .accessibilityLabel("朗读\(allItems[i].title)")
                             }
+                            if !InterpretEngine.coreTitles.contains(allItems[i].title) {
+                                Text("【原局底牌】").font(.caption2).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+                            }
                             EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links)
+                            if !InterpretEngine.coreTitles.contains(allItems[i].title) {
+                                threePartRows(chart: chart, item: allItems[i], allItems: allItems)
+                            }
                         }
                         .kyCard()
                     }
                 }
 
-                Text("解盘纪律说明：以上 25 维全部由本机确定性排盘数据推导，每条结论附「盘面事实＋典籍根据」可复核；健康只给部位与代谢倾向不落病名；守年只列强引动关口级年份。回测校准级的私人详批以工作室正式报告为准。")
+                Text("解盘纪律说明：以上 28 条（5 条总纲＋23 维）全部由本机确定性排盘数据推导，每条结论附「盘面事实＋典籍根据」可复核；健康只给部位与代谢倾向不落病名；守年只列强引动关口级年份。回测校准级的私人详批以工作室正式报告为准。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
         .background(Ky.bg)
         .onDisappear { speaker.stop() }
-        .navigationTitle(name.isEmpty ? "25维五典解盘" : "解盘 · \(name)")
+        .navigationTitle(name.isEmpty ? "28 条五典解盘" : "解盘 · \(name)")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showGlossary) { glossarySheet }
+    }
+
+    private func threePartRows(chart: BaziChart, item: InterpretItem, allItems: [InterpretItem]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            threePartRow("【岁运引动】", InterpretEngine.yunHint(chart: chart, title: item.title))
+            threePartRow("【现实避坑指南】", InterpretEngine.guideHint(items: allItems, title: item.title))
+        }
+        .padding(.top, 2)
+    }
+    private func threePartRow(_ label: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(label).font(.caption2).fontWeight(.bold).foregroundStyle(Ky.gold).frame(width: 96, alignment: .leading)
+            Text(text).font(.caption).foregroundStyle(Ky.ink)
+        }
+    }
+    private var glossarySheet: some View {
+        NavigationStack {
+            List {
+                ForEach(TermGlossary.texts.keys.sorted(), id: \.self) { term in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(term).font(.callout).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text(TermGlossary.texts[term] ?? "").font(.caption).foregroundStyle(Ky.sub)
+                    }
+                }
+            }
+            .navigationTitle("术语释义").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { showGlossary = false } } }
+        }
     }
 }
 
