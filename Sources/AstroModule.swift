@@ -75,8 +75,8 @@ let year = comp.year ?? 2026, month = comp.month ?? 11, day = comp.day ?? 6
 let hour = comp.hour ?? 12, minute = comp.minute ?? 0
 
 // 1. Julian Day (JD)
-let y = (month <= 2)? year - 1: year
-let m = (month <= 2)? month + 12: month
+let y = (month <= 2) ? year - 1 : year
+let m = (month <= 2) ? month + 12 : month
 let a = floor(Double(y) / 100.0)
 let b = 2.0 - a + floor(a / 4.0)
 let dayFraction = Double(day) + (Double(hour) + Double(minute) / 60.0 - 8.0) / 24.0
@@ -236,7 +236,7 @@ let chart: BaziChart
 @State private var selectedTab: Int = 0
 
 private var astro: AstroChart {
-AstroEngine.calculate(birthDate: person.birthDate, longitude: person.useLongitude? person.longitude: 107.8)
+AstroEngine.calculate(birthDate: person.birthDate, longitude: person.useLongitude ? person.longitude : 107.8)
 }
 
 var body: some View {
@@ -246,7 +246,7 @@ VStack(alignment:.leading, spacing: 14) {
 VStack(alignment:.leading, spacing: 10) {
 HStack {
 VStack(alignment:.leading, spacing: 2) {
-Text("\(person.name.isEmpty? "命主": person.name) · 星命合参")
+Text("\(person.name.isEmpty ? "命主" : person.name) · 星命合参")
 .font(.system(.headline, design:.serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
 Text("日月升三曜 · 东西合参 · 黄道回归历").font(.caption2).foregroundStyle(Ky.gold)
 }
