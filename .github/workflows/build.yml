@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # 每日 06:00 北京时间自动发包（UTC 22:00）：静态审查＋GoldenCharts 金标准门禁＋发布 IPA
+    - cron: '0 22 * * *'
 
 permissions:
   contents: write
