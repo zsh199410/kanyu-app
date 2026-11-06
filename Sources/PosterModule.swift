@@ -328,8 +328,9 @@ self.pal = pal
 
 // MARK: - 数据（全部逐人现算；喜忌口径见 InterpretEngine.posterXiJi：扶抑初判＋调候优先）
 private var items: [InterpretItem] { InterpretEngine.interpret(chart: chart)}
-private func conclusion(_ titles: String...) -> String {
-InterpretEngine.conclusion(items: items, titles: titles)
+private func conclusion(_ t1: String, _ t2: String? = nil) -> String {
+if let t2 { return InterpretEngine.conclusion(items: items, titles: t1, t2) }
+return InterpretEngine.conclusion(items: items, titles: t1)
 }
 private var xj: (xi: [Int], ji: [Int], neutral: [Int], level: String, tongDang: Double, tiaoHou: [Int]) {
 InterpretEngine.posterXiJi(chart: chart)
@@ -459,7 +460,7 @@ Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24).pad
 HStack(alignment:.top, spacing: 6) {
 // (A) 四柱：十神／干支大字／藏干十神／长生
 VStack(spacing: 2) {
-Text("")
+Text("四柱")
 .font(.system(size: 10, weight:.bold, design:.serif))
 .foregroundStyle(pal.accent)
 HStack(spacing: 3) {
@@ -493,7 +494,7 @@ Text(chart.diShi[i])
 
 // (B) 大运：✓/×（调候优先口径）＋运干五行＋干支＋岁数区间
 VStack(alignment:.leading, spacing: 2) {
-Text("")
+Text("大运")
 .font(.system(size: 10, weight:.bold, design:.serif))
 .foregroundStyle(pal.accent)
 VStack(alignment:.leading, spacing: 1.5) {
@@ -507,7 +508,7 @@ Text(Self.wxNames[wxIdx(ofStem: gz.first!)])
 .font(.system(size: 8)).foregroundStyle(pal.sub).frame(width: 10)
 Text(gz)
 .font(.system(size: 9.5, weight:.bold, design:.serif)).foregroundStyle(pal.main)
-Text("\(startAge)~\(startAge + 9)岁")
+Text("\(startAge)~\(startAge + 10)岁")
 .font(.system(size: 8, design:.monospaced)).foregroundStyle(pal.sub)
 }
 }
@@ -517,7 +518,7 @@ Text("\(startAge)~\(startAge + 9)岁")
 
 // (C) 流年地支轮：子北午南、顺时针环列；每支标年份、周岁与 ✓/×，盘心定向指针；红点＝原局四支
 VStack(spacing: 2) {
-Text("")
+Text("流年地支轮")
 .font(.system(size: 10, weight:.bold, design:.serif))
 .foregroundStyle(pal.accent)
 ZStack {
@@ -676,7 +677,7 @@ let mark = InterpretEngine.dayunMark(chart: chart, index: i)
 let verdict = mark == "喜"? "运势旺": (mark == "忌"? "运势弱": "运势平")
 let note = mark == "喜"? "喜用当令，宜进取": (mark == "忌"? "忌神当道，宜守成": "平运可用，宜稳进")
 let markWord = mark == "中性" ? "中性" : (mark == "喜" ? "吉" : "忌")
-return ("\(startAge)~\(startAge + 9)岁", "行\(gz)运（运干\(ss)）\(g)\(markWord)（\(verdict)），\(note)")
+return ("\(startAge)~\(startAge + 10)岁", "行\(gz)运（运干\(ss)）\(g)\(markWord)（\(verdict)），\(note)")
 }
 }
 /// 七·补五行五项：真迹原文＋按喜忌打 ✓/×（中性按可用打 ✓）
