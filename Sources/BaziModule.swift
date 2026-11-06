@@ -707,7 +707,10 @@ struct BaziResultView: View {
     }
     private var relationTitle: String {
         if let y = yunSource { return "\(y.label)牵动" }
-        if let p = selectedPillar { return "\(chart.pillars[p])（\([\"年柱\", \"月柱\", \"日柱\", \"时柱\"][p])）牵动" }
+        if let p = selectedPillar {
+            let cols = ["年柱", "月柱", "日柱", "时柱"]
+            return "\(chart.pillars[p])（\(cols[p])）牵动"
+        }
         return ""
     }
     private var relationHintView: some View {
