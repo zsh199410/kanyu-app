@@ -208,7 +208,7 @@ struct AlmanacView: View {
                 YunQiView(year: info.year)
             }
             .padding(16)
-            .padding(.bottom, 32)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("今日黄历")
@@ -300,7 +300,7 @@ struct AlmanacCalendarCard: View {
                 Button { stepMonth(-1) } label: {
                     Image(systemName: "chevron.left").font(.caption).frame(width: 28, height: 28).background(Ky.elevated).clipShape(Circle())
                 }.accessibilityLabel("上个月")
-                Text("\(safeYear)年\(safeMonth)月")
+                Text("\(String(safeYear))年\(safeMonth)月")
                     .font(KyV2.tabular(14, weight: .bold)).frame(minWidth: 88, alignment: .center)
                 Button { stepMonth(1) } label: {
                     Image(systemName: "chevron.right").font(.caption).frame(width: 28, height: 28).background(Ky.elevated).clipShape(Circle())

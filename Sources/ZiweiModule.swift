@@ -276,7 +276,7 @@ struct ZiweiHomeView: View {
                 }.buttonStyle(.plain)
             }
             .padding(16)
-            .padding(.bottom, 36)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("紫微斗数")
@@ -297,7 +297,7 @@ struct ZiweiHomeView: View {
                         KyBadge(text: ch.juName, color: Ky.gold)
                     }
                 }
-                Text("公历 \(s.year)-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))" + (useLongitude ? " · 东经 \(longitudeText)°" : " · 钟表时间"))
+                Text("公历 \(String(s.year))-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))" + (useLongitude ? " · 东经 \(longitudeText)°" : " · 钟表时间"))
                     .font(KyV2.tabular(12)).foregroundStyle(Ky.sub)
             }
             Spacer()
@@ -336,11 +336,14 @@ struct ZiweiHomeView: View {
                             .font(.caption2).foregroundStyle(Ky.sub)
                         ForEach(peopleStore.people.prefix(8)) { p in
                             Button {
+                                // 速选回填：姓名／性别／生辰／经度全部取自所点档案记录的本地值，
+                                // 排盘与快照也用同一份本地值现算，不依赖刚写入的 @State 重读，保证姓名栏同步回填、快照与输入一致
                                 name = p.name; gender = p.gender; birth = p.birthDate
                                 useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
-                                chart = ZiweiEngine.chart(clock: birth, gender: gender,
-                                                          longitude: useLongitude ? Double(longitudeText) : nil)
-                                chartSnapshot = inputSnapshot; savedTip = true; inputCollapsed = true
+                                chart = ZiweiEngine.chart(clock: p.birthDate, gender: p.gender,
+                                                          longitude: p.useLongitude ? p.longitude : nil)
+                                chartSnapshot = "\(p.name)|\(p.gender)|\(p.birthDate.timeIntervalSince1970)|\(p.useLongitude)|\(String(format: "%.1f", p.longitude))"
+                                savedTip = true; inputCollapsed = true
                             } label: {
                                 HStack(spacing: 4) {
                                     Text(p.name.isEmpty ? "未命名" : p.name).fontWeight(.medium)

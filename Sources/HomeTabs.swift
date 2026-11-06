@@ -77,7 +77,7 @@ struct MonthCalendarTabView: View {
                 }.kyCard()
             }
             .padding(16)
-            .padding(.bottom, 32)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("干支日历").navigationBarTitleDisplayMode(.inline)
@@ -194,7 +194,7 @@ struct ZejiView: View {
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(16)
-            .padding(.bottom, 32)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("择吉通参").navigationBarTitleDisplayMode(.inline)
@@ -257,7 +257,7 @@ struct WealthView: View {
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(16)
-            .padding(.bottom, 32)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("八字论财").navigationBarTitleDisplayMode(.inline)
@@ -301,7 +301,7 @@ struct WealthView: View {
                     let ss = BaziTables.shiShen(day: dayStem, stem: gz.first!)
                     let isCai = (ss == "正财" || ss == "偏财")
                     HStack {
-                        Text("\(ch.dayunStartYear(i))–\(ch.dayunStartYear(i) + 9)")
+                        Text("\(String(ch.dayunStartYear(i)))–\(String(ch.dayunStartYear(i) + 9))")
                             .font(KyV2.tabular(13, weight: .medium)).foregroundStyle(Ky.sub)
                             .frame(width: 86, alignment: .leading)
                         Text("\(gz)运")
@@ -426,7 +426,7 @@ struct CompareView: View {
                 }
             }
             .padding(16)
-            .padding(.bottom, 32)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("多盘并排对比").navigationBarTitleDisplayMode(.inline)
@@ -445,7 +445,7 @@ struct YunQiPageView: View {
                     Button { year = max(1901, year - 1) } label: {
                         Image(systemName: "chevron.left").frame(width: 30, height: 30).background(Ky.elevated).clipShape(Circle())
                     }.accessibilityLabel("上一年")
-                    Text("\(year) 年").font(KyV2.tabular(16, weight: .bold)).frame(minWidth: 80, alignment: .center)
+                    Text("\(String(year)) 年").font(KyV2.tabular(16, weight: .bold)).frame(minWidth: 80, alignment: .center)
                     Button { year = min(2099, year + 1) } label: {
                         Image(systemName: "chevron.right").frame(width: 30, height: 30).background(Ky.elevated).clipShape(Circle())
                     }.accessibilityLabel("下一年")
@@ -455,7 +455,7 @@ struct YunQiPageView: View {
                 YunQiView(year: year)
             }
             .padding(16)
-            .padding(.bottom, 32)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("五运六气").navigationBarTitleDisplayMode(.inline)
@@ -495,7 +495,7 @@ struct MyView: View {
 
             }
             .padding(16)
-            .padding(.bottom, 32)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("档案与设置").navigationBarTitleDisplayMode(.inline)

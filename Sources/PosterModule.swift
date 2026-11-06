@@ -15,7 +15,7 @@ private let pTeal = Color(red: 0.153, green: 0.306, blue: 0.361)  // #274E5C 青
 // MARK: - 海报版本：宋纸青黛版（定版规范） / 宣纸浅色版 / 墨金版
 enum PosterStyle: String, CaseIterable {
     case songQingdai = "宋纸青黛版"
-    case yuceDan = "三术合参预测单版"
+    case yuceDan = "尊享预测单"
     case xuanPaper = "宣纸朱砂版"
     case inkGold = "玄夜墨金版"
 }
@@ -126,6 +126,24 @@ struct PosterView: View {
     private var gejuLine: String { items.first(where: { $0.title == "月令格局（候选）" })?.conclusion ?? "" }
     private var yunLine: String { items.first(where: { $0.title == "岁运要点" })?.conclusion ?? "" }
     private var pal: PosterPalette { style.palette }
+
+    /// 大运卡片下方补实：原局核心神煞（只取天乙／文昌／羊刃／驿马四项，逐人现算）
+    private var coreShenShaLine: String {
+        let all = BaziTables.shenSha(chart).flatMap { $0 }
+        let want = ["天乙贵人", "文昌", "羊刃", "驿马"]
+        let hit = want.filter { w in all.contains { $0.contains(w) } }
+        return hit.isEmpty ? "天乙／文昌／羊刃／驿马未入原局" : hit.joined(separator: " · ")
+    }
+    /// 调候喜忌一句话精析（调候优先口径，与预测单长图同源）
+    private var tiaoHouLine: String {
+        let xj = InterpretEngine.posterXiJi(chart: chart)
+        let n = ["木", "火", "土", "金", "水"]
+        let th = xj.tiaoHou.map { n[$0] }.joined(separator: "、")
+        let xi = xj.xi.map { n[$0] }.joined(separator: "、")
+        let ji = xj.ji.map { n[$0] }.joined(separator: "、")
+        if xj.xi.isEmpty { return "调候用神\(th.isEmpty ? "—" : th)为先；身\(xj.level)，流通为要，不拘固定喜忌" }
+        return "调候用神\(th.isEmpty ? "—" : th)为先；喜\(xi) ✓，忌\(ji.isEmpty ? "无" : ji + " ×")（调候优先）"
+    }
 
     var body: some View {
         if style == .yuceDan {
@@ -269,7 +287,7 @@ struct PosterView: View {
                         VStack(spacing: 3) {
                             Text(chart.dayunGanZhi[i])
                                 .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.main)
-                            Text("\(chart.dayunStartYear(i))起")
+                            Text("\(String(chart.dayunStartYear(i)))起")
                                 .font(.system(size: 9.5, design: .monospaced)).foregroundStyle(pal.sub)
                         }
                         .frame(width: 66, height: 46)
@@ -278,6 +296,18 @@ struct PosterView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 7))
                     }
                 }.padding(.top, 18)
+
+                // 大运卡片下方：核心神煞＋调候喜忌一句话精析（补下半部留白，三款传统海报共用）
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("核心神煞：\(coreShenShaLine)")
+                        .font(.system(size: 10.5, design: .serif)).foregroundStyle(pal.main)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("调候精析：\(tiaoHouLine)")
+                        .font(.system(size: 10.5, design: .serif)).foregroundStyle(pal.sub)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(width: 444, alignment: .leading)
+                .padding(.top, 14)
 
                 Spacer()
 
@@ -505,9 +535,13 @@ Text("日主强弱定档：身\(xj.level)（同党约\(Int(xj.tongDang.rounded()
 Text(tongGuanText)
 .font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
 .fixedSize(horizontal: false, vertical: true)
+.frame(maxWidth: .infinity, alignment: .leading)
+.lineLimit(nil)
 Text("五行占比：\(wxShareText)")
 .font(.system(size: 10, design:.serif)).foregroundStyle(pal.sub)
 .fixedSize(horizontal: false, vertical: true)
+.frame(maxWidth: .infinity, alignment: .leading)
+.lineLimit(nil)
 }
 }
 }
@@ -526,6 +560,8 @@ Text(["年柱", "月柱", "日柱", "时柱"][i] + " " + chart.pillars[i])
 Text(shenShaList[i].isEmpty ? "—" : shenShaList[i].joined(separator: "、"))
 .font(.system(size: 10)).foregroundStyle(pal.main)
 .fixedSize(horizontal: false, vertical: true)
+.frame(maxWidth: .infinity, alignment: .leading)
+.lineLimit(nil)
 }
 }
 }
@@ -544,6 +580,8 @@ Text(row.0)
 Text(row.1)
 .font(.system(size: 10)).foregroundStyle(pal.main)
 .fixedSize(horizontal: false, vertical: true)
+.frame(maxWidth: .infinity, alignment: .leading)
+.lineLimit(nil)
 }
 }
 }
@@ -558,12 +596,18 @@ Text("月令正格与调候精断")
 Text(yueLingText)
 .font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
 .fixedSize(horizontal: false, vertical: true)
+.frame(maxWidth: .infinity, alignment: .leading)
+.lineLimit(nil)
 Text("调候用神（《穷通宝鉴》）：\(tiaoHouNames.isEmpty ? "—" : tiaoHouNames)（\(chart.monthPillar.last ?? "—")月，寒暖燥湿查表，调候优先）")
 .font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
 .fixedSize(horizontal: false, vertical: true)
+.frame(maxWidth: .infinity, alignment: .leading)
+.lineLimit(nil)
 Text(conclusion("月令格局（候选）"))
 .font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
 .lineSpacing(2.0).fixedSize(horizontal: false, vertical: true)
+.frame(maxWidth: .infinity, alignment: .leading)
+.lineLimit(nil)
 ForEach(Array(["木", "火", "土", "金", "水"].enumerated()), id: \.offset) { idx, e in
 let v = chart.wuxingPercents[idx]
 HStack(spacing: 8) {
@@ -635,12 +679,11 @@ yuceSection(num: "五", title: "婚恋感情", rows: [
 ("1. 配偶星与配偶宫", "配偶星\(peiOu.names.joined(separator: "／"))\(peiOu.present ? "入局" : "未入原局")；配偶宫日支\(chart.dayPillar.last!)本气\(peiOu.palace)"),
 ("2. 婚龄与伴侣", conclusion("婚姻感情")),
 ("3. 相处之道", conclusion("六亲情境深读", "婚姻感情")),
-("4. 感情关口与解法", conclusion("如何化解（破局调理）", "婚姻感情")),
+("4. 感情关口与解法", conclusion("婚姻感情")),
 ])
 yuceSection(num: "六", title: "健康调理", rows: [
 ("1. 体质弱项", conclusion("健康倾向")),
-("2. 调理与化解", conclusion("如何化解（破局调理）")),
-("3. 注意事项", conclusion("注意事项")),
+("2. 注意事项", conclusion("注意事项")),
 ])
 }
 .padding(.horizontal, 28)
@@ -657,7 +700,7 @@ Text("终身大运")
 .font(.system(size: 12.5, weight:.bold, design:.serif))
 .foregroundStyle(pal.accent)
 if !chart.dayunGanZhi.isEmpty {
-Text("起运：\(chart.dayunStartYear(0)) 年（约 \(chart.dayunStartYear(0) - chart.birthYear) 岁）起 \(chart.dayunGanZhi[0])运")
+Text("起运：\(String(chart.dayunStartYear(0))) 年（约 \(chart.dayunStartYear(0) - chart.birthYear) 岁）起 \(chart.dayunGanZhi[0])运")
 .font(.system(size: 10, design:.serif)).foregroundStyle(pal.sub)
 }
 VStack(alignment:.leading, spacing: 2.5) {
@@ -699,7 +742,7 @@ VStack(spacing: 0) {
 Text(String(w.branch))
 .font(.system(size: 13, weight:.bold, design:.serif))
 .foregroundStyle(posterCharColor(w.branch, fallback: pal.main))
-Text("\(w.year)")
+Text("\(String(w.year))")
 .font(.system(size: 9, design:.monospaced)).foregroundStyle(pal.sub)
 Text("\(w.age)岁 \(w.glyph)")
 .font(.system(size: 9.5, weight:.bold)).foregroundStyle(w.color)
@@ -739,6 +782,8 @@ Text(row.0)
 Text(row.1)
 .font(.system(size: 10)).foregroundStyle(pal.main)
 .fixedSize(horizontal: false, vertical: true)
+.frame(maxWidth: .infinity, alignment: .leading)
+.lineLimit(nil)
 }
 }
 }
@@ -958,7 +1003,7 @@ InterpretEngine.nextThreeYears(chart: chart).map { y in
 ("\(y.year) \(y.ganzhi)年", y.note)
 }
 }
-/// 专业四柱细盘表（标签列 44＋四柱各 110＝484，正好等于画布 540 − 两侧 28 留白）
+/// 专业四柱细盘表（标签列 44＋尾距 6＋四柱各 108＝482，须小于画布 540 − 两侧 28 留白＝484，写 110 会向右击穿边框）
 private var pillarTable: some View {
 VStack(spacing: 0) {
 pillarRow(label: "", cells: ["年柱", "月柱", "日柱", "时柱"], size: 10, weight: .bold, color: { _ in pal.accent })
@@ -977,7 +1022,7 @@ private func pillarRow(label: String, cells: [String], size: CGFloat, weight: Fo
 HStack(spacing: 0) {
 Text(label).font(.system(size: 9, weight:.medium)).foregroundStyle(pal.sub).frame(width: 44, alignment:.trailing).padding(.trailing, 6)
 ForEach(0..<4, id: \.self) { i in
-Text(cells[i]).font(.system(size: size, weight: weight)).foregroundStyle(color(i)).frame(width: 110).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).padding(.vertical, 2)
+Text(cells[i]).font(.system(size: size, weight: weight)).foregroundStyle(color(i)).frame(width: 108).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).padding(.vertical, 2)
 }
 }
 }
@@ -1014,6 +1059,8 @@ ForEach(rows.indices, id: \.self) { j in
 + Text(rows[j].1).font(.system(size: 10.5)).foregroundStyle(pal.main))
 .lineSpacing(2.0)
 .fixedSize(horizontal: false, vertical: true)
+.frame(maxWidth: .infinity, alignment: .leading)
+.lineLimit(nil)
 }
 }
 }
@@ -1040,12 +1087,12 @@ struct PosterSheetView: View {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 540 * 0.62)
+                        .frame(maxWidth: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
                     ProgressView(style == .yuceDan ? "正在渲染 1080宽长图海报…" : "正在渲染海报…")
-                        .frame(width: 540 * 0.62)
+                        .frame(maxWidth: .infinity)
                 }
 
                 if let u = fileURL {

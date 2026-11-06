@@ -153,7 +153,7 @@ struct LibraryDetailView: View {
                 Text(entry.body).font(.callout).foregroundStyle(Ky.ink)
                 Text("来源：工作室研习知识库（五典纲要与流派应用分层标注处以原文为准）。")
                     .font(.caption2).foregroundStyle(Ky.sub)
-            }.padding(16)
+            }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle(entry.title)

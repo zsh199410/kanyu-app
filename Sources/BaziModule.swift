@@ -530,7 +530,7 @@ struct BaziHomeView: View {
                 }.padding(.horizontal, 4)
             }
             .padding(16)
-            .padding(.bottom, 36)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("八字排盘")
@@ -552,7 +552,7 @@ struct BaziHomeView: View {
                         KyBadge(text: "已存档案", color: Ky.jade)
                     }
                 }
-                Text("公历 \(s.year)-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))" + (useLongitude ? " · 东经 \(longitudeText)°" : " · 钟表时间"))
+                Text("公历 \(String(s.year))-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))" + (useLongitude ? " · 东经 \(longitudeText)°" : " · 钟表时间"))
                     .font(KyV2.tabular(12)).foregroundStyle(Ky.sub)
             }
             Spacer()
@@ -610,11 +610,14 @@ struct BaziHomeView: View {
                             .font(.caption2).foregroundStyle(Ky.sub)
                         ForEach(peopleStore.people.prefix(8)) { p in
                             Button {
+                                // 速选回填：姓名／性别／生辰／经度全部取自所点档案记录的本地值，
+                                // 排盘与快照也用同一份本地值现算，不依赖刚写入的 @State 重读，保证姓名栏同步回填、快照与输入一致
                                 name = p.name; gender = p.gender; birth = p.birthDate
                                 useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
-                                chart = BaziEngine.paipan(clock: birth, gender: gender,
-                                                          longitude: useLongitude ? Double(longitudeText) : nil)
-                                chartSnapshot = inputSnapshot; savedTip = true; inputCollapsed = true
+                                chart = BaziEngine.paipan(clock: p.birthDate, gender: p.gender,
+                                                          longitude: p.useLongitude ? p.longitude : nil)
+                                chartSnapshot = "\(p.name)|\(p.gender)|\(p.birthDate.timeIntervalSince1970)|\(p.useLongitude)|\(String(format: "%.1f", p.longitude))"
+                                savedTip = true; inputCollapsed = true
                             } label: {
                                 HStack(spacing: 4) {
                                     Text(p.name.isEmpty ? "未命名" : p.name).fontWeight(.medium)
@@ -869,7 +872,7 @@ HStack(alignment:.top, spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
 VStack(alignment:.leading, spacing: 2) {
 ForEach(InterpretEngine.nextThreeYears(chart: chart), id: \.year) { y in
-Text("\(y.year) \(y.ganzhi)年（\(y.mark)）：\(y.note)")
+Text("\(String(y.year)) \(y.ganzhi)年（\(y.mark)）：\(y.note)")
 .font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
 }
 }
@@ -1211,7 +1214,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                         Text("注：藏干以本气为立格与通根之主；神煞属《三命通会》辅助层，随格局增减分量，不单凭神煞定吉凶。")
                             .font(.caption2).foregroundStyle(Ky.sub).padding(.top, 4)
                     }.kyCard()
-                }.padding(16)
+                }.padding(16).padding(.bottom, 100)
             }
             .background(Ky.bg)
             .navigationTitle("\(["年柱", "月柱", "日柱", "时柱"][idx])详情")
@@ -1378,7 +1381,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                         } label: {
                             VStack(spacing: 4) {
                                 HStack(spacing: 2) {
-                                    Text("\(startY)")
+                                    Text("\(String(startY))")
                                         .font(KyV2.tabular(10, weight: .medium))
                                     if isCurYun {
                                         Text("当前").font(.system(size: 8, weight: .bold))
@@ -1450,7 +1453,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                     }.buttonStyle(.plain)
                 }
             }
-            Text("\(chart.dayunGanZhi[safeDayun])运（\(start)–\(start + 9)）十年流年：点任一年进流月。")
+            Text("\(chart.dayunGanZhi[safeDayun])运（\(String(start))–\(String(start + 9))）十年流年：点任一年进流月。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
 
@@ -1464,7 +1467,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
             ("子", "冬月"), ("丑", "腊月")]
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("\(year) 年（\(ygz)）十二节气流月")
+                Text("\(String(year)) 年（\(ygz)）十二节气流月")
                     .font(.callout).fontWeight(.bold).foregroundStyle(Ky.ink)
                 Spacer()
                 Button("返回流年") { timeLevel = 1 }.font(.caption).foregroundStyle(Ky.qingdai)
@@ -1718,7 +1721,7 @@ struct GanZhiLookupView: View {
                         Text("查询年份范围").font(.caption).foregroundStyle(Ky.sub)
                         Spacer()
                         Stepper("\(startYear)", value: $startYear, in: 1901...2090).labelsHidden()
-                        Text("\(startYear) – \(endYear) 年").font(KyV2.tabular(13, weight: .bold)).foregroundStyle(Ky.ink)
+                        Text("\(String(startYear)) – \(String(endYear)) 年").font(KyV2.tabular(13, weight: .bold)).foregroundStyle(Ky.ink)
                         Stepper("\(endYear)", value: $endYear, in: 1910...2099).labelsHidden()
                     }
 
@@ -1737,7 +1740,7 @@ struct GanZhiLookupView: View {
                     if results.isEmpty {
                         VStack(spacing: 8) {
                             Image(systemName: "calendar.badge.exclamationmark").font(.title2).foregroundStyle(Ky.cinnabar)
-                            Text("在 \(min(startYear, endYear))–\(max(startYear, endYear)) 年间未找到该四柱组合")
+                            Text("在 \(String(min(startYear, endYear)))–\(String(max(startYear, endYear))) 年间未找到该四柱组合")
                                 .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
                             Text("原因：该年柱的此节气月内正好未逢「\(dayGZ)」日（一月约 30 天而甲子周期为 60 天，故每个月仅有约一半日柱出现），可换相邻年份或扩大年份范围再查。")
                                 .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
@@ -1751,7 +1754,7 @@ struct GanZhiLookupView: View {
                                         chart: BaziEngine.cachedPaipan(clock: item.date, gender: gender, longitude: nil),
                                         name: item.pillars.joined(separator: " ")
                                     )
-                                    .padding(16)
+                                    .padding(16).padding(.bottom, 100)
                                 }
                                 .background(Ky.bg)
                                 .navigationTitle(item.pillars.joined(separator: " "))
@@ -1773,7 +1776,7 @@ struct GanZhiLookupView: View {
                 }
             }
             .padding(16)
-            .padding(.bottom, 36)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("四柱干支反查")

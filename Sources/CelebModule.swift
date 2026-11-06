@@ -72,7 +72,7 @@ struct CelebDetailView: View {
                 }.kyCard()
                 BaziResultView(chart: ch, name: celeb.name)
                 ZiweiBoardView(chart: zw, name: celeb.name)
-            }.padding(16)
+            }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle(celeb.name)

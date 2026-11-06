@@ -369,7 +369,7 @@ struct CaliberSettingsView: View {
                     Text("现行：《斗数全书》派亮度（58 星×12 宫全量）。中州派亮度表数据源未核实，不编造，缺位标注在此——宁缺毋假。")
                         .font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
-            }.padding(16)
+            }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("排盘口径设置")

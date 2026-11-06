@@ -329,7 +329,7 @@ struct QimenHomeView: View {
                 }
                 Text("仅供娱乐与决策参考，不作最终决定；大事仍须结合实际情况与专业意见定。")
                     .font(.caption2).foregroundStyle(Ky.sub)
-            }.padding(16)
+            }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("奇门遁甲").navigationBarTitleDisplayMode(.inline)

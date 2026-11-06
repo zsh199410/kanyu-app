@@ -273,7 +273,7 @@ struct PersonDetailView: View {
                 default:
                     inlineYearlySection(chart: ch)
                 }
-            }.padding(16)
+            }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle(p.name.isEmpty ? "命主详情" : p.name)

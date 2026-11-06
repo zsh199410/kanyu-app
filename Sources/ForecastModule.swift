@@ -64,7 +64,7 @@ struct ForecastView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(e.personName).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                        Text("\(e.targetYear) 年").font(.caption).foregroundStyle(Ky.gold)
+                        Text("\(String(e.targetYear)) 年").font(.caption).foregroundStyle(Ky.gold)
                         Spacer()
                         Menu {
                             ForEach(["待验", "命中", "部分", "未中"], id: \.self) { s in

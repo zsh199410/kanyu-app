@@ -171,7 +171,7 @@ struct YearByYearView: View {
                                     lineWidth: isNow || r.level == "关口级" ? 1.3 : 0.8)
                     )
                 }
-                Text("口径：逐年四查规则生成（引动分级＋岁运叠加＋干支定性），重断须 ≥2 项强引动同现；健康只给倾向、六亲生死类断语不在 App 层出现。")
+                Text("口径：逐年四查规则生成（引动分级＋岁运叠加＋干支定性），重断须 ≥2 项强引动同现；健康只给倾向、六亲生死类断语不在应用层出现。")
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
@@ -320,7 +320,7 @@ struct LifePlanView: View {
                     let isMain = r.level == "主线"
                     VStack(alignment: .leading, spacing: 7) {
                         HStack(spacing: 8) {
-                            Text("\(r.year) · \(age) 岁 · \(r.gz)")
+                            Text("\(String(r.year)) · \(age) 岁 · \(r.gz)")
                                 .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             KyBadge(text: r.level, color: isGate ? Ky.cinnabar : (isMain ? Ky.qingdai : Ky.sub), filled: isGate)
                             Spacer()

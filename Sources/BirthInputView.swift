@@ -823,7 +823,7 @@ private struct TimePickerSheet: View {
                         .font(KyV2.tabular(11, weight: .semibold)).foregroundStyle(Ky.gold)
                 }
             }
-            Text("公历 \(s.year) 年 \(s.month) 月 \(s.day) 日 \(String(format: "%02d:%02d", s.hour, s.minute))")
+            Text("公历 \(String(s.year)) 年 \(s.month) 月 \(s.day) 日 \(String(format: "%02d:%02d", s.hour, s.minute))")
                 .font(KyV2.tabular(15, weight: .bold)).foregroundStyle(Ky.ink)
             Text("农历 \(BaziChart.yearGanZhi(l.year)) 年\(l.month < 0 ? "闰" : "")\(lm)\(ldName) · \(br)时")
                 .font(.caption).foregroundStyle(Ky.sub)

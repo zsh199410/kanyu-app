@@ -129,7 +129,7 @@ struct HandMeasureView: View {
                 }
                 Text("测量口径：视觉识别 21 点关节点几何（学术同款管线在本工作室已实测）；三线为手描修正层——把每个圆点拖到你真实掌纹上，描准了判读才有意义。娱乐参考。")
                     .font(.caption2).foregroundStyle(Ky.sub)
-            }.padding(16)
+            }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("手相 · 测量与描线")
@@ -317,7 +317,7 @@ struct FaceMeasureView: View {
                 }
                 Text("校准口径：发际线以实际发际为准手动拖准（儿童发际未定型更要人工校正）；三停比例为几何事实，判读按相书通说、娱乐参考，不套成人断语于儿童。")
                     .font(.caption2).foregroundStyle(Ky.sub)
-            }.padding(16)
+            }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("面相 · 三停校准")
@@ -481,7 +481,7 @@ struct PalmRecordDetailView: View {
                 Text(record.summary).font(.callout).foregroundStyle(Ky.ink)
                 Text("记录时间：\(Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .shortened)) · 描线为当时人工修正的点位，已冻结存档。")
                     .font(.caption2).foregroundStyle(Ky.sub)
-            }.padding(16)
+            }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("\(record.personName) · \(record.kind)")

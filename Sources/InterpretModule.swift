@@ -564,7 +564,7 @@ struct InterpretView: View {
 
                 Text("解盘纪律说明：以上 30 条（5 条总纲＋25 维）全部由本机确定性排盘数据推导，每条结论附「盘面事实＋典籍根据」可复核；健康只给部位与代谢倾向不落病名；守年只列强引动关口级年份。回测校准级的私人详批以工作室正式报告为准。")
                     .font(.caption2).foregroundStyle(Ky.sub)
-            }.padding(16)
+            }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .onDisappear { speaker.stop() }
@@ -1207,9 +1207,9 @@ extension InterpretEngine {
             wealthMechanism = "财星蓄势：虽未成典型财气通门户大格，但财星隐于原局；致富通道侧重大运与流年的引动，大运补财时爆发力强。"
         }
         if kuCount > 0 {
-            wealthMechanism += " 原局见真财库「\(kuName)」\(kuCount) 处：能赚亦能守，具备极佳的储蓄与资产沉淀能力；逢冲开财库之年（如逢未/戌冲）常有大笔现金流变动与置业契机。"
+            wealthMechanism += " 财库有根：能赚亦能守，具备极佳的储蓄与资产沉淀能力；逢冲开财库之年常有大笔现金流变动与置业契机。"
         } else {
-            wealthMechanism += " 原局无特定财库：钱财以周转流通为主，建议养成固定资产定投习惯，以房产或强制储蓄充当人造蓄水池。"
+            wealthMechanism += " 钱财以周转流通为主，建议养成固定资产定投习惯，以房产或强制储蓄充当人造蓄水池。"
         }
         out.append(item("财富量级蓄水池", wealthMechanism,
             "财星 \(cai) 处，\(wxN[dayWx])库为「\(kuName)」（局见 \(kuCount) 处），通门户检验 \(isTongMen ? "达成" : "未成")",
