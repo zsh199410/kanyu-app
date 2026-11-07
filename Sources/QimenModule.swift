@@ -809,8 +809,8 @@ enum QimenCases {
             yingyan: "无（典籍算例，仅核定局与值符值使）",
             verified: "引擎复核：立夏阳 7 局下元，值符天蓬，值使休门，局／星／门一致。",
             status: "已验",
-            zhifu_note: "值符落宫记法差异：时干丙之地盘宫为 5 宫（中五），引擎按九星在中五照常有值记为 5 宫，教程寄坤记为 2 宫；星同而落宫记法不同。",
-            zhishi_note: "值使落宫口径差异：引擎值使休门落 1 宫（时支序数起），教程落 3 宫（旬首起数法）；待口径裁决。",
+            zhifuNote: "值符落宫记法差异：时干丙之地盘宫为 5 宫（中五），引擎按九星在中五照常有值记为 5 宫，教程寄坤记为 2 宫；星同而落宫记法不同。",
+            zhishiNote: "值使落宫口径差异：引擎值使休门落 1 宫（时支序数起），教程落 3 宫（旬首起数法）；待口径裁决。",
         ),
         QimenCase(
             id: "qimen-case-02",
@@ -834,8 +834,8 @@ enum QimenCases {
             yingyan: "无（典籍算例，仅核定局与值符值使）",
             verified: "引擎复核：霜降阴 2 局下元，值符天心落 2 宫，值使开门落 2 宫，局／星／门／落宫全部一致（10 例中唯一值使宫亦一致者）。",
             status: "已验",
-            zhifu_note: "",
-            zhishi_note: "",
+            zhifuNote: "",
+            zhishiNote: "",
         ),
         QimenCase(
             id: "qimen-case-03",
@@ -859,8 +859,8 @@ enum QimenCases {
             yingyan: "无（典籍算例，仅核定局与值符值使）",
             verified: "引擎复核：大暑阴 7 局上元，值符天冲，值使伤门，局／星／门一致。",
             status: "已验",
-            zhifu_note: "教程“时干壬”实为旬首遁干壬（地盘宫 3 宫）；时干甲遁戊落 7 宫，引擎值符星落时干宫 7 宫。甲时教程以遁干代时干记宫，引擎按时干宫为准。",
-            zhishi_note: "值使落宫口径差异：引擎值使伤门落 7 宫（时支序数起），教程落 3 宫（旬首起数法）；待口径裁决。",
+            zhifuNote: "教程“时干壬”实为旬首遁干壬（地盘宫 3 宫）；时干甲遁戊落 7 宫，引擎值符星落时干宫 7 宫。甲时教程以遁干代时干记宫，引擎按时干宫为准。",
+            zhishiNote: "值使落宫口径差异：引擎值使伤门落 7 宫（时支序数起），教程落 3 宫（旬首起数法）；待口径裁决。",
         ),
         QimenCase(
             id: "qimen-case-04",
@@ -884,8 +884,8 @@ enum QimenCases {
             yingyan: "无（典籍算例，仅核定局与值符值使）",
             verified: "引擎复核：寒露阴 6 局上元，值符天芮落 8 宫，值使死门，局／星／门／值符宫一致。",
             status: "已验",
-            zhifu_note: "",
-            zhishi_note: "值使落宫口径差异：引擎值使死门落 4 宫（时支序数起），教程落 9 宫（旬首起数法）；待口径裁决。",
+            zhifuNote: "",
+            zhishiNote: "值使落宫口径差异：引擎值使死门落 4 宫（时支序数起），教程落 9 宫（旬首起数法）；待口径裁决。",
         ),
         QimenCase(
             id: "qimen-case-05",
@@ -909,8 +909,8 @@ enum QimenCases {
             yingyan: "无（典籍算例，仅核定局与值符值使）",
             verified: "引擎复核：霜降阴 8 局中元，值符天柱落 6 宫，值使惊门，局／星／门／值符宫一致。",
             status: "已验",
-            zhifu_note: "",
-            zhishi_note: "值使落宫口径差异：引擎值使惊门落 3 宫（时支序数起），教程落 1 宫（旬首起数法）；待口径裁决。",
+            zhifuNote: "",
+            zhishiNote: "值使落宫口径差异：引擎值使惊门落 3 宫（时支序数起），教程落 1 宫（旬首起数法）；待口径裁决。",
         ),
         QimenCase(
             id: "qimen-case-06",
@@ -934,8 +934,8 @@ enum QimenCases {
             yingyan: "无（典籍算例，仅核定局与值符值使）",
             verified: "引擎复核：惊蛰阳 4 局下元，值符天柱落 9 宫，值使惊门，局／星／门／值符宫一致。",
             status: "已验",
-            zhifu_note: "",
-            zhishi_note: "值使落宫口径差异：引擎值使惊门落 2 宫（时支序数起），教程落 7 宫（旬首起数法）；待口径裁决。",
+            zhifuNote: "",
+            zhishiNote: "值使落宫口径差异：引擎值使惊门落 2 宫（时支序数起），教程落 7 宫（旬首起数法）；待口径裁决。",
         ),
         QimenCase(
             id: "qimen-case-07",
@@ -959,8 +959,8 @@ enum QimenCases {
             yingyan: "无（典籍算例，仅核定局）",
             verified: "引擎复核：2026-06-18 癸亥日丙辰时，芒种阳 9 局下元，值符天禽落 7 宫，值使死门落 8 宫，局数一致。",
             status: "已验",
-            zhifu_note: "",
-            zhishi_note: "",
+            zhifuNote: "",
+            zhishiNote: "",
         ),
         QimenCase(
             id: "qimen-case-08",
@@ -984,8 +984,8 @@ enum QimenCases {
             yingyan: "无（典籍算例，仅核定局与置闰）",
             verified: "引擎复核：置闰行走 1718-06-14 为芒种闰奇上局阳 6 局（runqi=True），值符天心落 6 宫，值使开门落 4 宫；拆补法同日为芒种上元阳 6 局（闰奇上局期间两者同局，分叉在夏至交节后）。",
             status: "已验",
-            zhifu_note: "",
-            zhishi_note: "",
+            zhifuNote: "",
+            zhishiNote: "",
         ),
     ]
 }
