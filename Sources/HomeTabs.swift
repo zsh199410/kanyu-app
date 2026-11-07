@@ -534,7 +534,7 @@ struct MyView: View {
         )
     }
 
-    private func rescheduleTodayNotification() {
+    @MainActor private func rescheduleTodayNotification() {
         let p = PeopleStore.shared.people.first(where: { $0.relation == "本人" }) ?? PeopleStore.shared.people.first
         TodayNotificationManager.scheduleDaily(person: p)
     }

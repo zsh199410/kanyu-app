@@ -109,8 +109,8 @@ enum CompassDeclination {
         let sd = sin(delta)
         let x = xp * cd + zp * sd
         let y = yp
-        let z = zp * cd - xp * sd
-        return (x, y, z)
+        let zr = zp * cd - xp * sd
+        return (x, y, zr)
     }
 
     /// 磁偏角与场量（度，东偏为正）；模型期外或极点返回 nil（不外推、不编造）。

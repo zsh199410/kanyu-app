@@ -526,7 +526,7 @@ struct ClassicsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(ln.orig).font(.callout).foregroundStyle(Ky.ink)
                             Text("白话转述：" + ln.baihua).font(.caption).foregroundStyle(Ky.sub)
-                            Text(b.title + " · " + c.no + " " + c.title + " · " + c.source + " 第 \(ln.n) 句").font(.caption2).foregroundStyle(Ky.sub)
+                            Text("\(b.title) · \(c.no) \(c.title) · \(c.source) 第 \(ln.n) 句").font(.caption2).foregroundStyle(Ky.sub)
                         }
                     }
                     if hits.isEmpty { Text("没有命中，换个词试试。").font(.callout).foregroundStyle(Ky.sub) }

@@ -429,9 +429,10 @@ struct YunQiView: View {
                     let qZhu = q.1.map { zhu[$0] }.joined(separator: "、")
                     let qKe = q.1.map { ke[$0] }.joined(separator: "、")
                     let tong = q.1.contains { ke[$0] == zhu[$0] }
+                    let tongText = tong ? "；主客同气为顺。" : "；客气与主气相异，以客胜主为逆。"
                     HStack(alignment: .top, spacing: 8) {
                         Text(q.0 + "季").font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai).frame(width: 28, alignment: .leading)
-                        Text("主气 " + qZhu + "；客气 " + qKe + "。" + q.2 + (tong ? "；主客同气为顺。" : "；客气与主气相异，以客胜主为逆。"))
+                        Text("主气 \(qZhu)；客气 \(qKe)。\(q.2)\(tongText)")
                             .font(.caption).foregroundStyle(Ky.ink).lineSpacing(2)
                     }
                 }
@@ -480,7 +481,7 @@ enum TodayFortune {
         return "中性"
     }
 
-    static func lines(chart ch: BaziChart, date: Date = Date()) -> [TodayLine] {
+    @MainActor static func lines(chart ch: BaziChart, date: Date = Date()) -> [TodayLine] {
         let info = AlmanacLunarCache.dayInfo(for: date)
         let dayGanzhi = info.dayInGanZhi
         let dayStem = dayGanzhi.first ?? "?"
@@ -616,7 +617,7 @@ enum TodayNotificationManager {
         }
     }
 
-    static func scheduleDaily(person: Person?) {
+    @MainActor static func scheduleDaily(person: Person?) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [requestId])
         guard let p = person else {

@@ -27,7 +27,7 @@ enum StoreSchema {
 
 struct PeopleExport: Codable { var schemaVersion: Int; var people: [Person] }
 
-struct Person: Codable, Identifiable, Equatable {
+struct Person: Codable, Identifiable, Equatable, Hashable {
     var id: UUID = UUID()
     var name: String
     var relation: String = ""          // 关系备注：本人/丈夫/儿子/客户…
