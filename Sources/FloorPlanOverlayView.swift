@@ -100,7 +100,8 @@ HStack(spacing: 8) {
 Menu {
 if let lock = lockStore.lock {
 let sf = lock.sitFace()
-Button("罗盘锁定：" + sf.sit + "山" + sf.face + "向（真北 " + String(format: "%.1f°", lock.trueNorth) + "）") { useLockOrientation = true }
+let lockLabel = "罗盘锁定：" + sf.sit + "山" + sf.face + "向（真北 " + String(format: "%.1f°", lock.trueNorth) + "）"
+Button(lockLabel) { useLockOrientation = true }
 }
 ForEach(orientations.indices, id: \.self) { idx in
 Button(orientations[idx].name) {

@@ -957,8 +957,8 @@ enum MeihuaEngine {
 
     static func divinate(clock: Date, lon: Double = defaultLon, question: String = "") -> MeihuaResult {
         let lp = lunarParts(clock: clock, longitude: lon)
-        let yearNum = (dz.firstIndex(of: Character(lp.yearBranch)) ?? 0) + 1
-        let hourNum = (dz.firstIndex(of: Character(lp.hourBranch)) ?? 0) + 1
+        let yearNum = (dz.firstIndex(of: lp.yearBranch) ?? 0) + 1
+        let hourNum = (dz.firstIndex(of: lp.hourBranch) ?? 0) + 1
         let total = yearNum + lp.month + lp.day
         let upperNum = total % 8 == 0 ? 8 : total % 8
         let lowerNum = (total + hourNum) % 8 == 0 ? 8 : (total + hourNum) % 8

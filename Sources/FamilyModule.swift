@@ -29,7 +29,7 @@ struct FamilyChartView: View {
                                 longitude: p.useLongitude ? p.longitude : nil)
     }
     private func ziwei(of p: Person) -> ZiweiChart {
-        ZiweiCore.chart(clock: p.birthDate, gender: p.gender,
+        ZiweiEngine.cachedChart(clock: p.birthDate, gender: p.gender,
                         longitude: p.useLongitude ? p.longitude : nil)
     }
     private func selected(_ id: UUID?) -> Person? { store.people.first { $0.id == id } }
@@ -249,7 +249,7 @@ struct FamilyPosterView: View {
                                 longitude: p.useLongitude ? p.longitude : nil)
     }
     private func ziwei(of p: Person) -> ZiweiChart {
-        ZiweiCore.chart(clock: p.birthDate, gender: p.gender,
+        ZiweiEngine.cachedChart(clock: p.birthDate, gender: p.gender,
                         longitude: p.useLongitude ? p.longitude : nil)
     }
 
