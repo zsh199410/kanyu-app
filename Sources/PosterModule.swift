@@ -131,11 +131,25 @@ private struct WuxingRadarView: View {
     var body: some View {
         let maxV = max(pcts.max() ?? 1, 1)
         return ZStack {
-            Path { p in for i in 0..<5 { let q = point(i, scale: 1.0); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } } p.closeSubpath() }.stroke(track, lineWidth: 0.8)
-            Path { p in for i in 0..<5 { let q = point(i, scale: 0.5); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } } p.closeSubpath() }.stroke(track.opacity(0.5), lineWidth: 0.5)
-            Path { p in for i in 0..<5 { p.move(to: CGPoint(x: size / 2, y: size / 2)); p.addLine(to: point(i, scale: 1.0)) } }.stroke(track.opacity(0.35), lineWidth: 0.5)
-            Path { p in for i in 0..<5 { let q = point(i, scale: CGFloat(pcts[i] / maxV)); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } } p.closeSubpath() }.fill(accent.opacity(0.18))
-            Path { p in for i in 0..<5 { let q = point(i, scale: CGFloat(pcts[i] / maxV)); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } } p.closeSubpath() }.stroke(accent, lineWidth: 1.2)
+            Path { p in
+                for i in 0..<5 { let q = point(i, scale: 1.0); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } }
+                p.closeSubpath()
+            }.stroke(track, lineWidth: 0.8)
+            Path { p in
+                for i in 0..<5 { let q = point(i, scale: 0.5); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } }
+                p.closeSubpath()
+            }.stroke(track.opacity(0.5), lineWidth: 0.5)
+            Path { p in
+                for i in 0..<5 { p.move(to: CGPoint(x: size / 2, y: size / 2)); p.addLine(to: point(i, scale: 1.0)) }
+            }.stroke(track.opacity(0.35), lineWidth: 0.5)
+            Path { p in
+                for i in 0..<5 { let q = point(i, scale: CGFloat(pcts[i] / maxV)); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } }
+                p.closeSubpath()
+            }.fill(accent.opacity(0.18))
+            Path { p in
+                for i in 0..<5 { let q = point(i, scale: CGFloat(pcts[i] / maxV)); if i == 0 { p.move(to: q) } else { p.addLine(to: q) } }
+                p.closeSubpath()
+            }.stroke(accent, lineWidth: 1.2)
             ForEach(0..<5, id: \.self) { i in
                 Text("\(names[i])\(Int(pcts[i].rounded()))%")
                     .font(.system(size: 10, weight: .bold, design: .serif))
