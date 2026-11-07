@@ -93,4 +93,210 @@ final class QimenTests: XCTestCase {
         XCTAssertEqual(ch.palaces[2]?.diStem, "己")
         XCTAssertTrue(ch.palaces[2]?.patterns.contains { $0.name == "三奇得使" } ?? false, "乙奇得使坤宫")
     }
+
+    // MARK: - G3 寄宫四档（与 Python test_qimen_jigong.py 同期望）
+    func testG3Jigong() {
+        // 阳 5 局甲子时（全盘伏吟）：kun2 值使死 2 宫，gen8 值使生 8 宫；门分布两档同，神盘旋转
+        let k5 = QimenEngine.chart(ju: 5, yang: true, hourStem: "甲", hourBranch: "子", jigong: .kun2)!
+        XCTAssertEqual(k5.zhiShiDoor, "死")
+        XCTAssertEqual(k5.zhiShiPalace, 2)
+        XCTAssertEqual(k5.palaces[2]?.door, "死")
+        XCTAssertEqual(k5.palaces[8]?.door, "生")
+        XCTAssertEqual(k5.palaces[2]?.god, "值符")
+        XCTAssertEqual(k5.palaces[1]?.god, "九天")
+        XCTAssertEqual(k5.palaces[5]?.star, "禽")
+        let g5 = QimenEngine.chart(ju: 5, yang: true, hourStem: "甲", hourBranch: "子", jigong: .gen8)!
+        XCTAssertEqual(g5.zhiShiDoor, "生")
+        XCTAssertEqual(g5.zhiShiPalace, 8)
+        XCTAssertEqual(g5.palaces[8]?.door, "生")
+        XCTAssertEqual(g5.palaces[2]?.door, "死")
+        XCTAssertEqual(g5.palaces[8]?.god, "值符")
+        XCTAssertEqual(g5.palaces[9]?.god, "九天")
+        XCTAssertEqual(g5.palaces[5]?.star, "禽")
+        // 星／天盘干在寄宫切换时不变
+        for p in 1...9 {
+            XCTAssertEqual(g5.palaces[p]?.star, k5.palaces[p]?.star, "星 \(p) 宫不变")
+            XCTAssertEqual(g5.palaces[p]?.tianStem, k5.palaces[p]?.tianStem, "天盘干 \(p) 宫不变")
+        }
+        // 阴 5 局甲子时：kun2 值使死 2 宫，gen8 值使生 8 宫
+        let ck = QimenEngine.chart(ju: 5, yang: false, hourStem: "甲", hourBranch: "子", jigong: .kun2)!
+        XCTAssertEqual(ck.zhiShiDoor, "死")
+        XCTAssertEqual(ck.zhiShiPalace, 2)
+        XCTAssertEqual(ck.palaces[2]?.god, "值符")
+        XCTAssertEqual(ck.palaces[3]?.god, "九天")
+        let cg = QimenEngine.chart(ju: 5, yang: false, hourStem: "甲", hourBranch: "子", jigong: .gen8)!
+        XCTAssertEqual(cg.zhiShiDoor, "生")
+        XCTAssertEqual(cg.zhiShiPalace, 8)
+        XCTAssertEqual(cg.palaces[8]?.god, "值符")
+        XCTAssertEqual(cg.palaces[7]?.god, "九天")
+        // 阳艮阴坤在阴遁时＝kun2，阳坤阴艮在阴遁时＝gen8
+        let cyk = QimenEngine.chart(ju: 5, yang: false, hourStem: "甲", hourBranch: "子", jigong: .yanggenYinkun)!
+        XCTAssertEqual(cyk.zhiShiPalace, ck.zhiShiPalace)
+        XCTAssertEqual(cyk.palaces[2]?.god, "值符")
+        let cyg = QimenEngine.chart(ju: 5, yang: false, hourStem: "甲", hourBranch: "子", jigong: .yangkunYingen)!
+        XCTAssertEqual(cyg.zhiShiPalace, cg.zhiShiPalace)
+        XCTAssertEqual(cyg.palaces[8]?.god, "值符")
+        // 阳 1 局壬午时（时干宫为中宫）：门两档同，神盘寄宫不同
+        let rk = QimenEngine.chart(ju: 1, yang: true, hourStem: "壬", hourBranch: "午", jigong: .kun2)!
+        XCTAssertEqual(rk.zhiShiPalace, 6)
+        XCTAssertEqual(rk.palaces[6]?.door, "死")
+        XCTAssertEqual(rk.palaces[2]?.god, "值符")
+        XCTAssertEqual(rk.palaces[1]?.god, "九天")
+        let rg = QimenEngine.chart(ju: 1, yang: true, hourStem: "壬", hourBranch: "午", jigong: .gen8)!
+        XCTAssertEqual(rg.zhiShiPalace, 6)
+        XCTAssertEqual(rg.palaces[6]?.door, "死")
+        XCTAssertEqual(rg.palaces[8]?.god, "值符")
+        XCTAssertEqual(rg.palaces[9]?.god, "九天")
+        // 旬首仪与时干宫均不在中宫时，四档盘面完全相同
+        let a = QimenEngine.chart(ju: 1, yang: true, hourStem: "甲", hourBranch: "子", jigong: .kun2)!
+        let b = QimenEngine.chart(ju: 1, yang: true, hourStem: "甲", hourBranch: "子", jigong: .gen8)!
+        for p in 1...9 {
+            XCTAssertEqual(b.palaces[p]?.door, a.palaces[p]?.door, "门 \(p) 宫同")
+            XCTAssertEqual(b.palaces[p]?.god, a.palaces[p]?.god, "神 \(p) 宫同")
+        }
+    }
+
+    // MARK: - G3 四害／长生／克应／暗干（与 Python test_qimen_layers.py 同期望）
+    func testG3Layers() {
+        let ch = QimenEngine.chart(ju: 1, yang: true, hourStem: "庚", hourBranch: "午")!
+        let p2 = ch.palaces[2]!
+        let p3 = ch.palaces[3]!
+        let p4 = ch.palaces[4]!
+        let p5 = ch.palaces[5]!
+        let p6 = ch.palaces[6]!
+        // 四害：击刑仅 3 宫（天盘戊落震三），入墓仅 2 宫（天盘乙落坤二），
+        // 旬空仅 6 宫（甲子旬空戌亥→乾六），门迫仅 2 宫（杜木落坤土）
+        XCTAssertTrue(p3.siHaiJiXing, "天盘戊落震三为击刑")
+        XCTAssertEqual((1...9).filter { ch.palaces[$0]?.siHaiJiXing ?? false }, [3], "全盘仅 3 宫击刑")
+        XCTAssertTrue(p2.siHaiRuMu, "天盘乙落坤二为入墓")
+        XCTAssertEqual((1...9).filter { ch.palaces[$0]?.siHaiRuMu ?? false }, [2], "全盘仅 2 宫入墓")
+        XCTAssertTrue(p6.siHaiKong, "甲子旬空戌亥→乾六宫空")
+        XCTAssertEqual((1...9).filter { ch.palaces[$0]?.siHaiKong ?? false }, [6], "全盘仅 6 宫旬空")
+        XCTAssertTrue(p2.siHaiMenPo, "杜门木落坤土宫为门迫")
+        XCTAssertFalse(p4.siHaiMenPo, "死门土落巽木宫非门迫")
+        XCTAssertEqual((1...9).filter { ch.palaces[$0]?.siHaiMenPo ?? false }, [2], "全盘门迫仅 2 宫")
+        // 时干入墓（盘级）
+        XCTAssertTrue(QimenEngine.chart(ju: 1, yang: true, hourStem: "戊", hourBranch: "戌")!.shiGanRumu, "戊戌时干入墓")
+        XCTAssertTrue(QimenEngine.chart(ju: 1, yang: true, hourStem: "壬", hourBranch: "辰")!.shiGanRumu, "壬辰时干入墓")
+        XCTAssertFalse(QimenEngine.chart(ju: 1, yang: true, hourStem: "甲", hourBranch: "子")!.shiGanRumu, "甲子时干不入墓")
+        // 十二长生：3 宫天戊临卯沐浴（四正单值），2 宫天乙临未养申胎（四维双值），中宫 nil
+        XCTAssertEqual(p3.changshengTian, ["卯": "沐浴"], "3 宫天戊临卯沐浴")
+        XCTAssertEqual(p2.changshengTian, ["未": "养", "申": "胎"], "2 宫天乙临未养申胎")
+        XCTAssertNil(p5.changshengTian, "中宫无本位地支")
+        XCTAssertEqual(QimenEngine.changshengStage(stem: "乙", branch: "巳"), "沐浴", "乙巳沐浴（阴逆）")
+        XCTAssertEqual(QimenEngine.changshengStage(stem: "乙", branch: "寅"), "帝旺", "乙寅帝旺（阴逆）")
+        XCTAssertEqual(QimenEngine.changshengStage(stem: "辛", branch: "亥"), "沐浴", "辛亥沐浴（阴逆）")
+        // 十干克应：3 宫戊加庚值符飞宫，2 宫乙加己日奇入墓，1 宫丙加戊飞鸟跌穴
+        XCTAssertEqual(p3.keYingName, "值符飞宫", "3 宫戊加庚值符飞宫")
+        XCTAssertEqual(p2.keYingName, "日奇入墓", "2 宫乙加己日奇入墓")
+        XCTAssertEqual(ch.palaces[1]!.keYingName, "飞鸟跌穴", "1 宫丙加戊飞鸟跌穴")
+        XCTAssertEqual(QimenEngine.keYing["乙辛"]?.name, "青龙逃走", "乙加辛青龙逃走")
+        XCTAssertEqual(QimenEngine.keYing.count, 81, "十干克应全表 81 格")
+        // 暗干：阳 1 庚午时值使休门落 7 宫，时干庚放 7 宫阳顺
+        XCTAssertEqual(ch.palaces[7]!.angan, "庚", "暗干庚放值使宫")
+        XCTAssertEqual(ch.palaces[1]!.angan, "癸", "暗干 1 宫癸")
+        XCTAssertEqual(p5.angan, "戊", "暗干 5 宫戊")
+        // 阴遁逆行：阴 5 局甲子时值使死门落 2 宫，暗干戊放 2 宫阴逆
+        let cy = QimenEngine.chart(ju: 5, yang: false, hourStem: "甲", hourBranch: "子")!
+        XCTAssertEqual(cy.palaces[2]!.angan, "戊", "阴遁暗干戊放值使宫")
+        XCTAssertEqual(cy.palaces[1]!.angan, "乙", "阴遁暗干逆行 1 宫乙")
+        XCTAssertEqual(cy.palaces[3]!.angan, "己", "阴遁暗干逆行 3 宫己")
+        // 开关：不布暗干
+        let off = QimenEngine.chart(ju: 1, yang: true, hourStem: "庚", hourBranch: "午", angan: false)!
+        XCTAssertTrue((1...9).allSatisfy { off.palaces[$0]?.angan == nil }, "angan=false 全宫无暗干")
+        XCTAssertTrue(off.receiptText().contains("暗干不布"), "收据写明暗干不布")
+        // 收据行（默认口径）
+        XCTAssertTrue(ch.receiptText().contains("定局：拆补法"), "收据定局拆补法")
+        XCTAssertTrue(ch.receiptText().contains("寄宫恒寄坤二"), "收据寄宫恒寄坤二")
+        XCTAssertTrue(ch.receiptText().contains("真太阳时未校正"), "收据真太阳时未校正")
+    }
+
+    // MARK: - G3 日家奇门（与 Python test_qimen_rijia_zhiyun.py 同期望）
+    func testG3Rijia() {
+        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd HH:mm"
+        fmt.timeZone = TimeZone(secondsFromGMT: 8 * 3600)
+        // 2026-10-17 甲子日：阴遁二局，天蓬艮八宫，休门坎一宫
+        let r1 = QimenEngine.rijiaChart(for: fmt.date(from: "2026-10-17 08:00")!)!
+        XCTAssertEqual(r1.ju, 2)
+        XCTAssertFalse(r1.yang)
+        XCTAssertEqual(r1.palaces[8]?.star, "蓬", "甲子日天蓬起艮八宫")
+        XCTAssertEqual(r1.palaces[1]?.door, "休", "甲子日休门起坎一宫")
+        XCTAssertEqual(r1.palaces[9]?.star, "芮", "芮在离九")
+        // 2026-11-07 乙酉日：阴遁八局，天蓬坤二宫，休门离九宫
+        let r2 = QimenEngine.rijiaChart(for: fmt.date(from: "2026-11-07 08:00")!)!
+        XCTAssertEqual(r2.ju, 8)
+        XCTAssertFalse(r2.yang)
+        XCTAssertEqual(r2.palaces[2]?.star, "蓬", "乙酉日天蓬坤二宫")
+        XCTAssertEqual(r2.palaces[9]?.door, "休", "乙酉日休门离九宫")
+        XCTAssertTrue(r2.receiptText().contains("日家奇门"), "日家收据行")
+    }
+
+    // MARK: - G3 置闰行走（纯日期算术，不依赖历法；与 Python 行走同期望）
+    func testG3ZhiyunLookup() {
+        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
+        fmt.timeZone = TimeZone(secondsFromGMT: 8 * 3600)
+        func lookup(_ ds: String) -> (jieqi: String, yang: Bool, sanyuan: String, ju: Int, runqi: Bool)? {
+            return QimenEngine.zhiyunLookup(date: fmt.date(from: ds)!)
+        }
+        // 1718-06-14 芒种闰奇上局阳 6（统宗康熙五十七年芒种置闰）
+        let a = lookup("1718-06-14")!
+        XCTAssertEqual(a.jieqi, "芒种")
+        XCTAssertEqual(a.sanyuan, "上元")
+        XCTAssertEqual(a.ju, 6)
+        XCTAssertTrue(a.runqi)
+        // 1718-06-22 分叉：置闰闰奇中局阳 3（拆补为夏至中元阴 3）
+        let b = lookup("1718-06-22")!
+        XCTAssertEqual(b.jieqi, "芒种")
+        XCTAssertEqual(b.sanyuan, "中元")
+        XCTAssertEqual(b.ju, 3)
+        XCTAssertTrue(b.runqi)
+        // 1718-06-29 夏至上局：两者一致阴 9
+        let c = lookup("1718-06-29")!
+        XCTAssertEqual(c.jieqi, "夏至")
+        XCTAssertEqual(c.ju, 9)
+        XCTAssertFalse(c.runqi)
+        // 2024-12-11 大雪闰奇块始；2024-12-26 冬至上元（最近一次置闰）
+        XCTAssertTrue(lookup("2024-12-11")!.runqi, "2024-12-11 大雪闰奇块始")
+        let d = lookup("2024-12-26")!
+        XCTAssertEqual(d.jieqi, "冬至")
+        XCTAssertEqual(d.sanyuan, "上元")
+        XCTAssertEqual(d.ju, 1)
+        XCTAssertFalse(d.runqi)
+        // 2026 年无闰：芒种上元 2026-06-04、夏至上元 2026-06-19
+        XCTAssertFalse(lookup("2026-06-04")!.runqi, "2026 芒种无闰")
+        XCTAssertEqual(lookup("2026-06-19")!.jieqi, "夏至", "2026 夏至上元")
+        // 置闰 chart：2024-12-26 冬至上元阴 1 局
+        let z = QimenEngine.zhiyunChart(for: fmt.date(from: "2024-12-26")!)!
+        XCTAssertEqual(z.jieqi, "冬至")
+        XCTAssertEqual(z.ju, 1)
+        XCTAssertTrue(z.receiptText().contains("置闰法"), "置闰收据行")
+    }
+
+    // MARK: - G3 真太阳时（与 Python test_qimen_solar.py 同期望）
+    func testG3Solar() {
+        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd HH:mm"
+        fmt.timeZone = TimeZone(secondsFromGMT: 8 * 3600)
+        let d = fmt.date(from: "2026-11-07 07:00")!
+        // 未校正：07:00 辰时，时柱庚辰
+        let plain = QimenEngine.chart(for: d)!
+        XCTAssertEqual(plain.pillars[3], "庚辰", "未校正 07:00 辰时")
+        XCTAssertNil(plain.solarMinutes)
+        // 校正（经度 107.8 梁平）：约 -32.7 分，06:27 卯时，时柱己卯
+        let corr = QimenEngine.chart(for: d, longitude: 107.8, jigong: .kun2, angan: true)!
+        XCTAssertEqual(corr.pillars[3], "己卯", "校正后 06:27 卯时")
+        XCTAssertNotNil(corr.solarMinutes)
+        XCTAssertEqual(corr.solarMinutes ?? 0, -32.7, accuracy: 0.5, "校正分钟约 -32.7")
+        XCTAssertEqual(corr.longitude, 107.8)
+        XCTAssertTrue(corr.receiptText().contains("已校正"), "收据写明已校正")
+        XCTAssertTrue(corr.receiptText().contains("107.8"), "收据写明经度")
+    }
+
+    // MARK: - G3 案例库
+    func testG3Cases() {
+        XCTAssertEqual(QimenCases.all.count, 8, "案例库 8 条")
+        XCTAssertEqual(QimenCases.all[0].id, "qimen-case-01")
+        XCTAssertEqual(QimenCases.all[7].id, "qimen-case-08")
+        XCTAssertEqual(QimenCases.all[7].dingju, "置闰法")
+        XCTAssertTrue(QimenCases.all.allSatisfy { !$0.verified.isEmpty }, "每条均有复核结论")
+    }
 }
