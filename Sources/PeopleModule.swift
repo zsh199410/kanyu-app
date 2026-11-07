@@ -158,9 +158,9 @@ struct PeopleView: View {
             }
         }
         .sheet(isPresented: $showingNew) {
-            PersonFormView(store: store, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970))
+            PersonFormView(store: store, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970), onSaved: { showingNew = false })
         }
-        .sheet(item: $editing) { p in PersonFormView(store: store, person: p) }
+        .sheet(item: $editing) { p in PersonFormView(store: store, person: p, onSaved: { editing = nil }) }
     }
     private func exportURL() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("people-export.json")
@@ -194,12 +194,16 @@ struct PersonFormView: View {
     @State private var birth: Date
     @State private var longitudeText: String
     @Environment(\.dismiss) private var dismiss
-    init(store: PeopleStore, person: Person) {
+    var onSaved: (() -> Void)? = nil
+    init(store: PeopleStore, person: Person, onSaved: (() -> Void)? = nil) {
         self.store = store
+        self.onSaved = onSaved
         _person = State(initialValue: person)
         _birth = State(initialValue: person.birthDate)
         _longitudeText = State(initialValue: String(format: "%.1f", person.longitude))
     }
+    /// 新建还是编辑：以 id 是否已在档案库为准，标题不再随姓名输入翻转
+    private var isNew: Bool { !store.people.contains(where: { $0.id == person.id }) }
     var body: some View {
         NavigationStack {
             Form {
@@ -212,7 +216,7 @@ struct PersonFormView: View {
                     BirthInputView(clock: $birth, useLongitude: $person.useLongitude, longitudeText: $longitudeText)
                 }
             }
-            .navigationTitle(person.name.isEmpty ? "新建人物" : "编辑人物")
+            .navigationTitle(isNew ? "新建人物" : "编辑人物")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
@@ -221,7 +225,9 @@ struct PersonFormView: View {
                         var p = person
                         p.birthEpoch = birth.timeIntervalSince1970
                         p.longitude = Double(longitudeText) ?? p.longitude
-                        store.upsert(p); dismiss()
+                        store.upsert(p)
+                        onSaved?()
+                        dismiss()
                     }.disabled(person.name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }

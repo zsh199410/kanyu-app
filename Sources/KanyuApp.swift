@@ -1403,7 +1403,7 @@ struct HomePageView: View {
             }
         }
         .sheet(isPresented: $showingNewPerson) {
-            PersonFormView(store: peopleStore, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970))
+            PersonFormView(store: peopleStore, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970), onSaved: { showingNewPerson = false })
         }
     }
 
