@@ -1023,7 +1023,7 @@ enum MeihuaEngine {
         let lines = liuyaoLines(for: ben, palaceWuxing: palaceWx)
         let (bianPalace, bianGeneration) = palaceOf[bian.name] ?? ("乾宫", "本宫")
         let bianPalaceWx = palaceWuxing[bianPalace] ?? "土"
-        let bianLines = liuyaoLines(for: bian, palaceWuxing: bianPalaceWx)
+        let bianYaoLines = liuyaoLines(for: bian, palaceWuxing: bianPalaceWx)
         return MeihuaResult(
             clock: clock, corrected: lp.corrected, correctionMinutes: lp.correctionMinutes, lon: lon,
             yearBranch: lp.yearBranch, month: lp.month, day: lp.day, hourBranch: lp.hourBranch,
@@ -1031,7 +1031,7 @@ enum MeihuaEngine {
             ben: ben, hu: hu, bian: bian, moving: moving, movingYao: movingYao,
             tiyongLabel: tiYongLabel, tiyongText: tiYongText, huRelationText: huRelationText,
             palace: palace, generation: generation, shi: shi, ying: ying,
-            lines: lines, movingBianLine: bianLines[moving - 1],
+            lines: lines, movingBianLine: bianYaoLines[moving - 1],
             bianPalace: bianPalace, bianGeneration: bianGeneration, question: question)
     }
 
