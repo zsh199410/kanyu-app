@@ -69,8 +69,12 @@ let planets: [PlanetPosition] // v1 仅收录权威真算的日月升三曜
 enum AstroEngine {
 /// 基于 Julian Day、平黄经与恒星时计算太阳、月亮与上升点（等宫制，零外部依赖）
 static func calculate(birthDate: Date, longitude: Double = 107.8, latitude: Double = 30.5) -> AstroChart {
+// 真太阳时校正：与 Web astro.py、八字 TrueSolarTime.swift 完全同式（校正分钟 = (经度 − 120) × 4 + 均时差）
+var shanghaiCal = Calendar(identifier:.gregorian)
+shanghaiCal.timeZone = TimeZone(identifier: "Asia/Shanghai") ?? .current
+let used = TrueSolarTime.corrected(clock: birthDate, longitude: longitude, calendar: shanghaiCal)
 let cal = Calendar(identifier:.gregorian)
-let comp = cal.dateComponents(in: TimeZone(identifier: "Asia/Shanghai") ?? .current, from: birthDate)
+let comp = cal.dateComponents(in: TimeZone(identifier: "Asia/Shanghai") ?? .current, from: used)
 let year = comp.year ?? 2026, month = comp.month ?? 11, day = comp.day ?? 6
 let hour = comp.hour ?? 12, minute = comp.minute ?? 0
 
@@ -238,6 +242,12 @@ struct AstroHomeView: View {
 private var astro: AstroChart {
 AstroEngine.calculate(birthDate: person.birthDate, longitude: person.useLongitude ? person.longitude : 107.8)
 }
+private var corrLongitude: Double {
+person.useLongitude ? person.longitude : 107.8
+}
+private var corrMinutes: Double {
+TrueSolarTime.correctionMinutes(clock: person.birthDate, longitude: corrLongitude)
+}
 
 var body: some View {
 ScrollView {
@@ -278,6 +288,8 @@ Text("↑ \(astro.ascSign.rawValue)").font(.system(size: 11, weight:.bold)).fore
 }
 }
 .kyCard()
+Text("真太阳时校正 \(String(format: "%.1f", corrMinutes)) 分钟 · 经度 \(String(format: "%.1f°", corrLongitude))")
+.font(.caption2).foregroundStyle(Ky.sub).padding(.horizontal, 4)
 
 // 分段选择器（合婚页暂缓，v1 聚焦于东西合参与本命星盘）
 Picker("分类", selection: $selectedTab) {

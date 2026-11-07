@@ -12,10 +12,16 @@ enum TrueSolarTime {
         return 9.87 * sin(2 * b) - 7.53 * cos(b) - 1.5 * sin(b)
     }
 
+    /// 校正分钟数（(经度 − 120) × 4 + 均时差），供界面收据行展示
+    static func correctionMinutes(clock: Date, longitude: Double, standardMeridian: Double = 120.0,
+                                  calendar: Calendar = .current) -> Double {
+        return (longitude - standardMeridian) * 4.0 + equationOfTimeMinutes(clock, calendar: calendar)
+    }
+
     /// 钟表时间 → 真太阳时。standardMeridian 默认 120（北京时间）
     static func corrected(clock: Date, longitude: Double, standardMeridian: Double = 120.0,
                           calendar: Calendar = .current) -> Date {
-        let corr = (longitude - standardMeridian) * 4.0 + equationOfTimeMinutes(clock, calendar: calendar)
+        let corr = correctionMinutes(clock: clock, longitude: longitude, standardMeridian: standardMeridian, calendar: calendar)
         return clock.addingTimeInterval(corr * 60.0)
     }
 }

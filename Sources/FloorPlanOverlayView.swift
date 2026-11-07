@@ -25,7 +25,7 @@ private let orientations: [HouseOrientation] = [
 HouseOrientation(name: "子山午向（坐北朝南）", sitMtn: "子", sitPal: "坎", faceMtn: "午", facePal: "离", desc: "正针南向 · 离宫双九会向大旺"),
 HouseOrientation(name: "壬山丙向（正北朝偏南）", sitMtn: "壬", sitPal: "坎", faceMtn: "丙", facePal: "离", desc: "兼向进气 · 离宫向星得令"),
 HouseOrientation(name: "癸山丁向（偏北朝偏南）", sitMtn: "癸", sitPal: "坎", faceMtn: "丁", facePal: "离", desc: "正南纳气 · 丁星生旺"),
-HouseOrientation(name: "午山子向（坐南朝北）", sitMtn: "午", sitPal: "离", faceMtn: "子", facePal: "坎", desc: "向首一白水 · 九运零神在坎"),
+HouseOrientation(name: "午山子向（坐南朝北）", sitMtn: "午", sitPal: "离", faceMtn: "子", facePal: "坎", desc: "向首九紫火 · 九运零神在坎"),
 HouseOrientation(name: "卯山酉向（坐东朝西）", sitMtn: "卯", sitPal: "震", faceMtn: "酉", facePal: "兑", desc: "正西兑宫 · 兑金管局"),
 HouseOrientation(name: "酉山卯向（坐西朝东）", sitMtn: "酉", sitPal: "兑", faceMtn: "卯", facePal: "震", desc: "正东震宫 · 震木发荣"),
 HouseOrientation(name: "艮山坤向（坐东北朝西南）", sitMtn: "艮", sitPal: "艮", faceMtn: "坤", facePal: "坤", desc: "西南坤位 · 土星生养"),
