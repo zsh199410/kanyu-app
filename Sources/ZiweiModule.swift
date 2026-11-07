@@ -788,23 +788,123 @@ enum ZiweiReading {
         "天梁": "荫星：清高好管事，逢难有解，宜公职专业与长辈缘",
         "七杀": "将星：独断开创，变动里见功名，不喜被管束",
         "破军": "耗星先锋：破旧立新，大起大落中成事，先破后立"]
-    static func cards(chart ch: ZiweiChart) -> [(title: String, conclusion: String, facts: String)] {
-        var out: [(String, String, String)] = []
+    /// 十二宫深度直断 · 宫位角色注（只写实际在宫之星的注；未列出的主星走 starNature）
+    /// 赋文出处口径：以本机星曜性情库（天纪三合）为准，不编造典籍原文
+    static let palaceRoles: [String: [String: String]] = [
+        "财帛": ["武曲": "武曲坐财帛：以技艺与执行力生财，财来得稳也守得住",
+                 "太阴": "太阴坐财帛：细腻积累型，宜不动产与长线",
+                 "贪狼": "贪狼坐财帛：多才多欲，交际场里开财路，欲望须有刹车",
+                 "禄存": "禄存同宫：财库有根",
+                 "地空": "地空在财帛：财来财去，宜化整为零、留足备用金",
+                 "地劫": "地劫在财帛：财来财去，宜化整为零、留足备用金"],
+        "官禄": ["太阳": "太阳坐官禄：利贵显与付出，宜体制、教育、传播",
+                 "天相": "天相坐官禄：借平台成事，宜辅佐、行政、专业服务",
+                 "廉贞": "廉贞坐官禄：执着深情于一业，化禄则名利双收，化忌则防口舌是非",
+                 "七杀": "七杀坐官禄：将星开创，宜创业、开拓、变动中取功名",
+                 "紫微": "紫微坐官禄：宜带团队、有舞台的位子，孤君无辅则辛苦"],
+        "夫妻": ["天机": "天机坐夫妻：伴侣聪明善谋，相处宜多沟通、少猜心",
+                 "七杀": "七杀坐夫妻：伴侣性烈直接，宜先立规则再谈感情",
+                 "巨门": "巨门坐夫妻：口舌暗星，以言立业也以言伤人，相处宜把话说透、忌冷战",
+                 "天同": "天同坐夫妻：伴侣温和知足，宜慢热长情"],
+        "疾厄": ["擎羊": "擎羊在疾厄：金气偏旺，肺与大肠为传统弱项，宜润肺、忌燥烈",
+                 "陀罗": "陀罗在疾厄：缠绵之气，旧疾宜慢调",
+                 "火星": "火星在疾厄：火气偏旺，心与小肠为传统弱项，宜降火、忌熬夜",
+                 "铃星": "铃星在疾厄：火气暗藏，宜静养、忌骤动",
+                 "天同": "天同在疾厄：逢难有解，宜顺势调养",
+                 "天梁": "天梁在疾厄：逢难有解，宜顺势调养"],
+        "田宅": ["天府": "天府坐田宅：库星守成，不动产缘分厚，宜守祖业、宜置业",
+                 "太阴": "太阴坐田宅：宜近水、宜稳，置业宜实",
+                 "禄存": "禄存同宫：祖荫积蓄有根",
+                 "地空": "地空在田宅：置业宜实、忌投机，祖产宜守不宜散",
+                 "地劫": "地劫在田宅：置业宜实、忌投机，祖产宜守不宜散"],
+        "福德": ["天同": "天同坐福德：温和知足，精神底子厚",
+                 "天梁": "天梁坐福德：清高好管事，逢难有解",
+                 "太阴": "太阴坐福德：心思细腻，情绪即福德的水位"],
+        "迁移": ["天马": "天马在迁移：外出多动，异地有机遇",
+                 "七杀": "七杀在迁移：宜闯荡，变动里见功名",
+                 "破军": "破军在迁移：宜闯荡，先破后立"],
+    ]
+    /// 命宫格局判定（杀破狼／机月同梁／紫府朝垣／日月并明；只判三方实际见到的组合）
+    private static func gejuNote(chart ch: ZiweiChart) -> String {
+        func palace(_ name: String) -> ZiweiPalace { ch.palaces.first { $0.name == name }! }
+        let ming = ch.palaces[ch.mingGong]
+        let cai = palace("财帛"), guan = palace("官禄"), qian = palace("迁移")
+        let sanfang = ming.majors.map { $0.star } + cai.majors.map { $0.star } + guan.majors.map { $0.star }
+        var notes: [String] = []
+        if sanfang.contains("七杀") && sanfang.contains("破军") && sanfang.contains("贪狼") { notes.append("杀破狼格：三方见七杀、破军、贪狼，开创变动型，变动里见功名") }
+        let jiYue = ["天机", "太阴", "天同", "天梁"]
+        if sanfang.filter({ jiYue.contains($0) }).count >= 3 { notes.append("机月同梁格：三方见天机、太阴、天同、天梁三者以上，宜公职、专业、文化教职") }
+        if ming.majors.contains(where: { $0.star == "紫微" }) && (ming.majors.contains(where: { $0.star == "天府" }) || qian.majors.contains(where: { $0.star == "天府" })) { notes.append("紫府朝垣：命宫见紫微、天府对照，帝库相会，宜带团队、有舞台的位子") }
+        if sanfang.contains("太阳") && sanfang.contains("太阴") { notes.append("日月并明：三方见太阳、太阴，光暗互补，宜名利双线") }
+        return notes.isEmpty ? "" : "格局：" + notes.joined(separator: "；")
+    }
+    /// 单宫深度直断卡（星曜事实＋天纪赋文出处＋白话深度直断）
+    private static func palaceCard(chart ch: ZiweiChart, name: String, title: String, theme: String) -> (title: String, conclusion: String, facts: String, source: String) {
+        let p = ch.palaces.first { $0.name == name }!
+        func starLine(_ pp: ZiweiPalace) -> String {
+            pp.majors.isEmpty ? "无主星（借对宫）" : pp.majors.map { $0.star }.joined(separator: "、")
+        }
+        let opp = ch.palaces[(p.branch + 6) % 12]
+        let brightness = p.majors.map { ZiweiBrightness.of($0.star, branch: p.branch) }.filter { !$0.isEmpty }.joined(separator: "、")
+        let hua = (p.majors + p.minors).compactMap { m in m.mutagen.map { "\(m.star)化\($0)" } }.joined(separator: "、")
+        let sha = p.minors.filter { ["擎羊", "陀罗", "火星", "铃星", "地空", "地劫"].contains($0.star) }.map { $0.star }
+        let ji = p.minors.filter { ["左辅", "右弼", "文昌", "文曲", "禄存", "天马"].contains($0.star) }.map { $0.star }
+        var facts = "\(name)\(p.stem)\(ZiweiCore.DZ[p.branch])，主星 \(starLine(p))"
+        if !brightness.isEmpty { facts += "（\(brightness)）" }
+        if !ji.isEmpty { facts += "；吉星 \(ji.joined(separator: "、"))" }
+        if !sha.isEmpty { facts += "；煞星 \(sha.joined(separator: "、"))" }
+        if !hua.isEmpty { facts += "；\(hua)" }
+        if p.majors.isEmpty { facts += "；无主星，借对宫 \(opp.name)\(starLine(opp))" }
+        var parts: [String] = []
+        if p.majors.isEmpty {
+            parts.append("\(name)无主星，定型借对宫\(opp.name)参：\(starLine(opp))的性情会投射到本宫，\(theme)随环境与际遇塑形更明显")
+        } else {
+            for m in p.majors {
+                if let note = palaceRoles[name]?[m.star] { parts.append(note) }
+                else if let n = starNature[m.star] { parts.append("\(m.star)：\(n)") }
+            }
+        }
+        for s in p.minors {
+            if let note = palaceRoles[name]?[s.star] { parts.append(note) }
+        }
+        let shaGeneric = sha.filter { palaceRoles[name]?[$0] == nil }
+        if !shaGeneric.isEmpty { parts.append("煞星 \(shaGeneric.joined(separator: "、"))在宫，\(theme)多波折，宜先立规矩再求进") }
+        if !hua.isEmpty { parts.append("四化 \(hua)，为一生反复出题之处") }
+        if name == "疾厄" { parts.append("以上为传统象义，不落病名；身体不适以临床为准") }
+        let conclusion = parts.joined(separator: "。") + "。"
+        let source = "天纪三合 · \(name)星曜性情（\(p.majors.map { $0.star }.joined(separator: "、"))\(p.majors.isEmpty ? "借对宫" : "")）"
+        return (title, conclusion, facts, source)
+    }
+    static func cards(chart ch: ZiweiChart) -> [(title: String, conclusion: String, facts: String, source: String)] {
+        var out: [(String, String, String, String)] = []
         let ming = ch.palaces[ch.mingGong]
         func starLine(_ p: ZiweiPalace) -> String {
             p.majors.isEmpty ? "无主星（借对宫）" : p.majors.map { $0.star }.joined(separator: "、")
         }
         let mingStars = ming.majors.map { $0.star }
+        let mingText = mingStars.isEmpty ? "命宫无主星：定型借对宫迁移宫主星参，性格随环境塑形更明显。"
+            : mingStars.map { "\($0)：\(starNature[$0] ?? "")" }.joined(separator: "；")
+        let mingBase = mingText.hasSuffix("。") ? String(mingText.dropLast()) : mingText
+        let geju = gejuNote(chart: ch)
         out.append(("命宫定型",
-                    mingStars.isEmpty ? "命宫无主星：定型借对宫迁移宫主星参，性格随环境塑形更明显。"
-                        : mingStars.map { "\($0)：\(starNature[$0] ?? "")" }.joined(separator: "；"),
-                    "命宫在\(ming.stem)\(ZiweiCore.DZ[ming.branch])，主星 \(starLine(ming))"))
+                    mingBase + "。" + (geju.isEmpty ? "" : geju + "。"),
+                    "命宫在\(ming.stem)\(ZiweiCore.DZ[ming.branch])，主星 \(starLine(ming))",
+                    "天纪三合 · 命宫星曜性情（\(mingStars.isEmpty ? "借对宫" : mingStars.joined(separator: "、"))）"))
+        // 十二宫深度直断：财帛／官禄／夫妻／疾厄／田宅／福德／迁移
+        out.append(palaceCard(chart: ch, name: "财帛", title: "财帛赚钱", theme: "赚钱模式与财库厚度"))
+        out.append(palaceCard(chart: ch, name: "官禄", title: "官禄事业", theme: "事业赛道与晋升天花板"))
+        out.append(palaceCard(chart: ch, name: "夫妻", title: "夫妻婚恋", theme: "配偶象义与婚恋相处"))
+        out.append(palaceCard(chart: ch, name: "疾厄", title: "疾厄体质", theme: "脏腑体质弱项"))
+        out.append(palaceCard(chart: ch, name: "田宅", title: "田宅置业", theme: "不动产缘分与祖荫积蓄"))
+        out.append(palaceCard(chart: ch, name: "福德", title: "福德心境", theme: "内心精神世界与压力化解"))
+        out.append(palaceCard(chart: ch, name: "迁移", title: "迁移外出", theme: "外出贵人与异地发展"))
         // 三方四正：财帛/官禄/迁移
         func palace(_ name: String) -> ZiweiPalace { ch.palaces.first { $0.name == name }! }
         let cai = palace("财帛"); let guan = palace("官禄"); let qian = palace("迁移")
         out.append(("三方四正",
                     "财帛坐\(starLine(cai))定赚钱方式，官禄坐\(starLine(guan))定事业形态，迁移坐\(starLine(qian))定外出方为——四宫合看才是完整的用武之地。",
-                    "财帛\(cai.stem)\(ZiweiCore.DZ[cai.branch])、官禄\(guan.stem)\(ZiweiCore.DZ[guan.branch])、迁移\(qian.stem)\(ZiweiCore.DZ[qian.branch])"))
+                    "财帛\(cai.stem)\(ZiweiCore.DZ[cai.branch])、官禄\(guan.stem)\(ZiweiCore.DZ[guan.branch])、迁移\(qian.stem)\(ZiweiCore.DZ[qian.branch])",
+                    "天纪三合 · 三方四正（财帛／官禄／迁移）"))
         // 四化议题
         var huaLines: [String] = []
         for p in ch.palaces {
@@ -818,13 +918,15 @@ enum ZiweiReading {
             }
         }
         out.append(("生年四化", huaLines.joined(separator: "；") + "。四化落哪宫，哪宫就是一生反复出题之处。",
-                    "生年干四化（天纪口径，不搞多层飞星）"))
+                    "生年干四化（天纪口径，不搞多层飞星）",
+                    "天纪三合 · 生年四化（天干四化口径）"))
         // 大限（按虚岁粗定位：以当前年份-出生年+1 落入哪步大限；此处以宫位大限表展示全程）
         let daxianText = ch.palaces.sorted { ($0.decadal.first ?? 0) < ($1.decadal.first ?? 0) }
             .map { "\($0.decadal.first ?? 0)–\($0.decadal.last ?? 0) 岁走\($0.name)（\(starLine($0))）" }
             .joined(separator: "；")
         out.append(("大限推程", daxianText + "。每限十年以该宫及其三方四正断主题。",
-                    "\(ch.juName)，\(ch.juNumber) 岁起限"))
+                    "\(ch.juName)，\(ch.juNumber) 岁起限",
+                    "天纪三合 · 大限推程（\(ch.juName)，\(ch.juNumber) 岁起限）"))
         return out
     }
 }
@@ -833,7 +935,7 @@ struct ZiweiReadingView: View {
     let chart: ZiweiChart
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            KySectionTitle(title: "天纪三合解读", trailing: "命身 · 三方 · 四化 · 大限")
+            KySectionTitle(title: "天纪三合解读", trailing: "命身 · 十二宫 · 三方 · 四化 · 大限")
             ForEach(ZiweiReading.cards(chart: chart), id: \.title) { c in
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -842,7 +944,7 @@ struct ZiweiReadingView: View {
                         Spacer()
                         KyBadge(text: "天纪口径", color: Ky.qingdai)
                     }
-                    EvidenceChainView(conclusion: c.conclusion, links: [("盘面", c.facts)])
+                    EvidenceChainView(conclusion: c.conclusion, links: [("盘面", c.facts), ("天纪赋文", c.source)])
                 }
                 .kyCard()
             }

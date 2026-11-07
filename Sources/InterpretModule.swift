@@ -10,7 +10,7 @@ struct InterpretItem {
     let links: [(label: String, text: String)]
 }
 
-/// 解盘验真打标：每条断语一键标「已验准／待核验」，沉淀个人准确率；随备份导出。
+/// 解盘验真打标：每条断语一键标「已应验／待回验」，沉淀个人准确率；随备份导出。
 enum VerifyStore {
     private static let key = "kanyu.verifyMarks.v1"
     static func mark(for title: String) -> Bool? {
@@ -23,6 +23,16 @@ enum VerifyStore {
     }
     static func verifiedCount(titles: [String]) -> Int {
         titles.filter { mark(for: $0) == true }.count
+    }
+    static func pendingCount(titles: [String]) -> Int {
+        titles.filter { mark(for: $0) == false }.count
+    }
+    /// 个人准确率：已应验 /（已应验＋待回验）；未打标时为 nil
+    static func accuracy(titles: [String]) -> Double? {
+        let v = verifiedCount(titles: titles)
+        let p = pendingCount(titles: titles)
+        guard v + p > 0 else { return nil }
+        return Double(v) / Double(v + p)
     }
 }
 
@@ -557,7 +567,7 @@ struct InterpretView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(name.isEmpty ? "本盘" : name) · 30 条五典详批 · 已验准 \(VerifyStore.verifiedCount(titles: allItems.map { $0.title })) 条")
+                            Text("\(name.isEmpty ? "本盘" : name) · 30 条五典详批 · \(accuracyLine(titles: allItems.map { $0.title }))")
                                 .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             Text("日主 \(chart.rizhu) · 四柱 \(chart.pillars.joined(separator: " ")) · 每条附盘面与典籍依据")
                                 .font(.caption2).foregroundStyle(Ky.sub)
@@ -682,6 +692,28 @@ struct InterpretView: View {
         .sheet(isPresented: $showGlossary) { glossarySheet }
     }
 
+    /// 个人准确率行（已应验／待回验／命中率；未打标时不显示命中率）
+    private func accuracyLine(titles: [String]) -> String {
+        let v = VerifyStore.verifiedCount(titles: titles)
+        let p = VerifyStore.pendingCount(titles: titles)
+        if let a = VerifyStore.accuracy(titles: titles) {
+            return "已应验 \(v) 条 · 待回验 \(p) 条 · 命中率 \(Int((a * 100).rounded()))%"
+        }
+        return "已应验 \(v) 条 · 待回验 \(p) 条"
+    }
+    /// 验真依据链（实算值：前后交节时刻＋真太阳时校正量＋经度；节气据天文历算）
+    private var verifyChain: String {
+        let prev = chart.prevJieQiText.isEmpty ? "—" : chart.prevJieQiText
+        let next = chart.nextJieQiText.isEmpty ? "—" : chart.nextJieQiText
+        let lon = chart.longitude.map { String(format: "%.1f°", $0) } ?? "—"
+        let corr: String
+        if let t = chart.trueSolarDate {
+            let m = Int((t.timeIntervalSince(chart.birthDate) / 60).rounded())
+            corr = "\(m >= 0 ? "+" : "")\(m)分钟"
+        } else { corr = "未校正" }
+        return "上一节 \(prev) · 下一节 \(next)（天文历算实算值）· 真太阳时校正 \(corr)（经度 \(lon)）"
+    }
+
     private func verificationFooter(item: InterpretItem) -> some View {
         let _ = verifyTick
         return VStack(alignment: .leading, spacing: 6) {
@@ -690,15 +722,18 @@ struct InterpretView: View {
                 Text("验真溯源").font(.caption2).fontWeight(.bold).foregroundStyle(Ky.gold)
                 Text("紫金山天文台节气 · 真太阳时校正 · 五典卷目见上方「法则」").font(.caption2).foregroundStyle(Ky.sub)
             }
+            Text("验真依据链：\(verifyChain)")
+                .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                Button("已验准") { VerifyStore.set(item.title, true); verifyTick += 1 }
+                Button("已应验") { VerifyStore.set(item.title, true); verifyTick += 1 }
                     .font(.caption2).fontWeight(.bold)
                     .padding(.horizontal, 9).padding(.vertical, 5)
                     .background(VerifyStore.mark(for: item.title) == true ? Ky.jade : Ky.elevated)
                     .foregroundStyle(VerifyStore.mark(for: item.title) == true ? Color.white : Ky.ink)
                     .clipShape(Capsule())
                     .buttonStyle(.plain)
-                Button("待核验") { VerifyStore.set(item.title, false); verifyTick += 1 }
+                Button("待回验") { VerifyStore.set(item.title, false); verifyTick += 1 }
                     .font(.caption2).fontWeight(.bold)
                     .padding(.horizontal, 9).padding(.vertical, 5)
                     .background(VerifyStore.mark(for: item.title) == false ? Ky.cinnabar : Ky.elevated)
@@ -706,7 +741,7 @@ struct InterpretView: View {
                     .clipShape(Capsule())
                     .buttonStyle(.plain)
                 if let m = VerifyStore.mark(for: item.title) {
-                    Text(m ? "已标：验准 ✓" : "已标：待核验").font(.caption2).foregroundStyle(m ? Ky.jade : Ky.cinnabar)
+                    Text(m ? "已标：应验 ✓" : "已标：待回验").font(.caption2).foregroundStyle(m ? Ky.jade : Ky.cinnabar)
                 }
                 Spacer()
                 Text("打标计入个人准确率").font(.caption2).foregroundStyle(Ky.sub)
