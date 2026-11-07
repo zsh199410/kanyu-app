@@ -178,9 +178,10 @@ enum CompassMath {
 
 // MARK: - 本地勘测引擎（离线排盘：玄空飞星＋八宅＋流年）
 //
-// 规则均经回源核对（2026-10-30）：
+// 规则均经回源核对（2026-10-30；飞星顺逆口径 2026-11-08 按《沈氏玄空学》卷四纠错）：
 // 玄空：飞行轨迹 中→乾→兑→艮→离→坎→坤→震→巽；运盘一概顺飞；山/向盘以运盘坐/向宫星入中，
-//      按坐/向山三元龙阴阳定顺逆（阳顺阴逆）。二十四山阴阳：阳＝乾坤艮巽·甲庚丙壬·寅申巳亥，阴＝余。
+//      按入中星元旦本宫中与坐/向山同元龙之山的阴阳定顺逆（阳顺阴逆），入中星为 5 时以
+//      坐/向山本身阴阳论。二十四山阴阳：阳＝乾坤艮巽·甲庚丙壬·寅申巳亥，阴＝余。
 // 八宅：《八宅明镜》变爻口诀——不变伏位、变上爻生气、变下爻祸害、变中爻绝命、变下中爻天医、
 //      变中上爻五鬼、变上下爻六煞、三爻全变延年（已用坎宅八方表逐项验过）。
 // 本引擎为「下卦」盘（不替卦），结论属流派应用层，正式断宅仍以回传数据包复核为准。
@@ -191,6 +192,29 @@ enum FengshuiEngine {
     static let palaceDirection = ["坎": "正北", "艮": "东北", "震": "正东", "巽": "东南",
                                   "离": "正南", "坤": "西南", "兑": "正西", "乾": "西北", "中": "中宫"]
     static let yangMountains: Set<String> = ["乾", "坤", "艮", "巽", "甲", "庚", "丙", "壬", "寅", "申", "巳", "亥"]
+    // 三元龙（《沈氏玄空学》卷四九宫挨星掌诀）：每宫三山依次为地元／天元／人元
+    static let palaceMountains: [String: [String]] = ["坎": ["壬", "子", "癸"], "艮": ["丑", "艮", "寅"], "震": ["甲", "卯", "乙"], "巽": ["辰", "巽", "巳"], "离": ["丙", "午", "丁"], "坤": ["未", "坤", "申"], "兑": ["庚", "酉", "辛"], "乾": ["戌", "乾", "亥"]]
+    static let heavenMountains: Set<String> = ["子", "午", "卯", "酉", "乾", "坤", "艮", "巽"] // 天元
+    static let earthMountains: Set<String> = ["辰", "戌", "丑", "未", "甲", "庚", "丙", "壬"] // 地元
+    // 人元＝其余：寅申巳亥＋乙辛丁癸
+    static let numberPalace: [Int: String] = [1: "坎", 2: "坤", 3: "震", 4: "巽", 5: "中", 6: "乾", 7: "兑", 8: "艮", 9: "离"] // 星数 → 洛书原宫
+    // 山 → 元龙：0 地元、1 天元、2 人元
+    static func yuanlong(of mountain: String) -> Int {
+        if heavenMountains.contains(mountain) { return 1 }
+        if earthMountains.contains(mountain) { return 0 }
+        return 2
+    }
+    // 入中星顺逆判定（沈氏口径）：返回 (forward, by)。n 不等于 5 时 by＝n 的洛书原宫中与
+    // refMountain 同元龙之山，by 阳则顺飞、阴则逆飞；n＝5 时 by＝refMountain 本身。
+    static func starDirection(center n: Int, refMountain: String) -> (forward: Bool, by: String) {
+        let by: String
+        if n == 5 {
+            by = refMountain
+        } else {
+            by = palaceMountains[numberPalace[n] ?? "中"]?[yuanlong(of: refMountain)] ?? refMountain
+        }
+        return (yangMountains.contains(by), by)
+    }
     static let starNames = ["", "一白", "二黑", "三碧", "四绿", "五黄", "六白", "七赤", "八白", "九紫"]
 
     static func period(forYear year: Int) -> Int {
@@ -216,12 +240,17 @@ enum FengshuiEngine {
     struct Chart { var base: [String: Int]; var mtn: [String: Int]; var face: [String: Int] }
     static func chart(period p: Int, sitMountain: String, sitPalace: String, faceMountain: String, facePalace: String) -> Chart {
         let base = fly(center: p, forward: true)
-        let mtn = fly(center: base[sitPalace] ?? 5, forward: yangMountains.contains(sitMountain))
-        let face = fly(center: base[facePalace] ?? 5, forward: yangMountains.contains(faceMountain))
+        let mtnCenter = base[sitPalace] ?? 5
+        let faceCenter = base[facePalace] ?? 5
+        let mtn = fly(center: mtnCenter, forward: starDirection(center: mtnCenter, refMountain: sitMountain).forward)
+        let face = fly(center: faceCenter, forward: starDirection(center: faceCenter, refMountain: faceMountain).forward)
         return Chart(base: base, mtn: mtn, face: face)
     }
     static func annualStar(year: Int) -> Int {
-        let s = (9 - ((year - 2024) % 9 + 9) % 9)
+        // 流年入中星。2024 三碧为锚点：2024→3、2025→2、2026→1、2027→9。
+        // 公式 (3 - (year-2024)) % 9，0 时取 9。lunar_python 年九星逐年复核 2023–2031 一致。
+        // 2026-11-08 纠错：旧公式 9 - ((year-2024) % 9) 错位一格（2024→9、2025→8、2026→7 均为错值）。
+        let s = ((3 - (year - 2024)) % 9 + 9) % 9
         return s == 0 ? 9 : s
     }
     // 旺衰（以当运论，流派应用层口径）
@@ -1175,6 +1204,7 @@ struct KanyuSurveyApp: App {
     @StateObject private var store = SurveyStore()
     @StateObject private var location = LocationManager()
     @StateObject private var motion = MotionManager()
+    @StateObject private var lockStore = CompassLockStore()
     @StateObject private var peopleStore = PeopleStore.shared
     var body: some Scene {
         WindowGroup {
@@ -1182,6 +1212,7 @@ struct KanyuSurveyApp: App {
                 .environmentObject(store)
                 .environmentObject(location)
                 .environmentObject(motion)
+                .environmentObject(lockStore)
                 .environmentObject(peopleStore)
         }
     }
@@ -1365,6 +1396,7 @@ struct HomePageView: View {
                 topBrandHero
                 signBanner
                 todayAlmanacCard
+                todayFortuneCard
                 dueCard
                 primaryBentoGrid
                 recentPeopleSection
@@ -1507,6 +1539,23 @@ struct HomePageView: View {
             }
         }
         .kyCard()
+    }
+
+    // G1 每日运势「今日」卡：与 Web /api/today 同款三行（命主＝relation 本人，否则首位档案）
+    private var todayFortuneCard: some View {
+        let person = peopleStore.people.first(where: { $0.relation == "本人" }) ?? peopleStore.people.first
+        if let p = person {
+            let chart = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
+            return AnyView(
+                TodayFortuneCard(person: p, chart: chart)
+                    .onAppear {
+                        if TodayNotificationManager.isEnabled {
+                            TodayNotificationManager.scheduleDaily(person: p)
+                        }
+                    }
+            )
+        }
+        return AnyView(TodayFortuneCard(person: nil, chart: nil))
     }
 
     // 待回验提醒
@@ -1696,7 +1745,7 @@ struct HomePageView: View {
     // 专项推演 2×3 矩阵（新增「干支反查」重磅工具！）
     private var specialToolsBento: some View {
         VStack(alignment: .leading, spacing: 10) {
-            KySectionTitle(title: "专项推演", trailing: "星命 · 反查 · 合婚 · 论财 · 对比")
+            KySectionTitle(title: "专项推演", trailing: "星命 · 反查 · 合婚 · 论财 · 对比 · 梅花")
             HStack(spacing: 10) {
                 NavigationLink {
                     let p = peopleStore.people.first(where: { $0.relation == "本人" }) ?? peopleStore.people.first ?? Person(name: "命主", relation: "本人", gender: "M", birthEpoch: Date().timeIntervalSince1970)
@@ -1718,6 +1767,14 @@ struct HomePageView: View {
                 }.buttonStyle(.plain)
             }
             HStack(spacing: 10) {
+                NavigationLink { FamilyChartView() } label: {
+                    compactBentoTile("person.3.fill", "全家盘", "三人盘并置 · 合参裁决", Ky.jade)
+                }.buttonStyle(.plain)
+                NavigationLink { SynastryShareCardView() } label: {
+                    compactBentoTile("qrcode", "合盘分享卡", "双盘速览 · 总评一句 · 二维码", Ky.qingdai)
+                }.buttonStyle(.plain)
+            }
+            HStack(spacing: 10) {
                 NavigationLink { CompareView() } label: {
                     compactBentoTile("person.3.fill", "多盘对比", "2–4 人并排比四柱", Ky.jade)
                 }.buttonStyle(.plain)
@@ -1726,8 +1783,36 @@ struct HomePageView: View {
                 }.buttonStyle(.plain)
             }
             HStack(spacing: 10) {
+                NavigationLink {
+                    let p = peopleStore.people.first(where: { $0.relation == "本人" }) ?? peopleStore.people.first ?? Person(name: "命主", relation: "本人", gender: "M", birthEpoch: Date().timeIntervalSince1970)
+                    let ch = BaziEngine.paipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
+                    ChengguView(person: p, chart: ch)
+                } label: {
+                    compactBentoTile("scalemass.fill", "称骨", "四重称重 · 52 格歌诀", Ky.cinnabar)
+                }.buttonStyle(.plain)
                 Button { selectedTab = 4 } label: {
                     compactBentoTile("safari.fill", "风水勘察", "罗盘定盘 · 玄空八宅", Ky.gold)
+                }.buttonStyle(.plain)
+            }
+            HStack(spacing: 10) {
+                NavigationLink { MeihuaView() } label: {
+                    compactBentoTile("yinyang", "六爻梅花", "时间起卦 · 体用六亲", Ky.qingdai)
+                }.buttonStyle(.plain)
+                NavigationLink { ForecastView() } label: {
+                    compactBentoTile("checkmark.seal.fill", "前瞻登记", "起卦断语封存 · 到期回验", Ky.jade)
+                }.buttonStyle(.plain)
+            }
+            HStack(spacing: 10) {
+                NavigationLink { CompassStandaloneView() } label: {
+                    compactBentoTile("safari.fill", "罗盘实测", "磁北／真北 · 锁定带入堪舆", Ky.gold)
+                }.buttonStyle(.plain)
+                NavigationLink { FloorPlanOverlayView() } label: {
+                    compactBentoTile("square.split.diagonal.2x2", "户型压盘", "导入户型图 · 拖拽立极中宫", Ky.qingdai)
+                }.buttonStyle(.plain)
+            }
+            HStack(spacing: 10) {
+                NavigationLink { AskView() } label: {
+                    compactBentoTile("bubble.left.and.text.bubble.right.fill", "AI 问答", "只引引擎事实 · 附依据链", Ky.jade)
                 }.buttonStyle(.plain)
             }
         }
@@ -1761,6 +1846,9 @@ struct HomePageView: View {
             VStack(spacing: 10) {
                 wideLink("checkmark.seal.fill", "前瞻断语登记簿", "事前封存断语 · 到期四档回验（共 \(forecastStore.entries.count) 条）", Ky.jade) { ForecastView() }
                 wideLink("text.book.closed.fill", "五典与实务断语库", "100 条已核定类象 · 格局 · 调候 · 回测纪律可检索", Ky.qingdai) { LibraryView() }
+                wideLink("book.fill", "古籍检索", "《滴天髓》64 篇歌诀 · 《子平真诠》一～十篇全文逐句对照", Ky.jade) { ClassicsView() }
+                wideLink("questionmark.circle.fill", "排盘口径自测", "44 题口径自测 · 答案由引擎现算复核", Ky.gold) { QuizView() }
+                wideLink("graduationcap.fill", "学堂", "图书馆 · 古籍 · 题库 · 依据与金标准收拢一页", Ky.qingdai) { AcademyView() }
                 wideLink("person.crop.rectangle.stack.fill", "名人命例库", "公开史料记载生辰 · 八字与紫微双盘即时对参", Ky.gold) { CelebView() }
             }
         }
@@ -1826,6 +1914,7 @@ struct KanyuWorkbenchTabView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
                 heroCard
+                compassToolCard
                 floorPlanToolCard
                 casesSection
                 surveyKnowledgeSection
@@ -1854,6 +1943,47 @@ struct KanyuWorkbenchTabView: View {
             }
         }
         .sheet(isPresented: $showingNew) { NewCaseView() }
+    }
+
+    // 独立罗盘入口卡片（G4：不依赖案件，锁定后带入堪舆案件／户型压盘器）
+    private var compassToolCard: some View {
+        NavigationLink {
+            CompassStandaloneView()
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Ky.qingdai.opacity(0.15))
+                    Image(systemName: "safari.fill")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(Ky.qingdai)
+                }
+                .frame(width: 48, height: 48)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text("罗盘实测")
+                            .font(.system(.subheadline, design: .serif))
+                            .fontWeight(.bold)
+                            .foregroundStyle(Ky.ink)
+                        KyBadge(text: "二十四山", color: Ky.qingdai)
+                    }
+                    Text("磁北／真北切换 · 锁定坐向带入堪舆与户型压盘")
+                        .font(.caption2)
+                        .foregroundStyle(Ky.sub)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Ky.sub)
+            }
+            .padding(12)
+            .background(Ky.card)
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.qingdai.opacity(0.4), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     // 户型图立极压盘入口卡片
@@ -2711,9 +2841,9 @@ struct AnalysisView: View {
             Text("格局：旺山旺向——坐方山星当旺、向方水星当旺，坐后见山、向前见水为上局。").font(.callout).foregroundStyle(.green)
         } else if mFace == period && fSit == period {
             Text("格局：上山下水——旺星错位：坐方宜见水、向方宜见山（或以动线/门路化解），断语须结合峦头。").font(.callout).foregroundStyle(.orange)
-        } else if fFace == period && fSit == period {
+        } else if mFace == period && fFace == period {
             Text("格局：双星到向——向首旺气集中，利财利门面，坐后宜实不宜虚。").font(.callout)
-        } else if mSit == period && mFace == period {
+        } else if mSit == period && fSit == period {
             Text("格局：双星到坐——坐山旺气集中，利丁利健康，向前宜开阔。").font(.callout)
         } else {
             Text("格局：无成格——按各宫山向星旺衰逐宫论，重点看向首、坐宫与门位所在宫。").font(.callout).foregroundStyle(.secondary)

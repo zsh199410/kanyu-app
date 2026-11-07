@@ -328,8 +328,9 @@ private struct TimePickerSheet: View {
                                     "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"]
     private static let weekdays = ["日", "一", "二", "三", "四", "五", "六"]
     private static let decades: [(String, Int)] = [
+        ("00前", 1905), ("10前", 1915), ("20前", 1925), ("30前", 1935),
         ("40后", 1945), ("50后", 1955), ("60后", 1965), ("70后", 1975),
-        ("80后", 1985), ("90后", 1994), ("00后", 2004), ("10后", 2015), ("20后", 2024)
+        ("80后", 1985), ("90后", 1994), ("00后", 2004), ("10后", 2015), ("20后", 2024), ("30后", 2035)
     ]
 
     private var sheetCities: [(String, Double)] {
@@ -669,7 +670,7 @@ private struct TimePickerSheet: View {
     private var wheelView: some View {
         HStack(spacing: 2) {
             Picker("年", selection: yearBinding) {
-                ForEach(1920...2035, id: \.self) { y in Text("\(y)").tag(y) }
+                ForEach(1900...2100, id: \.self) { y in Text("\(y)").tag(y) }
             }
             .pickerStyle(.wheel).frame(width: 84, height: 132).clipped()
             Picker("月", selection: monthBinding) {
@@ -703,7 +704,7 @@ private struct TimePickerSheet: View {
     }
     private func applyYearText() {
         let digits = yearText.filter { $0.isNumber }
-        if let y = Int(digits), (1920...2035).contains(y) {
+        if let y = Int(digits), (1900...2100).contains(y) {
             if mode == 0 { sy = y; sd = min(sd, solarDayCount) }
             else { ly = y; ld = min(ld, lunarDayCount) }
             yearText = "\(y)"
@@ -711,7 +712,7 @@ private struct TimePickerSheet: View {
             yearText = "\(mode == 0 ? sy : ly)"
         }
     }
-    private func clampYear(_ y: Int) -> Int { min(2035, max(1920, y)) }
+    private func clampYear(_ y: Int) -> Int { min(2100, max(1900, y)) }
 
     private var monthRow: some View {
         HStack(spacing: 10) {

@@ -2,8 +2,10 @@ import SwiftUI
 import PhotosUI
 
 struct FloorPlanOverlayView: View {
+@EnvironmentObject var lockStore: CompassLockStore
 @State private var selectedPeriod: Int = 9 // 默认下元九运 (2024–2043)
 @State private var selectedOrientationIndex: Int = 0 // 默认子山午向
+@State private var useLockOrientation = false // true＝用罗盘锁定坐向（G4），false＝用 8 预设
 @State private var overlayMode: Int = 0 // 0: 玄空飞星, 1: 八宅大游年
 @State private var overlayOpacity: Double = 0.55
 @State private var centerOffset: CGSize = .zero // 中宫立极拖拽偏移量
@@ -22,7 +24,7 @@ let desc: String
 }
 
 private let orientations: [HouseOrientation] = [
-HouseOrientation(name: "子山午向（坐北朝南）", sitMtn: "子", sitPal: "坎", faceMtn: "午", facePal: "离", desc: "正针南向 · 离宫双九会向大旺"),
+HouseOrientation(name: "子山午向（坐北朝南）", sitMtn: "子", sitPal: "坎", faceMtn: "午", facePal: "离", desc: "正针南向 · 双星到坐丁旺"),
 HouseOrientation(name: "壬山丙向（正北朝偏南）", sitMtn: "壬", sitPal: "坎", faceMtn: "丙", facePal: "离", desc: "兼向进气 · 离宫向星得令"),
 HouseOrientation(name: "癸山丁向（偏北朝偏南）", sitMtn: "癸", sitPal: "坎", faceMtn: "丁", facePal: "离", desc: "正南纳气 · 丁星生旺"),
 HouseOrientation(name: "午山子向（坐南朝北）", sitMtn: "午", sitPal: "离", faceMtn: "子", facePal: "坎", desc: "向首九紫火 · 九运零神在坎"),
@@ -33,7 +35,13 @@ HouseOrientation(name: "乾山巽向（坐西北朝东南）", sitMtn: "乾", si
 ]
 
 private var currentOri: HouseOrientation {
-orientations[selectedOrientationIndex]
+// G4 罗盘锁定：坐向由锁定真北度数经 CompassMath＋坐向口径推导（不改 8 预设与飞星／八宅计算）。
+if useLockOrientation, let lock = lockStore.lock {
+let sf = lock.sitFace()
+let degText = String(format: "%.1f°", lock.trueNorth)
+return HouseOrientation(name: "罗盘锁定：" + sf.sit + "山" + sf.face + "向（真北 " + degText + "）", sitMtn: sf.sit, sitPal: sf.sitPalace, faceMtn: sf.face, facePal: sf.facePalace, desc: "罗盘实测锁定 · 真北 " + degText)
+}
+return orientations[selectedOrientationIndex]
 }
 
 private var xuanKongChart: FengshuiEngine.Chart {
@@ -90,8 +98,15 @@ KySeal(text: "三元九运")
 
 HStack(spacing: 8) {
 Menu {
+if let lock = lockStore.lock {
+let sf = lock.sitFace()
+Button("罗盘锁定：" + sf.sit + "山" + sf.face + "向（真北 " + String(format: "%.1f°", lock.trueNorth) + "）") { useLockOrientation = true }
+}
 ForEach(orientations.indices, id: \.self) { idx in
-Button(orientations[idx].name) { selectedOrientationIndex = idx}
+Button(orientations[idx].name) {
+useLockOrientation = false
+selectedOrientationIndex = idx
+}
 }
 } label: {
 HStack(spacing: 4) {
@@ -111,6 +126,13 @@ Text("八运 (2004–23)").tag(8)
 Text("七运 (1984–03)").tag(7)
 }
 .pickerStyle(.menu).font(.system(size: 11))
+}
+
+if useLockOrientation, let lock = lockStore.lock {
+HStack(spacing: 4) {
+Image(systemName: "safari.fill").font(.caption2).foregroundStyle(Ky.qingdai)
+Text("当前坐向来自罗盘锁定：真北 \(String(format: "%.1f°", lock.trueNorth))，\(lock.sitFaceText)；改选上方预设可切回。").font(.caption2).foregroundStyle(Ky.sub)
+}
 }
 
 HStack {

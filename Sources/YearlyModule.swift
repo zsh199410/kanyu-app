@@ -161,6 +161,14 @@ struct YearByYearView: View {
                                     .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                             }
                         }
+                        // G8 小运：起运前年份补一行小运行运干支，不展开断语。
+                        if let xy = XiaoYun.ganzhi(chart: chart, year: y) {
+                            HStack(alignment: .top, spacing: 6) {
+                                Circle().fill(Ky.gold).frame(width: 5, height: 5).padding(.top, 7)
+                                Text("小运（起运前）：\(xy) · \(y - chart.birthYear + 1) 岁（虚岁）· \(chart.qiyunDirection)——起运前以小运代大运，不展开断语。")
+                                    .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
+                            }
+                        }
                     }
                     .padding(15)
                     .background(isNow ? Ky.qingdai.opacity(0.06) : Ky.card)
@@ -329,6 +337,11 @@ struct LifePlanView: View {
                         }
                         ForEach(r.lines.indices, id: \.self) { j in
                             Text(r.lines[j]).font(.callout).foregroundStyle(Ky.ink).lineSpacing(2.5)
+                        }
+                        // G8 小运：起运前年份补一行小运行运干支，不展开断语。
+                        if let xy = XiaoYun.ganzhi(chart: chart, year: r.year) {
+                            Text("小运（起运前）：\(xy) · \(age) 岁（虚岁）· \(chart.qiyunDirection)——起运前以小运代大运，不展开断语。")
+                                .font(.callout).foregroundStyle(Ky.ink).lineSpacing(2.5)
                         }
                         Text(planText(level: r.level, age: age))
                             .font(.caption).fontWeight(.medium).foregroundStyle(Ky.qingdai)

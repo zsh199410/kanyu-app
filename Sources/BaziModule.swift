@@ -1541,8 +1541,8 @@ struct GanZhiLookupView: View {
     @State private var monthBranch: Character = "子"
     @State private var dayGZ = "己未"
     @State private var hourBranch: Character = "未"
-    @State private var startYear = 1950
-    @State private var endYear = 2035
+    @State private var startYear = 1900
+    @State private var endYear = 2100
     @State private var gender = "M"
     @State private var results: [MatchedBirth] = []
     @State private var searched = false
@@ -1697,9 +1697,9 @@ struct GanZhiLookupView: View {
                     HStack {
                         Text("查询年份范围").font(.caption).foregroundStyle(Ky.sub)
                         Spacer()
-                        Stepper("\(startYear)", value: $startYear, in: 1901...2090).labelsHidden()
+                        Stepper("\(startYear)", value: $startYear, in: 1900...2099).labelsHidden()
                         Text("\(String(startYear)) – \(String(endYear)) 年").font(KyV2.tabular(13, weight: .bold)).foregroundStyle(Ky.ink)
-                        Stepper("\(endYear)", value: $endYear, in: 1910...2099).labelsHidden()
+                        Stepper("\(endYear)", value: $endYear, in: 1901...2100).labelsHidden()
                     }
 
                     Picker("排盘性别", selection: $gender) {

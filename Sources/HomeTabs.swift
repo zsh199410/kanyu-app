@@ -13,15 +13,15 @@ struct RootTabView: View {
     var body: some View {
         TabView(selection: $tab) {
             NavigationStack { HomePageView(selectedTab: $tab) }
-                .tabItem { Label("合参", systemImage: "sparkles.rectangle.stack.fill") }.tag(0)
+                .tabItem { Label("合参".scriptConverted, systemImage: "sparkles.rectangle.stack.fill") }.tag(0)
             NavigationStack { BaziHomeView() }
-                .tabItem { Label("八字", systemImage: "tablecells.fill") }.tag(1)
+                .tabItem { Label("八字".scriptConverted, systemImage: "tablecells.fill") }.tag(1)
             NavigationStack { ZiweiHomeView() }
-                .tabItem { Label("紫微", systemImage: "moon.stars.fill") }.tag(2)
+                .tabItem { Label("紫微".scriptConverted, systemImage: "moon.stars.fill") }.tag(2)
             NavigationStack { QimenHomeView() }
-                .tabItem { Label("奇门", systemImage: "circle.grid.3x3.fill") }.tag(3)
+                .tabItem { Label("奇门".scriptConverted, systemImage: "circle.grid.3x3.fill") }.tag(3)
             NavigationStack { KanyuWorkbenchTabView() }
-                .tabItem { Label("堪舆", systemImage: "safari.fill") }.tag(4)
+                .tabItem { Label("堪舆".scriptConverted, systemImage: "safari.fill") }.tag(4)
         }
         .toolbarBackground(Ky.bg, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
@@ -494,6 +494,8 @@ struct YunQiPageView: View {
                         .font(.caption).foregroundStyle(Ky.qingdai)
                 }.kyCard()
                 YunQiView(year: year)
+                Text("依据：中运出《素问·天元纪大论》，主气六步与司天在泉出《素问·六元正纪大论》《六微旨大论》体系，与 Web /api/wuyunliuqi 同口径；季度提示只讲节律，不落病名。金标准见 Web tools/tests/test_wuyunliuqi.py（12 年份＋5 人小运逐项复算）。")
+                    .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(16)
             .padding(.bottom, 100)
@@ -505,6 +507,38 @@ struct YunQiPageView: View {
 
 // MARK: - 我的与系统设置页
 struct MyView: View {
+    // G1 每日运势本地通知：默认关闭；开关＋时间（默认 07:30），只存本机偏好
+    @AppStorage("todayNotify.enabled") private var notifyEnabled = false
+    @AppStorage("todayNotify.hour") private var notifyHour = 7
+    @AppStorage("todayNotify.minute") private var notifyMinute = 30
+
+    private var notifyTimeBinding: Binding<Date> {
+        Binding(
+            get: {
+                var cal = Calendar.current
+                cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600) ?? TimeZone.current
+                var dc = cal.dateComponents([.year, .month, .day], from: Date())
+                dc.hour = notifyHour
+                dc.minute = notifyMinute
+                return cal.date(from: dc) ?? Date()
+            },
+            set: { d in
+                let c = Calendar.current.dateComponents([.hour, .minute], from: d)
+                notifyHour = c.hour ?? 7
+                notifyMinute = c.minute ?? 30
+                if notifyEnabled {
+                    let p = PeopleStore.shared.people.first(where: { $0.relation == "本人" }) ?? PeopleStore.shared.people.first
+                    TodayNotificationManager.scheduleDaily(person: p)
+                }
+            }
+        )
+    }
+
+    private func rescheduleTodayNotification() {
+        let p = PeopleStore.shared.people.first(where: { $0.relation == "本人" }) ?? PeopleStore.shared.people.first
+        TodayNotificationManager.scheduleDaily(person: p)
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
@@ -533,6 +567,35 @@ struct MyView: View {
                     myLink("text.book.closed.fill", "五典与实务断语库（100条）", "类象 · 长生 · 格局 · 健康 · 合婚 · 破局调理", Ky.gold) { LibraryView() }
                     myLink("books.vertical.fill", "风水知识与解煞手册", "玄空八宅测法 · 17类形煞L1-L3分层化解", Ky.cinnabar) { ShaHandbookView() }
                 }
+
+                KySectionTitle(title: "语言", trailing: "简／繁切换")
+                ScriptSettingsView().kyCard()
+
+                KySectionTitle(title: "每日运势", trailing: "本机本地通知")
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("每日推送今日运势", isOn: $notifyEnabled)
+                        .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                        .tint(Ky.qingdai)
+                        .onChange(of: notifyEnabled) { _, newValue in
+                            if newValue {
+                                TodayNotificationManager.requestAuthorization { granted in
+                                    if granted {
+                                        rescheduleTodayNotification()
+                                    } else {
+                                        notifyEnabled = false
+                                    }
+                                }
+                            } else {
+                                TodayNotificationManager.cancel()
+                            }
+                        }
+                    if notifyEnabled {
+                        DatePicker("推送时间", selection: notifyTimeBinding, displayedComponents: .hourAndMinute)
+                            .font(.callout).foregroundStyle(Ky.ink)
+                    }
+                    Text("默认关闭；开启后每天一条（当日干支＋三行首句），iOS 本地通知，不走服务端、不收集数据；未建档时不排期。")
+                        .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
+                }.kyCard()
 
             }
             .padding(16)

@@ -4,6 +4,7 @@
 // 现改为在 init 中直接按初始日期完成年月日初始化，并在所有历算入口加安全边界钳制与内存级月历缓存。
 import SwiftUI
 import LunarSwift
+import UserNotifications
 
 @MainActor
 enum AlmanacLunarCache {
@@ -46,14 +47,14 @@ enum AlmanacLunarCache {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
         let c = cal.dateComponents([.year, .month, .day], from: date)
-        let y = min(max(c.year ?? 2026, 1901), 2099)
+        let y = min(max(c.year ?? 2026, 1900), 2100)
         let m = min(max(c.month ?? 1, 1), 12)
         let d = min(max(c.day ?? 1, 1), 31)
         return (y, m, d)
     }
 
     static func monthLunarLabels(year: Int, month: Int, count: Int) -> [String] {
-        let y = min(max(year, 1901), 2099)
+        let y = min(max(year, 1900), 2100)
         let m = min(max(month, 1), 12)
         let key = "\(y)-\(m)-\(count)"
         if let hit = monthLabelsCache[key] { return hit }
@@ -266,7 +267,7 @@ struct AlmanacCalendarCard: View {
     private var selected: (Int, Int, Int) {
         AlmanacLunarCache.clampedYMD(from: date)
     }
-    private var safeYear: Int { min(max(showYear, 1901), 2099) }
+    private var safeYear: Int { min(max(showYear, 1900), 2100) }
     private var safeMonth: Int { min(max(showMonth, 1), 12) }
 
     private var daysInMonth: Int {
@@ -286,8 +287,8 @@ struct AlmanacCalendarCard: View {
     }
     private func stepMonth(_ d: Int) {
         var m = safeMonth + d, y = safeYear
-        if m < 1 { m = 12; y = max(1901, y - 1) }
-        if m > 12 { m = 1; y = min(2099, y + 1) }
+        if m < 1 { m = 12; y = max(1900, y - 1) }
+        if m > 12 { m = 1; y = min(2100, y + 1) }
         showMonth = m; showYear = y
     }
     private func stepDay(_ d: Int) {
@@ -366,7 +367,7 @@ struct AlmanacCalendarCard: View {
 struct YunQiView: View {
     let year: Int
     var body: some View {
-        let safeY = min(max(year, 1901), 2099)
+        let safeY = min(max(year, 1900), 2100)
         let solar = Solar.fromYmdHms(year: safeY, month: 7, day: 1, hour: 12, minute: 0)
         let sIdx = ((solar.lunar.yearGanIndex % 10) + 10) % 10
         let bIdx = ((solar.lunar.yearZhiIndex % 12) + 12) % 12
@@ -414,8 +415,275 @@ struct YunQiView: View {
                     if i == 5 { KyBadge(text: "在泉", color: Ky.gold) }
                 }
             }
+            // G8 季度提示：只讲当季主气与客气、节律（主客同气为顺、客胜主为逆），不落病名。
+            VStack(alignment: .leading, spacing: 6) {
+                KySectionTitle(title: "季度提示", trailing: "只讲节律")
+                let quarters: [(String, [Int], String)] = [
+                    ("春", [0, 1], "气由寒转温"),
+                    ("夏", [2], "气最盛，司天当令"),
+                    ("秋", [3, 4], "气由盛转收"),
+                    ("冬", [5], "气归藏，在泉当令"),
+                ]
+                ForEach(quarters.indices, id: \.self) { qi in
+                    let q = quarters[qi]
+                    let qZhu = q.1.map { zhu[$0] }.joined(separator: "、")
+                    let qKe = q.1.map { ke[$0] }.joined(separator: "、")
+                    let tong = q.1.contains { ke[$0] == zhu[$0] }
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(q.0 + "季").font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai).frame(width: 28, alignment: .leading)
+                        Text("主气 " + qZhu + "；客气 " + qKe + "。" + q.2 + (tong ? "；主客同气为顺。" : "；客气与主气相异，以客胜主为逆。"))
+                            .font(.caption).foregroundStyle(Ky.ink).lineSpacing(2)
+                    }
+                }
+            }
             Text("主客同气为顺，客胜主为逆；此为《素问》运气节令通参，不作诊疗断语。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }.kyCard()
+    }
+}
+
+// MARK: - G1 每日运势「今日」三行（本机现算，不编断语）
+// 口径与 Web app/today_card.py 逐字同源：
+// ① 五行旺衰＝当日干支五行 vs InterpretEngine.posterXiJi 喜忌定论；
+// ② 冲合＝当日地支 vs 四柱地支，BaziTables.relationFull 分级（冲＞刑＞穿＞合＞破）＋三合半合；
+// ③ 大运流年＝YearEngine.report 四查定级＋现行大运（dayunMark 喜忌标）。
+// 每行只报实算结果，附依据链；算不出的写「无据」。
+struct TodayLine: Identifiable {
+    let id: String
+    let title: String
+    let text: String
+    let basis: String
+}
+
+enum TodayFortune {
+    private static let wxNames = ["木", "火", "土", "金", "水"]
+    private static let palaces = ["年柱", "月柱", "日柱", "时柱"]
+
+    private static func wxName(of stem: Character) -> String {
+        if let w = BaziTables.wx[stem] {
+            return w.0
+        }
+        return "—"
+    }
+
+    private static func wxIndex(of stem: Character) -> Int {
+        return wxNames.firstIndex(of: wxName(of: stem)) ?? 0
+    }
+
+    private static func word(for wxIdx: Int, xi: [Int], ji: [Int]) -> String {
+        if xi.contains(wxIdx) {
+            return "喜用"
+        }
+        if ji.contains(wxIdx) {
+            return "忌"
+        }
+        return "中性"
+    }
+
+    static func lines(chart ch: BaziChart, date: Date = Date()) -> [TodayLine] {
+        let info = AlmanacLunarCache.dayInfo(for: date)
+        let dayGanzhi = info.dayInGanZhi
+        let dayStem = dayGanzhi.first ?? "?"
+        let dayBranch = dayGanzhi.last ?? "?"
+        let xj = InterpretEngine.posterXiJi(chart: ch)
+        let xiNames = xj.xi.map { wxNames[$0] }.joined(separator: "、")
+        let jiNames = xj.ji.map { wxNames[$0] }.joined(separator: "、")
+        let stemWx = wxName(of: dayStem)
+        let stemWxIdx = wxIndex(of: dayStem)
+        let branchBenqi = BaziTables.cangGan[dayBranch]?.first ?? "?"
+        let branchWx = wxName(of: branchBenqi)
+        let branchWxIdx = wxIndex(of: branchBenqi)
+        let line1: TodayLine
+        if xj.level == "中和" || (xj.xi.isEmpty && xj.ji.isEmpty) {
+            line1 = TodayLine(
+                id: "wuxing",
+                title: "今日五行旺衰",
+                text: "今日\(dayStem)\(stemWx)、\(dayBranch)\(branchWx)：命主中和盘无固定喜忌，干支五行只作生克参考，不定喜忌。",
+                basis: "依据：今日干支\(dayGanzhi)（干\(dayStem)行\(stemWx)、支\(dayBranch)行\(branchWx)）；命主喜忌定论为中和盘（InterpretEngine.posterXiJi：扶抑中和，无固定喜忌）。"
+            )
+        } else {
+            let stemWord = word(for: stemWxIdx, xi: xj.xi, ji: xj.ji)
+            let branchWord = word(for: branchWxIdx, xi: xj.xi, ji: xj.ji)
+            line1 = TodayLine(
+                id: "wuxing",
+                title: "今日五行旺衰",
+                text: "今日\(dayStem)\(stemWx)为命主\(stemWord)之行、\(dayBranch)\(branchWx)为命主\(branchWord)之行。",
+                basis: "依据：今日干支\(dayGanzhi)（干\(dayStem)行\(stemWx)、支\(dayBranch)行\(branchWx)）；命主喜\(xiNames.isEmpty ? "无" : xiNames)、忌\(jiNames.isEmpty ? "无" : jiNames)（posterXiJi 定论：扶抑初判＋调候优先）。"
+            )
+        }
+
+        var hits: [(palace: String, branch: Character, rel: String, rank: Int)] = []
+        for i in ch.pillars.indices {
+            let pb = ch.pillars[i].last ?? "?"
+            if let r = BaziTables.relationFull(dayBranch, pb) {
+                hits.append((palaces[i], pb, r.0, r.1))
+            }
+        }
+        let hitPalaces = Set(hits.map { $0.palace })
+        for i in ch.pillars.indices {
+            if hitPalaces.contains(palaces[i]) {
+                continue
+            }
+            let pb = ch.pillars[i].last ?? "?"
+            if pb == dayBranch {
+                continue
+            }
+            let inSameGroup = BaziTables.sanHeGroups.contains { g in
+                g.members.contains(dayBranch) && g.members.contains(pb)
+            }
+            if inSameGroup {
+                hits.append((palaces[i], pb, "三合半合", 0))
+            }
+        }
+        hits.sort { $0.rank > $1.rank }
+        let branchList = ch.pillars.indices.map { "\(palaces[$0])\(ch.pillars[$0].last ?? "?")" }.joined(separator: "、")
+        let line2: TodayLine
+        if hits.isEmpty {
+            line2 = TodayLine(
+                id: "chonghe",
+                title: "今日冲合",
+                text: "无冲合：今日地支\(dayBranch)与命主四柱地支无冲、合、刑、穿、破，亦无三合半合。",
+                basis: "依据：今日地支\(dayBranch)；命主四柱地支\(branchList)（BaziTables.relationFull 分级：冲＞刑＞穿＞合＞破；三合半合为同组两支，未成局）。"
+            )
+        } else {
+            let parts = hits.map { "\($0.palace)\($0.branch)\($0.rel)" }.joined(separator: "、")
+            line2 = TodayLine(
+                id: "chonghe",
+                title: "今日冲合",
+                text: "今日\(dayBranch)与命主\(parts)。",
+                basis: "依据：今日地支\(dayBranch)；命主四柱地支\(branchList)（BaziTables.relationFull 分级：冲＞刑＞穿＞合＞破；三合半合为同组两支，未成局）。"
+            )
+        }
+
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 8 * 3600) ?? TimeZone.current
+        let year = cal.component(.year, from: date)
+        let rep = YearEngine.report(chart: ch, year: year)
+        let rizhuStem = ch.rizhu.first ?? "?"
+        let line3: TodayLine
+        if let di = YearEngine.dayunIndex(chart: ch, year: year) {
+            let dgz = ch.dayunGanZhi[di]
+            let dss = BaziTables.shiShen(day: rizhuStem, stem: dgz.first ?? "?")
+            let mark = InterpretEngine.dayunMark(chart: ch, index: di)
+            let dayunText = "\(dgz)运（\(dss)，喜忌\(mark)）"
+            line3 = TodayLine(
+                id: "dayun_liunian",
+                title: "大运流年",
+                text: "现行\(dayunText)；\(year)年流年\(rep.gz)，流年干为\(BaziTables.shiShen(day: rizhuStem, stem: rep.gz.first ?? "?"))，逐年定级\(rep.level)。",
+                basis: "依据：逐年四查（YearEngine.report，\(year)年定级\(rep.level)）；现行大运\(dayunText)；流年干支\(rep.gz)。"
+            )
+        } else {
+            let dayunText = year < ch.qiyunYear ? "未起运（童限）" : "已出所排大运范围"
+            line3 = TodayLine(
+                id: "dayun_liunian",
+                title: "大运流年",
+                text: "\(dayunText)；\(year)年流年\(rep.gz)，流年干为\(BaziTables.shiShen(day: rizhuStem, stem: rep.gz.first ?? "?"))，逐年定级\(rep.level)。",
+                basis: "依据：逐年四查（YearEngine.report，\(year)年定级\(rep.level)）；\(dayunText)；流年干支\(rep.gz)。"
+            )
+        }
+        return [line1, line2, line3]
+    }
+}
+
+// MARK: - G1 每日运势本地通知（iOS 本地推送，不走服务端、不收集数据）
+// 默认关闭；设置页一个开关＋时间选择（默认 07:30），每日一条（当日干支＋三行首句）。
+// 通知内容在排期当时由本机引擎现算；开关／时间一改即重新排期，关闭即取消。
+enum TodayNotificationManager {
+    static let requestId = "kanyu.today.daily"
+    static let enabledKey = "todayNotify.enabled"
+    static let hourKey = "todayNotify.hour"
+    static let minuteKey = "todayNotify.minute"
+
+    static var isEnabled: Bool {
+        UserDefaults.standard.bool(forKey: enabledKey)
+    }
+    static var hour: Int {
+        let h = UserDefaults.standard.integer(forKey: hourKey)
+        return h == 0 && UserDefaults.standard.object(forKey: hourKey) == nil ? 7 : h
+    }
+    static var minute: Int {
+        if UserDefaults.standard.object(forKey: minuteKey) == nil {
+            return 30
+        }
+        return UserDefaults.standard.integer(forKey: minuteKey)
+    }
+
+    static func requestAuthorization(completion: @escaping (Bool) -> Void) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            DispatchQueue.main.async {
+                completion(granted)
+            }
+        }
+    }
+
+    static func scheduleDaily(person: Person?) {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [requestId])
+        guard let p = person else {
+            return
+        }
+        let chart = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
+        let lines = TodayFortune.lines(chart: chart)
+        let info = AlmanacLunarCache.dayInfo(for: Date())
+        let firstLine = lines.first?.text ?? ""
+        let content = UNMutableNotificationContent()
+        content.title = "今日运势"
+        content.body = "今日\(info.dayInGanZhi)日 · \(firstLine)"
+        content.sound = .default
+        var dc = DateComponents()
+        dc.hour = hour
+        dc.minute = minute
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dc, repeats: true)
+        let request = UNNotificationRequest(identifier: requestId, content: content, trigger: trigger)
+        center.add(request)
+    }
+
+    static func cancel() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [requestId])
+    }
+}
+
+// MARK: - G1 首页「今日」卡（与 Web /api/today 同款三行）
+struct TodayFortuneCard: View {
+    let person: Person?
+    let chart: BaziChart?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                KyBadge(text: "今日运势", color: Ky.qingdai, filled: true)
+                if let p = person {
+                    Text(p.name.isEmpty ? "命主" : p.name)
+                        .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                }
+                Spacer()
+                Text("本机现算 · 不编断语")
+                    .font(.caption2).foregroundStyle(Ky.sub)
+            }
+            if let ch = chart {
+                let lines = TodayFortune.lines(chart: ch)
+                ForEach(lines) { ln in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(alignment: .top, spacing: 6) {
+                            Text(ln.title)
+                                .font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
+                                .frame(width: 86, alignment: .leading)
+                            Text(ln.text)
+                                .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
+                        }
+                        Text(ln.basis)
+                            .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
+                            .padding(.leading, 92)
+                    }
+                    if ln.id != lines.last?.id {
+                        Divider().opacity(0.5)
+                    }
+                }
+            } else {
+                Text("建档后可见命主专属三行（今日五行旺衰 · 今日冲合 · 大运流年），均由本机引擎现算。")
+                    .font(.callout).foregroundStyle(Ky.sub).lineSpacing(3)
+            }
+        }
+        .kyCard()
     }
 }
