@@ -118,9 +118,9 @@ struct ReportCenterView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
                 if let p = person {
-                    Picker("范围", selection: $scope) {
-                        Text("仅看 \(p.name.isEmpty ? "此人" : p.name)").tag(0)
-                        Text("全部").tag(1)
+                    Picker("范围".scriptConverted, selection: $scope) {
+                        Text("仅看 ".scriptConverted + (p.name.isEmpty ? "此人" : p.name)).tag(0)
+                        Text("全部".scriptConverted).tag(1)
                     }
                     .pickerStyle(.segmented)
                 }
@@ -143,7 +143,7 @@ struct ReportCenterView: View {
                         }
                     }
                 }
-                Text("只读历史：中心不存报告本身，只列出本机已生成的文件；删除文件后对应条目自动消失。")
+                Text("只读历史：中心不存报告本身，只列出本机已生成的文件；删除文件后对应条目自动消失。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
                     .padding(.horizontal, 2)
             }
@@ -152,7 +152,7 @@ struct ReportCenterView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("报告中心")
+        .navigationTitle("报告中心".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
         .task { entries = ReportHistory.scan() }
         .refreshable { entries = ReportHistory.scan() }
@@ -167,7 +167,7 @@ struct ReportCenterView: View {
                 .background(Ky.qingdai.opacity(0.13))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(e.kind)
+                Text(e.kind.scriptConverted)
                     .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
                 Text("\(Self.dateFmt.string(from: e.generatedAt)) · \(e.sizeKB) KB")
                     .font(.caption2).foregroundStyle(Ky.sub)

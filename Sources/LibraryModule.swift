@@ -135,8 +135,8 @@ struct LibraryView: View {
                 NavigationLink { LibraryDetailView(entry: e) } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
-                            Text(e.cat).font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.gold)
-                            Text(e.title).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                            Text(e.cat.scriptConverted).font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.gold)
+                            Text(e.title.scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                         }
                         Text(e.body).font(.caption).foregroundStyle(Ky.sub).lineLimit(2)
                     }
@@ -147,7 +147,7 @@ struct LibraryView: View {
             }
             }
         }
-        .navigationTitle(cat == "全部" ? "断语库 · 全部分类" : "断语库 · \(cat)")
+        .navigationTitle(cat == "全部" ? "断语库 · 全部分类".scriptConverted : "断语库 · \(cat)".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -157,14 +157,14 @@ struct LibraryDetailView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 10) {
-                Text(entry.cat).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.gold)
+                Text(entry.cat.scriptConverted).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.gold)
                 Text(entry.body).font(.callout).foregroundStyle(Ky.ink)
-                Text("来源：工作室研习知识库（五典纲要与流派应用分层标注处以原文为准）。")
+                Text("来源：工作室研习知识库（五典纲要与流派应用分层标注处以原文为准）。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle(entry.title)
+        .navigationTitle(entry.title.scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

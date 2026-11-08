@@ -38,7 +38,10 @@ struct RootTabView: View {
         .sheet(isPresented: $showingOnboarding) {
             OnboardingView(onDone: { onboardingDone = true; showingOnboarding = false })
         }
-        .onAppear { if !onboardingDone { showingOnboarding = true } }
+        .onAppear {
+            DataProtection.protectExistingFiles()
+            if !onboardingDone { showingOnboarding = true }
+        }
         .overlay(alignment: .top) {
             if let message = errorCenter.message {
                 AppErrorBanner(message: message) { errorCenter.dismiss() }
@@ -60,7 +63,7 @@ struct MonthCalendarTabView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(info.dayInGanZhi + "日")
                             .font(.system(.title2, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text("\(info.yearInGanZhi)年 · \(info.monthInGanZhi)月 · 农历\(info.monthInChinese)月\(info.dayInChinese)")
+                        Text("\(info.yearInGanZhi)年 · \(info.monthInGanZhi)月 · 农历\(info.monthInChinese)月\(info.dayInChinese)".scriptConverted)
                             .font(.caption).foregroundStyle(Ky.sub)
                         Spacer()
                         KyBadge(text: "\(info.zhiXing)日", color: Ky.qingdai)
@@ -77,7 +80,7 @@ struct MonthCalendarTabView: View {
                     NavigationLink { AlmanacView(initialDate: date) } label: {
                         HStack {
                             Image(systemName: "book.pages.fill").foregroundStyle(Ky.qingdai)
-                            Text("查看当日完整黄历（二十八宿 · 吉神 · 十二时辰）")
+                            Text("查看当日完整黄历（二十八宿 · 吉神 · 十二时辰）".scriptConverted)
                                 .font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.qingdai)
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.qingdai)
@@ -89,7 +92,7 @@ struct MonthCalendarTabView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("干支日历").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(Text("干支日历".scriptConverted)).navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -192,7 +195,7 @@ struct ZejiView: View {
                     Text("命主：\(zp.name.isEmpty ? "未命名" : zp.name) · 已自动过滤冲克其日支／年支的日子\(filteredCount > 0 ? "（\(filteredCount) 天）" : "")，金色徽章为命主专属大吉日。")
                         .font(.caption).foregroundStyle(Ky.sub)
                 } else {
-                    Text("从上方选一位命主，自动过滤冲克其日支／年支的日子并标出专属大吉日。")
+                    Text("从上方选一位命主，自动过滤冲克其日支／年支的日子并标出专属大吉日。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                 }
                 VStack(alignment: .leading, spacing: 10) {
@@ -220,8 +223,8 @@ struct ZejiView: View {
                 if cachedMatches.isEmpty {
                     VStack(spacing: 8) {
                         Image(systemName: "calendar.badge.exclamationmark").font(.title2).foregroundStyle(Ky.cinnabar)
-                        Text("近 30 天内历书无宜「\(event)」之日").font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                        Text("可切换上方其他事项，或在黄历页翻看下月日期。")
+                        Text("近 30 天内历书无宜「\(event)」之日".scriptConverted).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                        Text("可切换上方其他事项，或在黄历页翻看下月日期。".scriptConverted)
                             .font(.caption).foregroundStyle(Ky.sub)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 20)
@@ -255,14 +258,14 @@ struct ZejiView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                Text("口径说明：已按所选命主过滤冲克其日支／年支的日子；专属大吉日＝日干支生扶命主喜用神或与日支三合六合；婚嫁、入宅、开市等大事仍须结合全盘综合裁定。")
+                Text("口径说明：已按所选命主过滤冲克其日支／年支的日子；专属大吉日＝日干支生扶命主喜用神或与日支三合六合；婚嫁、入宅、开市等大事仍须结合全盘综合裁定。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(16)
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("择吉通参").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(Text("择吉通参".scriptConverted)).navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if cachedMatches.isEmpty { computeMatches(for: event) }
         }
@@ -288,8 +291,8 @@ struct WealthView: View {
                 if peopleStore.people.isEmpty {
                     VStack(spacing: 10) {
                         Image(systemName: "person.crop.circle.badge.exclamationmark").font(.largeTitle).foregroundStyle(Ky.gold)
-                        Text("尚无人物档案").font(.headline).foregroundStyle(Ky.ink)
-                        Text("请先在「人物档案」或「八字排盘」中保存至少一位命主，即可在此查看专盘论财。")
+                        Text("尚无人物档案".scriptConverted).font(.headline).foregroundStyle(Ky.ink)
+                        Text("请先在「人物档案」或「八字排盘」中保存至少一位命主，即可在此查看专盘论财。".scriptConverted)
                             .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 24).kyCard()
@@ -299,14 +302,14 @@ struct WealthView: View {
                         wealthCard(p: p, ch: ch)
                     }
                 }
-                Text("论财纪律：财星多不等于发财，原局无财亦不等于穷（须查食伤生财、禄当财看及大运补财）；须结合日主承载力与岁运引动综合看。")
+                Text("论财纪律：财星多不等于发财，原局无财亦不等于穷（须查食伤生财、禄当财看及大运补财）；须结合日主承载力与岁运引动综合看。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(16)
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("八字论财").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(Text("八字论财".scriptConverted)).navigationBarTitleDisplayMode(.inline)
     }
 
     private func wealthCard(p: Person, ch: BaziChart) -> some View {
@@ -350,7 +353,7 @@ struct WealthView: View {
                         Text("\(String(ch.dayunStartYear(i)))–\(String(ch.dayunStartYear(i) + 9))")
                             .font(KyV2.tabular(13, weight: .medium)).foregroundStyle(Ky.sub)
                             .frame(width: 86, alignment: .leading)
-                        Text("\(gz)运")
+                        Text("\(gz)运".scriptConverted)
                             .font(.system(.callout, design: .serif)).fontWeight(.bold)
                             .foregroundStyle(isCai ? Ky.cinnabar : Ky.ink)
                         Spacer()
@@ -388,10 +391,10 @@ struct CompareView: View {
                     if selected.contains(p.id) { selected.remove(p.id) }
                     else if selected.count < 4 { selected.insert(p.id) }
                 }
-                Text("在档案里勾选 2–4 位命主并排比盘；日主或日柱相同的会高亮标出。")
+                Text("在档案里勾选 2–4 位命主并排比盘；日主或日柱相同的会高亮标出。".scriptConverted)
                     .font(.caption).foregroundStyle(Ky.sub)
                 if peopleStore.people.isEmpty {
-                    Text("还没有人物档案——先到「人物档案」建人，再回来对比。")
+                    Text("还没有人物档案——先到「人物档案」建人，再回来对比。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.sub).padding(.top, 12)
                 } else {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
@@ -456,21 +459,21 @@ struct CompareView: View {
                                         .background(Ky.elevated).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                                     }
                                 }
-                                Text("命宫 \(ch.mingGong) · 身宫 \(ch.shenGong) · 胎元 \(ch.taiYuan)")
+                                Text("命宫 \(ch.mingGong) · 身宫 \(ch.shenGong) · 胎元 \(ch.taiYuan)".scriptConverted)
                                     .font(.caption2).foregroundStyle(Ky.sub)
                             }.kyCard()
                         }
                         NavigationLink { SynastryView() } label: {
                             HStack {
                                 Image(systemName: "heart.circle.fill").foregroundStyle(Ky.cinnabar)
-                                Text("如需深入合参两人喜用互补与配偶宫关系，点此进入「合盘合婚」")
+                                Text("如需深入合参两人喜用互补与配偶宫关系，点此进入「合盘合婚」".scriptConverted)
                                     .font(.caption).fontWeight(.medium).foregroundStyle(Ky.qingdai)
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
                             }.kyCard()
                         }.buttonStyle(.plain)
                     } else if !selected.isEmpty {
-                        Text("已选 \(selected.count) 人，请再勾选至少 1 人以生成并排对比。")
+                        Text("已选 \(selected.count) 人，请再勾选至少 1 人以生成并排对比。".scriptConverted)
                             .font(.caption).foregroundStyle(Ky.sub)
                     }
                 }
@@ -479,7 +482,7 @@ struct CompareView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("多盘并排对比").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(Text("多盘并排对比".scriptConverted)).navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -503,14 +506,14 @@ struct YunQiPageView: View {
                         .font(.caption).foregroundStyle(Ky.qingdai)
                 }.kyCard()
                 YunQiView(year: year)
-                Text("依据：中运出《素问·天元纪大论》，主气六步与司天在泉出《素问·六元正纪大论》《六微旨大论》体系，与 Web /api/wuyunliuqi 同口径；季度提示只讲节律，不落病名。金标准见 Web tools/tests/test_wuyunliuqi.py（12 年份＋5 人小运逐项复算）。")
+                Text("依据：中运出《素问·天元纪大论》，主气六步与司天在泉出《素问·六元正纪大论》《六微旨大论》体系，与 Web /api/wuyunliuqi 同口径；季度提示只讲节律，不落病名。金标准见 Web tools/tests/test_wuyunliuqi.py（12 年份＋5 人小运逐项复算）。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(16)
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("五运六气").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(Text("五运六气".scriptConverted)).navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -584,7 +587,7 @@ struct MyView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("尚未建档")
                             .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text("去添加第一位命主档案，建档一次三术通用")
+                        Text("去添加第一位命主档案，建档一次三术通用".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
                     }
                     Spacer()
@@ -623,10 +626,10 @@ struct MyView: View {
                 HStack(spacing: 14) {
                     AppLogoView(size: 56)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("三术合参").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text("子平五典 · 天纪斗数 · 统宗奇门 · 堪舆勘察")
+                        Text("三术合参".scriptConverted).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text("子平五典 · 天纪斗数 · 统宗奇门 · 堪舆勘察".scriptConverted)
                             .font(.caption).foregroundStyle(Ky.qingdai)
-                        Text("全本机离线演算 · 零云端追踪")
+                        Text("全本机离线演算 · 零云端追踪".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }
                     Spacer()
@@ -678,12 +681,12 @@ struct MyView: View {
                     Text("深色模式")
                         .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
                     Picker("深色模式", selection: $appearanceRaw) {
-                        Text("跟随系统").tag("system")
-                        Text("浅色").tag("light")
+                        Text("跟随系统".scriptConverted).tag("system")
+                        Text("浅色".scriptConverted).tag("light")
                         Text("深色").tag("dark")
                     }
                     .pickerStyle(.segmented)
-                    Text("跟随系统时随 iOS 外观自动切换；浅色为宋纸暖白，深色为暗夜玄金。字号走系统动态字体，不另设。")
+                    Text("跟随系统时随 iOS 外观自动切换；浅色为宋纸暖白，深色为暗夜玄金。字号走系统动态字体，不另设。".scriptConverted)
                         .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
                     ScriptSettingsView()
                 }.kyCard()
@@ -711,7 +714,7 @@ struct MyView: View {
                         DatePicker("推送时间", selection: notifyTimeBinding, displayedComponents: .hourAndMinute)
                             .font(.callout).foregroundStyle(Ky.ink)
                     }
-                    Text("默认关闭；开启后每天一条（当日干支＋三行首句），iOS 本地通知，不走服务端、不收集数据；未建档时不排期。")
+                    Text("默认关闭；开启后每天一条（当日干支＋三行首句），iOS 本地通知，不走服务端、不收集数据；未建档时不排期。".scriptConverted)
                         .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
                 }.kyCard()
 
@@ -732,7 +735,7 @@ struct MyView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("档案与设置").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(Text("档案与设置".scriptConverted)).navigationBarTitleDisplayMode(.inline)
     }
 
     private func myLink<Dest: View>(_ icon: String, _ title: String, _ sub: String, _ color: Color, @ViewBuilder dest: @escaping () -> Dest) -> some View {
@@ -772,10 +775,10 @@ struct AboutView: View {
                 HStack(spacing: 14) {
                     AppLogoView(size: 56)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("三术合参").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text("版本 " + appVersion + "（构建 " + buildNumber + "）")
+                        Text("三术合参".scriptConverted).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text(("版本 " + appVersion + "（构建 " + buildNumber + "）").scriptConverted)
                             .font(.caption).foregroundStyle(Ky.qingdai)
-                        Text("子平八字 · 天纪斗数 · 统宗奇门 · 实景堪舆")
+                        Text("子平八字 · 天纪斗数 · 统宗奇门 · 实景堪舆".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }
                     Spacer()
@@ -783,13 +786,13 @@ struct AboutView: View {
 
                 KySectionTitle(title: "隐私说明", trailing: "本机优先")
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("三术合参不设账号、不上传生辰：人物档案、前瞻登记与手相测量记录只存在本机 Documents 目录；排盘与解盘全部本机演算；每日运势通知为 iOS 本地通知，不走服务端；AI 问答只把当前命盘的引擎事实发往你自有的免费模型池，问题原文不写库、不记日志。")
+                    Text("三术合参不设账号、不上传生辰：人物档案、前瞻登记与手相测量记录只存在本机 Documents 目录；排盘与解盘全部本机演算；每日运势通知为 iOS 本地通知，不走服务端；AI 问答只把当前命盘的引擎事实发往你自有的免费模型池，问题原文不写库、不记日志。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                 }.kyCard()
 
                 KySectionTitle(title: "致谢", trailing: "五典正法")
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("断语口径以《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》五典为准；紫微亮度表采中州派口径；奇门拆补法定局依《奇门遁甲统宗》。金标准对拍与依据链见学堂页「依据与金标准」。")
+                    Text("断语口径以《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》五典为准；紫微亮度表采中州派口径；奇门拆补法定局依《奇门遁甲统宗》。金标准对拍与依据链见学堂页「依据与金标准」。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                 }.kyCard()
             }
@@ -797,6 +800,6 @@ struct AboutView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("关于").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(Text("关于".scriptConverted)).navigationBarTitleDisplayMode(.inline)
     }
 }

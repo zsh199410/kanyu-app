@@ -238,15 +238,15 @@ struct CrossCheckCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: "arrow.triangle.2.circlepath").foregroundStyle(Ky.cinnabar)
-                Text("双术合参 · 交叉印证").font(.headline)
+                Text("双术合参 · 交叉印证".scriptConverted).font(.headline)
                 Spacer()
-                Text("八字定大势 · 紫微定场景").font(.caption2).foregroundStyle(Ky.sub)
+                Text("八字定大势 · 紫微定场景".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
             }
             ForEach(vs, id: \.title) { v in
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(v.title).font(.subheadline).fontWeight(.semibold)
-                        Text(v.kind.rawValue)
+                        Text(v.title.scriptConverted).font(.subheadline).fontWeight(.semibold)
+                        Text(v.kind.rawValue.scriptConverted)
                             .font(.caption2).fontWeight(.bold)
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(kindColor(v.kind).opacity(0.15))
@@ -254,15 +254,15 @@ struct CrossCheckCard: View {
                             .clipShape(Capsule())
                         Spacer()
                     }
-                    Text(v.verdict).font(.subheadline).fixedSize(horizontal: false, vertical: true)
-                    Text("八字：\(v.bazi)").font(.caption).foregroundStyle(Ky.sub).fixedSize(horizontal: false, vertical: true)
-                    Text("紫微：\(v.ziwei)").font(.caption).foregroundStyle(Ky.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(v.verdict.scriptConverted).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                    Text("八字：\(v.bazi)".scriptConverted).font(.caption).foregroundStyle(Ky.sub).fixedSize(horizontal: false, vertical: true)
+                    Text("紫微：\(v.ziwei)".scriptConverted).font(.caption).foregroundStyle(Ky.sub).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(10)
                 .background(Ky.card)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
-            Text("裁决规则：同频相催→两术同向，结论加一档；互补制化→以八字大势定方向、紫微场景定节奏与提醒；分期应验→底子与应期分两期，不强行调和。健康只给部位与代谢倾向，不作西医疾病诊断。")
+            Text("裁决规则：同频相催→两术同向，结论加一档；互补制化→以八字大势定方向、紫微场景定节奏与提醒；分期应验→底子与应期分两期，不强行调和。健康只给部位与代谢倾向，不作西医疾病诊断。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub).fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)

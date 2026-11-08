@@ -71,28 +71,28 @@ enum CelebData {
 struct CelebView: View {
     var body: some View {
         List {
-            Text("只收出生时间有公开记载者：高＝出生证/官方记录明确到分钟且多源一致，中＝单一公开来源或来源间有小分歧（分歧写清），低＝仅网络流传未经核实（≤5 条，页面显著标注“仅供参考”）。时辰无据者一律不收——盘宁可少，不可假。点开看本机现算的八字与紫微盘。")
+            Text("只收出生时间有公开记载者：高＝出生证/官方记录明确到分钟且多源一致，中＝单一公开来源或来源间有小分歧（分歧写清），低＝仅网络流传未经核实（≤5 条，页面显著标注“仅供参考”）。时辰无据者一律不收——盘宁可少，不可假。点开看本机现算的八字与紫微盘。".scriptConverted)
                 .font(.caption).foregroundStyle(Ky.sub)
             ForEach(CelebData.all) { c in
                 NavigationLink { CelebDetailView(celeb: c) } label: {
                     HStack(spacing: 10) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(c.name).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-                            Text("\(c.y) 年生 · \(c.place)").font(.caption).foregroundStyle(Ky.sub)
+                            Text("\(c.y) 年生 · \(c.place)".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("可信度 \(c.trust)").font(.caption2)
+                            Text("可信度 \(c.trust)".scriptConverted).font(.caption2)
                                 .foregroundStyle(c.trust == "高" ? Ky.jade : (c.trust == "低" ? Color.red : Ky.gold))
                             if c.trust == "低" {
-                                Text("仅供参考").font(.caption2).foregroundStyle(Color.red)
+                                Text("仅供参考".scriptConverted).font(.caption2).foregroundStyle(Color.red)
                             }
                         }
                     }
                 }
             }
         }
-        .navigationTitle("名人命例库")
+        .navigationTitle("名人命例库".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -112,11 +112,11 @@ struct CelebDetailView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(celeb.name) · \(celeb.place)").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     if celeb.trust == "低" {
-                        Text("低可信度条目，仅供参考：出生时间未经核实，分歧见下。").font(.caption).foregroundStyle(Color.red)
+                        Text("低可信度条目，仅供参考：出生时间未经核实，分歧见下。".scriptConverted).font(.caption).foregroundStyle(Color.red)
                     }
-                    Text("记载：\(celeb.note)（可信度 \(celeb.trust)）。外国出生者经度已按生地计真太阳时，其当地钟表时间按通行记载的当地时间录入后以北京时间通道换算，时柱或有半时辰级误差，读盘时留意。")
+                    Text("记载：\(celeb.note)（可信度 \(celeb.trust)）。外国出生者经度已按生地计真太阳时，其当地钟表时间按通行记载的当地时间录入后以北京时间通道换算，时柱或有半时辰级误差，读盘时留意。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
-                    Text("来源：\(celeb.source)").font(.caption).foregroundStyle(Ky.sub)
+                    Text("来源：\(celeb.source)".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
                 BaziResultView(chart: ch, name: celeb.name)
                 ZiweiBoardView(chart: zw, name: celeb.name)

@@ -123,14 +123,14 @@ struct BirthInputView: View {
                                 .foregroundStyle(Ky.sub)
                         }
                         if unknownHour {
-                            Text("时辰未知：当前按午时（12:00）暂排，涉时柱结论降权参考")
+                            Text("时辰未知：当前按午时（12:00）暂排，涉时柱结论降权参考".scriptConverted)
                                 .font(.caption2).foregroundStyle(Ky.cinnabar)
                         }
                     }
                     Spacer()
                     HStack(spacing: 4) {
                         Image(systemName: "calendar.badge.clock")
-                        Text("修改")
+                        Text("修改".scriptConverted)
                     }
                     .font(.caption).fontWeight(.semibold)
                     .padding(.horizontal, 10).padding(.vertical, 7)
@@ -154,7 +154,7 @@ struct BirthInputView: View {
                 Toggle(isOn: $useLongitude) {
                     HStack(spacing: 6) {
                         Image(systemName: "sun.max.fill").foregroundStyle(Ky.gold)
-                        Text("真太阳时校正").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                        Text("真太阳时校正".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                         if useLongitude {
                             Text(placeName).font(.caption).foregroundStyle(Ky.qingdai)
                         }
@@ -164,7 +164,7 @@ struct BirthInputView: View {
 
                 HStack(spacing: 6) {
                     Image(systemName: "mappin.and.ellipse").foregroundStyle(Ky.gold)
-                    Text("出生地（省市二级 · 经度自动代入）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                    Text("出生地（省市二级 · 经度自动代入）".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                 }
                 HStack(spacing: 8) {
                     // 省份选择
@@ -179,7 +179,7 @@ struct BirthInputView: View {
                         }
                     } label: {
                         HStack(spacing: 4) {
-                            Text(provinceSel.isEmpty ? "选省份" : provinceSel)
+                            Text(provinceSel.isEmpty ? "选省份".scriptConverted : provinceSel)
                                 .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
                             Spacer()
                             Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
@@ -193,7 +193,7 @@ struct BirthInputView: View {
                     // 城市选择
                     Menu {
                         ForEach(cityOptions, id: \.0) { p in
-                            Button("\(p.0)（东经 \(String(format: "%.1f", p.1))°）") {
+                            Button("\(p.0)（" + "东经".scriptConverted + " \(String(format: "%.1f", p.1))°）") {
                                 longitudeText = String(format: "%.1f", p.1)
                                 if let prov = Self.province(of: p.0) { provinceSel = prov }
                             }
@@ -213,7 +213,7 @@ struct BirthInputView: View {
 
                     // 经度微调框
                     HStack(spacing: 2) {
-                        Text("东经").font(.caption2).foregroundStyle(Ky.sub)
+                        Text("东经".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                         TextField("107.8", text: $longitudeText)
                             .keyboardType(.decimalPad)
                             .font(KyV2.tabular(13, weight: .semibold))
@@ -258,12 +258,12 @@ struct BirthInputView: View {
                     let cs = Self.solarOf(corr)
                     HStack(spacing: 5) {
                         Image(systemName: "clock.badge.checkmark").foregroundStyle(Ky.qingdai)
-                        Text("真太阳时 \(String(format: "%02d:%02d", cs.hour, cs.minute))（经度＋均时差 \(delta >= 0 ? "+" : "")\(delta) 分钟，入盘为准）")
+                        Text("真太阳时 \(String(format: "%02d:%02d", cs.hour, cs.minute))（经度＋均时差 \(delta >= 0 ? "+" : "")\(delta) 分钟，入盘为准）".scriptConverted)
                     }
                 } else {
                     HStack(spacing: 5) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                        Text("经度格式有误：将按未校正钟表时间排盘，请填 -180~180 数字（如梁平 107.8）")
+                        Text("经度格式有误：将按未校正钟表时间排盘，请填 -180~180 数字（如梁平 107.8）".scriptConverted)
                     }
                     .foregroundStyle(Ky.cinnabar).fontWeight(.semibold)
                 }
@@ -271,13 +271,13 @@ struct BirthInputView: View {
             if s.hour == 23 {
                 HStack(spacing: 5) {
                     Image(systemName: "moon.stars").foregroundStyle(Ky.cinnabar)
-                    Text("夜子时（23:00–24:00）：当前按口径设置（默认 sect=2 日柱算当日、时干按次日推）")
+                    Text("夜子时（23:00–24:00）：当前按口径设置（默认 sect=2 日柱算当日、时干按次日推）".scriptConverted)
                 }.foregroundStyle(Ky.cinnabar)
             }
             if let jq = Self.nearestJieQiText(lunar: l, clock: clock) {
                 HStack(alignment: .top, spacing: 5) {
                     Image(systemName: "sparkles").foregroundStyle(Ky.cinnabar)
-                    Text(jq)
+                    Text(jq.scriptConverted)
                 }.foregroundStyle(Ky.cinnabar)
             }
         }
@@ -382,16 +382,16 @@ private struct TimePickerSheet: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    Picker("历法", selection: $mode) {
-                        Text("公历（阳历）").tag(0)
-                        Text("农历（阴历）").tag(1)
+                    Picker("历法".scriptConverted, selection: $mode) {
+                        Text("公历（阳历）".scriptConverted).tag(0)
+                        Text("农历（阴历）".scriptConverted).tag(1)
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: mode) { _ in convertDraft() }
 
-                    Picker("输入方式", selection: $useWheel) {
-                        Text("点选日历").tag(false)
-                        Text("年月日时滚轮").tag(true)
+                    Picker("输入方式".scriptConverted, selection: $useWheel) {
+                        Text("点选日历".scriptConverted).tag(false)
+                        Text("年月日时滚轮".scriptConverted).tag(true)
                     }
                     .pickerStyle(.segmented)
 
@@ -399,9 +399,9 @@ private struct TimePickerSheet: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 6) {
                             Image(systemName: "mappin.and.ellipse").foregroundStyle(Ky.gold)
-                            Text("出生地（省市二级 · 经度自动代入）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                            Text("出生地（省市二级 · 经度自动代入）".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                             Spacer()
-                            Text("东经 \(longitudeText)°").font(.caption).foregroundStyle(Ky.qingdai)
+                            Text("东经 \(longitudeText)°".scriptConverted).font(.caption).foregroundStyle(Ky.qingdai)
                         }
                         HStack(spacing: 8) {
                             Menu {
@@ -413,7 +413,7 @@ private struct TimePickerSheet: View {
                                 }
                             } label: {
                                 HStack(spacing: 4) {
-                                    Text(provinceSel.isEmpty ? "选省份" : provinceSel)
+                                    Text(provinceSel.isEmpty ? "选省份".scriptConverted : provinceSel)
                                         .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
                                     Spacer()
                                     Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Ky.sub)
@@ -425,7 +425,7 @@ private struct TimePickerSheet: View {
                             }
                             Menu {
                                 ForEach(sheetCities, id: \.0) { p in
-                                    Button("\(p.0)（东经 \(String(format: "%.1f", p.1))°）") {
+                                    Button("\(p.0)（" + "东经".scriptConverted + " \(String(format: "%.1f", p.1))°）") {
                                         longitudeText = String(format: "%.1f", p.1)
                                         if let prov = BirthInputView.province(of: p.0) { provinceSel = prov }
                                     }
@@ -444,7 +444,7 @@ private struct TimePickerSheet: View {
                             }
                         }
                         if !useLongitude {
-                            Text("当前未开启真太阳时校正：经度已记下，打开主页面开关后即按此经度校正。").font(.caption2).foregroundStyle(Ky.sub)
+                            Text("当前未开启真太阳时校正：经度已记下，打开主页面开关后即按此经度校正。".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                         }
                     }.kyCard()
 
@@ -464,10 +464,10 @@ private struct TimePickerSheet: View {
                         if mode == 1 {
                             leapChip
                             if hasLeapChoice {
-                                Toggle("闰\(Self.lunarMonths[lmo - 1])", isOn: $leap)
+                                Toggle("闰\(Self.lunarMonths[lmo - 1])".scriptConverted, isOn: $leap)
                                     .tint(Ky.qingdai)
                             } else if leap {
-                                Text("该年无此闰月，已自动按平月排。").font(.caption2).foregroundStyle(Ky.cinnabar)
+                                Text("该年无此闰月，已自动按平月排。".scriptConverted).font(.caption2).foregroundStyle(Ky.cinnabar)
                             }
                         }
                     }.kyCard()
@@ -479,7 +479,7 @@ private struct TimePickerSheet: View {
                         if minutesToBoundary <= 15 {
                             HStack(spacing: 5) {
                                 Image(systemName: "exclamationmark.clock")
-                                Text("距下一时辰交界仅约 \(minutesToBoundary) 分钟——分钟数会影响时柱，请核准。")
+                                Text("距下一时辰交界仅约 \(minutesToBoundary) 分钟——分钟数会影响时柱，请核准。".scriptConverted)
                             }
                             .font(.caption2).foregroundStyle(Ky.cinnabar)
                         }
@@ -487,13 +487,13 @@ private struct TimePickerSheet: View {
                 }.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 16)
             }
             .background(Ky.bg)
-            .navigationTitle("选择出生时间").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("选择出生时间".scriptConverted).navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }.foregroundStyle(Ky.sub)
+                    Button("取消".scriptConverted) { dismiss() }.foregroundStyle(Ky.sub)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("确定") {
+                    Button("确定".scriptConverted) {
                         applyYearText()
                         onConfirm(compose(), unknown)
                     }
@@ -502,7 +502,7 @@ private struct TimePickerSheet: View {
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("完成") {
+                    Button("完成".scriptConverted) {
                         applyYearText()
                         yearFieldFocused = false
                     }
@@ -530,7 +530,7 @@ private struct TimePickerSheet: View {
     // MARK: 年月步进＋4位年份即时联动
     private var yearRow: some View {
         HStack(spacing: 10) {
-            Text("出生年份").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+            Text("出生年份".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
             Spacer()
             Button { stepYear(-10) } label: {
                 Text("-10年").font(.caption2).padding(.horizontal, 7).padding(.vertical, 5)
@@ -612,7 +612,7 @@ private struct TimePickerSheet: View {
             yearFieldFocused = false
         } label: {
             HStack(spacing: 4) {
-                Text(label).font(.caption2).fontWeight(.semibold)
+                Text(label.scriptConverted).font(.caption2).fontWeight(.semibold)
                 Text(rangeText).font(.caption2)
             }
             .padding(.horizontal, 10).padding(.vertical, 5)
@@ -628,13 +628,13 @@ private struct TimePickerSheet: View {
             if mode == 1, leapMonthOfYear != 0 {
                 HStack(spacing: 6) {
                     Image(systemName: "moon.fill").font(.caption2).foregroundStyle(Ky.qingdai)
-                    Text("今年闰\(Self.lunarMonths[leapMonthOfYear - 1])")
+                    Text("今年闰\(Self.lunarMonths[leapMonthOfYear - 1])".scriptConverted)
                         .font(.caption).fontWeight(.medium).foregroundStyle(Ky.ink)
                     Spacer()
                     if lmo == leapMonthOfYear, leap {
-                        Text("已在闰月").font(.caption2).foregroundStyle(Ky.sub)
+                        Text("已在闰月".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                     } else {
-                        Button("跳至闰月") {
+                        Button("跳至闰月".scriptConverted) {
                             lmo = leapMonthOfYear; leap = true; ld = min(ld, lunarDayCount)
                         }
                         .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
@@ -671,23 +671,23 @@ private struct TimePickerSheet: View {
     }
     private var wheelView: some View {
         HStack(spacing: 2) {
-            Picker("年", selection: yearBinding) {
+            Picker("年".scriptConverted, selection: yearBinding) {
                 ForEach(1900...2100, id: \.self) { y in Text("\(y)").tag(y) }
             }
             .pickerStyle(.wheel).frame(width: 84, height: 132).clipped()
-            Picker("月", selection: monthBinding) {
+            Picker("月".scriptConverted, selection: monthBinding) {
                 ForEach(1...12, id: \.self) { m in
                     Text(mode == 0 ? "\(m)月" : Self.lunarMonths[m - 1]).tag(m)
                 }
             }
             .pickerStyle(.wheel).frame(width: 66, height: 132).clipped()
-            Picker("日", selection: dayBinding) {
+            Picker("日".scriptConverted, selection: dayBinding) {
                 ForEach(1...dayCount, id: \.self) { d in
                     Text(mode == 0 ? "\(d)日" : Self.lunarDays[d - 1]).tag(d)
                 }
             }
             .pickerStyle(.wheel).frame(width: 66, height: 132).clipped()
-            Picker("时辰", selection: wheelBranch) {
+            Picker("时辰".scriptConverted, selection: wheelBranch) {
                 ForEach(0..<12, id: \.self) { i in
                     Text("\(Self.branches[i]) \(Self.branchRange[i])").tag(i)
                 }
@@ -718,7 +718,7 @@ private struct TimePickerSheet: View {
 
     private var monthRow: some View {
         HStack(spacing: 10) {
-            Text("出生月份").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+            Text("出生月份".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
             Spacer()
             Button { stepMonth(-1) } label: {
                 Image(systemName: "chevron.left").font(.subheadline)
@@ -799,11 +799,11 @@ private struct TimePickerSheet: View {
     private var shichenSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("出生时辰").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                Text("出生时辰".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                 Spacer()
-                Button("‹ 上一时辰") { shiftBranch(-1) }.font(.caption).foregroundStyle(Ky.qingdai)
+                Button("‹ 上一时辰".scriptConverted) { shiftBranch(-1) }.font(.caption).foregroundStyle(Ky.qingdai)
                 Text("·").foregroundStyle(Ky.sub)
-                Button("下一时辰 ›") { shiftBranch(1) }.font(.caption).foregroundStyle(Ky.qingdai)
+                Button("下一时辰 ›".scriptConverted) { shiftBranch(1) }.font(.caption).foregroundStyle(Ky.qingdai)
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                 ForEach(0..<12, id: \.self) { i in
@@ -825,7 +825,7 @@ private struct TimePickerSheet: View {
                 HStack(spacing: 6) {
                     Image(systemName: unknown ? "checkmark.square.fill" : "square")
                         .foregroundStyle(unknown ? Ky.cinnabar : Ky.sub)
-                    Text("时辰未知（暂按午时 12:00 起盘，结果页可对比同日十二时辰）")
+                    Text("时辰未知（暂按午时 12:00 起盘，结果页可对比同日十二时辰）".scriptConverted)
                         .font(.caption).foregroundStyle(unknown ? Ky.cinnabar : Ky.sub)
                     Spacer()
                 }
@@ -848,7 +848,7 @@ private struct TimePickerSheet: View {
     private var hourMinuteSection: some View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
-                Text("精确时分").font(.caption).foregroundStyle(Ky.sub)
+                Text("精确时分".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                 Spacer()
                 Button { unknown = false; setHour((curHour + 23) % 24) } label: { Image(systemName: "minus.circle") }.accessibilityLabel("上一小时")
                 Text("\(String(format: "%02d", curHour)) 时").font(KyV2.tabular(15, weight: .bold)).frame(minWidth: 46)
@@ -861,7 +861,7 @@ private struct TimePickerSheet: View {
             .foregroundStyle(Ky.qingdai)
 
             HStack(spacing: 6) {
-                Text("快捷分钟").font(.caption2).foregroundStyle(Ky.sub)
+                Text("快捷分钟".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                 ForEach([0, 10, 15, 20, 30, 45, 50], id: \.self) { m in
                     Button(String(format: ":%02d", m)) { unknown = false; setMinute(m) }
                         .font(KyV2.tabular(11, weight: curMinute == m ? .bold : .regular))
@@ -885,18 +885,18 @@ private struct TimePickerSheet: View {
         let lon = Double(longitudeText)
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("当前选定").font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                Text("当前选定".scriptConverted).font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                 Spacer()
                 if useLongitude, let lo = lon, (-180...180).contains(lo) {
                     let corr = TrueSolarTime.corrected(clock: d, longitude: lo)
                     let cs = BirthInputView.solarOf(corr)
-                    Text("真太阳时 \(String(format: "%02d:%02d", cs.hour, cs.minute))")
+                    Text("真太阳时 \(String(format: "%02d:%02d", cs.hour, cs.minute))".scriptConverted)
                         .font(KyV2.tabular(11, weight: .semibold)).foregroundStyle(Ky.gold)
                 }
             }
             Text("公历 \(String(s.year)) 年 \(s.month) 月 \(s.day) 日 \(String(format: "%02d:%02d", s.hour, s.minute))")
                 .font(KyV2.tabular(15, weight: .bold)).foregroundStyle(Ky.ink)
-            Text("农历 \(BaziChart.yearGanZhi(l.year)) 年\(l.month < 0 ? "闰" : "")\(lm)\(ldName) · \(br)时")
+            Text("农历".scriptConverted + " \(BaziChart.yearGanZhi(l.year)) 年" + (l.month < 0 ? "闰".scriptConverted : "") + "\(lm)\(ldName) · \(br)时")
                 .font(.caption).foregroundStyle(Ky.sub)
         }
         .padding(.horizontal, 14).padding(.vertical, 12)

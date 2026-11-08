@@ -254,8 +254,8 @@ struct ZiweiHomeView: View {
                                 .background(Ky.gold.opacity(0.13))
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("紫微命盘海报导出").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                                Text("方盘缩印 · 命宫主星 · 生年四化").font(.caption2).foregroundStyle(Ky.sub)
+                                Text("紫微命盘海报导出".scriptConverted).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                Text("方盘缩印 · 命宫主星 · 生年四化".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                             }
                             Spacer(minLength: 0)
                             Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
@@ -269,7 +269,7 @@ struct ZiweiHomeView: View {
                 NavigationLink { CaliberSettingsView() } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "slider.horizontal.3")
-                        Text("排盘口径设置（三合派安星 · 晚子时/闰月口径 · 14例金标准对拍）").font(.caption)
+                        Text("排盘口径设置（三合派安星 · 晚子时/闰月口径 · 14例金标准对拍）".scriptConverted).font(.caption)
                         Spacer()
                         Image(systemName: "chevron.right").font(.caption2)
                     }.foregroundStyle(Ky.sub).padding(.horizontal, 4)
@@ -279,7 +279,7 @@ struct ZiweiHomeView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("紫微斗数")
+        .navigationTitle("紫微斗数".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -290,14 +290,14 @@ struct ZiweiHomeView: View {
         return HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(name.isEmpty ? "当前紫微盘" : name)
+                    Text(name.isEmpty ? "当前紫微盘".scriptConverted : name)
                         .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     KyBadge(text: gender == "M" ? "乾造（男）" : "坤造（女）", color: gender == "M" ? Ky.qingdai : Ky.cinnabar)
                     if let ch = chart {
                         KyBadge(text: ch.juName, color: Ky.gold)
                     }
                 }
-                Text("公历 \(String(s.year))-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))" + (useLongitude ? " · 东经 \(longitudeText)°" : " · 钟表时间"))
+                Text("公历 \(String(s.year))-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))".scriptConverted + (useLongitude ? " · 东经 \(longitudeText)°".scriptConverted : " · 钟表时间".scriptConverted))
                     .font(KyV2.tabular(12)).foregroundStyle(Ky.sub)
             }
             Spacer()
@@ -306,7 +306,7 @@ struct ZiweiHomeView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "slider.horizontal.below.rectangle")
-                    Text("改生辰")
+                    Text("改生辰".scriptConverted)
                 }
                 .font(.caption).fontWeight(.semibold)
                 .padding(.horizontal, 10).padding(.vertical, 7)
@@ -323,7 +323,7 @@ struct ZiweiHomeView: View {
             HStack {
                 KySectionTitle(title: "紫微安星录入", trailing: "天纪三合派")
                 if chart != nil {
-                    Button("收起") {
+                    Button("收起".scriptConverted) {
                         withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
                     }
                     .font(.caption).foregroundStyle(Ky.qingdai)
@@ -332,7 +332,7 @@ struct ZiweiHomeView: View {
             if !peopleStore.people.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        Label("速选：", systemImage: "person.crop.rectangle.stack")
+                        Label("速选：".scriptConverted, systemImage: "person.crop.rectangle.stack")
                             .font(.caption2).foregroundStyle(Ky.sub)
                         ForEach(peopleStore.people.prefix(8)) { p in
                             Button {
@@ -370,15 +370,15 @@ struct ZiweiHomeView: View {
                 .background(Ky.elevated)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
 
-                Picker("性别", selection: $gender) {
-                    Text("乾造（男）").tag("M")
-                    Text("坤造（女）").tag("F")
+                Picker("性别".scriptConverted, selection: $gender) {
+                    Text("乾造（男）".scriptConverted).tag("M")
+                    Text("坤造（女）".scriptConverted).tag("F")
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 156)
             }
             BirthInputView(clock: $birth, useLongitude: $useLongitude, longitudeText: $longitudeText)
-            Button("立即排紫微盘") {
+            Button("立即排紫微盘".scriptConverted) {
                 chart = ZiweiEngine.chart(clock: birth, gender: gender,
                                           longitude: useLongitude ? Double(longitudeText) : nil)
                 chartSnapshot = inputSnapshot; savedTip = false
@@ -387,7 +387,7 @@ struct ZiweiHomeView: View {
             if isStale {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.clockwise.circle.fill")
-                    Text("生辰输入已改动，请点「立即排紫微盘」刷新盘面。")
+                    Text("生辰输入已改动，请点「立即排紫微盘」刷新盘面。".scriptConverted)
                 }
                 .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
             }
@@ -473,23 +473,23 @@ struct ZiweiBoardView: View {
     // 大字号合规形态：方盘自动切换为高可读列表盘
     private var textBoard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\(chart.juName) · 命宫\(ZiweiCore.DZ[chart.mingGong]) · 身宫\(chart.palaces[chart.shenGong].name)")
+            Text("\(chart.juName) · 命宫\(ZiweiCore.DZ[chart.mingGong]) · 身宫\(chart.palaces[chart.shenGong].name)".scriptConverted)
                 .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
             ForEach(chart.palaces.sorted { ($0.decadal.first ?? 0) < ($1.decadal.first ?? 0) }, id: \.branch) { p in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        Text(p.name).font(.callout).fontWeight(.bold).foregroundStyle(p.branch == chart.mingGong ? Ky.cinnabar : Ky.ink)
+                        Text(p.name.scriptConverted).font(.callout).fontWeight(.bold).foregroundStyle(p.branch == chart.mingGong ? Ky.cinnabar : Ky.ink)
                         Text("\(p.stem)\(ZiweiCore.DZ[p.branch])").font(.caption).foregroundStyle(Ky.sub)
                         if p.isBody { KyBadge(text: "身宫", color: Ky.gold) }
                         Spacer()
                         Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.caption).foregroundStyle(Ky.sub)
                     }
                     if !p.majors.isEmpty {
-                        Text(p.majors.map { $0.star + ZiweiBrightness.of($0.star, branch: p.branch) + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: "、"))
+                        Text((p.majors.map { $0.star + ZiweiBrightness.of($0.star, branch: p.branch) + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: "、")).scriptConverted)
                             .font(.callout).foregroundStyle(Ky.ink)
                     }
                     if !p.minors.isEmpty {
-                        Text(p.minors.map { $0.star }.joined(separator: " ")).font(.caption).foregroundStyle(Ky.sub)
+                        Text((p.minors.map { $0.star }.joined(separator: " ")).scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                     }
                 }
                 .kyCard()
@@ -509,7 +509,7 @@ struct ZiweiBoardView: View {
             HStack {
                 KySectionTitle(title: "紫微十二宫方盘", trailing: "点任意宫位切换三方四正")
                 if selected != nil {
-                    Button("回命宫") { selected = nil }
+                    Button("回命宫".scriptConverted) { selected = nil }
                         .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                 }
             }
@@ -594,7 +594,7 @@ struct ZiweiBoardView: View {
             }
 
             VStack(spacing: 5) {
-                Text(name.isEmpty ? "紫微命盘" : name)
+                Text(name.isEmpty ? "紫微命盘".scriptConverted : name)
                     .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                 HStack(spacing: 5) {
                     KyBadge(text: chart.juName, color: Ky.qingdai)
@@ -609,9 +609,9 @@ struct ZiweiBoardView: View {
                 Divider().padding(.horizontal, 12).opacity(0.5)
 
                 VStack(spacing: 2) {
-                    Text("当前聚焦：\(p.name)（\(p.stem)\(ZiweiCore.DZ[p.branch])）")
+                    Text("当前聚焦：\(p.name)（\(p.stem)\(ZiweiCore.DZ[p.branch])）".scriptConverted)
                         .font(.system(size: 11, weight: .bold)).foregroundStyle(Ky.qingdai)
-                    Text("对宫 \(opp.name) · 三合 \(tri1.name) / \(tri2.name)")
+                    Text("对宫 \(opp.name) · 三合 \(tri1.name) / \(tri2.name)".scriptConverted)
                         .font(.system(size: 10)).foregroundStyle(Ky.sub)
                 }
             }
@@ -634,12 +634,12 @@ struct ZiweiBoardView: View {
                 Text("大限 \(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁")
                     .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.ink)
                 Spacer()
-                Text("三方四正已标亮").font(.caption2).foregroundStyle(Ky.sub)
+                Text("三方四正已标亮".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
             }
-            Text("宫干四化飞星：" + fly.map { "\($0.star)化\($0.kind)入\($0.target)" }.joined(separator: " · "))
+            Text(("宫干四化飞星：" + fly.map { "\($0.star)化\($0.kind)入\($0.target)" }.joined(separator: " · ")).scriptConverted)
                 .font(.caption).foregroundStyle(Ky.ink)
             if let st = selfT {
-                Text("本宫自化：" + st.joined(separator: "、") + "（自化者，该宫事项由自身内因触发变动）")
+                Text(("本宫自化：" + st.joined(separator: "、") + "（自化者，该宫事项由自身内因触发变动）").scriptConverted)
                     .font(.caption).fontWeight(.medium).foregroundStyle(Ky.cinnabar)
             }
         }
@@ -659,7 +659,7 @@ struct ZiweiBoardView: View {
             VStack(alignment: .leading, spacing: 2.5) {
                 // 顶部：宫名＋命/身标记＋宫干支
                 HStack(spacing: 2) {
-                    Text(p.name)
+                    Text(p.name.scriptConverted)
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(isMing ? Ky.cinnabar : (isSel ? Ky.qingdai : Ky.ink))
                     if p.isBody {
@@ -677,7 +677,7 @@ struct ZiweiBoardView: View {
 
                 // 主星＋亮度＋生年四化徽章
                 if p.majors.isEmpty {
-                    Text("无主星·借对宫")
+                    Text("无主星·借对宫".scriptConverted)
                         .font(.system(size: 9.5))
                         .foregroundStyle(Ky.sub.opacity(0.75))
                         .padding(.vertical, 2)
@@ -686,16 +686,16 @@ struct ZiweiBoardView: View {
                         let mj = p.majors[i]
                         let bright = ZiweiBrightness.of(mj.star, branch: p.branch)
                         HStack(spacing: 2) {
-                            Text(mj.star)
+                            Text(mj.star.scriptConverted)
                                 .font(.system(size: 12.5, weight: .bold, design: .serif))
                                 .foregroundStyle(Ky.ink)
                             if !bright.isEmpty {
-                                Text(bright)
+                                Text(bright.scriptConverted)
                                     .font(.system(size: 8.5))
                                     .foregroundStyle(bright == "陷" || bright == "不" ? Ky.cinnabar.opacity(0.8) : Ky.sub)
                             }
                             if let m = mj.mutagen {
-                                Text(m)
+                                Text(m.scriptConverted)
                                     .font(.system(size: 8.5, weight: .bold))
                                     .padding(.horizontal, 3.5).padding(.vertical, 0.5)
                                     .background(m == "忌" ? Ky.cinnabar : Ky.qingdai)
@@ -708,7 +708,7 @@ struct ZiweiBoardView: View {
 
                 // 辅星/杂曜
                 if !p.minors.isEmpty {
-                    Text(p.minors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: " "))
+                    Text((p.minors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: " ")).scriptConverted)
                         .font(.system(size: 8.5))
                         .foregroundStyle(Ky.sub)
                         .lineLimit(2)
@@ -723,7 +723,7 @@ struct ZiweiBoardView: View {
                         .foregroundStyle(Ky.sub)
                     Spacer(minLength: 0)
                     if let selfT = ZiweiCore.selfTransforms(chart)[p.branch] {
-                        Text(selfT.joined(separator: ""))
+                        Text(selfT.joined(separator: "").scriptConverted)
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(Ky.gold)
                             .lineLimit(1)
@@ -988,13 +988,13 @@ struct ZiweiReadingView: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text(c.title)
+                            Text(c.title.scriptConverted)
                                 .font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             Spacer()
                             KyBadge(text: "天纪口径", color: Ky.qingdai)
                         }
                         if !expandedCards.contains(c.title) {
-                            Text(c.conclusion)
+                            Text(c.conclusion.scriptConverted)
                                 .font(.callout).foregroundStyle(Ky.ink)
                                 .lineLimit(2)
                         }
@@ -1031,20 +1031,20 @@ struct ZiweiYearView: View {
             }
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("流年命宫").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(chart.palaces[yBranch].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+                    Text("流年命宫".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+                    Text(chart.palaces[yBranch].name.scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.qingdai)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("小限（虚岁 \(age)）").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(chart.palaces[xiao].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.gold)
+                    Text("小限（虚岁 \(age)）".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+                    Text(chart.palaces[xiao].name.scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.gold)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("流年四化").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(muts.map { "\($0.star)\($0.kind)" }.joined(separator: " "))
+                    Text("流年四化".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+                    Text((muts.map { "\($0.star)\($0.kind)" }.joined(separator: " ")).scriptConverted)
                         .font(.caption).fontWeight(.bold).foregroundStyle(Ky.ink).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
@@ -1052,10 +1052,10 @@ struct ZiweiYearView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                 ForEach(0..<12, id: \.self) { b in
                     HStack(spacing: 4) {
-                        Text(names[b] ?? "").font(.caption2).fontWeight(names[b] == "命宫" ? .bold : .regular)
+                        Text((names[b] ?? "").scriptConverted).font(.caption2).fontWeight(names[b] == "命宫" ? .bold : .regular)
                             .foregroundStyle(names[b] == "命宫" ? Ky.cinnabar : Ky.ink)
                         Spacer(minLength: 0)
-                        Text(chart.palaces[b].name).font(.system(size: 10)).foregroundStyle(Ky.sub)
+                        Text(chart.palaces[b].name.scriptConverted).font(.system(size: 10)).foregroundStyle(Ky.sub)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 7).padding(.vertical, 5)
@@ -1069,17 +1069,17 @@ struct ZiweiYearView: View {
             let mMuts = ZiweiCore.mutagens(ofStem: String(ZiweiCore.TG[mStemIdx % 10]))
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("斗君流月命宫（农历 \(lmonth) 月）").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(chart.palaces[mp].name).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text("斗君流月命宫（农历 \(lmonth) 月）".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+                    Text(chart.palaces[mp].name.scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("流月四化").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(mMuts.map { "\($0.star)\($0.kind)" }.joined(separator: " ")).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                    Text("流月四化".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+                    Text((mMuts.map { "\($0.star)\($0.kind)" }.joined(separator: " ")).scriptConverted).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                 }
                 Stepper("", value: $lmonth, in: 1...12).labelsHidden()
             }
-            Text("读法：流年命宫定当年舞台，流年四化定引动方向，小限看自身感受；与大限宫位叠看。")
+            Text("读法：流年命宫定当年舞台，流年四化定引动方向，小限看自身感受；与大限宫位叠看。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }.kyCard()
     }

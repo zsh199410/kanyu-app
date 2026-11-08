@@ -1080,37 +1080,37 @@ struct MeihuaView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("梅花六爻 · 时间起卦")
+                Text("梅花六爻 · 时间起卦".scriptConverted)
                     .font(.title2)
                     .fontWeight(.bold)
-                Text("只做时间起卦：一事一断的占卜辅助线，不编断语。起卦后自动进前瞻登记，到期回验。")
+                Text("只做时间起卦：一事一断的占卜辅助线，不编断语。起卦后自动进前瞻登记，到期回验。".scriptConverted)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 10) {
-                    DatePicker("起卦时间", selection: $date)
+                    DatePicker("起卦时间".scriptConverted, selection: $date)
                     TextField("问事（可选）", text: $question)
                         .textFieldStyle(.roundedBorder)
                     HStack {
-                        Text("经度")
+                        Text("经度".scriptConverted)
                         TextField("107.8", text: $lonText)
                             .keyboardType(.decimalPad)
                             .textFieldStyle(.roundedBorder)
-                        Text("默认梁平 107.8")
+                        Text("默认梁平 107.8".scriptConverted)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     HStack(spacing: 12) {
-                        Button("起卦并登记前瞻") {
+                        Button("起卦并登记前瞻".scriptConverted) {
                             cast(register: true)
                         }
                         .buttonStyle(.borderedProminent)
-                        Button("只起卦不登记") {
+                        Button("只起卦不登记".scriptConverted) {
                             cast(register: false)
                         }
                         .buttonStyle(.bordered)
                     }
                     if !errorText.isEmpty {
-                        Text(errorText)
+                        Text(errorText.scriptConverted)
                             .foregroundStyle(.red)
                     }
                 }
@@ -1119,13 +1119,13 @@ struct MeihuaView: View {
                 } else {
                     KyEmptyState(icon: "moon.stars.fill", title: "尚未起卦", message: "只做时间起卦：一事一断的占卜辅助线，不编断语。起卦后自动进前瞻登记，到期回验。", actionTitle: "现在起卦", action: { cast(register: true) })
                 }
-                Text(MeihuaEngine.disclaimer)
+                Text(MeihuaEngine.disclaimer.scriptConverted)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(MeihuaEngine.source)
+                Text(MeihuaEngine.source.scriptConverted)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("依据与金标准：起卦法传为宋·邵雍《梅花易数》年月日时起卦；农历与真太阳时与 Web paipan.py 同口径（默认经度 107.8 梁平，晚子时 sect=2，闰月上半月本月、下半月下月）；六爻世应六亲为京房八宫纳甲通行口径。金标准见 Web test_meihua_liuyao.py（13 例时间起卦＋乾坤本宫＋闰月／晚子时边界逐项复算）。")
+                Text("依据与金标准：起卦法传为宋·邵雍《梅花易数》年月日时起卦；农历与真太阳时与 Web paipan.py 同口径（默认经度 107.8 梁平，晚子时 sect=2，闰月上半月本月、下半月下月）；六爻世应六亲为京房八宫纳甲通行口径。金标准见 Web test_meihua_liuyao.py（13 例时间起卦＋乾坤本宫＋闰月／晚子时边界逐项复算）。".scriptConverted)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -1152,13 +1152,13 @@ struct MeihuaView: View {
 
     private func guaCard(title: String, g: MeihuaHexagram) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("\(title) · \(g.name)")
+            Text("\(title) · \(g.name)".scriptConverted)
                 .font(.headline)
             Text("\(g.upper)上\(g.lower)下")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Text("卦辞：\(g.guaci)")
-            Text("白话：\(g.guaciBaihua)")
+            Text("白话：\(g.guaciBaihua)".scriptConverted)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -1171,11 +1171,11 @@ struct MeihuaView: View {
     private func resultView(_ r: MeihuaResult) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("起卦收据")
+                Text("起卦收据".scriptConverted)
                     .font(.headline)
-                Text("钟表时间 \(dateFormatter.string(from: r.clock)) · 真太阳时 \(dateFormatter.string(from: r.corrected))（校正 \(String(format: "%.1f", r.correctionMinutes)) 分钟，经度 \(String(format: "%.1f", r.lon))）")
+                Text("钟表时间 \(dateFormatter.string(from: r.clock)) · 真太阳时 \(dateFormatter.string(from: r.corrected))（校正 \(String(format: "%.1f", r.correctionMinutes)) 分钟，经度 \(String(format: "%.1f", r.lon))）".scriptConverted)
                     .font(.subheadline)
-                Text("农历\(r.yearBranch)年\(r.month)月\(r.day)日\(r.hourBranch)时\(r.isLeap ? "（闰月）" : "") · 问事：\(r.question.isEmpty ? "（未填）" : r.question)")
+                Text("农历".scriptConverted + "\(r.yearBranch)年\(r.month)月\(r.day)日\(r.hourBranch)时" + (r.isLeap ? "（闰月）".scriptConverted : "") + " · 问事：".scriptConverted + (r.question.isEmpty ? "（未填）" : r.question))
                     .font(.subheadline)
             }
             .padding()
@@ -1185,13 +1185,13 @@ struct MeihuaView: View {
             guaCard(title: "互卦", g: r.hu)
             guaCard(title: "变卦", g: r.bian)
             VStack(alignment: .leading, spacing: 6) {
-                Text("动爻 · 第\(r.moving)爻（\(r.movingYao.title)）")
+                Text("动爻 · 第\(r.moving)爻（\(r.movingYao.title)）".scriptConverted)
                     .font(.headline)
                 Text(r.movingYao.text)
-                Text("白话：\(r.movingYao.baihua)")
+                Text("白话：\(r.movingYao.baihua)".scriptConverted)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text("变爻：\(r.movingBianLine.branch)\(r.movingBianLine.wuxing)\(r.movingBianLine.qin)（变卦\(r.bian.name) · \(r.bianPalace)\(r.bianGeneration)）")
+                Text("变爻：\(r.movingBianLine.branch)\(r.movingBianLine.wuxing)\(r.movingBianLine.qin)（变卦\(r.bian.name) · \(r.bianPalace)\(r.bianGeneration)）".scriptConverted)
                     .font(.subheadline)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1199,10 +1199,10 @@ struct MeihuaView: View {
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
             VStack(alignment: .leading, spacing: 6) {
-                Text("体用生克")
+                Text("体用生克".scriptConverted)
                     .font(.headline)
-                Text("\(r.tiyongLabel)：\(r.tiyongText)")
-                Text(r.huRelationText)
+                Text("\(r.tiyongLabel)：\(r.tiyongText)".scriptConverted)
+                Text(r.huRelationText.scriptConverted)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -1211,23 +1211,23 @@ struct MeihuaView: View {
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
             VStack(alignment: .leading, spacing: 6) {
-                Text("六爻 · \(r.palace)\(r.generation)（世\(r.shi)应\(r.ying)）")
+                Text("六爻 · \(r.palace)\(r.generation)（世\(r.shi)应\(r.ying)）".scriptConverted)
                     .font(.headline)
                 ForEach(r.lines, id: \.pos) { l in
                     HStack {
                         Text(l.name)
                         Text(l.yinYang)
                         Text("\(l.branch)\(l.wuxing)")
-                        Text(l.qin)
+                        Text(l.qin.scriptConverted)
                         Spacer()
                         if l.pos == r.shi {
-                            Text("世")
+                            Text("世".scriptConverted)
                         }
                         if l.pos == r.ying {
-                            Text("应")
+                            Text("应".scriptConverted)
                         }
                         if l.pos == r.moving {
-                            Text("动")
+                            Text("动".scriptConverted)
                         }
                     }
                     .font(.subheadline)
@@ -1238,11 +1238,11 @@ struct MeihuaView: View {
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
             if registered {
-                Text("已自动进前瞻登记，原文冻结，到期在前瞻登记簿回验。")
+                Text("已自动进前瞻登记，原文冻结，到期在前瞻登记簿回验。".scriptConverted)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Text("本次只起卦，未登记前瞻；点「起卦并登记前瞻」才会写入登记簿。")
+                Text("本次只起卦，未登记前瞻；点「起卦并登记前瞻」才会写入登记簿。".scriptConverted)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

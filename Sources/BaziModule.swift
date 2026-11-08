@@ -501,8 +501,8 @@ struct BaziHomeView: View {
                                 .background(Ky.gold.opacity(0.13))
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("合参海报导出").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                                Text("八字总断 · 紫微命宫 · 手相要点 一页合参").font(.caption2).foregroundStyle(Ky.sub)
+                                Text("合参海报导出".scriptConverted).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                Text("八字总断 · 紫微命宫 · 手相要点 一页合参".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                             }
                             Spacer(minLength: 0)
                             Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
@@ -517,7 +517,7 @@ struct BaziHomeView: View {
                     NavigationLink { GanZhiLookupView() } label: {
                         HStack(spacing: 5) {
                             Image(systemName: "magnifyingglass.circle.fill")
-                            Text("已知四柱？干支反查出生日期 ›")
+                            Text("已知四柱？干支反查出生日期 ›".scriptConverted)
                         }
                         .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                     }.buttonStyle(.plain)
@@ -525,7 +525,7 @@ struct BaziHomeView: View {
                     NavigationLink { CaliberSettingsView() } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "slider.horizontal.3")
-                            Text("口径设置 ›")
+                            Text("口径设置 ›".scriptConverted)
                         }
                         .font(.caption).foregroundStyle(Ky.sub)
                     }.buttonStyle(.plain)
@@ -535,7 +535,7 @@ struct BaziHomeView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("八字排盘")
+        .navigationTitle("八字排盘".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -547,14 +547,14 @@ struct BaziHomeView: View {
         return HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(name.isEmpty ? "当前命盘" : name)
+                    Text(name.isEmpty ? "当前命盘".scriptConverted : name)
                         .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     KyBadge(text: gender == "M" ? "乾造（男）" : "坤造（女）", color: gender == "M" ? Ky.qingdai : Ky.cinnabar)
                     if savedTip {
                         KyBadge(text: "已存档案", color: Ky.jade)
                     }
                 }
-                Text("公历 \(String(s.year))-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))" + (useLongitude ? " · 东经 \(longitudeText)°" : " · 钟表时间"))
+                Text("公历 \(String(s.year))-\(String(format: "%02d-%02d %02d:%02d", s.month, s.day, s.hour, s.minute))".scriptConverted + (useLongitude ? " · 东经 \(longitudeText)°".scriptConverted : " · 钟表时间".scriptConverted))
                     .font(KyV2.tabular(12)).foregroundStyle(Ky.sub)
             }
             Spacer()
@@ -580,7 +580,7 @@ struct BaziHomeView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "slider.horizontal.below.rectangle")
-                    Text("改生辰")
+                    Text("改生辰".scriptConverted)
                 }
                 .font(.caption).fontWeight(.semibold)
                 .padding(.horizontal, 10).padding(.vertical, 7)
@@ -597,7 +597,7 @@ struct BaziHomeView: View {
             HStack {
                 KySectionTitle(title: "生辰录入", trailing: "支持公农历与真太阳时")
                 if chart != nil {
-                    Button("收起") {
+                    Button("收起".scriptConverted) {
                         withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
                     }
                     .font(.caption).foregroundStyle(Ky.qingdai)
@@ -625,9 +625,9 @@ struct BaziHomeView: View {
                 .background(Ky.elevated)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
 
-                Picker("性别", selection: $gender) {
-                    Text("乾造（男）").tag("M")
-                    Text("坤造（女）").tag("F")
+                Picker("性别".scriptConverted, selection: $gender) {
+                    Text("乾造（男）".scriptConverted).tag("M")
+                    Text("坤造（女）".scriptConverted).tag("F")
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 156)
@@ -635,7 +635,7 @@ struct BaziHomeView: View {
 
             BirthInputView(clock: $birth, useLongitude: $useLongitude, longitudeText: $longitudeText)
 
-            Button("立即排盘") {
+            Button("立即排盘".scriptConverted) {
                 chart = BaziEngine.paipan(clock: birth, gender: gender,
                                           longitude: useLongitude ? Double(longitudeText) : nil)
                 chartSnapshot = inputSnapshot; savedTip = false
@@ -645,7 +645,7 @@ struct BaziHomeView: View {
             if isStale {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.clockwise.circle.fill")
-                    Text("上方生辰已修改，请点「立即排盘」刷新下方命盘。")
+                    Text("上方生辰已修改，请点「立即排盘」刷新下方命盘。".scriptConverted)
                 }
                 .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
             }
@@ -766,17 +766,17 @@ struct BaziResultView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Image(systemName: "link").font(.caption2).foregroundStyle(Ky.qingdai)
-                        Text(relationTitle).font(.caption).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text(relationTitle.scriptConverted).font(.caption).fontWeight(.bold).foregroundStyle(Ky.ink)
                         Spacer()
-                        Button("清除") { selectedPillar = nil; yunSource = nil }
+                        Button("清除".scriptConverted) { selectedPillar = nil; yunSource = nil }
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }
                     ForEach(currentRelations, id: \.self) { r in
                         HStack(alignment: .top, spacing: 6) {
-                            Text(r.kind).font(.caption2).fontWeight(.bold).foregroundStyle(.white)
+                            Text(r.kind.scriptConverted).font(.caption2).fontWeight(.bold).foregroundStyle(.white)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(Ky.qingdai).clipShape(Capsule())
-                            Text(r.text).font(.caption).foregroundStyle(Ky.ink)
+                            Text(r.text.scriptConverted).font(.caption).foregroundStyle(Ky.ink)
                         }
                     }
                 }
@@ -784,7 +784,7 @@ struct BaziResultView: View {
                 .background(Ky.qingdai.opacity(0.07))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             } else if selectedPillar != nil || yunSource != nil {
-                Text("本柱与他柱暂无五合、六合、三合、冲、刑、穿牵动。")
+                Text("本柱与他柱暂无五合、六合、三合、冲、刑、穿牵动。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
         }
@@ -825,7 +825,7 @@ Spacer()
 NavigationLink { PosterSheetView(chart: chart, name: name)} label: {
 HStack(spacing: 3) {
 Image(systemName: "photo.artframe")
-Text("出预测单海报 ›")
+Text("出预测单海报 ›".scriptConverted)
 }
 .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
 }.buttonStyle(.plain)
@@ -834,7 +834,7 @@ Text("出预测单海报 ›")
 VStack(alignment:.leading, spacing: 6) {
 HStack(spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
-Text(xj.level == "中和" ? "同党异党接近，贵在流通，不预设固定喜忌": "喜 \(xiNames) ✓　忌 \(jiNames) ×\(xj.neutral.isEmpty ? "": "　\(neutralNames)：中性可用")")
+Text(xj.level == "中和" ? "同党异党接近，贵在流通，不预设固定喜忌".scriptConverted : "喜 \(xiNames) ✓　忌 \(jiNames) ×\(xj.neutral.isEmpty ? "" : "　\(neutralNames)：中性可用")".scriptConverted)
 .font(.caption).foregroundStyle(Ky.ink)
 Spacer()
 KyBadge(text: "身\(xj.level)", color: xj.level == "偏弱" ? Ky.gold : Ky.qingdai)
@@ -842,19 +842,19 @@ KyBadge(text: "身\(xj.level)", color: xj.level == "偏弱" ? Ky.gold : Ky.qingd
 
 HStack(spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
-Text(BaziTables.caiKuReport(chart: chart) + " " + InterpretEngine.conclusion(items: items, titles: "财富量级蓄水池"))
+Text((BaziTables.caiKuReport(chart: chart) + " " + InterpretEngine.conclusion(items: items, titles: "财富量级蓄水池")).scriptConverted)
 .font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
 }
 
 HStack(spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
-Text(InterpretEngine.conclusion(items: items, titles: "行业赛道深断", "事业方向"))
+Text(InterpretEngine.conclusion(items: items, titles: "行业赛道深断", "事业方向").scriptConverted)
 .font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
 }
 
 HStack(alignment:.top, spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
-Text("神煞一览：" + shenShaText)
+Text(("神煞一览：" + shenShaText).scriptConverted)
 .font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
 }
 
@@ -862,7 +862,7 @@ HStack(alignment:.top, spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
 VStack(alignment:.leading, spacing: 2) {
 ForEach(InterpretEngine.nextThreeYears(chart: chart), id: \.year) { y in
-Text("\(String(y.year)) \(y.ganzhi)年（\(y.mark)）：\(y.note)")
+Text("\(String(y.year)) \(y.ganzhi)年（\(y.mark)）：\(y.note)".scriptConverted)
 .font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
 }
 }
@@ -870,13 +870,13 @@ Text("\(String(y.year)) \(y.ganzhi)年（\(y.mark)）：\(y.note)")
 
 HStack(spacing: 8) {
 Text("").font(.caption).fontWeight(.bold).foregroundStyle(Ky.jade)
-Text(xj.xi.isEmpty ? "流通为要，不拘固定数" : "日常喜用 \(xiNums)（\(xiNames)）数；穿衣家居宜\(xiColors)")
+Text(xj.xi.isEmpty ? "流通为要，不拘固定数".scriptConverted : "日常喜用 \(xiNums)（\(xiNames)）数；穿衣家居宜\(xiColors)".scriptConverted)
 .font(.caption).foregroundStyle(Ky.ink)
 }
 
 Divider().opacity(0.5)
 
-Text("八项实务提炼").font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+Text("八项实务提炼".scriptConverted).font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai)
 VStack(alignment:.leading, spacing: 4) {
 summaryRow("一、性格", InterpretEngine.conclusion(items: items, titles: "性格性情"))
 summaryRow("二、事业", InterpretEngine.conclusion(items: items, titles: "行业赛道深断", "事业方向"))
@@ -897,8 +897,8 @@ summaryRow("八、调理建议", InterpretEngine.conclusion(items: items, titles
 
 private func summaryRow(_ label: String, _ text: String) -> some View {
 HStack(alignment:.top, spacing: 6) {
-Text(label).font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai).frame(width: 52, alignment:.leading)
-Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
+Text(label.scriptConverted).font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai).frame(width: 52, alignment:.leading)
+Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
 }
 }
 
@@ -909,7 +909,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(name.isEmpty ? "四柱命盘" : name)
+                        Text(name.isEmpty ? "四柱命盘".scriptConverted : name)
                             .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                         Button { showRizhuTerm = true } label: {
                             KyBadge(text: "日主 \(chart.rizhu)\(dayEl)", color: KyV2.color(forChar: chart.rizhu.first!))
@@ -917,9 +917,9 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                         .buttonStyle(.plain)
                         .kyBottomSheet(isPresented: $showRizhuTerm, title: "日主") {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("日主").font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                                Text(TermGlossary.text(for: "日主")).font(.callout).foregroundStyle(Ky.ink)
-                                Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。")
+                                Text("日主".scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                Text(TermGlossary.text(for: "日主").scriptConverted).font(.callout).foregroundStyle(Ky.ink)
+                                Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。".scriptConverted)
                                     .font(.caption2).foregroundStyle(Ky.sub)
                             }
                         }
@@ -929,20 +929,20 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                         .buttonStyle(.plain)
                         .kyBottomSheet(isPresented: $showXunKongTerm, title: "旬空") {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("旬空").font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                                Text(TermGlossary.text(for: "旬空")).font(.callout).foregroundStyle(Ky.ink)
-                                Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。")
+                                Text("旬空".scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                Text(TermGlossary.text(for: "旬空").scriptConverted).font(.callout).foregroundStyle(Ky.ink)
+                                Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。".scriptConverted)
                                     .font(.caption2).foregroundStyle(Ky.sub)
                             }
                         }
                     }
-                    Text("胎元 \(chart.taiYuan) · 命宫 \(chart.mingGong) · 身宫 \(chart.shenGong)")
+                    Text("胎元 \(chart.taiYuan) · 命宫 \(chart.mingGong) · 身宫 \(chart.shenGong)".scriptConverted)
                         .font(.caption2).foregroundStyle(Ky.sub)
                 }
                 Spacer()
-                Picker("密度", selection: $proMode) {
-                    Text("简盘").tag(false)
-                    Text("细盘").tag(true)
+                Picker("密度".scriptConverted, selection: $proMode) {
+                    Text("简盘".scriptConverted).tag(false)
+                    Text("细盘".scriptConverted).tag(true)
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 116)
@@ -953,7 +953,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
             relationHintView
 
             HStack {
-                Text("点一柱看生克牵动 · 长按看柱位详情 · 点十神／星运看释义")
+                Text("点一柱看生克牵动 · 长按看柱位详情 · 点十神／星运看释义".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
                 Spacer()
                 Button {
@@ -963,7 +963,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: copied ? "checkmark.circle.fill" : "doc.on.doc")
-                        Text(copied ? "已复制文本" : "复制盘面")
+                        Text(copied ? "已复制文本".scriptConverted : "复制盘面".scriptConverted)
                     }
                     .font(.caption2).fontWeight(.semibold)
                     .foregroundStyle(copied ? Ky.jade : Ky.qingdai)
@@ -989,10 +989,10 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                 VStack(spacing: 6) {
                         // 柱头＋宫位
                         VStack(spacing: 1) {
-                            Text(cols[i])
+                            Text(cols[i].scriptConverted)
                                 .font(.caption).fontWeight(.bold)
                                 .foregroundStyle(isDay ? Ky.cinnabar : Ky.ink)
-                            Text(palaces[i])
+                            Text(palaces[i].scriptConverted)
                                 .font(.system(size: 9))
                                 .foregroundStyle(Ky.sub)
                         }
@@ -1054,16 +1054,16 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                             // 星运（长生十二宫）＋纳音
                             VStack(spacing: 2) {
                                 HStack(spacing: 0) {
-                                    Text("长生 · ")
+                                    Text("长生 · ".scriptConverted)
                                     TermButton(term: ch.diShi[i], display: ch.diShi[i])
                                 }
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundStyle(Ky.ink)
-                                Text(ch.naYin[i])
+                                Text(ch.naYin[i].scriptConverted)
                                     .font(.system(size: 9.5))
                                     .foregroundStyle(Ky.sub)
                                 if !shaList[i].isEmpty {
-                                    Text(shaList[i].prefix(2).joined(separator: " "))
+                                    Text(shaList[i].prefix(2).joined(separator: " ").scriptConverted)
                                         .font(.system(size: 9, weight: .medium))
                                         .foregroundStyle(Ky.gold)
                                         .lineLimit(1)
@@ -1138,8 +1138,8 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                 .background(color.opacity(0.13))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink).lineLimit(1)
-                Text(subtitle).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+                Text(title.scriptConverted).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink).lineLimit(1)
+                Text(subtitle.scriptConverted).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
             }
             Spacer(minLength: 0)
         }
@@ -1171,7 +1171,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                         .clipShape(RoundedRectangle(cornerRadius: 12))
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(names[idx]).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            Text(names[idx].scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             HStack(spacing: 0) {
                                 Text("天干：\(stem)（\(KyV2.element(ofChar: stem)) · ")
                                 TermButton(term: chart.stemShiShen[idx], display: chart.stemShiShen[idx])
@@ -1179,7 +1179,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                             }
                             .font(.caption).foregroundStyle(Ky.sub)
                             HStack(spacing: 0) {
-                                Text("地支：\(branch)（\(KyV2.element(ofChar: branch)) · 长生处「")
+                                Text("地支：\(branch)（\(KyV2.element(ofChar: branch)) · 长生处「".scriptConverted)
                                 TermButton(term: chart.diShi[idx], display: chart.diShi[idx])
                                 Text("」）")
                             }
@@ -1201,7 +1201,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                                     .foregroundStyle(KyV2.color(forChar: hg.first ?? "甲"))
                                 Spacer()
                                 if hss.isEmpty {
-                                    Text(hss).font(.callout).fontWeight(.medium).foregroundStyle(Ky.ink)
+                                    Text(hss.scriptConverted).font(.callout).fontWeight(.medium).foregroundStyle(Ky.ink)
                                 } else {
                                     TermButton(term: hss, display: hss)
                                         .font(.callout).fontWeight(.medium).foregroundStyle(Ky.ink)
@@ -1214,28 +1214,28 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                     VStack(alignment: .leading, spacing: 8) {
                         KySectionTitle(title: "星运 · 纳音 · 神煞")
                         HStack {
-                            Text("长生十二宫").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
+                            Text("长生十二宫".scriptConverted).font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
                             TermButton(term: chart.diShi[idx], display: chart.diShi[idx])
                                 .font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
                             Spacer()
                         }
                         HStack {
-                            Text("纳音五行").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
+                            Text("纳音五行".scriptConverted).font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
                             TermButton(term: "纳音", display: chart.naYin[idx])
                                 .font(.callout).foregroundStyle(Ky.ink)
                             Spacer()
                         }
                         if idx == 2 {
                             HStack {
-                                Text("日柱旬空").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
+                                Text("日柱旬空".scriptConverted).font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
                                 Text(chart.xunKong).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
                                 Spacer()
                             }
                         }
                         HStack(alignment: .top) {
-                            Text("本柱神煞").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
+                            Text("本柱神煞".scriptConverted).font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
                             if sha.isEmpty {
-                                Text("无特定神煞")
+                                Text("无特定神煞".scriptConverted)
                                     .font(.callout).foregroundStyle(Ky.sub)
                             } else {
                                 TermButton(term: "神煞", display: sha.joined(separator: "、"))
@@ -1243,17 +1243,17 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                             }
                             Spacer()
                         }
-                        Text("注：藏干以本气为立格与通根之主；神煞属《三命通会》辅助层，随格局增减分量，不单凭神煞定吉凶。")
+                        Text("注：藏干以本气为立格与通根之主；神煞属《三命通会》辅助层，随格局增减分量，不单凭神煞定吉凶。".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub).padding(.top, 4)
                     }.kyCard()
                 }.padding(16).padding(.bottom, 100)
             }
             .background(Ky.bg)
-            .navigationTitle("\(["年柱", "月柱", "日柱", "时柱"][idx])详情")
+            .navigationTitle("\(["年柱", "月柱", "日柱", "时柱"][idx])详情".scriptConverted)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { showDetail = false }.foregroundStyle(Ky.qingdai)
+                    Button("完成".scriptConverted) { showDetail = false }.foregroundStyle(Ky.qingdai)
                 }
             }
         }
@@ -1277,7 +1277,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
             }.buttonStyle(.plain)
 
             if showShichen {
-                Text("同一日干下十二时辰的时柱并排：生辰分钟临界或时辰不详时，可在此对照相邻时辰的十神差异。")
+                Text("同一日干下十二时辰的时柱并排：生辰分钟临界或时辰不详时，可在此对照相邻时辰的十神差异。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
                     ForEach(0..<12, id: \.self) { i in
@@ -1287,7 +1287,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                             Text("\(String(branches[i]))时 \(ranges[i])").font(.caption2).foregroundStyle(Ky.sub)
                             Text(tp).font(.system(.callout, design: .serif)).fontWeight(.bold)
                                 .foregroundStyle(isCurrent ? Ky.qingdai : Ky.ink)
-                            Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: tp.first!))
+                            Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: tp.first!).scriptConverted)
                                 .font(.caption2).foregroundStyle(isCurrent ? Ky.cinnabar : Ky.gold)
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 6)
@@ -1296,7 +1296,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
-                Text("口径：时干按五鼠遁自日干推；夜子时（23 点后）时干按次日日干推，以本盘时柱为准。")
+                Text("口径：时干按五鼠遁自日干推；夜子时（23 点后）时干按次日日干推，以本盘时柱为准。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
         }
@@ -1307,7 +1307,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
         VStack(alignment: .leading, spacing: 10) {
             KySectionTitle(title: "五行力量与气势", trailing: "天干＋藏干加权")
             WuxingBarsView(percents: chart.wuxingPercents)
-            Text("计法：天干各 1.0，地支藏干本气 1.0 / 中气 0.5 / 余气 0.3，归一化百分比；强弱取用仍以月令提纲与本气通根为纲。")
+            Text("计法：天干各 1.0，地支藏干本气 1.0 / 中气 0.5 / 余气 0.3，归一化百分比；强弱取用仍以月令提纲与本气通根为纲。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
         .kyCard()
@@ -1334,21 +1334,21 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
     private func timeNavRow() -> some View {
         HStack(spacing: 8) {
             Button { stepTime(-1) } label: {
-                Label("上一步", systemImage: "chevron.left")
+                Label("上一步".scriptConverted, systemImage: "chevron.left")
                     .font(.caption).fontWeight(.medium)
                     .padding(.horizontal, 10).padding(.vertical, 5)
                     .background(Ky.elevated).clipShape(Capsule())
             }.foregroundStyle(Ky.qingdai)
             Spacer()
             Button { backToCurrentYear() } label: {
-                Label("定位今年", systemImage: "scope")
+                Label("定位今年".scriptConverted, systemImage: "scope")
                     .font(.caption).fontWeight(.semibold)
                     .padding(.horizontal, 12).padding(.vertical, 5)
                     .background(Ky.cinnabar.opacity(0.12)).clipShape(Capsule())
             }.foregroundStyle(Ky.cinnabar)
             Spacer()
             Button { stepTime(1) } label: {
-                Label("下一步", systemImage: "chevron.right")
+                Label("下一步".scriptConverted, systemImage: "chevron.right")
                     .font(.caption).fontWeight(.medium)
                     .padding(.horizontal, 10).padding(.vertical, 5)
                     .background(Ky.elevated).clipShape(Capsule())
@@ -1424,7 +1424,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                     yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(gz)运")
                 }
             )
-            Text("点任一步大运直接下钻该运十年流年；标「当运」者为今年所在大运；✓ 喜运 × 忌运（无标为平运）。")
+            Text("点任一步大运直接下钻该运十年流年；标「当运」者为今年所在大运；✓ 喜运 × 忌运（无标为平运）。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
     }
@@ -1452,7 +1452,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                             Text(gz)
                                 .font(.system(.callout, design: .serif)).fontWeight(.bold)
                                 .foregroundStyle(isSel ? Color.white : Ky.ink)
-                            Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!))
+                            Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!).scriptConverted)
                                 .font(.system(size: 10))
                                 .foregroundStyle(isSel ? Color.white.opacity(0.9) : Ky.gold)
                         }
@@ -1466,7 +1466,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                     }.buttonStyle(.plain)
                 }
             }
-            Text("\(chart.dayunGanZhi[safeDayun])运（\(String(start))–\(String(start + 9))）十年流年：点任一年进流月。")
+            Text("\(chart.dayunGanZhi[safeDayun])运（\(String(start))–\(String(start + 9))）十年流年：点任一年进流月。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
 
@@ -1480,10 +1480,10 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
             ("子", "冬月"), ("丑", "腊月")]
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("\(String(year)) 年（\(ygz)）十二节气流月")
+                Text("\(String(year)) 年（\(ygz)）十二节气流月".scriptConverted)
                     .font(.callout).fontWeight(.bold).foregroundStyle(Ky.ink)
                 Spacer()
-                Button("返回流年") { timeLevel = 1 }.font(.caption).foregroundStyle(Ky.qingdai)
+                Button("返回流年".scriptConverted) { timeLevel = 1 }.font(.caption).foregroundStyle(Ky.qingdai)
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
                 ForEach(branches.indices, id: \.self) { i in
@@ -1492,10 +1492,10 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                     VStack(spacing: 2) {
                         Text(branches[i].1).font(.caption2).foregroundStyle(Ky.sub)
                         Text(gz).font(.system(.callout, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!))
+                        Text(BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!).scriptConverted)
                             .font(.system(size: 10)).foregroundStyle(Ky.gold)
                         if let r = rel {
-                            Text("\(r)月令").font(.system(size: 9, weight: .bold)).foregroundStyle(Ky.cinnabar)
+                            Text("\(r)月令".scriptConverted).font(.system(size: 9, weight: .bold)).foregroundStyle(Ky.cinnabar)
                         }
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 6)
@@ -1503,7 +1503,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
             }
-            Text("流月干支按五虎遁自流年干推，以节气交节为界（寅月自立春起）。")
+            Text("流月干支按五虎遁自流年干推，以节气交节为界（寅月自立春起）。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
     }
@@ -1514,12 +1514,12 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
             ? BaziEngine.dayPillar(for: flowDate.addingTimeInterval(86400)).first! : dp.first!
         let tp = BaziTables.timeGanZhi(dayStem: dayStemForTime, hour: flowHour)
         return VStack(alignment: .leading, spacing: 10) {
-            Text("选定流日").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+            Text("选定流日".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
             KyChineseDatePicker(date: $flowDate)
             Stepper("选定流时：\(flowHour):00（\(tp)时）", value: $flowHour, in: 0...23)
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("流日干支").font(.caption2).foregroundStyle(Ky.sub)
+                    Text("流日干支".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                     HStack(spacing: 6) {
                         Text(dp).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                         KyBadge(text: BaziTables.shiShen(day: chart.rizhu.first!, stem: dp.first!), color: Ky.gold)
@@ -1528,7 +1528,7 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                 .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("流时干支").font(.caption2).foregroundStyle(Ky.sub)
+                    Text("流时干支".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                     HStack(spacing: 6) {
                         Text(tp).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                         KyBadge(text: BaziTables.shiShen(day: chart.rizhu.first!, stem: tp.first!), color: Ky.qingdai)
@@ -1537,10 +1537,10 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                 .frame(maxWidth: .infinity, alignment: .leading).kySubCard()
             }
             if let rel = BaziTables.relation(dp.last!, chart.dayPillar.last!) {
-                Text("流日支与命盘日支成「\(rel)」——自身与配偶宫位受引动，当日行事宜稳。")
+                Text("流日支与命盘日支成「\(rel)」——自身与配偶宫位受引动，当日行事宜稳。".scriptConverted)
                     .font(.caption).foregroundStyle(Ky.cinnabar)
             } else {
-                Text("流日支与命盘日支无直接刑冲合会。")
+                Text("流日支与命盘日支无直接刑冲合会。".scriptConverted)
                     .font(.caption).foregroundStyle(Ky.sub)
             }
         }
@@ -1552,8 +1552,8 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
             HStack(spacing: 16) {
                 Text("胎元：\(chart.taiYuan)").font(.caption).foregroundStyle(Ky.ink)
                 Text("胎息：\(chart.taiXi)").font(.caption).foregroundStyle(Ky.ink)
-                Text("命宫：\(chart.mingGong)").font(.caption).foregroundStyle(Ky.ink)
-                Text("身宫：\(chart.shenGong)").font(.caption).foregroundStyle(Ky.ink)
+                Text("命宫：\(chart.mingGong)".scriptConverted).font(.caption).foregroundStyle(Ky.ink)
+                Text("身宫：\(chart.shenGong)".scriptConverted).font(.caption).foregroundStyle(Ky.ink)
             }
             if !chart.siliText.isEmpty {
                 Text("月令人元分野：\(chart.siliText)").font(.caption).foregroundStyle(Ky.sub)
@@ -1678,15 +1678,15 @@ struct GanZhiLookupView: View {
                     Divider()
 
                     HStack {
-                        Text("1. 选定年柱（六十甲子）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                        Text("1. 选定年柱（六十甲子）".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                         Spacer()
-                        Picker("年柱", selection: $yearGZ) {
+                        Picker("年柱".scriptConverted, selection: $yearGZ) {
                             ForEach(Self.jiazi60, id: \.self) { gz in Text(gz).tag(gz) }
                         }.pickerStyle(.menu).tint(Ky.qingdai)
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("2. 选定月支（月干按五虎遁自动配为 \(derivedMonthGZ)）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                        Text("2. 选定月支（月干按五虎遁自动配为 \(derivedMonthGZ)）".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                             ForEach(Self.monthBranches, id: \.self) { mb in
                                 let active = monthBranch == mb
@@ -1704,15 +1704,15 @@ struct GanZhiLookupView: View {
                     }
 
                     HStack {
-                        Text("3. 选定日柱（六十甲子）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                        Text("3. 选定日柱（六十甲子）".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                         Spacer()
-                        Picker("日柱", selection: $dayGZ) {
+                        Picker("日柱".scriptConverted, selection: $dayGZ) {
                             ForEach(Self.jiazi60, id: \.self) { gz in Text(gz).tag(gz) }
                         }.pickerStyle(.menu).tint(Ky.qingdai)
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("4. 选定时支（时干按五鼠遁自动配为 \(derivedTimeGZ)）").font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
+                        Text("4. 选定时支（时干按五鼠遁自动配为 \(derivedTimeGZ)）".scriptConverted).font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                             ForEach(Self.branches, id: \.self) { hb in
                                 let active = hourBranch == hb
@@ -1731,19 +1731,19 @@ struct GanZhiLookupView: View {
                     }
 
                     HStack {
-                        Text("查询年份范围").font(.caption).foregroundStyle(Ky.sub)
+                        Text("查询年份范围".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                         Spacer()
                         Stepper("\(startYear)", value: $startYear, in: 1900...2099).labelsHidden()
                         Text("\(String(startYear)) – \(String(endYear)) 年").font(KyV2.tabular(13, weight: .bold)).foregroundStyle(Ky.ink)
                         Stepper("\(endYear)", value: $endYear, in: 1901...2100).labelsHidden()
                     }
 
-                    Picker("排盘性别", selection: $gender) {
-                        Text("乾造（男）").tag("M")
-                        Text("坤造（女）").tag("F")
+                    Picker("排盘性别".scriptConverted, selection: $gender) {
+                        Text("乾造（男）".scriptConverted).tag("M")
+                        Text("坤造（女）".scriptConverted).tag("F")
                     }.pickerStyle(.segmented)
 
-                    Button("反查匹配生辰") {
+                    Button("反查匹配生辰".scriptConverted) {
                         runSearch()
                     }.buttonStyle(KyPrimaryButton())
                 }.kyCard()
@@ -1753,9 +1753,9 @@ struct GanZhiLookupView: View {
                     if results.isEmpty {
                         VStack(spacing: 8) {
                             Image(systemName: "calendar.badge.exclamationmark").font(.title2).foregroundStyle(Ky.cinnabar)
-                            Text("在 \(String(min(startYear, endYear)))–\(String(max(startYear, endYear))) 年间未找到该四柱组合")
+                            Text("在 \(String(min(startYear, endYear)))–\(String(max(startYear, endYear))) 年间未找到该四柱组合".scriptConverted)
                                 .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                            Text("原因：该年柱的此节气月内正好未逢「\(dayGZ)」日（一月约 30 天而甲子周期为 60 天，故每个月仅有约一半日柱出现），可换相邻年份或扩大年份范围再查。")
+                            Text("原因：该年柱的此节气月内正好未逢「\(dayGZ)」日（一月约 30 天而甲子周期为 60 天，故每个月仅有约一半日柱出现），可换相邻年份或扩大年份范围再查。".scriptConverted)
                                 .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                         }
                         .frame(maxWidth: .infinity).padding(18).kyCard()
@@ -1792,7 +1792,7 @@ struct GanZhiLookupView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("四柱干支反查")
+        .navigationTitle("四柱干支反查".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if !searched { runSearch() }
@@ -1801,7 +1801,7 @@ struct GanZhiLookupView: View {
 
     private func pillarPreviewBox(_ label: String, _ gz: String) -> some View {
         VStack(spacing: 3) {
-            Text(label).font(.system(size: 9.5)).foregroundStyle(Ky.sub).lineLimit(1)
+            Text(label.scriptConverted).font(.system(size: 9.5)).foregroundStyle(Ky.sub).lineLimit(1)
             HStack(spacing: 2) {
                 Text(String(gz.first!)).foregroundStyle(KyV2.color(forChar: gz.first!))
                 Text(String(gz.last!)).foregroundStyle(KyV2.color(forChar: gz.last!))

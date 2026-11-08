@@ -37,12 +37,12 @@ struct SynastryView: View {
                 } else {
                     KyEmptyState(icon: "person.2", title: "从人物档案里选两个人", message: "档案里不足两人时，先去「人物档案」建档。")
                 }
-                Text("流程按合婚四看：双盘先各自立 → 喜用互补 → 日柱 → 配偶星；生肖合冲只作民间末位参，不入主断。")
+                Text("流程按合婚四看：双盘先各自立 → 喜用互补 → 日柱 → 配偶星；生肖合冲只作民间末位参，不入主断。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("合盘")
+        .navigationTitle("合盘".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -50,15 +50,15 @@ struct SynastryView: View {
 
     private var pickerCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            personPicker("甲方", selection: $aId)
-            personPicker("乙方", selection: $bId)
+            personPicker("甲方".scriptConverted, selection: $aId)
+            personPicker("乙方".scriptConverted, selection: $bId)
         }
         .kyCard()
     }
 
     private func personPicker(_ label: String, selection: Binding<UUID?>) -> some View {
         Picker(label, selection: selection) {
-            Text("未选").tag(UUID?.none)
+            Text("未选".scriptConverted).tag(UUID?.none)
             ForEach(store.people) { p in Text(p.name).tag(UUID?.some(p.id)) }
         }.pickerStyle(.menu).tint(Ky.ink)
     }
@@ -123,7 +123,7 @@ struct SynastryView: View {
 
     private func card(_ title: String, conclusion: String, facts: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text(title.scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
             EvidenceChainView(conclusion: conclusion, links: [("盘面", facts)])
         }
         .kyCard()

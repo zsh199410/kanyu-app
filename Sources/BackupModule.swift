@@ -41,53 +41,53 @@ struct BackupView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("本地备份").font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text("人物 \(peopleStore.people.count) 位 · 前瞻 \(forecastStore.entries.count) 条 · 手相面相 \(palmStore.records.count) 条记录")
+                    Text("本地备份".scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text("人物 \(peopleStore.people.count) 位 · 前瞻 \(forecastStore.entries.count) 条 · 手相面相 \(palmStore.records.count) 条记录".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
-                    Text("导出为 Kanyu-Backup-日期.zip，可存入系统「文件」或发微信；换机后从文件导入一键恢复。照片原件不在包内。")
+                    Text("导出为 Kanyu-Backup-日期.zip，可存入系统「文件」或发微信；换机后从文件导入一键恢复。照片原件不在包内。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                     HStack(spacing: 10) {
                         Button {
                             if let u = makeBackup() { exportURL = u; note = "备份包已生成，可分享保存。" }
                             else { note = "备份失败：本地没有可打包的数据文件。" }
                         } label: {
-                            Label("导出备份（ZIP）", systemImage: "square.and.arrow.up")
+                            Label("导出备份（ZIP）".scriptConverted, systemImage: "square.and.arrow.up")
                                 .font(.subheadline).fontWeight(.semibold)
                         }.buttonStyle(KyPrimaryButton())
                         if let u = exportURL {
-                            ShareLink(item: u) { Label("分享", systemImage: "square.and.arrow.up.on.square") }
+                            ShareLink(item: u) { Label("分享".scriptConverted, systemImage: "square.and.arrow.up.on.square") }
                                 .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                         }
                         Button { importing = true } label: {
-                            Label("导入恢复", systemImage: "square.and.arrow.down")
+                            Label("导入恢复".scriptConverted, systemImage: "square.and.arrow.down")
                                 .font(.subheadline).fontWeight(.semibold)
                         }.buttonStyle(.plain).foregroundStyle(Ky.qingdai)
                     }
-                    if !note.isEmpty { Text(note).font(.caption).foregroundStyle(Ky.jade) }
+                    if !note.isEmpty { Text(note.scriptConverted).font(.caption).foregroundStyle(Ky.jade) }
                 }.kyCard()
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("iCloud 同步").font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text(icloudAvailable ? lastICloudBackup : "当前设备未登录 iCloud，云端备份不可用（先在系统设置里登录 iCloud）。")
+                    Text("iCloud 同步".scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text(icloudAvailable ? lastICloudBackup : "当前设备未登录 iCloud，云端备份不可用（先在系统设置里登录 iCloud）。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                     HStack(spacing: 10) {
-                        Button("备份到 iCloud") { icloudNote = backupToICloud() }
+                        Button("备份到 iCloud".scriptConverted) { icloudNote = backupToICloud() }
                             .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                             .disabled(!icloudAvailable)
-                        Button("从 iCloud 恢复") { icloudNote = restoreFromICloud() }
+                        Button("从 iCloud 恢复".scriptConverted) { icloudNote = restoreFromICloud() }
                             .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                             .disabled(!icloudAvailable)
                     }
-                    if !icloudNote.isEmpty { Text(icloudNote).font(.caption).foregroundStyle(Ky.jade) }
+                    if !icloudNote.isEmpty { Text(icloudNote.scriptConverted).font(.caption).foregroundStyle(Ky.jade) }
                 }.kyCard()
 
-                Text("口径：备份只含本机 JSON 数据与验真打标，不含照片原件与账号证书；恢复时同 ID 记录自动跳过，不会重复导入。")
+                Text("口径：备份只含本机 JSON 数据与验真打标，不含照片原件与账号证书；恢复时同 ID 记录自动跳过，不会重复导入。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("数据备份与恢复").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("数据备份与恢复".scriptConverted).navigationBarTitleDisplayMode(.inline)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { r in
             if case .success(let url) = r, url.startAccessingSecurityScopedResource() {
                 note = restore(from: url)

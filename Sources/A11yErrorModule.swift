@@ -20,7 +20,7 @@ struct AppErrorBanner: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Ky.cinnabar)
-            Text(message).font(.subheadline).foregroundStyle(Ky.ink).lineLimit(3)
+            Text(message.scriptConverted).font(.subheadline).foregroundStyle(Ky.ink).lineLimit(3)
             Spacer()
             Button("知道了", action: onDismiss).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
         }
@@ -28,7 +28,6 @@ struct AppErrorBanner: View {
         .background(Ky.card)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.cinnabar.opacity(0.5), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(radius: 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("保存失败提示：\(message)，点知道了关闭")
     }

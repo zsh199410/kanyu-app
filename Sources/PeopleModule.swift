@@ -87,6 +87,7 @@ final class PeopleStore: ObservableObject {
         do {
             let data = try JSONEncoder().encode(people)
             try data.write(to: fileURL, options: .atomic)
+            DataProtection.applyComplete(to: fileURL)
             StoreSchema.writeMeta(for: fileURL, count: people.count)
         } catch {
             AppErrorCenter.shared.report("人物档案保存失败，刚才的改动可能没存入：请重试，仍失败请先导出备份再联系助手。")
@@ -146,11 +147,11 @@ struct PeopleView: View {
     var body: some View {
         List {
             if store.people.isEmpty {
-                Text("还没有人物。把家里人先建上：建一次，八字盘面、解盘直接调人，不用每次重输生日。")
+                Text("还没有人物。把家里人先建上：建一次，八字盘面、解盘直接调人，不用每次重输生日。".scriptConverted)
                     .font(.callout).foregroundStyle(Ky.sub)
             }
             if !importNote.isEmpty {
-                Text(importNote).font(.caption).foregroundStyle(Ky.jade)
+                Text(importNote.scriptConverted).font(.caption).foregroundStyle(Ky.jade)
             }
             ForEach(groups, id: \.0) { g in
                 Section(g.0) {
@@ -159,7 +160,7 @@ struct PeopleView: View {
             }
         }
         .searchable(text: $query, prompt: "搜姓名、关系或标签")
-        .navigationTitle("人物档案")
+        .navigationTitle("人物档案".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -167,11 +168,11 @@ struct PeopleView: View {
                     NavigationLink { BackupView() } label: { Image(systemName: "archivebox") }.accessibilityLabel("数据备份与恢复")
                     Menu {
                         if let u = exportCache {
-                            ShareLink(item: u) { Label("导出命例（JSON）", systemImage: "square.and.arrow.up") }
+                            ShareLink(item: u) { Label("导出命例（JSON）".scriptConverted, systemImage: "square.and.arrow.up") }
                         } else {
-                            Button { exportCache = exportURL() } label: { Label("导出命例（JSON）", systemImage: "square.and.arrow.up") }
+                            Button { exportCache = exportURL() } label: { Label("导出命例（JSON）".scriptConverted, systemImage: "square.and.arrow.up") }
                         }
-                        Button { importing = true } label: { Label("导入命例", systemImage: "square.and.arrow.down") }
+                        Button { importing = true } label: { Label("导入命例".scriptConverted, systemImage: "square.and.arrow.down") }
                     } label: { Image(systemName: "arrow.up.arrow.down") }.accessibilityLabel("导入导出菜单")
                     Button { showingNew = true } label: { Image(systemName: "plus") }.accessibilityLabel("新增人物")
                 }
@@ -205,13 +206,13 @@ struct PeopleView: View {
                         Text(p.tags).font(.caption2).foregroundStyle(Ky.jade).lineLimit(1)
                     }
                 }
-                Text(Self.fmt.string(from: p.birthDate) + (p.useLongitude ? " · 经度 \(String(format: "%.1f", p.longitude))" : " · 钟表时间"))
+                Text(Self.fmt.string(from: p.birthDate) + (p.useLongitude ? " · 经度 \(String(format: "%.1f", p.longitude))" : " · 钟表时间".scriptConverted))
                     .font(.caption).foregroundStyle(Ky.sub)
             }
         }
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive) { store.remove(p) } label: { Label("删除", systemImage: "trash") }
-            Button { editing = p } label: { Label("编辑", systemImage: "pencil") }
+            Button(role: .destructive) { store.remove(p) } label: { Label("删除".scriptConverted, systemImage: "trash") }
+            Button { editing = p } label: { Label("编辑".scriptConverted, systemImage: "pencil") }
         }
     }
 }
@@ -238,18 +239,18 @@ struct PersonFormView: View {
                 TextField("姓名", text: $person.name)
                 TextField("关系（本人/丈夫/儿子/客户…，可空）", text: $person.relation)
                 TextField("标签（逗号分隔，可搜）", text: $person.tags)
-                Picker("性别", selection: $person.gender) { Text("男").tag("M"); Text("女").tag("F") }
+                Picker("性别".scriptConverted, selection: $person.gender) { Text("男").tag("M"); Text("女").tag("F") }
                     .pickerStyle(.segmented)
                 Section {
                     BirthInputView(clock: $birth, useLongitude: $person.useLongitude, longitudeText: $longitudeText)
                 }
             }
-            .navigationTitle(isNew ? "新建人物" : "编辑人物")
+            .navigationTitle(isNew ? "新建人物".scriptConverted : "编辑人物".scriptConverted)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("取消".scriptConverted) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button("保存".scriptConverted) {
                         var p = person
                         p.birthEpoch = birth.timeIntervalSince1970
                         p.longitude = Double(longitudeText) ?? p.longitude
@@ -290,11 +291,11 @@ struct PersonDetailView: View {
                     HStack {
                         Image(systemName: "sparkles")
                             .foregroundStyle(Ky.gold)
-                        Text("查看星命合参（东西双模本命盘） ›")
+                        Text("查看星命合参（东西双模本命盘） ›".scriptConverted)
                             .font(.system(size: 12.5, weight: .semibold))
                             .foregroundStyle(Ky.ink)
                         Spacer()
-                        Text("太阳 · 月亮 · 上升")
+                        Text("太阳 · 月亮 · 上升".scriptConverted)
                             .font(.caption2)
                             .foregroundStyle(Ky.sub)
                     }
@@ -312,11 +313,11 @@ struct PersonDetailView: View {
                     HStack {
                         Image(systemName: "doc.text.fill")
                             .foregroundStyle(Ky.qingdai)
-                        Text("我的命书／报告中心 ›")
+                        Text("我的命书／报告中心 ›".scriptConverted)
                             .font(.system(size: 12.5, weight: .semibold))
                             .foregroundStyle(Ky.ink)
                         Spacer()
-                        Text(pdfURL == nil ? "生成后自动归档" : "已生成 · 可查看历史")
+                        Text(pdfURL == nil ? "生成后自动归档".scriptConverted : "已生成 · 可查看历史".scriptConverted)
                             .font(.caption2)
                             .foregroundStyle(Ky.sub)
                     }
@@ -329,11 +330,11 @@ struct PersonDetailView: View {
                 CrossCheckCard(bazi: ch, ziwei: zw)
 
                 // 四合一分段控制器（无需反复进出子页面，一页切换八字、紫微、30条详批、逐年）
-                Picker("合参视图", selection: $sectionTab) {
-                    Text("八字命盘").tag(0)
-                    Text("紫微斗数").tag(1)
-                    Text("30条详批").tag(2)
-                    Text("逐年四查").tag(3)
+                Picker("合参视图".scriptConverted, selection: $sectionTab) {
+                    Text("八字命盘".scriptConverted).tag(0)
+                    Text("紫微斗数".scriptConverted).tag(1)
+                    Text("30条详批".scriptConverted).tag(2)
+                    Text("逐年四查".scriptConverted).tag(3)
                 }
                 .pickerStyle(.segmented)
 
@@ -352,7 +353,7 @@ struct PersonDetailView: View {
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle(p.name.isEmpty ? "命主详情" : p.name)
+        .navigationTitle(p.name.isEmpty ? "命主详情".scriptConverted : p.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if store.people.count > 1 {
@@ -372,7 +373,7 @@ struct PersonDetailView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.left.arrow.right.circle")
-                            Text("换人")
+                            Text("换人".scriptConverted)
                         }
                         .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                     }
@@ -388,7 +389,7 @@ struct PersonDetailView: View {
                 ShareLink(item: url) {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.richtext.fill").foregroundStyle(Ky.cinnabar)
-                        Text("分享命书文件").font(.caption).fontWeight(.semibold)
+                        Text("分享命书文件".scriptConverted).font(.caption).fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                     .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 10))
@@ -412,7 +413,7 @@ struct PersonDetailView: View {
                         } else {
                             Image(systemName: "doc.badge.gearshape").foregroundStyle(Ky.qingdai)
                         }
-                        Text(generatingPDF ? "生成文件中…" : "生成命书文件").font(.caption).fontWeight(.semibold)
+                        Text(generatingPDF ? "生成文件中…".scriptConverted : "生成命书文件".scriptConverted).font(.caption).fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                     .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 10))
@@ -423,7 +424,7 @@ struct PersonDetailView: View {
             ShareLink(item: aiPrompt(person: p, chart: ch, ziwei: zw)) {
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles").foregroundStyle(Ky.gold)
-                    Text("导出 AI 解读提示词").font(.caption).fontWeight(.semibold)
+                    Text("导出 AI 解读提示词".scriptConverted).font(.caption).fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 10)
                 .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 10))
@@ -456,7 +457,7 @@ struct PersonDetailView: View {
                         : palms.prefix(2).map { "\($0.kind)：\($0.summary)" }.joined(separator: "；"))
             ovRow("前瞻账本", fcs.isEmpty ? "暂无封存断语"
                         : fcs.prefix(3).map { "\($0.targetYear)年［\($0.status)］\($0.text)" }.joined(separator: "；"))
-            Text("合参分工纪律：阶段大象看紫微大限、应期年份与六亲细推以八字逐年消歧；两术冲突时按分工取主断。")
+            Text("合参分工纪律：阶段大象看紫微大限、应期年份与六亲细推以八字逐年消歧；两术冲突时按分工取主断。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
         .kyCard()
@@ -476,7 +477,7 @@ struct PersonDetailView: View {
             ForEach(items.indices, id: \.self) { i in
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("\(i + 1). \(items[i].title)")
+                        Text("\(i + 1). \(items[i].title)".scriptConverted)
                             .font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                         Spacer()
                     }
@@ -502,7 +503,7 @@ struct PersonDetailView: View {
                         KyBadge(text: r.level, color: r.level == "关口级" ? Ky.cinnabar : Ky.gold)
                     }
                     ForEach(r.lines, id: \.self) { ln in
-                        Text(ln).font(.callout).foregroundStyle(Ky.ink)
+                        Text(ln.scriptConverted).font(.callout).foregroundStyle(Ky.ink)
                     }
                 }.kyCard()
             }

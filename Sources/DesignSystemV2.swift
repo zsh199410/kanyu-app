@@ -77,7 +77,7 @@ struct KyBadge: View {
     var color: Color = Ky.qingdai
     var filled: Bool = false
     var body: some View {
-        Text(text)
+        Text(text.scriptConverted)
             .font(.caption2).fontWeight(.semibold)
             .padding(.horizontal, 8).padding(.vertical, 3.5)
             .background(filled ? color : color.opacity(0.13))
@@ -128,7 +128,7 @@ struct WuxingBarsView: View {
                         Text(String(format: "%.0f%%", p))
                             .font(KyV2.tabular(13, weight: .semibold)).foregroundStyle(Ky.ink)
                             .frame(width: 38, alignment: .trailing)
-                        Text(st.0)
+                        Text(st.0.scriptConverted)
                             .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(st.1)
                             .padding(.horizontal, 6).padding(.vertical, 2)
@@ -160,11 +160,11 @@ struct TimeCapsuleBar: View {
                     }
                 } label: {
                     HStack(spacing: 3) {
-                        Text(levels[i])
+                        Text(levels[i].scriptConverted)
                             .font(.caption)
                             .fontWeight(isSelected ? .bold : .medium)
                         if !isEnabled {
-                            Text("待开").font(.system(size: 8)).foregroundStyle(Ky.sub)
+                            Text("待开".scriptConverted).font(.system(size: 8)).foregroundStyle(Ky.sub)
                         }
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 8)
@@ -189,7 +189,7 @@ struct EvidenceChainView: View {
     let links: [(label: String, text: String)]  // 自上而下：盘面/法则/根据
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(conclusion)
+            Text(conclusion.scriptConverted)
                 .font(.system(size: 15.5, weight: .regular))
                 .foregroundStyle(Ky.ink)
                 .lineSpacing(4.5)
@@ -198,7 +198,7 @@ struct EvidenceChainView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(links.indices, id: \.self) { i in
                         HStack(alignment: .top, spacing: 8) {
-                            Text(links[i].label)
+                            Text(links[i].label.scriptConverted)
                                 .font(.system(size: 10.5, weight: .semibold))
                                 .foregroundStyle(links[i].label == "盘面" ? Ky.qingdai : Ky.gold)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
@@ -230,7 +230,7 @@ struct KySectionTitle: View {
             Capsule()
                 .fill(Ky.qingdai)
                 .frame(width: 4, height: 15)
-            Text(title)
+            Text(title.scriptConverted)
                 .font(.system(size: 16, weight: .bold, design: .serif))
                 .foregroundStyle(Ky.ink)
                 .lineLimit(1)
@@ -239,7 +239,7 @@ struct KySectionTitle: View {
                 .fill(Ky.line.opacity(0.85))
                 .frame(height: 0.8)
             if !trailing.isEmpty {
-                Text(trailing)
+                Text(trailing.scriptConverted)
                     .font(.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(Ky.sub)
@@ -254,7 +254,7 @@ struct KySectionTitle: View {
 struct KySeal: View {
     let text: String
     var body: some View {
-        Text(text)
+        Text(text.scriptConverted)
             .font(.system(size: 13, design: .serif)).fontWeight(.bold)
             .foregroundStyle(Ky.cinnabar)
             .padding(.horizontal, 7).padding(.vertical, 4)
@@ -326,10 +326,10 @@ struct CaliberSettingsView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "八字口径", trailing: "子平正统")
                     Picker("晚子时归日", selection: $baziSect) {
-                        Text("23 点后算次日").tag(1)
-                        Text("23 点后算当日").tag(2)
+                        Text("23 点后算次日".scriptConverted).tag(1)
+                        Text("23 点后算当日".scriptConverted).tag(2)
                     }.pickerStyle(.segmented)
-                    Text("现行金标准盘以晚子时算当日（23:00 后日柱不换、时干按次日五鼠遁推）对拍验证；改口径后盘面随之变化，属预期。")
+                    Text("现行金标准盘以晚子时算当日（23:00 后日柱不换、时干按次日五鼠遁推）对拍验证；改口径后盘面随之变化，属预期。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
 
@@ -339,7 +339,7 @@ struct CaliberSettingsView: View {
                         .tint(Ky.qingdai)
                     Toggle("晚子时作次日", isOn: $ziweiLateZiNext)
                         .tint(Ky.qingdai)
-                    Text("默认：闰月归下月、晚子时作当日，与紫微金标准盘（同源参照）一致。")
+                    Text("默认：闰月归下月、晚子时作当日，与紫微金标准盘（同源参照）一致。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
 
@@ -350,29 +350,29 @@ struct CaliberSettingsView: View {
                         get: { signDateEpoch > 0 ? Date(timeIntervalSince1970: signDateEpoch) : Date() },
                         set: { signDateEpoch = $0.timeIntervalSince1970 }))
                     Picker("证书类型", selection: $signCertDays) {
-                        Text("免费证书（7 天）").tag(7)
-                        Text("付费证书（1 年）").tag(365)
+                        Text("免费证书（7 天）".scriptConverted).tag(7)
+                        Text("付费证书（1 年）".scriptConverted).tag(365)
                     }.pickerStyle(.segmented)
                     if signDateEpoch > 0 {
                         let expiry = Date(timeIntervalSince1970: signDateEpoch).addingTimeInterval(Double(signCertDays) * 86400)
                         let remain = Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 0
-                        Text("到期日 \(expiry.formatted(date: .abbreviated, time: .omitted))，还剩 \(remain) 天。到期前 7 天起首页会亮提醒：到期后应用打不开是证书问题、不是数据问题，续签覆盖安装即可，数据不丢。")
+                        Text("到期日 \(expiry.formatted(date: .abbreviated, time: .omitted))，还剩 \(remain) 天。到期前 7 天起首页会亮提醒：到期后应用打不开是证书问题、不是数据问题，续签覆盖安装即可，数据不丢。".scriptConverted)
                             .font(.caption).foregroundStyle(remain <= 7 ? Ky.cinnabar : Ky.sub)
                     } else {
-                        Text("装好应用后在这里记下签名日期，临近到期首页会提醒续签。")
+                        Text("装好应用后在这里记下签名日期，临近到期首页会提醒续签。".scriptConverted)
                             .font(.caption).foregroundStyle(Ky.sub)
                     }
                 }.kyCard()
 
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "紫微亮度表", trailing: "58星×12宫")
-                    Text("现行：《斗数全书》派亮度（58 星×12 宫全量）。中州派亮度表数据源未核实，不编造，缺位标注在此——宁缺毋假。")
+                    Text("现行：《斗数全书》派亮度（58 星×12 宫全量）。中州派亮度表数据源未核实，不编造，缺位标注在此——宁缺毋假。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("排盘口径设置")
+        .navigationTitle(Text("排盘口径设置".scriptConverted))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

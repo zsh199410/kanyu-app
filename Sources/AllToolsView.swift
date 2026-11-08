@@ -250,7 +250,7 @@ struct AllToolsView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("全部工具")
+        .navigationTitle("全部工具".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -305,7 +305,7 @@ struct AllToolsView: View {
             Image(systemName: item.icon)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(item.color)
-            Text(item.title)
+            Text(item.title.scriptConverted)
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundStyle(Ky.ink)
@@ -347,11 +347,11 @@ struct AllToolsView: View {
                 .background(item.color.opacity(0.13))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
+                Text(item.title.scriptConverted)
                     .font(.subheadline)
                     .fontWeight(.bold)
                     .foregroundStyle(Ky.ink)
-                Text(item.desc)
+                Text(item.desc.scriptConverted)
                     .font(.caption2)
                     .foregroundStyle(Ky.sub)
                     .lineLimit(1)

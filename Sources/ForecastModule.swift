@@ -30,6 +30,7 @@ final class ForecastStore: ObservableObject {
         do {
             let data = try JSONEncoder().encode(entries)
             try data.write(to: fileURL, options: .atomic)
+            DataProtection.applyComplete(to: fileURL)
             StoreSchema.writeMeta(for: fileURL, count: entries.count)
         } catch {
             AppErrorCenter.shared.report("前瞻登记保存失败，刚才的改动可能没存入：请重试，仍失败请先导出备份再联系助手。")
@@ -68,7 +69,7 @@ struct ForecastView: View {
     var body: some View {
         List {
             if store.entries.isEmpty {
-                Text("还没有登记。规矩：断语写下就冻结，到期只标命中与否、不许改原文——这是咱们断得准不准的账本。")
+                Text("还没有登记。规矩：断语写下就冻结，到期只标命中与否、不许改原文——这是咱们断得准不准的账本。".scriptConverted)
                     .font(.callout).foregroundStyle(Ky.sub)
             }
             ForEach(store.entries) { e in
@@ -82,7 +83,7 @@ struct ForecastView: View {
                                 Button(s) { store.setStatus(e, s) }
                             }
                         } label: {
-                            Text(e.status).font(.caption2).fontWeight(.semibold)
+                            Text(e.status.scriptConverted).font(.caption2).fontWeight(.semibold)
                                 .padding(.horizontal, 8).padding(.vertical, 3)
                                 .background(e.status == "命中" ? Ky.jade.opacity(0.18)
                                             : e.status == "未中" ? Ky.cinnabar.opacity(0.14) : Ky.bg)
@@ -92,11 +93,11 @@ struct ForecastView: View {
                     Text(e.text).font(.callout).foregroundStyle(Ky.ink)
                 }
                 .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) { store.remove(e) } label: { Label("删除", systemImage: "trash") }
+                    Button(role: .destructive) { store.remove(e) } label: { Label("删除".scriptConverted, systemImage: "trash") }
                 }
             }
         }
-        .navigationTitle("前瞻登记")
+        .navigationTitle("前瞻登记".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -127,12 +128,12 @@ struct ForecastFormView: View {
                 Stepper("目标年份：\(year)", value: $year, in: 2024...2100)
                 TextField("断语原文（写下冻结，不可改）", text: $text, axis: .vertical).lineLimit(3...6)
             }
-            .navigationTitle("新登记")
+            .navigationTitle("新登记".scriptConverted)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("取消".scriptConverted) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("登记") {
+                    Button("登记".scriptConverted) {
                         store.add(ForecastEntry(personName: personName, text: text, targetYear: year))
                         dismiss()
                     }.disabled(personName.isEmpty || text.isEmpty)

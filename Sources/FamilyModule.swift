@@ -105,7 +105,7 @@ struct FamilyChartView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                Text("口径：每人盘面事实来源 BaziEngine 现算＋InterpretEngine 定论＋YearEngine 当年要点；两两合盘复用合婚四看；四维裁决复用八字×紫微 hecan 原文，不另造新裁决。")
+                Text("口径：每人盘面事实来源 BaziEngine 现算＋InterpretEngine 定论＋YearEngine 当年要点；两两合盘复用合婚四看；四维裁决复用八字×紫微 hecan 原文，不另造新裁决。".scriptConverted)
                     .font(.caption).foregroundStyle(Ky.sub)
                 PersonQuickBar(store: store) { p in
                     if aId == nil { aId = p.id }
@@ -122,27 +122,27 @@ struct FamilyChartView: View {
                 } else {
                     KyEmptyState(icon: "person.3.fill", title: "从人物档案里选三位不同的人", message: "档案里不足三人时，先去「人物档案」建档。")
                 }
-                Text("全家盘海报与 Web 端同款（1080 宽、左右 28px 零墨）；App 端海报由本页内容直接渲染导出。")
+                Text("全家盘海报与 Web 端同款（1080 宽、左右 28px 零墨）；App 端海报由本页内容直接渲染导出。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("全家盘")
+        .navigationTitle("全家盘".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private var pickerCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            personPicker("其一", selection: $aId)
-            personPicker("其二", selection: $bId)
-            personPicker("其三", selection: $cId)
+            personPicker("其一".scriptConverted, selection: $aId)
+            personPicker("其二".scriptConverted, selection: $bId)
+            personPicker("其三".scriptConverted, selection: $cId)
         }
         .kyCard()
     }
 
     private func personPicker(_ label: String, selection: Binding<UUID?>) -> some View {
         Picker(label, selection: selection) {
-            Text("未选").tag(UUID?.none)
+            Text("未选".scriptConverted).tag(UUID?.none)
             ForEach(store.people) { p in Text(p.name).tag(UUID?.some(p.id)) }
         }.pickerStyle(.menu).tint(Ky.ink)
     }
@@ -160,7 +160,7 @@ struct FamilyChartView: View {
                 Text("\(p.name) · 四柱 \(ch.pillars.joined(separator: " "))").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
                 EvidenceChainView(conclusion: "日主\(ch.rizhu) · \(xj.level) · 喜\(xiText.isEmpty ? "流通" : xiText) · 忌\(jiText.isEmpty ? "待定" : jiText)。",
                                   links: [("盘面", "四柱 \(ch.pillars.joined(separator: " "))")])
-                Text("\(year)年 \(rep.gz)年 · \(dayunText) · \(rep.level)：\(rep.lines.first ?? "")")
+                Text("\(year)年 \(rep.gz)年 · \(dayunText) · \(rep.level)：\((rep.lines.first ?? "").scriptConverted)")
                     .font(.callout).foregroundStyle(Ky.ink)
             }
             .kyCard()
@@ -173,8 +173,8 @@ struct FamilyChartView: View {
         let one = pairs.filter { hubuDirections(a: $0.0, b: $0.1) == 1 }.count
         let none = pairs.filter { hubuDirections(a: $0.0, b: $0.1) == 0 }.count
         VStack(alignment: .leading, spacing: 8) {
-            Text("三对互补计数").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
-            Text("三对合盘：双向互补 \(both) 对、单向互补 \(one) 对、互补不显 \(none) 对。")
+            Text("三对互补计数".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text("三对合盘：双向互补 \(both) 对、单向互补 \(one) 对、互补不显 \(none) 对。".scriptConverted)
                 .font(.callout).foregroundStyle(Ky.ink)
         }
         .kyCard()
@@ -182,9 +182,9 @@ struct FamilyChartView: View {
             let a = pairs[i].0
             let b = pairs[i].1
             VStack(alignment: .leading, spacing: 8) {
-                Text("\(a.name) × \(b.name) · 喜用互补").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                Text(a.name + " × " + b.name + " · 喜用互补".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
                 EvidenceChainView(conclusion: hubuText(a: a, b: b), links: [("盘面", "\(a.name)最旺 \(strongestWx(of: chart(of: a)))，\(b.name)最旺 \(strongestWx(of: chart(of: b)))")])
-                Text(dayPillarText(a: a, b: b)).font(.callout).foregroundStyle(Ky.ink)
+                Text(dayPillarText(a: a, b: b).scriptConverted).font(.callout).foregroundStyle(Ky.ink)
             }
             .kyCard()
         }
@@ -194,13 +194,13 @@ struct FamilyChartView: View {
         let dims = ["事业", "财富", "婚恋", "健康"]
         ForEach(dims, id: \.self) { dim in
             VStack(alignment: .leading, spacing: 8) {
-                Text("\(dim) · 全家交叉裁决").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                Text("\(dim) · 全家交叉裁决".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
                 ForEach(ps) { p in
                     let v = BaziZiweiCrossEngine.verdicts(bazi: chart(of: p), ziwei: ziwei(of: p)).first { $0.title == dim }
-                    Text("\(p.name)：\(v?.verdict ?? "")（\(v?.kind.rawValue ?? "")）")
+                    Text("\(p.name)：\((v?.verdict ?? "").scriptConverted)（\((v?.kind.rawValue ?? "").scriptConverted)）")
                         .font(.callout).foregroundStyle(Ky.ink)
                 }
-                Text("裁决句取各自 hecan 原文（同频相催／互补制化／分期应验），本页不另造新裁决。")
+                Text("裁决句取各自 hecan 原文（同频相催／互补制化／分期应验），本页不另造新裁决。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .kyCard()
@@ -218,17 +218,17 @@ struct FamilyChartView: View {
                     posterURL = url
                 }
             } label: {
-                Label("导出全家盘海报 PNG（1080 宽）", systemImage: "square.and.arrow.down")
+                Label("导出全家盘海报 PNG（1080 宽）".scriptConverted, systemImage: "square.and.arrow.down")
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
             }
             .buttonStyle(KyPrimaryButton())
             if let u = posterURL {
                 ShareLink(item: u) {
-                    Label("保存 / 分享全家盘海报", systemImage: "square.and.arrow.up")
+                    Label("保存 / 分享全家盘海报".scriptConverted, systemImage: "square.and.arrow.up")
                         .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                 }
                 .buttonStyle(KyPrimaryButton())
-                Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
+                Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。".scriptConverted)
                     .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
             }
         }
@@ -254,9 +254,9 @@ struct FamilyPosterView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("全家盘")
+            Text("全家盘".scriptConverted)
                 .font(.system(size: 44, weight: .bold, design: .serif)).foregroundStyle(Ky.ink)
-            Text("三人盘并置 · 合参裁决")
+            Text("三人盘并置 · 合参裁决".scriptConverted)
                 .font(.subheadline).foregroundStyle(Ky.sub)
             ForEach(people) { p in
                 let ch = chart(of: p)
@@ -265,7 +265,7 @@ struct FamilyPosterView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(p.name) · \(ch.pillars.joined(separator: " "))").font(.headline).foregroundStyle(Ky.ink)
                     Text("日主\(ch.rizhu) · \(xj.level) · 喜\(xj.xi.map { wxNames[$0] }.joined(separator: "、"))").font(.callout).foregroundStyle(Ky.ink)
-                    Text("\(year)年 \(rep.gz)年 · \(rep.level)：\(rep.lines.first ?? "")").font(.callout).foregroundStyle(Ky.ink)
+                    Text("\(year)年 \(rep.gz)年 · \(rep.level)：\((rep.lines.first ?? "").scriptConverted)").font(.callout).foregroundStyle(Ky.ink)
                 }
                 .padding(12)
                 .background(Ky.card)
@@ -273,17 +273,17 @@ struct FamilyPosterView: View {
             }
             ForEach(["事业", "财富", "婚恋", "健康"], id: \.self) { dim in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(dim)·全家交叉").font(.headline).foregroundStyle(Ky.ink)
+                    Text("\(dim)·全家交叉".scriptConverted).font(.headline).foregroundStyle(Ky.ink)
                     ForEach(people) { p in
                         let v = BaziZiweiCrossEngine.verdicts(bazi: chart(of: p), ziwei: ziwei(of: p)).first { $0.title == dim }
-                        Text("\(p.name)：\(v?.verdict ?? "")").font(.callout).foregroundStyle(Ky.ink)
+                        Text("\(p.name)：\((v?.verdict ?? "").scriptConverted)").font(.callout).foregroundStyle(Ky.ink)
                     }
                 }
                 .padding(12)
                 .background(Ky.card)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            Text("三术合参 · 每人盘面以真太阳时校正，晚子时 sect=2")
+            Text("三术合参 · 每人盘面以真太阳时校正，晚子时 sect=2".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
         .padding(28)
@@ -365,11 +365,11 @@ struct SynastryShareCardView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                Text("双盘速览＋总评一句＋二维码回链。总评一句只报互补计数事实，不编新断语。")
+                Text("双盘速览＋总评一句＋二维码回链。总评一句只报互补计数事实，不编新断语。".scriptConverted)
                     .font(.caption).foregroundStyle(Ky.sub)
                 VStack(alignment: .leading, spacing: 10) {
-                    personPicker("甲方", selection: $aId)
-                    personPicker("乙方", selection: $bId)
+                    personPicker("甲方".scriptConverted, selection: $aId)
+                    personPicker("乙方".scriptConverted, selection: $bId)
                 }
                 .kyCard()
                 if let a = selected(aId), let b = selected(bId), a.id != b.id {
@@ -381,11 +381,11 @@ struct SynastryShareCardView: View {
                         Text("日主\(ca.rizhu) · \(xiYong(of: ca).level) · 喜\(xiYong(of: ca).xi.joined(separator: "、")) · 最旺\(strongestWx(of: ca))").font(.callout).foregroundStyle(Ky.ink)
                         Text("\(b.name) · \(cb.pillars.joined(separator: " "))").font(.headline).foregroundStyle(Ky.ink)
                         Text("日主\(cb.rizhu) · \(xiYong(of: cb).level) · 喜\(xiYong(of: cb).xi.joined(separator: "、")) · 最旺\(strongestWx(of: cb))").font(.callout).foregroundStyle(Ky.ink)
-                        Text("总评一句（只报计数事实）：\(summaryLine(a: a, b: b))").font(.callout).foregroundStyle(Ky.ink)
+                        Text("总评一句（只报计数事实）：".scriptConverted + summaryLine(a: a, b: b).scriptConverted).font(.callout).foregroundStyle(Ky.ink)
                     }
                     .kyCard()
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("分享链接").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                        Text("分享链接".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
                         Text(url).font(.caption).foregroundStyle(Ky.sub).textSelection(.enabled)
                         Button(copied ? "已复制" : "复制分享链接") {
                             UIPasteboard.general.string = url
@@ -399,7 +399,7 @@ struct SynastryShareCardView: View {
                                 .frame(width: 220, height: 220)
                                 .background(Color.white)
                         }
-                        Text("注意：App 本地人物 id（UUID）与 Web 档案 id 不是同一套，此二维码在 Web 端打开时会提示人物不在档案库；可直接扫码打开的正式分享链接请在 Web 端合盘页生成。")
+                        Text("注意：App 本地人物 id（UUID）与 Web 档案 id 不是同一套，此二维码在 Web 端打开时会提示人物不在档案库；可直接扫码打开的正式分享链接请在 Web 端合盘页生成。".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }
                     .kyCard()
@@ -409,13 +409,13 @@ struct SynastryShareCardView: View {
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("合盘分享卡")
+        .navigationTitle("合盘分享卡".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private func personPicker(_ label: String, selection: Binding<UUID?>) -> some View {
         Picker(label, selection: selection) {
-            Text("未选").tag(UUID?.none)
+            Text("未选".scriptConverted).tag(UUID?.none)
             ForEach(store.people) { p in Text(p.name).tag(UUID?.some(p.id)) }
         }.pickerStyle(.menu).tint(Ky.ink)
     }

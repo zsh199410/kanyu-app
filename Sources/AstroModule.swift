@@ -226,8 +226,8 @@ trine.closeSubpath()
 context.fill(trine, with:.color(Ky.jade.opacity(0.08)))
 context.stroke(trine, with:.color(Ky.jade.opacity(0.7)), lineWidth: 1.0)
 
-context.draw(Text("☉ \(chart.sunSign.rawValue)").font(.system(size: 10, weight:.bold, design:.serif)).foregroundColor(Ky.ink), at: CGPoint(x: center.x, y: center.y - 6))
-context.draw(Text("↑ \(chart.ascSign.rawValue)").font(.system(size: 8.5)).foregroundColor(Ky.sub), at: CGPoint(x: center.x, y: center.y + 8))
+context.draw(Text("☉ \(chart.sunSign.rawValue)".scriptConverted).font(.system(size: 10, weight:.bold, design:.serif)).foregroundColor(Ky.ink), at: CGPoint(x: center.x, y: center.y - 6))
+context.draw(Text("↑ \(chart.ascSign.rawValue)".scriptConverted).font(.system(size: 8.5)).foregroundColor(Ky.sub), at: CGPoint(x: center.x, y: center.y + 8))
 }
 .frame(width: 250, height: 250)
 }
@@ -260,9 +260,9 @@ chart = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude:
 VStack(alignment:.leading, spacing: 10) {
 HStack {
 VStack(alignment:.leading, spacing: 2) {
-Text("\(person.name.isEmpty ? "命主" : person.name) · 星命合参")
+Text((person.name.isEmpty ? "命主" : person.name) + " · 星命合参".scriptConverted)
 .font(.system(.headline, design:.serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-Text("日月升三曜 · 东西合参 · 黄道回归历").font(.caption2).foregroundStyle(Ky.gold)
+Text("日月升三曜 · 东西合参 · 黄道回归历".scriptConverted).font(.caption2).foregroundStyle(Ky.gold)
 }
 Spacer()
 KySeal(text: "东西合参")
@@ -270,7 +270,7 @@ KySeal(text: "东西合参")
 
 HStack(spacing: 8) {
 HStack(spacing: 6) {
-Text("八字日主").font(.system(size: 9.5)).foregroundStyle(Ky.sub)
+Text("八字日主".scriptConverted).font(.system(size: 9.5)).foregroundStyle(Ky.sub)
 Text("\(chart.rizhu)").font(.system(size: 15, weight:.bold, design:.serif)).foregroundStyle(Ky.cinnabar)
 }
 .padding(.horizontal, 10).padding(.vertical, 7)
@@ -279,22 +279,22 @@ Text("\(chart.rizhu)").font(.system(size: 15, weight:.bold, design:.serif)).fore
 Spacer()
 
 HStack(spacing: 6) {
-Text("☉ \(astro.sunSign.rawValue)").font(.system(size: 11, weight:.bold)).foregroundStyle(Ky.gold)
-Text("☽ \(astro.moonSign.rawValue)").font(.system(size: 11, weight:.bold)).foregroundStyle(Ky.qingdai)
-Text("↑ \(astro.ascSign.rawValue)").font(.system(size: 11, weight:.bold)).foregroundStyle(Ky.jade)
+Text("☉ \(astro.sunSign.rawValue)".scriptConverted).font(.system(size: 11, weight:.bold)).foregroundStyle(Ky.gold)
+Text("☽ \(astro.moonSign.rawValue)".scriptConverted).font(.system(size: 11, weight:.bold)).foregroundStyle(Ky.qingdai)
+Text("↑ \(astro.ascSign.rawValue)".scriptConverted).font(.system(size: 11, weight:.bold)).foregroundStyle(Ky.jade)
 }
 .padding(.horizontal, 10).padding(.vertical, 7)
 .background(Ky.elevated).clipShape(RoundedRectangle(cornerRadius: 10))
 }
 }
 .kyCard()
-Text("真太阳时校正 \(String(format: "%.1f", corrMinutes)) 分钟 · 经度 \(String(format: "%.1f°", corrLongitude))")
+Text("真太阳时校正 \(String(format: "%.1f", corrMinutes)) 分钟 · 经度 \(String(format: "%.1f°", corrLongitude))".scriptConverted)
 .font(.caption2).foregroundStyle(Ky.sub).padding(.horizontal, 4)
 
 // 分段选择器（合婚页暂缓，v1 聚焦于东西合参与本命星盘）
-Picker("分类", selection: $selectedTab) {
-Text("东西合参").tag(0)
-Text("西洋星盘 (等宫制)").tag(1)
+Picker("分类".scriptConverted, selection: $selectedTab) {
+Text("东西合参".scriptConverted).tag(0)
+Text("西洋星盘 (等宫制)".scriptConverted).tag(1)
 }
 .pickerStyle(.segmented)
 .padding(.horizontal, 4)
@@ -305,14 +305,14 @@ KySectionTitle(title: "东西星命交叉印证", trailing: "八字定底色 · 
 ForEach(AstroCrossEngine.crossAnalyze(bazi: chart, astro: astro)) { item in
 VStack(alignment:.leading, spacing: 8) {
 HStack {
-Text(item.title).font(.system(.subheadline, design:.serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+Text(item.title.scriptConverted).font(.system(.subheadline, design:.serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
 Spacer()
 KyBadge(text: item.tag, color: Ky.cinnabar)
 }
-Text(item.conclusion).font(.system(size: 13, weight:.medium)).foregroundStyle(Ky.ink).lineSpacing(3)
+Text(item.conclusion.scriptConverted).font(.system(size: 13, weight:.medium)).foregroundStyle(Ky.ink).lineSpacing(3)
 VStack(alignment:.leading, spacing: 4) {
-Text("• 八字依据：\(item.baziFact)").font(.system(size: 11.5)).foregroundStyle(Ky.sub)
-Text("• 星盘依据：\(item.astroFact)").font(.system(size: 11.5)).foregroundStyle(Ky.sub)
+Text("• 八字依据：\(item.baziFact)".scriptConverted).font(.system(size: 11.5)).foregroundStyle(Ky.sub)
+Text("• 星盘依据：\(item.astroFact)".scriptConverted).font(.system(size: 11.5)).foregroundStyle(Ky.sub)
 }
 .padding(8).background(Ky.elevated.opacity(0.6)).clipShape(RoundedRectangle(cornerRadius: 8))
 }
@@ -324,14 +324,14 @@ VStack(spacing: 14) {
 KySectionTitle(title: "黄道十二宫本命天宫图", trailing: "等宫制 (Equal House)")
 AstroWheelCanvasView(chart: astro).frame(maxWidth:.infinity, alignment:.center).padding(.vertical, 8).kyCard()
 VStack(alignment:.leading, spacing: 8) {
-Text("本命三大核心曜位").font(.system(.subheadline, design:.serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+Text("本命三大核心曜位".scriptConverted).font(.system(.subheadline, design:.serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
 ForEach(astro.planets) { p in
 HStack {
-Text("\(p.symbol) \(p.name)").font(.system(size: 13, weight:.bold)).foregroundStyle(Ky.ink).frame(width: 70, alignment:.leading)
-Text("\(p.sign.rawValue) \(String(format: "%.1f°", p.degree))").font(.system(size: 12)).foregroundStyle(Ky.gold).frame(width: 90, alignment:.leading)
-Text("第 \(p.house) 宫").font(.system(size: 11)).foregroundStyle(Ky.sub)
+Text("\(p.symbol) \(p.name)".scriptConverted).font(.system(size: 13, weight:.bold)).foregroundStyle(Ky.ink).frame(width: 70, alignment:.leading)
+Text("\(p.sign.rawValue) \(String(format: "%.1f°", p.degree))".scriptConverted).font(.system(size: 12)).foregroundStyle(Ky.gold).frame(width: 90, alignment:.leading)
+Text("第 \(p.house) 宫".scriptConverted).font(.system(size: 11)).foregroundStyle(Ky.sub)
 Spacer()
-Text(p.role).font(.system(size: 10.5)).foregroundStyle(Ky.sub)
+Text(p.role.scriptConverted).font(.system(size: 10.5)).foregroundStyle(Ky.sub)
 }
 .padding(.vertical, 4)
 Divider()
@@ -346,7 +346,7 @@ Divider()
 .padding(.bottom, 100)
 }
 .background(Ky.bg)
-.navigationTitle("星命合参")
+.navigationTitle("星命合参".scriptConverted)
 .navigationBarTitleDisplayMode(.inline)
 }
 }

@@ -449,6 +449,7 @@ final class SurveyStore: ObservableObject {
         do {
             let data = try Self.encoder.encode(cases)
             try data.write(to: indexURL, options: .atomic)
+            DataProtection.applyComplete(to: indexURL)
             StoreSchema.writeMeta(for: indexURL, count: cases.count)
         } catch {
             AppErrorCenter.shared.report("勘察案件保存失败，刚才的改动可能没存入：请重试，仍失败请先导出案件包再联系助手。")
@@ -1032,7 +1033,7 @@ struct ARTrackView: View {
                     Text("真北 \(CompassMath.format(recorder.currentHeading)) · 已走 \(String(format: "%.1f", recorder.distance)) 米 · \(recorder.samples.count) 点")
                         .font(.callout).fontWeight(.medium).foregroundStyle(.white)
                     if recorder.isRunning {
-                        Text("轨迹记录中：匀速走，别停太久；遮挡多会漂移").font(.caption).foregroundStyle(.white.opacity(0.85))
+                        Text("轨迹记录中：匀速走，别停太久；遮挡多会漂移".scriptConverted).font(.caption).foregroundStyle(.white.opacity(0.85))
                     } else {
                         Text(ARTrackRecorder.supported ? task.instruction : "本机型不支持 AR 追踪")
                             .font(.caption).foregroundStyle(.white.opacity(0.85))
@@ -1151,31 +1152,33 @@ struct RoomScanView: View {
                 RoomCaptureRepresentable(controller: controller)
                     .ignoresSafeArea(edges: .horizontal)
                 VStack(spacing: 8) {
-                    Text(task.instruction).font(.caption).foregroundStyle(.secondary)
+                    Text(task.instruction.scriptConverted).font(.caption).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).padding(.horizontal)
                     if !controller.failedText.isEmpty {
-                        Text(controller.failedText).font(.caption).foregroundStyle(.red)
+                        Text(controller.failedText.scriptConverted).font(.caption).foregroundStyle(.red)
                     }
                     if controller.finished {
-                        Button("保存这个房间的模型") { save() }
+                        Button { save() } label: { Text("保存这个房间的模型".scriptConverted) }
                             .buttonStyle(.borderedProminent)
                     } else if scanning {
-                        Button("完成扫描") { controller.stop(); scanning = false }
+                        Button { controller.stop(); scanning = false } label: { Text("完成扫描".scriptConverted) }
                             .buttonStyle(.bordered)
                     } else {
-                        Button("开始扫描（先站门口朝屋内站直）") {
+                        Button {
                             startHeading = location.displayTrueHeading
                             controller.start(); scanning = true
+                        } label: {
+                            Text("开始扫描（先站门口朝屋内站直）".scriptConverted)
                         }
                         .buttonStyle(.borderedProminent)
                     }
-                    if savedTip { Text("✓ 已保存，可继续扫下一间").foregroundStyle(.green).font(.caption) }
+                    if savedTip { Text("✓ 已保存，可继续扫下一间".scriptConverted).foregroundStyle(.green).font(.caption) }
                 }
                 .padding()
             } else {
                 ContentUnavailableView("本机型没有激光雷达",
                                        systemImage: "cube.transparent.slash",
-                                       description: Text("三维户型扫描需要带激光雷达的苹果手机高端机型；普通机型请用照片＋手绘平面代替，本项可跳过。"))
+                                       description: Text("三维户型扫描需要带激光雷达的苹果手机高端机型；普通机型请用照片＋手绘平面代替，本项可跳过。".scriptConverted))
             }
         }
         .navigationTitle(task.title)
@@ -1343,6 +1346,15 @@ struct KyProgressRing: View {
 }
 
 // 首启引导页（B-8）：只出现一次，讲清三术模块、数据存本机、权限用到才申请
+/// 新手引导五分页说明（名称／图标／一句话）：与 RootTabView 五 Tab 同名同图标。
+private let onboardingTabs: [(String, String, String)] = [
+    ("合参", "sparkles.rectangle.stack.fill", "首页总工作台：今日黄历、运势与排盘入口"),
+    ("八字", "tablecells.fill", "四柱排盘与 30 条详批"),
+    ("紫微", "moon.stars.fill", "十二宫方盘与四化大限"),
+    ("奇门", "circle.grid.3x3.fill", "时家九宫断事"),
+    ("堪舆", "safari.fill", "罗盘、户型压盘与勘察案件"),
+]
+
 struct OnboardingView: View {
     var onDone: () -> Void
     var body: some View {
@@ -1351,30 +1363,43 @@ struct OnboardingView: View {
                 HStack(spacing: 14) {
                     AppLogoView(size: 68)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("三术合参").font(.system(.largeTitle, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text("八字 · 紫微 · 奇门 · 堪舆 · 相法").font(.subheadline).foregroundStyle(Ky.qingdai)
+                        Text("三术合参".scriptConverted).font(.system(.largeTitle, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text("八字 · 紫微 · 奇门 · 堪舆 · 相法".scriptConverted).font(.subheadline).foregroundStyle(Ky.qingdai)
                     }
                 }
                 VStack(alignment: .leading, spacing: 12) {
                     KySectionTitle(title: "核心能力", trailing: "全本机离线演算")
-                    Text("· 八字与紫微：真太阳时精准排盘、四柱干支反查生辰、五典依据链 30 条详批、逐年四查与合婚四看。")
+                    Text("· 八字与紫微：真太阳时精准排盘、四柱干支反查生辰、五典依据链 30 条详批、逐年四查与合婚四看。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.ink)
-                    Text("· 奇门与相法：拆补法时家奇门九宫断事；Vision 21 点手相几何测量与三停面相校准。")
+                    Text("· 奇门与相法：拆补法时家奇门九宫断事；Vision 21 点手相几何测量与三停面相校准。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.ink)
-                    Text("· 风水勘察：按作业标准任务单拍照录像，罗盘真北与二十四山随图烙印打包。")
+                    Text("· 风水勘察：按作业标准任务单拍照录像，罗盘真北与二十四山随图烙印打包。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.ink)
                 }.kyCard()
 
                 VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "五个分页", trailing: "底部切换")
+                    ForEach(onboardingTabs, id: \.0) { tab in
+                        HStack(spacing: 10) {
+                            Image(systemName: tab.1).font(.system(size: 14, weight: .semibold)).foregroundStyle(Ky.qingdai)
+                                .frame(width: 30, height: 30).background(Ky.qingdai.opacity(0.12)).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            Text((tab.0 + "：" + tab.2).scriptConverted).font(.callout).foregroundStyle(Ky.ink)
+                        }
+                    }
+                    Text("切换命主：点首页 02 层命主卡上的「切换」；点右上角头像进「档案与设置」管理人物。".scriptConverted)
+                        .font(.caption).foregroundStyle(Ky.sub).lineSpacing(2)
+                }.kyCard()
+
+                VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "数据隐私", trailing: "100% 本地")
-                    Text("人物档案、前瞻回验账本、手相描线与勘察案件全部只存在本机目录；仅在你主动点击「远程上传」时才发往你自己的私有服务。")
+                    Text("人物档案、前瞻回验账本、手相描线与勘察案件全部只存在本机目录；仅在你主动点击「远程上传」时才发往你自己的私有服务。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.ink)
-                    Text("权限用到才申请：相机、定位、运动传感器均在进入对应勘察页面时按需请求。")
+                    Text("权限用到才申请：相机、定位、运动传感器均在进入对应勘察页面时按需请求。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
 
-                Button("进入三术合参", action: onDone).buttonStyle(KyPrimaryButton())
-                Text("提示：覆盖安装新版本安装包会完整保留本机数据；直接删除应用会清空本地目录，重要档案请定期导出备份。")
+                Button(action: onDone) { Text("进入三术合参".scriptConverted) }.buttonStyle(KyPrimaryButton())
+                Text("提示：覆盖安装新版本安装包会完整保留本机数据；直接删除应用会清空本地目录，重要档案请定期导出备份。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(.horizontal, 20)
@@ -1431,7 +1456,7 @@ struct HomePageView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 6) {
-                    Text("三术合参")
+                    Text("三术合参".scriptConverted)
                         .font(.system(.headline, design: .serif))
                         .fontWeight(.bold)
                         .foregroundStyle(Ky.ink)
@@ -1504,7 +1529,7 @@ struct HomePageView: View {
                 Text("\(info.dayInGanZhi)日")
                     .font(.system(size: 17, weight: .bold, design: .serif)).foregroundStyle(Ky.ink)
                 Spacer()
-                Text("农历\(info.monthInChinese)月\(info.dayInChinese) · \(info.zhiXing)日")
+                Text("农历\(info.monthInChinese)月\(info.dayInChinese) · \(info.zhiXing)日".scriptConverted)
                     .font(.caption2).fontWeight(.medium).foregroundStyle(Ky.gold)
             }
 
@@ -1531,7 +1556,7 @@ struct HomePageView: View {
                 NavigationLink { AlmanacView() } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "calendar.day.timeline.left")
-                        Text("完整黄历与吉时")
+                        Text("完整黄历与吉时".scriptConverted)
                         Spacer()
                         Image(systemName: "chevron.right").font(.system(size: 10))
                     }
@@ -1545,7 +1570,7 @@ struct HomePageView: View {
                 NavigationLink { ZejiView() } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "sparkles")
-                        Text("近30天择吉通参")
+                        Text("近30天择吉通参".scriptConverted)
                         Spacer()
                         Image(systemName: "chevron.right").font(.system(size: 10))
                     }
@@ -1586,7 +1611,7 @@ struct HomePageView: View {
                 HStack(spacing: 12) {
                     KySeal(text: "回验")
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("有 \(due.count) 条前瞻断语已到期，请核对落判")
+                        Text("有 \(due.count) 条前瞻断语已到期，请核对落判".scriptConverted)
                             .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
                         Text(due.prefix(2).map { "\($0.personName)·\($0.targetYear)：\($0.text)" }.joined(separator: "；"))
                             .font(.caption).foregroundStyle(Ky.sub).lineLimit(1)
@@ -1663,7 +1688,7 @@ struct HomePageView: View {
             }
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text(title)
+                    Text(title.scriptConverted)
                         .font(.system(size: 17, weight: .bold, design: .serif))
                         .foregroundStyle(Ky.ink)
                     Spacer()
@@ -1671,7 +1696,7 @@ struct HomePageView: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(Ky.sub.opacity(0.6))
                 }
-                Text(subtitle)
+                Text(subtitle.scriptConverted)
                     .font(.caption2)
                     .foregroundStyle(Ky.sub)
                     .lineLimit(1)
@@ -1708,7 +1733,7 @@ struct HomePageView: View {
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text("添加第一位家人或命主档案").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text("建档一次，八字、紫微、合盘、论财直接调取，免重复输生辰")
+                        Text("建档一次，八字、紫微、合盘、论财直接调取，免重复输生辰".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
                     }
                     Spacer()
@@ -1779,7 +1804,7 @@ struct HomePageView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .navigationTitle("切换命主")
+            .navigationTitle(Text("切换命主".scriptConverted))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -1796,7 +1821,7 @@ struct HomePageView: View {
             KySectionTitle(title: "最近使用", trailing: "最近打开的人物与工具")
             let recents = AllToolsData.recentEntries(people: peopleStore.people)
             if recents.isEmpty {
-                Text("打开任意工具或人物后，这里会显示最近使用，方便一键回到上次的盘。")
+                Text("打开任意工具或人物后，这里会显示最近使用，方便一键回到上次的盘。".scriptConverted)
                     .font(.caption).foregroundStyle(Ky.sub)
                     .padding(.horizontal, 2)
             } else {
@@ -1867,7 +1892,7 @@ struct HomePageView: View {
     private func homeChipLabel(_ item: ToolItem) -> some View {
         HStack(spacing: 6) {
             Image(systemName: item.icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(item.color)
-            Text(item.title).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text(item.title.scriptConverted).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
         .background(Ky.card)
@@ -1894,8 +1919,8 @@ struct HomePageView: View {
                 .background(color.opacity(0.13))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink).lineLimit(1)
-                Text(desc).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+                Text(title.scriptConverted).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink).lineLimit(1)
+                Text(desc.scriptConverted).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
             }
             Spacer(minLength: 0)
         }
@@ -1919,7 +1944,7 @@ struct HomePageView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("全部工具")
                         .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text("\(AllToolsData.allItems.count) 项专项工具 · 搜索与分类")
+                    Text("\(AllToolsData.allItems.count) 项专项工具 · 搜索与分类".scriptConverted)
                         .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
                 }
                 Spacer()
@@ -1993,7 +2018,7 @@ struct KanyuWorkbenchTabView: View {
             .padding(.bottom, 38)
         }
         .background(Ky.bg)
-        .navigationTitle("堪舆与设置")
+        .navigationTitle(Text("堪舆与设置".scriptConverted))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -2029,13 +2054,13 @@ struct KanyuWorkbenchTabView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text("罗盘实测")
+                        Text("罗盘实测".scriptConverted)
                             .font(.system(.subheadline, design: .serif))
                             .fontWeight(.bold)
                             .foregroundStyle(Ky.ink)
                         KyBadge(text: "二十四山", color: Ky.qingdai)
                     }
-                    Text("磁北／真北切换 · 锁定坐向带入堪舆与户型压盘")
+                    Text("磁北／真北切换 · 锁定坐向带入堪舆与户型压盘".scriptConverted)
                         .font(.caption2)
                         .foregroundStyle(Ky.sub)
                         .lineLimit(1)
@@ -2070,13 +2095,13 @@ struct KanyuWorkbenchTabView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text("户型图立极压盘器")
+                        Text("户型图立极压盘器".scriptConverted)
                             .font(.system(.subheadline, design: .serif))
                             .fontWeight(.bold)
                             .foregroundStyle(Ky.ink)
                         KyBadge(text: "九运飞星", color: Ky.cinnabar)
                     }
-                    Text("导入户型平面图 · 拖拽立极中宫 · 透视分室吉凶")
+                    Text("导入户型平面图 · 拖拽立极中宫 · 透视分室吉凶".scriptConverted)
                         .font(.caption2)
                         .foregroundStyle(Ky.sub)
                         .lineLimit(1)
@@ -2098,9 +2123,9 @@ struct KanyuWorkbenchTabView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("风水勘察工作台")
+                    Text("风水勘察工作台".scriptConverted)
                         .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.instInk)
-                    Text("按作业标准采集：罗盘定盘 · 气泡水平把关 · 照片方位烙印")
+                    Text("按作业标准采集：罗盘定盘 · 气泡水平把关 · 照片方位烙印".scriptConverted)
                         .font(.caption2).foregroundStyle(Ky.instInk.opacity(0.72))
                 }
                 Spacer()
@@ -2153,6 +2178,7 @@ struct KanyuWorkbenchTabView: View {
                         Button { query = "" } label: {
                             Image(systemName: "xmark.circle.fill").foregroundStyle(Ky.sub)
                         }
+                        .accessibilityLabel("清除搜索")
                     }
                 }
                 .padding(.horizontal, 12).padding(.vertical, 9)
@@ -2164,8 +2190,8 @@ struct KanyuWorkbenchTabView: View {
             if store.cases.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "safari").font(.system(size: 36)).foregroundStyle(Ky.qingdai)
-                    Text("尚无现场勘察案件").font(.headline).foregroundStyle(Ky.ink)
-                    Text("点击上方「新建勘察」，按作业标准任务单测罗盘坐向、拍立面与明堂，一键生成本地玄空/八宅排盘与回传数据包。")
+                    Text("尚无现场勘察案件".scriptConverted).font(.headline).foregroundStyle(Ky.ink)
+                    Text("点击上方「新建勘察」，按作业标准任务单测罗盘坐向、拍立面与明堂，一键生成本地玄空/八宅排盘与回传数据包。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
@@ -2186,7 +2212,7 @@ struct KanyuWorkbenchTabView: View {
                             if let idx = store.cases.firstIndex(where: { $0.id == cd.id }) {
                                 store.deleteCase(at: IndexSet(integer: idx))
                             }
-                        } label: { Label("删除案件", systemImage: "trash") }
+                        } label: { Label { Text("删除案件".scriptConverted) } icon: { Image(systemName: "trash") } }
                     }
                 }
             }
@@ -2215,7 +2241,7 @@ struct KanyuWorkbenchTabView: View {
                         KyBadge(text: "待测罗盘", color: Ky.cinnabar)
                     }
                 }
-                Text("任务 \(done)/\(tasks.count) · 媒体 \(cd.media.count) · 罗盘 \(cd.headings.count)")
+                Text("任务 \(done)/\(tasks.count) · 媒体 \(cd.media.count) · 罗盘 \(cd.headings.count)".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             Spacer(minLength: 4)
@@ -2262,8 +2288,8 @@ struct KanyuWorkbenchTabView: View {
                 Image(systemName: icon).font(.system(size: 16, weight: .semibold)).foregroundStyle(color)
                     .frame(width: 36, height: 36).background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text(desc).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+                    Text(title.scriptConverted).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text(desc.scriptConverted).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
@@ -2278,7 +2304,7 @@ struct KanyuWorkbenchTabView: View {
     private var tipCard: some View {
         HStack(alignment: .top, spacing: 10) {
             KyBadge(text: "勘察要诀", color: Ky.cinnabar, filled: true)
-            Text(dailyTip).font(.caption).foregroundStyle(Ky.ink).lineSpacing(2)
+            Text(dailyTip.scriptConverted).font(.caption).foregroundStyle(Ky.ink).lineSpacing(2)
             Spacer(minLength: 0)
         }
         .kyCard()
@@ -2295,11 +2321,11 @@ struct NewCaseView: View {
                 Section("案件") {
                     TextField("名称（如：案例001 临街自建房）", text: $c.name)
                     Picker("类型", selection: $c.type) {
-                        ForEach(CaseType.allCases) { t in Text(t.rawValue).tag(t) }
+                        ForEach(CaseType.allCases) { t in Text(t.rawValue.scriptConverted).tag(t) }
                     }
                     TextField("所在乡镇/小区（粗略即可）", text: $c.locationNote)
                 }
-                Section("年份（定运要用，务必准）") {
+                Section(Text("年份（定运要用，务必准）".scriptConverted)) {
                     TextField("建成年（如 2016）", text: $c.builtYear).keyboardType(.numberPad)
                     TextField("入住年", text: $c.movedInYear).keyboardType(.numberPad)
                     TextField("大装修年（没有留空）", text: $c.renovatedYear).keyboardType(.numberPad)
@@ -2315,7 +2341,7 @@ struct NewCaseView: View {
                     }
                     .onDelete { c.residents.remove(atOffsets: $0) }
                     Button("＋ 添加常住人") { c.residents.append(Resident()) }
-                    Text("出生年以立春为界：立春前出生归上一年；只记年份、立春前后未核对者，命卦定不了精确值，须核对后再定。").font(.caption).foregroundStyle(.secondary)
+                    Text("出生年以立春为界：立春前出生归上一年；只记年份、立春前后未核对者，命卦定不了精确值，须核对后再定。".scriptConverted).font(.caption).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("新建勘察")
@@ -2344,14 +2370,14 @@ struct CaseDetailView: View {
         Group {
             if let d = draft {
                 List {
-                    Section("定盘摘要") {
+                    Section(Text("定盘摘要".scriptConverted)) {
                         sittingCard(d)
                     }
-                    Section("采集进度") {
+                    Section(Text("采集进度".scriptConverted)) {
                         let tasks = TaskFactory.tasks(for: d.surveyCase.type)
                         let done = tasks.filter { d.taskDone[$0.id] == true }.count
                         ProgressView(value: Double(done), total: Double(max(1, tasks.count)))
-                        Text("任务 \(done)/\(tasks.count) 已完成 · 罗盘 \(d.headings.count) 个 · 已采集媒体 \(d.media.count) 项")
+                        Text("任务 \(done)/\(tasks.count) 已完成 · 罗盘 \(d.headings.count) 个 · 已采集媒体 \(d.media.count) 项".scriptConverted)
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Section("基本信息") {
@@ -2362,10 +2388,10 @@ struct CaseDetailView: View {
                             LabeledContent("常住人", value: "\(r.label) \(r.birthYear)年 \(r.gender)")
                         }
                     }
-                    Section("罗盘读数（\(d.headings.count)）") {
+                    Section(Text("罗盘读数（\(d.headings.count)）".scriptConverted)) {
                         NavigationLink {
                             CompassView(draft: binding)
-                        } label: { Label("去测罗盘 / 记录方位", systemImage: "location.north.circle") }
+                        } label: { Label { Text("去测罗盘 / 记录方位".scriptConverted) } icon: { Image(systemName: "location.north.circle") } }
                         ForEach(d.headings) { h in
                             HStack {
                                 Text(h.pointName)
@@ -2379,22 +2405,22 @@ struct CaseDetailView: View {
                         }
                         crossCheckNote(d)
                     }
-                    Section("本地勘测（离线）") {
+                    Section(Text("本地勘测（离线）".scriptConverted)) {
                         NavigationLink {
                             AnalysisView(draft: binding)
-                        } label: { Label("排盘断宅：玄空＋八宅＋流年", systemImage: "square.grid.3x3.square") }
+                        } label: { Label { Text("排盘断宅：玄空＋八宅＋流年".scriptConverted) } icon: { Image(systemName: "square.grid.3x3.square") } }
                         NavigationLink {
                             ShaJudgeView(draft: binding)
-                        } label: { Label("实景判定：五变量加权定级", systemImage: "scalemass") }
+                        } label: { Label { Text("实景判定：五变量加权定级".scriptConverted) } icon: { Image(systemName: "scalemass") } }
                         NavigationLink {
                             KnowledgeView()
-                        } label: { Label("风水知识卡（速查）", systemImage: "books.vertical") }
+                        } label: { Label { Text("风水知识卡（速查）".scriptConverted) } icon: { Image(systemName: "books.vertical") } }
                         if !d.analysisText.isEmpty {
                             Text("已存本地结论：\(d.analysisText.components(separatedBy: "\n").first ?? "")…")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    Section("任务单") {
+                    Section(Text("任务单".scriptConverted)) {
                         ForEach(TaskFactory.tasks(for: d.surveyCase.type)) { task in
                             NavigationLink {
                                 TaskDetailView(task: task, draft: binding)
@@ -2404,7 +2430,7 @@ struct CaseDetailView: View {
                                         .foregroundStyle((draft?.taskDone[task.id] ?? false) ? .green : .secondary)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(task.title).font(.body)
-                                        Text(kindText(task.kind)).font(.caption).foregroundStyle(.secondary)
+                                        Text(kindText(task.kind).scriptConverted).font(.caption).foregroundStyle(.secondary)
                                     }
                                 }
                             }
@@ -2413,13 +2439,13 @@ struct CaseDetailView: View {
                     Section("导出") {
                         NavigationLink {
                             RemoteView(draft: binding)
-                        } label: { Label("远程上传 / 检查更新（远程服务）", systemImage: "icloud.and.arrow.up") }
+                        } label: { Label { Text("远程上传 / 检查更新（远程服务）".scriptConverted) } icon: { Image(systemName: "icloud.and.arrow.up") } }
                         Button {
                             if let dd = draft { exportURL = store.exportZip(caseData: dd) }
-                        } label: { Label("生成数据包（ZIP）", systemImage: "square.and.arrow.up") }
+                        } label: { Label { Text("生成数据包（ZIP）".scriptConverted) } icon: { Image(systemName: "square.and.arrow.up") } }
                         if let url = exportURL {
-                            ShareLink(item: url) { Label("发送数据包", systemImage: "paperplane") }
-                            Text("数据包含：原图＋烙印图＋视频＋罗盘轨迹＋data.json＋勘察摘要。用聊天软件发回即可。")
+                            ShareLink(item: url) { Label { Text("发送数据包".scriptConverted) } icon: { Image(systemName: "paperplane") } }
+                            Text("数据包含：原图＋烙印图＋视频＋罗盘轨迹＋data.json＋勘察摘要。用聊天软件发回即可。".scriptConverted)
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -2459,7 +2485,7 @@ struct CaseDetailView: View {
         } else {
             HStack(spacing: 10) {
                 Image(systemName: "compass.drawing").font(.title3).foregroundStyle(Ky.gold)
-                Text("尚未定盘：先去罗盘页记录「大门外朝内」，这里会常驻显示坐向摘要。")
+                Text("尚未定盘：先去罗盘页记录「大门外朝内」，这里会常驻显示坐向摘要。".scriptConverted)
                     .font(.callout).foregroundStyle(Ky.sub)
             }
         }
@@ -2539,7 +2565,7 @@ struct CompassView: View {
                         Text(motion.isLevelForCompass ? "已放平，可以记录" : "把手机平放，气泡稳进绿圈")
                             .font(.caption)
                             .foregroundStyle(motion.isLevelForCompass ? .green : .orange)
-                        Text("倾斜时罗盘会漂，记录只采放平时的读数并取平均。")
+                        Text("倾斜时罗盘会漂，记录只采放平时的读数并取平均。".scriptConverted)
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -2547,14 +2573,14 @@ struct CompassView: View {
                     Text("真北 \(CompassMath.format(location.displayTrueHeading))")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                     let d = location.displayTrueHeading
-                    Text(d >= 0 ? "\(CompassMath.mountain(for: d))山 · \(CompassMath.palace(for: d))宫" : "等待罗盘…")
+                    Text((d >= 0 ? "\(CompassMath.mountain(for: d))山 · \(CompassMath.palace(for: d))宫" : "等待罗盘…").scriptConverted)
                         .font(.headline).foregroundStyle(.secondary)
-                    Text("磁北 \(CompassMath.format(location.displayMagneticHeading))" +
-                         (location.declination != nil ? " · 磁偏角 \(String(format: "%+.1f°", location.declination!))（系统按定位自动校正）" : ""))
+                    Text(("磁北 \(CompassMath.format(location.displayMagneticHeading))" +
+                         (location.declination != nil ? " · 磁偏角 \(String(format: "%+.1f°", location.declination!))（系统按定位自动校正）" : "")).scriptConverted)
                         .font(.caption).foregroundStyle(.secondary)
                     Text("定位：\(location.coordinateText)").font(.caption).foregroundStyle(.secondary)
                     if let warn = location.accuracyWarning {
-                        Text(warn).font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
+                        Text(warn.scriptConverted).font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
                     }
                     if motion.fieldMicroTesla >= 0 {
                         Text("磁场强度 \(String(format: "%.0f", motion.fieldMicroTesla)) 微特（地磁场正常 25–65）\(motion.fieldAbnormal ? "：异常，附近有磁干扰" : "")")
@@ -2567,8 +2593,8 @@ struct CompassView: View {
                 .kyGlass(corner: 16)
                 if (location.accuracyWarning != nil && !location.authDenied) || motion.fieldAbnormal {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("精度自检（校准好后可达 ±5° 左右）").font(.caption).fontWeight(.semibold)
-                        Text("1. 摘掉磁吸手机壳、磁吸支架（能让读数偏几十度）\n2. 离汽车、钢筋、电器 2 米以上\n3. 手腕画 8 字三圈校准\n4. 设置 → 隐私与安全性 → 定位服务 → 系统服务：打开「指南针校准」和「运动校准与距离」")
+                        Text("精度自检（校准好后可达 ±5° 左右）".scriptConverted).font(.caption).fontWeight(.semibold)
+                        Text("1. 摘掉磁吸手机壳、磁吸支架（能让读数偏几十度）\n2. 离汽车、钢筋、电器 2 米以上\n3. 手腕画 8 字三圈校准\n4. 设置 → 隐私与安全性 → 定位服务 → 系统服务：打开「指南针校准」和「运动校准与距离」".scriptConverted)
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -2577,7 +2603,7 @@ struct CompassView: View {
                 }
                 Picker("测点", selection: $pointName) {
                     ForEach(presetPoints, id: \.self) { Text($0).tag($0) }
-                    Text("自定义…").tag("__custom__")
+                    Text("自定义…".scriptConverted).tag("__custom__")
                 }.pickerStyle(.menu)
                 if pointName == "__custom__" {
                     TextField("测点名称", text: $customPoint).textFieldStyle(.roundedBorder)
@@ -2591,9 +2617,9 @@ struct CompassView: View {
                 }
                 .buttonStyle(KyPrimaryButton())
                 if !collectHint.isEmpty {
-                    Text(collectHint).font(.caption).foregroundStyle(.secondary)
+                    Text(collectHint.scriptConverted).font(.caption).foregroundStyle(.secondary)
                 }
-                Text("测法：手机端平、远离汽车钢筋电器；每个测点原地慢转半圈等读数稳定后再记录。坐向以真北读数为准入盘，磁北读数留作互校。")
+                Text("测法：手机端平、远离汽车钢筋电器；每个测点原地慢转半圈等读数稳定后再记录。坐向以真北读数为准入盘，磁北读数留作互校。".scriptConverted)
                     .font(.caption).foregroundStyle(.secondary)
                 if !draft.headings.isEmpty {
                     Divider()
@@ -2605,7 +2631,7 @@ struct CompassView: View {
                                 Text("\(CompassMath.format(h.trueNorth)) \(h.mountain)山").font(.callout).foregroundStyle(.secondary)
                             }
                             if h.headingAccuracy >= 0 || h.tiltDegrees >= 0 || h.sampleSpread >= 0 {
-                                Text("精度 ±\(Int(h.headingAccuracy))° · 倾斜 \(h.tiltDegrees >= 0 ? String(format: "%.1f°", h.tiltDegrees) : "—") · 集中度 \(h.sampleSpread >= 0 ? String(format: "%.2f", h.sampleSpread) : "—")\((h.sampleSpread >= 0 && h.sampleSpread < 0.9) || h.headingAccuracy > 15 ? "（这条不太稳，建议重测）" : "")")
+                                Text("精度 ±\(Int(h.headingAccuracy))° · 倾斜 \(h.tiltDegrees >= 0 ? String(format: "%.1f°", h.tiltDegrees) : "—") · 集中度 \(h.sampleSpread >= 0 ? String(format: "%.2f", h.sampleSpread) : "—")\((h.sampleSpread >= 0 && h.sampleSpread < 0.9) || h.headingAccuracy > 15 ? "（这条不太稳，建议重测）" : "")".scriptConverted)
                                     .font(.caption2)
                                     .foregroundStyle((h.sampleSpread >= 0 && h.sampleSpread < 0.9) || h.headingAccuracy > 15 ? .orange : .secondary)
                             }
@@ -2616,7 +2642,7 @@ struct CompassView: View {
         }
         .background(Ky.instBg)
         .preferredColorScheme(.dark)
-        .navigationTitle("罗盘定向")
+        .navigationTitle(Text("罗盘定向".scriptConverted))
         .onAppear { location.start(); motion.start() }
         .onDisappear { collectTask?.cancel(); location.stop(); motion.stop() }
     }
@@ -2788,30 +2814,30 @@ struct AnalysisView: View {
 
     var body: some View {
         List {
-            Section("定盘") {
+            Section(Text("定盘".scriptConverted)) {
                 if let r = sitReading {
                     LabeledContent("坐向来源", value: "罗盘实测「大门外朝内」\(CompassMath.format(r.trueNorth))")
                 } else {
                     Picker("坐山（未测罗盘时手选）", selection: $manualMountain) {
                         ForEach(CompassMath.mountains, id: \.self) { Text($0).tag($0) }
                     }
-                    Text("提示：先在罗盘页记录「大门外朝内」再回来，定盘以实测为准。").font(.caption).foregroundStyle(.orange)
+                    Text("提示：先在罗盘页记录「大门外朝内」再回来，定盘以实测为准。".scriptConverted).font(.caption).foregroundStyle(.orange)
                 }
                 LabeledContent("坐向", value: "\(sitMountain)山\(faceMountain)向 · 坐\(sitPalace)宫向\(facePalace)宫")
                 LabeledContent("建成年", value: buildYear > 0 ? "\(buildYear)" : "未填（暂按九运）")
                 Picker("元运", selection: $periodOverride) {
-                    Text("自动（\(period)运）").tag(0)
-                    ForEach(1...9, id: \.self) { Text("\($0)运").tag($0) }
+                    Text("自动（\(period)运）".scriptConverted).tag(0)
+                    ForEach(1...9, id: \.self) { Text("\($0)运".scriptConverted).tag($0) }
                 }
                 let (ps, pe) = FengshuiEngine.periodRange(period)
                 LabeledContent("本运区间", value: "\(ps)–\(pe) 年")
             }
-            Section("玄空飞星盘（\(period)运 · 下卦）左上山星 右上向星 下运星") {
+            Section(Text("玄空飞星盘（\(period)运 · 下卦）左上山星 右上向星 下运星".scriptConverted)) {
                 chartGrid
                 patternNote
                 ForEach(comboLines, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
             }
-            Section("流年飞星（入中星沿洛书顺飞）") {
+            Section(Text("流年飞星（入中星沿洛书顺飞）".scriptConverted)) {
                 Stepper("年份：\(annualYear)（\(FengshuiEngine.starNames[FengshuiEngine.annualStar(year: annualYear)])入中）", value: $annualYear, in: 2000...2050)
                 annualGrid
             }
@@ -2830,22 +2856,22 @@ struct AnalysisView: View {
                         residentGuaRow(r, gua: FengshuiEngine.mingGua(birthYear: y, gender: r.gender))
                     }
                 }
-                Text("出生年以立春为界：立春前出生归上一年；只记年份、立春前后未核对者，命卦定不了精确值，须核对后再定。").font(.caption).foregroundStyle(.secondary)
+                Text("出生年以立春为界：立春前出生归上一年；只记年份、立春前后未核对者，命卦定不了精确值，须核对后再定。".scriptConverted).font(.caption).foregroundStyle(.secondary)
             }
-            Section("本地结论（分层）") {
+            Section(Text("本地结论（分层）".scriptConverted)) {
                 ForEach(conclusionLines, id: \.self) { Text($0).font(.callout) }
                 Button {
                     draft.analysisText = conclusionLines.joined(separator: "\n")
                     savedTip = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { savedTip = false }
                 } label: { Label(savedTip ? "✓ 已存入案件（随数据包回传）" : "把结论存入案件", systemImage: "square.and.arrow.down") }
-                Text("口径：本地推演为流派应用层规则计算，现场先行参考；正式断宅以数据包回传复核为准（见工作手册分工）。")
+                Text("口径：本地推演为流派应用层规则计算，现场先行参考；正式断宅以数据包回传复核为准（见工作手册分工）。".scriptConverted)
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
         .scrollContentBackground(.hidden)
         .background(Ky.bg)
-        .navigationTitle("本地排盘断宅")
+        .navigationTitle(Text("本地排盘断宅".scriptConverted))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -2854,9 +2880,9 @@ struct AnalysisView: View {
             ForEach(FengshuiEngine.displayPalaces, id: \.self) { p in
                 if p == "中" {
                     VStack(spacing: 2) {
-                        Text("中宫").font(.caption).foregroundStyle(.secondary)
+                        Text("中宫".scriptConverted).font(.caption).foregroundStyle(.secondary)
                         Text("\(period)").font(.title3).fontWeight(.bold)
-                        Text("\(period)运").font(.caption2).foregroundStyle(.secondary)
+                        Text("\(period)运".scriptConverted).font(.caption2).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, minHeight: 74)
                     .background(Color.secondary.opacity(0.08))
@@ -2870,7 +2896,7 @@ struct AnalysisView: View {
                             Text("\(f)").foregroundStyle(FengshuiEngine.vigor(f, period: period).good > 0 ? .green : (FengshuiEngine.vigor(f, period: period).good < 0 ? .red : .primary))
                         }.font(.headline)
                         Text("\(p) · \(FengshuiEngine.palaceDirection[p] ?? "")").font(.caption).fontWeight(.medium)
-                        Text("运 \(b)").font(.caption2).foregroundStyle(.secondary)
+                        Text("运 \(b)".scriptConverted).font(.caption2).foregroundStyle(.secondary)
                     }
                     .padding(6)
                     .frame(maxWidth: .infinity, minHeight: 74)
@@ -2905,15 +2931,15 @@ struct AnalysisView: View {
         let mSit = chart.mtn[sitPalace] ?? 0, fFace = chart.face[facePalace] ?? 0
         let mFace = chart.mtn[facePalace] ?? 0, fSit = chart.face[sitPalace] ?? 0
         if mSit == period && fFace == period {
-            Text("格局：旺山旺向——坐方山星当旺、向方水星当旺，坐后见山、向前见水为上局。").font(.callout).foregroundStyle(.green)
+            Text("格局：旺山旺向——坐方山星当旺、向方水星当旺，坐后见山、向前见水为上局。".scriptConverted).font(.callout).foregroundStyle(.green)
         } else if mFace == period && fSit == period {
-            Text("格局：上山下水——旺星错位：坐方宜见水、向方宜见山（或以动线/门路化解），断语须结合峦头。").font(.callout).foregroundStyle(.orange)
+            Text("格局：上山下水——旺星错位：坐方宜见水、向方宜见山（或以动线/门路化解），断语须结合峦头。".scriptConverted).font(.callout).foregroundStyle(.orange)
         } else if mFace == period && fFace == period {
-            Text("格局：双星到向——向首旺气集中，利财利门面，坐后宜实不宜虚。").font(.callout)
+            Text("格局：双星到向——向首旺气集中，利财利门面，坐后宜实不宜虚。".scriptConverted).font(.callout)
         } else if mSit == period && fSit == period {
-            Text("格局：双星到坐——坐山旺气集中，利丁利健康，向前宜开阔。").font(.callout)
+            Text("格局：双星到坐——坐山旺气集中，利丁利健康，向前宜开阔。".scriptConverted).font(.callout)
         } else {
-            Text("格局：无成格——按各宫山向星旺衰逐宫论，重点看向首、坐宫与门位所在宫。").font(.callout).foregroundStyle(.secondary)
+            Text("格局：无成格——按各宫山向星旺衰逐宫论，重点看向首、坐宫与门位所在宫。".scriptConverted).font(.callout).foregroundStyle(.secondary)
         }
     }
 
@@ -3046,7 +3072,7 @@ struct ShaHandbookView: View {
     var body: some View {
         List {
             Section {
-                Text("每个煞讲清四件事：怎么识别、哪里不好（先讲可观察的实害）、传统主应什么（标注层级，不作病灾断言）、怎么化解（L1 结构→L2 流派→L3 民俗，禁止混卖）。")
+                Text("每个煞讲清四件事：怎么识别、哪里不好（先讲可观察的实害）、传统主应什么（标注层级，不作病灾断言）、怎么化解（L1 结构→L2 流派→L3 民俗，禁止混卖）。".scriptConverted)
                     .font(.caption).foregroundStyle(.secondary)
             }
             ForEach(ShaLibrary.entries) { e in
@@ -3054,7 +3080,7 @@ struct ShaHandbookView: View {
                     ShaDetailView(entry: e)
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(e.name).font(.headline)
+                        Text(e.name.scriptConverted).font(.headline)
                         Text("\(e.category) · \(e.identify)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
@@ -3062,7 +3088,7 @@ struct ShaHandbookView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Ky.bg)
-        .navigationTitle("犯煞解说与解煞手册")
+        .navigationTitle(Text("犯煞解说与解煞手册".scriptConverted))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -3071,11 +3097,11 @@ struct ShaDetailView: View {
     let entry: ShaEntry
     var body: some View {
         List {
-            Section("怎么识别") { Text(entry.identify).font(.callout) }
-            Section("哪里不好") { Text(entry.why).font(.callout) }
-            Section("有什么影响（传统主应）") { Text(entry.impact).font(.callout) }
-            Section("怎么化解（分层）") { Text(entry.remedy).font(.callout) }
-            Section { Text("层级说明：L1 结构/功能调整（可由建筑、卫生、人体工学独立解释，先做）；L2 流派应用（只在所据流派内成立）；L3 民俗/象征（心理安顿，不承诺效力）。").font(.caption).foregroundStyle(.secondary) }
+            Section(Text("怎么识别".scriptConverted)) { Text(entry.identify.scriptConverted).font(.callout) }
+            Section(Text("哪里不好".scriptConverted)) { Text(entry.why.scriptConverted).font(.callout) }
+            Section(Text("有什么影响（传统主应）".scriptConverted)) { Text(entry.impact.scriptConverted).font(.callout) }
+            Section(Text("怎么化解（分层）".scriptConverted)) { Text(entry.remedy.scriptConverted).font(.callout) }
+            Section { Text("层级说明：L1 结构/功能调整（可由建筑、卫生、人体工学独立解释，先做）；L2 流派应用（只在所据流派内成立）；L3 民俗/象征（心理安顿，不承诺效力）。".scriptConverted).font(.caption).foregroundStyle(.secondary) }
         }
         .scrollContentBackground(.hidden)
         .background(Ky.bg)
@@ -3098,7 +3124,7 @@ struct RemoteView: View {
 
     var body: some View {
         List {
-            Section("服务器") {
+            Section(Text("服务器".scriptConverted)) {
                 TextField("服务器地址", text: $serverURL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -3107,16 +3133,16 @@ struct RemoteView: View {
                     .autocorrectionDisabled()
                 Button {
                     Task { await ping() }
-                } label: { Label("测试连接", systemImage: "antenna.radiowaves.left.and.right") }
+                } label: { Label { Text("测试连接".scriptConverted) } icon: { Image(systemName: "antenna.radiowaves.left.and.right") } }
                 .disabled(busy)
             }
-            Section("上传本案数据包") {
+            Section(Text("上传本案数据包".scriptConverted)) {
                 Button {
                     Task { await upload() }
                 } label: { Label(busy ? "上传中…" : "一键上传数据包", systemImage: "icloud.and.arrow.up") }
                 .disabled(busy || uploadToken.isEmpty)
                 if uploadToken.isEmpty {
-                    Text("先填上传口令才能上传。上传后助手在服务器端直接取回分析，不必再用聊天软件发文件。")
+                    Text("先填上传口令才能上传。上传后助手在服务器端直接取回分析，不必再用聊天软件发文件。".scriptConverted)
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if !status.isEmpty { Text(status).font(.callout) }
@@ -3132,7 +3158,7 @@ struct RemoteView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Ky.bg)
-        .navigationTitle("远程服务")
+        .navigationTitle(Text("远程服务".scriptConverted))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -3233,36 +3259,36 @@ struct ShaJudgeView: View {
 
     var body: some View {
         List {
-            Section("判定对象") {
+            Section(Text("判定对象".scriptConverted)) {
                 Picker("煞目", selection: $shaName) {
                     ForEach(ShaLibrary.entries) { Text($0.name).tag($0.name) }
                 }
             }
-            Section("入门三问不过者不成立：①对位？②有受体？③有实害？") {
+            Section(Text("入门三问不过者不成立：①对位？②有受体？③有实害？".scriptConverted)) {
                 Picker("对位程度", selection: $align) {
-                    Text("正对门窗").tag(2); Text("斜对/偏").tag(1); Text("侧对/背对").tag(0)
+                    Text("正对门窗".scriptConverted).tag(2); Text("斜对/偏".scriptConverted).tag(1); Text("侧对/背对".scriptConverted).tag(0)
                 }
                 Picker("受体（正对处是什么）", selection: $receptor) {
-                    Text("床/书桌/沙发/灶（久留）").tag(2); Text("大门/主窗").tag(1); Text("空墙/过道/卫浴").tag(0)
+                    Text("床/书桌/沙发/灶（久留）").tag(2); Text("大门/主窗".scriptConverted).tag(1); Text("空墙/过道/卫浴".scriptConverted).tag(0)
                 }
                 Toggle("有可观察实害（风/光/声/水/安全/卫生）", isOn: $harm)
             }
-            Section("五变量加权") {
+            Section(Text("五变量加权".scriptConverted)) {
                 Picker("距离", selection: $dist) {
-                    Text("近（<10 米）").tag(2); Text("中（10–30 米）").tag(1); Text("远（>30 米）").tag(0)
+                    Text("近（<10 米）").tag(2); Text("中（10–30 米）").tag(1); Text("远（>30 米）".scriptConverted).tag(0)
                 }
                 Picker("遮挡", selection: $shield) {
-                    Text("无遮挡直冲").tag(2); Text("部分遮挡").tag(1); Text("完全遮挡（不见）").tag(0)
+                    Text("无遮挡直冲".scriptConverted).tag(2); Text("部分遮挡").tag(1); Text("完全遮挡（不见）".scriptConverted).tag(0)
                 }
                 Picker("体量对比", selection: $volume) {
-                    Text("煞体远大于宅").tag(2); Text("相当").tag(1); Text("煞体小于宅").tag(0)
+                    Text("煞体远大于宅".scriptConverted).tag(2); Text("相当").tag(1); Text("煞体小于宅").tag(0)
                 }
             }
-            Section("判定结果") {
+            Section(Text("判定结果".scriptConverted)) {
                 Text("定级：\(level)").font(.headline)
                     .foregroundStyle(level.hasPrefix("重") ? .red : (level.hasPrefix("中") ? .orange : .secondary))
                 Text(advice).font(.callout)
-                Text("辅助变量提醒：反光看时段、路冲看昼夜车流、工地动土看工期、高层看本户窗实见——定级时一并考虑，必要时在备注注明。")
+                Text("辅助变量提醒：反光看时段、路冲看昼夜车流、工地动土看工期、高层看本户窗实见——定级时一并考虑，必要时在备注注明。".scriptConverted)
                     .font(.caption).foregroundStyle(.secondary)
                 Button {
                     let prev = draft.taskNotes["实景判定"] ?? ""
@@ -3277,7 +3303,7 @@ struct ShaJudgeView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Ky.bg)
-        .navigationTitle("实景判定")
+        .navigationTitle(Text("实景判定".scriptConverted))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -3299,18 +3325,18 @@ struct KnowledgeView: View {
             Section {
                 NavigationLink {
                     ShaHandbookView()
-                } label: { Label("犯煞解说与解煞手册（17 条逐条详解）", systemImage: "shield.lefthalf.filled") }
+                } label: { Label { Text("犯煞解说与解煞手册（17 条逐条详解）".scriptConverted) } icon: { Image(systemName: "shield.lefthalf.filled") } }
             }
             ForEach(cards, id: \.0) { card in
                 Section(card.0) { Text(card.1).font(.callout) }
             }
-            Section("来源") {
-                Text("本卡片为风水堪舆专窗知识库（00–08）的离线精简版，口径以工作手册五条定调为准；完整版与出处在知识库，随安装包升级更新。").font(.caption).foregroundStyle(.secondary)
+            Section(Text("来源".scriptConverted)) {
+                Text("本卡片为风水堪舆专窗知识库（00–08）的离线精简版，口径以工作手册五条定调为准；完整版与出处在知识库，随安装包升级更新。".scriptConverted).font(.caption).foregroundStyle(.secondary)
             }
         }
         .scrollContentBackground(.hidden)
         .background(Ky.bg)
-        .navigationTitle("风水知识卡（离线）")
+        .navigationTitle(Text("风水知识卡（离线）".scriptConverted))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -3322,22 +3348,22 @@ struct TaskDetailView: View {
     var body: some View {
         List {
             Section("怎么做") { Text(task.instruction) }
-            Section("备注") {
+            Section(Text("备注".scriptConverted)) {
                 TextField("补充说明（可选）", text: noteBinding, axis: .vertical).lineLimit(2...5)
             }
             Section {
                 if task.kind == .heading {
                     NavigationLink {
                         CompassView(draft: $draft)
-                    } label: { Label("打开罗盘记录", systemImage: "location.north.circle") }
+                    } label: { Label { Text("打开罗盘记录".scriptConverted) } icon: { Image(systemName: "location.north.circle") } }
                 } else if task.kind == .scan3D {
                     NavigationLink {
                         RoomScanView(task: task, draft: $draft)
-                    } label: { Label("开始三维扫描", systemImage: "cube.transparent") }
+                    } label: { Label { Text("开始三维扫描".scriptConverted) } icon: { Image(systemName: "cube.transparent") } }
                 } else if task.kind == .arTrack {
                     NavigationLink {
                         ARTrackView(task: task, draft: $draft)
-                    } label: { Label("开始记录轨迹", systemImage: "point.topleft.down.curvedto.point.bottomright.up") }
+                    } label: { Label { Text("开始记录轨迹".scriptConverted) } icon: { Image(systemName: "point.topleft.down.curvedto.point.bottomright.up") } }
                 } else {
                     NavigationLink {
                         CaptureView(task: task, draft: $draft)
@@ -3504,7 +3530,7 @@ struct CaptureView: View {
                             .foregroundStyle(aligned ? .green : .white)
                             .rotationEffect(.degrees(rel))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("对准「\(t.label)」\(CompassMath.format(t.bearing))")
+                            Text("对准「\(t.label)」\(CompassMath.format(t.bearing))".scriptConverted)
                                 .font(.callout).fontWeight(.medium).foregroundStyle(.white)
                             Text(cur < 0 ? "罗盘读数中…" : (aligned ? "方向对准了，就这样拍" : "跟着箭头转：还差 \(rel > 0 ? "右" : "左") \(String(format: "%.0f°", abs(rel)))"))
                                 .font(.caption)
@@ -3536,7 +3562,7 @@ struct CaptureView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(done ? "已转满一圈，可以停了" : "环拍中：已转 \(String(format: "%.0f°", min(360, abs(sweepAccum)))) / 360°")
                                 .font(.callout).fontWeight(.medium).foregroundStyle(done ? .green : .white)
-                            Text("慢慢匀速转，箭头始终指着出发方向")
+                            Text("慢慢匀速转，箭头始终指着出发方向".scriptConverted)
                                 .font(.caption).foregroundStyle(.white.opacity(0.85))
                         }
                     }
@@ -3637,10 +3663,10 @@ struct CaptureView: View {
                 Color.black.opacity(0.85).ignoresSafeArea()
                 VStack(spacing: 14) {
                     Image(systemName: "camera.fill").font(.largeTitle).foregroundStyle(.white)
-                    Text("相机权限未开启").font(.headline).foregroundStyle(.white)
-                    Text("拍摄页需要相机权限才能取景。请去「设置 → 三术合参 → 相机」开启，返回本页后即可继续拍照或录像。")
+                    Text("相机权限未开启".scriptConverted).font(.headline).foregroundStyle(.white)
+                    Text("拍摄页需要相机权限才能取景。请去「设置 → 三术合参 → 相机」开启，返回本页后即可继续拍照或录像。".scriptConverted)
                         .font(.callout).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center)
-                    Button("去设置开启相机") { openCameraSettings() }.buttonStyle(KyPrimaryButton())
+                    Button { openCameraSettings() } label: { Text("去设置开启相机".scriptConverted) }.buttonStyle(KyPrimaryButton())
                     Button("返回") { dismiss() }.foregroundStyle(.white)
                 }
                 .padding(24)

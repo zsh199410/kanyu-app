@@ -147,9 +147,9 @@ struct YearByYearView: View {
             LazyVStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("当前运与下步运（共 \(years.count) 年）")
+                        Text("当前运与下步运（共 \(years.count) 年）".scriptConverted)
                             .font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text("按「冲＞刑＞穿＞合＞破·伏吟」四查定级")
+                        Text("按「冲＞刑＞穿＞合＞破·伏吟」四查定级".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }
                     Spacer()
@@ -158,7 +158,7 @@ struct YearByYearView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: onlyKeyYears ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                            Text(onlyKeyYears ? "仅看关键年" : "全部年份")
+                            Text(onlyKeyYears ? "仅看关键年".scriptConverted : "全部年份".scriptConverted)
                         }
                         .font(.caption).fontWeight(.semibold)
                         .padding(.horizontal, 10).padding(.vertical, 6)
@@ -192,7 +192,7 @@ struct YearByYearView: View {
                         ForEach(r.lines.indices, id: \.self) { i in
                             HStack(alignment: .top, spacing: 6) {
                                 Circle().fill(st.0).frame(width: 5, height: 5).padding(.top, 7)
-                                Text(r.lines[i])
+                                Text(r.lines[i].scriptConverted)
                                     .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                             }
                         }
@@ -200,7 +200,7 @@ struct YearByYearView: View {
                         if let xy = XiaoYun.ganzhi(chart: chart, year: y) {
                             HStack(alignment: .top, spacing: 6) {
                                 Circle().fill(Ky.gold).frame(width: 5, height: 5).padding(.top, 7)
-                                Text("小运（起运前）：\(xy) · \(y - chart.birthYear + 1) 岁（虚岁）· \(chart.qiyunDirection)——起运前以小运代大运，不展开断语。")
+                                Text("小运（起运前）：\(xy) · \(y - chart.birthYear + 1) 岁（虚岁）· \(chart.qiyunDirection)——起运前以小运代大运，不展开断语。".scriptConverted)
                                     .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                             }
                         }
@@ -214,12 +214,12 @@ struct YearByYearView: View {
                                     lineWidth: isNow || r.level == "关口级" ? 1.3 : 0.8)
                     )
                 }
-                Text("口径：逐年四查规则生成（引动分级＋岁运叠加＋干支定性），重断须 ≥2 项强引动同现；健康只给倾向、六亲生死类断语不在应用层出现。")
+                Text("口径：逐年四查规则生成（引动分级＋岁运叠加＋干支定性），重断须 ≥2 项强引动同现；健康只给倾向、六亲生死类断语不在应用层出现。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
         .background(Ky.bg)
-        .navigationTitle(name.isEmpty ? "逐年直断" : "逐年 · \(name)")
+        .navigationTitle(name.isEmpty ? "逐年直断".scriptConverted : "逐年 · ".scriptConverted + name)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -287,13 +287,13 @@ struct LifePlanView: View {
                 // 顶部阶段与关键年筛选栏（解决 88 年超长滚动迷失痛点）
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Text("人生八阶段 · 1至88岁全程推演")
+                        Text("人生八阶段 · 1至88岁全程推演".scriptConverted)
                             .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                         Spacer()
                         Button {
                             withAnimation(.easeInOut(duration: 0.16)) { onlyKeyYears.toggle() }
                         } label: {
-                            Text(onlyKeyYears ? "仅关键年" : "全部年份")
+                            Text(onlyKeyYears ? "仅关键年".scriptConverted : "全部年份".scriptConverted)
                                 .font(.caption).fontWeight(.semibold)
                                 .padding(.horizontal, 10).padding(.vertical, 5)
                                 .background(onlyKeyYears ? Ky.cinnabar : Ky.elevated)
@@ -307,7 +307,7 @@ struct LifePlanView: View {
                             Button {
                                 withAnimation(.easeInOut(duration: 0.16)) { selectedStage = -1 }
                             } label: {
-                                Text("全部阶段 (1–88岁)")
+                                Text("全部阶段 (1–88岁)".scriptConverted)
                                     .font(.caption).fontWeight(selectedStage == -1 ? .bold : .medium)
                                     .padding(.horizontal, 11).padding(.vertical, 6)
                                     .background(selectedStage == -1 ? Ky.qingdai : Ky.elevated)
@@ -321,7 +321,7 @@ struct LifePlanView: View {
                                 Button {
                                     withAnimation(.easeInOut(duration: 0.16)) { selectedStage = si }
                                 } label: {
-                                    Text("\(st.name) (\(st.range.lowerBound)–\(st.range.upperBound))")
+                                    Text("\(st.name) (\(st.range.lowerBound)–\(st.range.upperBound))".scriptConverted)
                                         .font(.caption).fontWeight(active ? .bold : .medium)
                                         .padding(.horizontal, 11).padding(.vertical, 6)
                                         .background(active ? Ky.qingdai : Ky.elevated)
@@ -342,13 +342,13 @@ struct LifePlanView: View {
                     let keys = reps.filter { st.range.contains($0.year - chart.birthYear) && ($0.level == "关口级" || $0.level == "主线") }
                     VStack(alignment: .leading, spacing: 7) {
                         HStack(spacing: 8) {
-                            Text(st.name).font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            Text(st.name.scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             KyBadge(text: "\(st.range.lowerBound)–\(st.range.upperBound) 岁", color: Ky.qingdai)
                             Spacer()
                         }
-                        Text(st.theme).font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
+                        Text(st.theme.scriptConverted).font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                         if !keys.isEmpty {
-                            Text("本阶段重点年份：" + keys.map { "\($0.year)（\($0.year - chart.birthYear)岁·\($0.level)）" }.joined(separator: "、"))
+                            Text(("本阶段重点年份：" + keys.map { "\($0.year)（\($0.year - chart.birthYear)岁·\($0.level)）" }.joined(separator: "、")).scriptConverted)
                                 .font(.caption).fontWeight(.medium).foregroundStyle(Ky.cinnabar)
                                 .padding(8).frame(maxWidth: .infinity, alignment: .leading)
                                 .background(Ky.cinnabar.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 7))
@@ -373,25 +373,25 @@ struct LifePlanView: View {
                                 .font(.caption).fontWeight(.medium).foregroundStyle(Ky.sub)
                         }
                         ForEach(r.lines.indices, id: \.self) { j in
-                            Text(r.lines[j]).font(.callout).foregroundStyle(Ky.ink).lineSpacing(2.5)
+                            Text(r.lines[j].scriptConverted).font(.callout).foregroundStyle(Ky.ink).lineSpacing(2.5)
                         }
                         // G8 小运：起运前年份补一行小运行运干支，不展开断语。
                         if let xy = XiaoYun.ganzhi(chart: chart, year: r.year) {
-                            Text("小运（起运前）：\(xy) · \(age) 岁（虚岁）· \(chart.qiyunDirection)——起运前以小运代大运，不展开断语。")
+                            Text("小运（起运前）：\(xy) · \(age) 岁（虚岁）· \(chart.qiyunDirection)——起运前以小运代大运，不展开断语。".scriptConverted)
                                 .font(.callout).foregroundStyle(Ky.ink).lineSpacing(2.5)
                         }
-                        Text(planText(level: r.level, age: age))
+                        Text(planText(level: r.level, age: age).scriptConverted)
                             .font(.caption).fontWeight(.medium).foregroundStyle(Ky.qingdai)
                             .padding(9).frame(maxWidth: .infinity, alignment: .leading)
                             .background(Ky.elevated).clipShape(RoundedRectangle(cornerRadius: 8))
                     }.kyCard()
                 }
-                Text("口径：逐年解说为四查规则生成（引动分级 冲＞刑＞穿＞合＞破·伏吟＋岁运叠加＋干支定性），年龄按周岁计。")
+                Text("口径：逐年解说为四查规则生成（引动分级 冲＞刑＞穿＞合＞破·伏吟＋岁运叠加＋干支定性），年龄按周岁计。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }
         .background(Ky.bg)
-        .navigationTitle(name.isEmpty ? "1–88岁全程规划" : "全程 · \(name)")
+        .navigationTitle(name.isEmpty ? "1–88岁全程规划".scriptConverted : "全程 · ".scriptConverted + name)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

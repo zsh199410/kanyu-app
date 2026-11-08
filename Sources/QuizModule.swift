@@ -73,20 +73,20 @@ struct QuizView: View {
     var body: some View {
         List {
             Section {
-                Text("共 \(total) 题 · 覆盖 10 个口径点，每点至少 2 题。每题答案由本机引擎现算复核；答错即显示解析与口径出处。得分与错题回顾只存本机，不落库。").font(.callout).foregroundStyle(Ky.sub)
+                Text("共 \(total) 题 · 覆盖 10 个口径点，每点至少 2 题。每题答案由本机引擎现算复核；答错即显示解析与口径出处。得分与错题回顾只存本机，不落库。".scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                 if submitted {
-                    Text("得分：\(score) / \(total)").font(.headline).foregroundStyle(Ky.ink)
+                    Text("得分：\(score) / \(total)".scriptConverted).font(.headline).foregroundStyle(Ky.ink)
                 }
             }
             ForEach(QuizData.questions) { q in
                 Section(q.point) {
-                    Text("\(q.id). " + q.q).font(.subheadline).foregroundStyle(Ky.ink)
+                    Text("\(q.id). " + q.q.scriptConverted).font(.subheadline).foregroundStyle(Ky.ink)
                     if q.type == "choice" {
                         ForEach(Array(q.options.enumerated()), id: \.offset) { j, o in
                             Button { choiceAnswers[q.id] = j } label: {
                                 HStack {
                                     Image(systemName: choiceAnswers[q.id] == j ? "checkmark.circle.fill" : "circle").foregroundStyle(Ky.gold)
-                                    Text(o).font(.callout).foregroundStyle(Ky.ink)
+                                    Text(o.scriptConverted).font(.callout).foregroundStyle(Ky.ink)
                                 }
                             }.buttonStyle(.plain)
                             .disabled(submitted)
@@ -94,19 +94,19 @@ struct QuizView: View {
                     } else {
                         HStack(spacing: 24) {
                             Button { judgeAnswers[q.id] = true } label: {
-                                Label("对", systemImage: judgeAnswers[q.id] == true ? "checkmark.circle.fill" : "circle").foregroundStyle(Ky.gold)
+                                Label("对".scriptConverted, systemImage: judgeAnswers[q.id] == true ? "checkmark.circle.fill" : "circle").foregroundStyle(Ky.gold)
                             }.buttonStyle(.plain)
                             Button { judgeAnswers[q.id] = false } label: {
-                                Label("错", systemImage: judgeAnswers[q.id] == false ? "checkmark.circle.fill" : "circle").foregroundStyle(Ky.gold)
+                                Label("错".scriptConverted, systemImage: judgeAnswers[q.id] == false ? "checkmark.circle.fill" : "circle").foregroundStyle(Ky.gold)
                             }.buttonStyle(.plain)
                         }
                         .disabled(submitted)
                     }
                     if submitted {
                         let ok = q.type == "choice" ? (choiceAnswers[q.id] == q.answerIndex) : (judgeAnswers[q.id] == q.answerBool)
-                        Text(ok ? "✓ 答对" : "✗ 答错").font(.subheadline).fontWeight(.semibold).foregroundStyle(ok ? Ky.jade : Ky.gold)
-                        Text(q.explain).font(.callout).foregroundStyle(Ky.ink)
-                        Text(q.source).font(.caption).foregroundStyle(Ky.sub)
+                        Text(ok ? "✓ 答对".scriptConverted : "✗ 答错".scriptConverted).font(.subheadline).fontWeight(.semibold).foregroundStyle(ok ? Ky.jade : Ky.gold)
+                        Text(q.explain.scriptConverted).font(.callout).foregroundStyle(Ky.ink)
+                        Text(q.source.scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                     }
                 }
             }
@@ -127,7 +127,7 @@ struct QuizView: View {
                 .font(.headline).foregroundStyle(Ky.gold)
             }
         }
-        .navigationTitle("排盘口径自测")
+        .navigationTitle("排盘口径自测".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

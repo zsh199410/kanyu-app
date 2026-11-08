@@ -88,9 +88,9 @@ VStack(alignment:.leading, spacing: 14) {
 VStack(alignment:.leading, spacing: 10) {
 HStack {
 VStack(alignment:.leading, spacing: 2) {
-Text("户型图立极压盘器")
+Text("户型图立极压盘器".scriptConverted)
 .font(.system(.headline, design:.serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-Text("拖动准星立极中宫 · 压盘透视分室吉凶").font(.caption2).foregroundStyle(Ky.gold)
+Text("拖动准星立极中宫 · 压盘透视分室吉凶".scriptConverted).font(.caption2).foregroundStyle(Ky.gold)
 }
 Spacer()
 KySeal(text: "三元九运")
@@ -112,7 +112,7 @@ selectedOrientationIndex = idx
 } label: {
 HStack(spacing: 4) {
 Image(systemName: "safari")
-Text(currentOri.name).lineLimit(1)
+Text(currentOri.name.scriptConverted).lineLimit(1)
 Image(systemName: "chevron.down").font(.caption2)
 }
 .font(.system(size: 12, weight:.bold)).foregroundStyle(Ky.qingdai)
@@ -121,7 +121,7 @@ Image(systemName: "chevron.down").font(.caption2)
 
 Spacer()
 
-Picker("元运", selection: $selectedPeriod) {
+Picker("元运".scriptConverted, selection: $selectedPeriod) {
 Text("九运 (2024–43)").tag(9)
 Text("八运 (2004–23)").tag(8)
 Text("七运 (1984–03)").tag(7)
@@ -132,21 +132,21 @@ Text("七运 (1984–03)").tag(7)
 if useLockOrientation, let lock = lockStore.lock {
 HStack(spacing: 4) {
 Image(systemName: "safari.fill").font(.caption2).foregroundStyle(Ky.qingdai)
-Text("当前坐向来自罗盘锁定：真北 \(String(format: "%.1f°", lock.trueNorth))，\(lock.sitFaceText)；改选上方预设可切回。").font(.caption2).foregroundStyle(Ky.sub)
+Text("当前坐向来自罗盘锁定：真北 \(String(format: "%.1f°", lock.trueNorth))，".scriptConverted + lock.sitFaceText + "；改选上方预设可切回。".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
 }
 }
 
 HStack {
-Picker("压盘模式", selection: $overlayMode) {
-Text("玄空飞星盘").tag(0)
-Text("八宅大游年").tag(1)
+Picker("压盘模式".scriptConverted, selection: $overlayMode) {
+Text("玄空飞星盘".scriptConverted).tag(0)
+Text("八宅大游年".scriptConverted).tag(1)
 }
 .pickerStyle(.segmented)
 
 Spacer()
 
 HStack(spacing: 4) {
-Text("透视").font(.caption2).foregroundStyle(Ky.sub)
+Text("透视".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
 Slider(value: $overlayOpacity, in: 0.2...0.9).frame(width: 80)
 }
 }
@@ -156,14 +156,14 @@ Slider(value: $overlayOpacity, in: 0.2...0.9).frame(width: 80)
 // 2. 核心压盘交互视口（户型底图 + 拖拽中宫 + 九宫覆盖）
 VStack(spacing: 8) {
 HStack {
-Text("📐 户型图透视压盘区（南上北下）").font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(Ky.sub)
+Text("📐 户型图透视压盘区（南上北下）".scriptConverted).font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(Ky.sub)
 Spacer()
 Button {
 withAnimation(.spring()) { centerOffset = .zero; lastOffset = .zero}
 } label: {
 HStack(spacing: 3) {
 Image(systemName: "arrow.counterclockwise")
-Text("中宫居中")
+Text("中宫居中".scriptConverted)
 }
 .font(.system(size: 10.5)).foregroundStyle(Ky.qingdai)
 }
@@ -221,7 +221,7 @@ HStack {
 PhotosPicker(selection: $selectedPhotoItem, matching:.images) {
 HStack(spacing: 4) {
 Image(systemName: "photo.badge.plus")
-Text(userImage == nil ? "导入真实户型图" : "更换户型图")
+Text(userImage == nil ? "导入真实户型图".scriptConverted : "更换户型图".scriptConverted)
 }
 .font(.system(size: 11.5, weight:.semibold)).foregroundStyle(Ky.qingdai)
 }
@@ -237,7 +237,7 @@ userImage = ui
 Spacer()
 
 if userImage != nil {
-Button("恢复示范图") {
+Button("恢复示范图".scriptConverted) {
 userImage = nil; selectedPhotoItem = nil
 }
 .font(.system(size: 11)).foregroundStyle(Ky.sub)
@@ -250,7 +250,7 @@ userImage = nil; selectedPhotoItem = nil
 // 3. 聚焦宫位分室详析卡片
 VStack(alignment:.leading, spacing: 10) {
 HStack {
-Text("分室断吉凶")
+Text("分室断吉凶".scriptConverted)
 .font(.system(.subheadline, design:.serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
 Spacer()
 palaceBadge(palace: selectedPalace)
@@ -266,23 +266,23 @@ let note = FengshuiEngine.comboNotes[comboKey] ?? ""
 VStack(alignment:.leading, spacing: 6) {
 HStack(spacing: 12) {
 Text("山星 \(m)（人丁健康）").font(.system(size: 12, weight:.bold)).foregroundStyle(Ky.qingdai)
-Text("向星 \(f)（财帛进气）").font(.system(size: 12, weight:.bold)).foregroundStyle(Ky.cinnabar)
-Text("运星 \(b)").font(.system(size: 12)).foregroundStyle(Ky.sub)
+Text("向星 \(f)（财帛进气）".scriptConverted).font(.system(size: 12, weight:.bold)).foregroundStyle(Ky.cinnabar)
+Text("运星 \(b)".scriptConverted).font(.system(size: 12)).foregroundStyle(Ky.sub)
 }
 if !note.isEmpty {
-Text("• 飞星凶意提示：\(note)").font(.system(size: 11.5)).foregroundStyle(Ky.cinnabar)
+Text("• 飞星凶意提示：\(note)".scriptConverted).font(.system(size: 11.5)).foregroundStyle(Ky.cinnabar)
 }
-Text(palaceRoomAdvice(palace: selectedPalace, faceStar: f, mtnStar: m))
+Text(palaceRoomAdvice(palace: selectedPalace, faceStar: f, mtnStar: m).scriptConverted)
 .font(.system(size: 12)).foregroundStyle(Ky.ink).lineSpacing(3)
 }
 } else {
 let bz = baZhaiTable[selectedPalace] ?? ("平", true, "")
 VStack(alignment:.leading, spacing: 6) {
 HStack {
-Text("八宅九星：\(bz.name)").font(.system(size: 13, weight:.bold)).foregroundStyle(bz.isGood ? Ky.jade : Ky.cinnabar)
-Text(bz.role).font(.system(size: 11.5)).foregroundStyle(Ky.sub)
+Text("八宅九星：\(bz.name)".scriptConverted).font(.system(size: 13, weight:.bold)).foregroundStyle(bz.isGood ? Ky.jade : Ky.cinnabar)
+Text(bz.role.scriptConverted).font(.system(size: 11.5)).foregroundStyle(Ky.sub)
 }
-Text(baZhaiRoomAdvice(palace: selectedPalace, isGood: bz.isGood, name: bz.name))
+Text(baZhaiRoomAdvice(palace: selectedPalace, isGood: bz.isGood, name: bz.name).scriptConverted)
 .font(.system(size: 12)).foregroundStyle(Ky.ink).lineSpacing(3)
 }
 }
@@ -292,7 +292,7 @@ Text(baZhaiRoomAdvice(palace: selectedPalace, isGood: bz.isGood, name: bz.name))
 .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 100)
 }
 .background(Ky.bg)
-.navigationTitle("户型图立极压盘")
+.navigationTitle("户型图立极压盘".scriptConverted)
 .navigationBarTitleDisplayMode(.inline)
 }
 
@@ -321,11 +321,11 @@ Spacer()
 Text("\(f)").font(.system(size: 11, weight:.heavy)).foregroundStyle(f == selectedPeriod ? Ky.cinnabar : Ky.ink)
 }
 .padding(.horizontal, 4)
-Text(palace).font(.system(size: 14, weight:.bold, design:.serif)).foregroundStyle(Ky.ink)
-Text("运 \(b)").font(.system(size: 8)).foregroundStyle(Ky.sub)
+Text(palace.scriptConverted).font(.system(size: 14, weight:.bold, design:.serif)).foregroundStyle(Ky.ink)
+Text("运 \(b)".scriptConverted).font(.system(size: 8)).foregroundStyle(Ky.sub)
 } else {
-Text(palace).font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(Ky.ink)
-Text(bz.name).font(.system(size: 12, weight:.heavy)).foregroundStyle(bz.isGood ? Ky.jade : Ky.cinnabar)
+Text(palace.scriptConverted).font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(Ky.ink)
+Text(bz.name.scriptConverted).font(.system(size: 12, weight:.heavy)).foregroundStyle(bz.isGood ? Ky.jade : Ky.cinnabar)
 }
 }
 .padding(3)
@@ -400,7 +400,7 @@ blueprintRoom("厨房 (北)", "8㎡", Color.orange.opacity(0.2))
 }.frame(height: 90)
 }.padding(12)
 
-Text("示例户型图：标准三室两厅（正南朝向）")
+Text("示例户型图：标准三室两厅（正南朝向）".scriptConverted)
 .font(.system(size: 9.5, weight:.medium, design:.monospaced))
 .foregroundStyle(Color.white.opacity(0.45))
 .frame(maxHeight:.infinity, alignment:.bottomLeading).padding(16)
@@ -412,7 +412,7 @@ ZStack {
 Rectangle().fill(bg)
 Rectangle().stroke(Color.white.opacity(0.35), lineWidth: 1)
 VStack(spacing: 2) {
-Text(title).font(.system(size: 11, weight:.bold)).foregroundStyle(Color.white.opacity(0.9))
+Text(title.scriptConverted).font(.system(size: 11, weight:.bold)).foregroundStyle(Color.white.opacity(0.9))
 if !area.isEmpty {
 Text(area).font(.system(size: 8.5)).foregroundStyle(Color.white.opacity(0.6))
 }

@@ -1017,17 +1017,17 @@ struct QimenCasesView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                Text("只收公开记载、可核验的奇门案例。典籍／教程算例仅核定局与值符值使，无实战应验记录，应验栏如实写“无”。值使落宫口径差异见各条标注（待裁决）。")
+                Text("只收公开记载、可核验的奇门案例。典籍／教程算例仅核定局与值符值使，无实战应验记录，应验栏如实写“无”。值使落宫口径差异见各条标注（待裁决）。".scriptConverted)
                     .font(.caption).foregroundStyle(Ky.sub)
                 ForEach(QimenCases.all) { c in
                     caseCard(c)
                 }
-                Text("回验登记走“前瞻登记”（ForecastModule），每条案例登记一条前瞻，来源标记 qimen_case。")
+                Text("回验登记走“前瞻登记”（ForecastModule），每条案例登记一条前瞻，来源标记 qimen_case。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("奇门案例库").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("奇门案例库".scriptConverted).navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
     }
@@ -1046,7 +1046,7 @@ struct QimenCasesView: View {
     }
     private func caseCard(_ c: QimenCase) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(c.title).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            Text(c.title.scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
             infoRow("起局时间", c.datetime)
             infoRow("定局", "\(c.dingju) · \(c.dun) \(c.ju) 局 · \(c.sanyuan) · \(c.jieqi)")
             infoRow("四柱", c.pillars.joined(separator: " "))
@@ -1054,26 +1054,26 @@ struct QimenCasesView: View {
             infoRow("值符落宫", "引擎 \(c.zhifuPalaceEngine) 宫\(c.zhifuPalaceSource.map { " · 教程 \($0) 宫" } ?? "")")
             infoRow("值使落宫", "引擎 \(c.zhishiPalaceEngine) 宫\(c.zhishiPalaceSource.map { " · 教程 \($0) 宫" } ?? "")")
             if !c.zhifuNote.isEmpty {
-                Text(c.zhifuNote).font(.caption).foregroundStyle(Ky.cinnabar)
+                Text(c.zhifuNote.scriptConverted).font(.caption).foregroundStyle(Ky.cinnabar)
             }
             if !c.zhishiNote.isEmpty {
-                Text(c.zhishiNote).font(.caption).foregroundStyle(Ky.cinnabar)
+                Text(c.zhishiNote.scriptConverted).font(.caption).foregroundStyle(Ky.cinnabar)
             }
             Text("局象原文：\(c.sourceText)").font(.callout).foregroundStyle(Ky.ink)
-            Text("来源：\(c.sourceName)").font(.caption).foregroundStyle(Ky.sub)
-            Text("应验：\(c.yingyan)").font(.callout).foregroundStyle(Ky.ink)
-            Text("复核：\(c.verified)").font(.callout).foregroundStyle(Ky.qingdai)
-            Text("状态：\(c.status)").font(.caption).foregroundStyle(Ky.sub)
+            Text("来源：\(c.sourceName)".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
+            Text("应验：\(c.yingyan)".scriptConverted).font(.callout).foregroundStyle(Ky.ink)
+            Text("复核：\(c.verified)".scriptConverted).font(.callout).foregroundStyle(Ky.qingdai)
+            Text("状态：\(c.status)".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
             ShareLink(item: caseShareText(c)) {
-                Label("分享案例", systemImage: "square.and.arrow.up")
+                Label("分享案例".scriptConverted, systemImage: "square.and.arrow.up")
             }
             .font(.callout).foregroundStyle(Ky.qingdai)
         }.kyCard()
     }
     private func infoRow(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).font(.caption).foregroundStyle(Ky.sub).frame(width: 72, alignment: .leading)
-            Text(value).font(.callout).foregroundStyle(Ky.ink)
+            Text(label.scriptConverted).font(.caption).foregroundStyle(Ky.sub).frame(width: 72, alignment: .leading)
+            Text(value.scriptConverted).font(.callout).foregroundStyle(Ky.ink)
             Spacer()
         }
     }
@@ -1127,47 +1127,47 @@ struct QimenHomeView: View {
                 }
                 // 时间选择
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("起局时间：\(dateText) \(weekdayText)").font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                    Text("起局时间：".scriptConverted + dateText + " " + weekdayText).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
                     if !qmPersonName.isEmpty {
-                        Text("起局命主：\(qmPersonName)（已按其生辰起局）").font(.caption).foregroundStyle(Ky.qingdai)
+                        Text("起局命主：".scriptConverted + qmPersonName + "（已按其生辰起局）".scriptConverted).font(.caption).foregroundStyle(Ky.qingdai)
                     }
                     HStack {
-                        DatePicker("起局时间", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                        DatePicker("起局时间".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])
                             .labelsHidden()
                             .datePickerStyle(.compact)
                             .environment(\.locale, Locale(identifier: "zh_CN")) // 锁死中文
                         Spacer()
-                        Button("上一时辰") { date = date.addingTimeInterval(-7200) }
+                        Button("上一时辰".scriptConverted) { date = date.addingTimeInterval(-7200) }
                             .font(.subheadline).foregroundStyle(Ky.qingdai)
-                        Button("下一时辰") { date = date.addingTimeInterval(7200) }
+                        Button("下一时辰".scriptConverted) { date = date.addingTimeInterval(7200) }
                             .font(.subheadline).foregroundStyle(Ky.qingdai)
-                        Button("此刻") { date = Date() }
+                        Button("此刻".scriptConverted) { date = Date() }
                             .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                     }
-                    Text("默认此刻；改时间即重起局。时辰按北京时间取，晚子时口径与八字排盘一致。")
+                    Text("默认此刻；改时间即重起局。时辰按北京时间取，晚子时口径与八字排盘一致。".scriptConverted)
                         .font(.caption2).foregroundStyle(Ky.sub)
-                    DisclosureGroup("起局口径") {
-                        Picker("定局法", selection: $dingju) {
-                            Text("拆补法").tag("拆补法")
-                            Text("置闰法").tag("置闰法")
+                    DisclosureGroup("起局口径".scriptConverted) {
+                        Picker("定局法".scriptConverted, selection: $dingju) {
+                            Text("拆补法".scriptConverted).tag("拆补法")
+                            Text("置闰法".scriptConverted).tag("置闰法")
                         }.pickerStyle(.segmented)
-                        Picker("寄宫", selection: $jigong) {
+                        Picker("寄宫".scriptConverted, selection: $jigong) {
                             ForEach(QimenJigong.allCases, id: \.self) { j in
-                                Text(j.name).tag(j)
+                                Text(j.name.scriptConverted).tag(j)
                             }
                         }
-                        Toggle("布暗干（值使门起）", isOn: $angan)
-                        Toggle("真太阳时校正", isOn: $solar)
+                        Toggle("布暗干（值使门起）".scriptConverted, isOn: $angan)
+                        Toggle("真太阳时校正".scriptConverted, isOn: $solar)
                         HStack {
-                            Text("经度").font(.caption).foregroundStyle(Ky.sub)
+                            Text("经度".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                             TextField("经度", value: $longitude, format: .number)
                                 .keyboardType(.decimalPad)
                                 .disabled(!solar)
                                 .textFieldStyle(.roundedBorder)
-                            Text("°（默认 107.8 梁平）").font(.caption2).foregroundStyle(Ky.sub)
+                            Text("°（默认 107.8 梁平）".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                         }
-                        Toggle("显示日家盘", isOn: $showRijia)
-                        Text("定局法、寄宫、暗干、真太阳时切换即重起局；口径见局象卡收据行。")
+                        Toggle("显示日家盘".scriptConverted, isOn: $showRijia)
+                        Text("定局法、寄宫、暗干、真太阳时切换即重起局；口径见局象卡收据行。".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }
                 }.kyCard()
@@ -1186,16 +1186,16 @@ struct QimenHomeView: View {
                     NavigationLink("奇门案例库（8 条已验）") { QimenCasesView() }
                         .font(.callout).foregroundStyle(Ky.qingdai)
                 } else {
-                    Text("未能起局：节气或干支不在口径表内，请换个时间再试。")
+                    Text("未能起局：节气或干支不在口径表内，请换个时间再试。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.cinnabar)
                         .onAppear { AppErrorCenter.shared.report("奇门起局失败：当前时间不在定局口径表内，请换个时间再试。") }
                 }
-                Text("仅供娱乐与决策参考，不作最终决定；大事仍须结合实际情况与专业意见定。")
+                Text("仅供娱乐与决策参考，不作最终决定；大事仍须结合实际情况与专业意见定。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("奇门遁甲").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("奇门遁甲".scriptConverted).navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .onAppear { recompute() }
@@ -1210,28 +1210,28 @@ struct QimenHomeView: View {
 
     private func infoCard(_ ch: QimenEngine.Chart) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\(ch.yang ? "阳遁" : "阴遁") \(ch.ju) 局 · \(ch.sanyuan) · \(ch.jieqi)")
+            Text("\(ch.yang ? "阳遁" : "阴遁") \(ch.ju) 局 · \(ch.sanyuan) · \(ch.jieqi)".scriptConverted)
                 .font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
             infoRow("公历", dateText)
             infoRow("农历", ch.lunarText)
             infoRow("四柱", ch.pillars.joined(separator: " "))
             infoRow("值符 / 值使", "\(ch.zhiFuStar)星 / \(ch.zhiShiDoor)门")
             infoRow("旬首 / 空亡 / 马星", "\(ch.xunShou)旬 · 空 \(ch.kongWang) · 马 \(ch.maXing)")
-            Text(ch.receiptText()).font(.caption).foregroundStyle(Ky.sub)
+            Text(ch.receiptText().scriptConverted).font(.caption).foregroundStyle(Ky.sub)
         }.kyCard()
     }
     private func infoRow(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).font(.caption).foregroundStyle(Ky.sub).frame(width: 92, alignment: .leading)
-            Text(value).font(.callout).foregroundStyle(Ky.ink)
+            Text(label.scriptConverted).font(.caption).foregroundStyle(Ky.sub).frame(width: 92, alignment: .leading)
+            Text(value.scriptConverted).font(.callout).foregroundStyle(Ky.ink)
             Spacer()
         }
     }
 
     private func boardCard(_ ch: QimenEngine.Chart) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("九宫盘面（后天八卦方位）").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-            Text("大字为天盘干，小字为地盘干；金框为值符星宫，红框为值使门宫。")
+            Text("九宫盘面（后天八卦方位）".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            Text("大字为天盘干，小字为地盘干；金框为值符星宫，红框为值使门宫。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
             let rows = [[4, 9, 2], [3, 5, 7], [8, 1, 6]]
             ForEach(rows.indices, id: \.self) { r in
@@ -1274,27 +1274,27 @@ struct QimenHomeView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     let name = QimenEngine.palaceName[p] ?? ""
                     let dir = QimenEngine.palaceDir[p] ?? ""
-                    Text("\(name)宫 · \(dir) · \(p) 宫")
+                    Text("\(name)宫 · \(dir) · \(p) 宫".scriptConverted)
                         .font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
                     infoRow("天盘 / 地盘", "\(pc.tianStem ?? "—") / \(pc.diStem)")
                     if let hosted = pc.hostedTianStem {
-                        Text("中宫原干 \(hosted) 随芮落此宫").font(.caption).foregroundStyle(Ky.sub)
+                        Text("中宫原干 \(hosted) 随芮落此宫".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                     }
                     if let star = pc.star {
                         infoRow("星", "\(star)星")
                         if let note = glossaryNote(QimenGlossary.stars, key: "天\(star)") {
-                            Text(note).font(.callout).foregroundStyle(Ky.sub)
+                            Text(note.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                         }
                     } else {
                         infoRow("星", "—")
                     }
                     if pc.hostedStar == "禽" {
-                        Text("天禽随芮落此宫").font(.caption).foregroundStyle(Ky.sub)
+                        Text("天禽随芮落此宫".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                     }
                     if let door = pc.door {
                         infoRow("门", "\(door)门")
                         if let note = glossaryNote(QimenGlossary.doors, key: "\(door)门") {
-                            Text(note).font(.callout).foregroundStyle(Ky.sub)
+                            Text(note.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                         }
                     } else {
                         infoRow("门", "—")
@@ -1302,7 +1302,7 @@ struct QimenHomeView: View {
                     if let god = pc.god {
                         infoRow("神", god)
                         if let note = glossaryNote(QimenGlossary.gods, key: god) {
-                            Text(note).font(.callout).foregroundStyle(Ky.sub)
+                            Text(note.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                         }
                     } else {
                         infoRow("神", "—")
@@ -1311,7 +1311,7 @@ struct QimenHomeView: View {
                     if let ky = pc.keYingName {
                         infoRow("克应", ky)
                         if let note = pc.keYingNote {
-                            Text(note).font(.callout).foregroundStyle(Ky.sub)
+                            Text(note.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                         }
                     } else {
                         infoRow("克应", "无")
@@ -1326,19 +1326,19 @@ struct QimenHomeView: View {
                     if pc.patterns.isEmpty {
                         infoRow("格局", "无")
                     } else {
-                        Text("格局").font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                        Text("格局".scriptConverted).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
                         ForEach(pc.patterns) { pat in
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(pat.name).font(.callout).fontWeight(.semibold)
+                                Text(pat.name.scriptConverted).font(.callout).fontWeight(.semibold)
                                     .foregroundStyle(pat.good ? Ky.jade : Ky.cinnabar)
-                                Text(glossaryNote(QimenGlossary.patterns, key: pat.name) ?? pat.note)
+                                Text((glossaryNote(QimenGlossary.patterns, key: pat.name) ?? pat.note).scriptConverted)
                                     .font(.callout).foregroundStyle(Ky.sub)
                             }
                         }
                     }
                 }
             } else {
-                Text("未选中宫位").font(.callout).foregroundStyle(Ky.sub)
+                Text("未选中宫位".scriptConverted).font(.callout).foregroundStyle(Ky.sub)
             }
         }
     }
@@ -1353,17 +1353,17 @@ struct QimenHomeView: View {
         return AnyView(
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 4) {
-                    Text("\(name)\(p)").font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.sub)
-                    if isFu { Text("值符").font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.gold) }
-                    if isShi { Text("值使").font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.cinnabar) }
+                    Text("\(name)\(p)".scriptConverted).font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.sub)
+                    if isFu { Text("值符".scriptConverted).font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.gold) }
+                    if isShi { Text("值使".scriptConverted).font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.cinnabar) }
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(pc.tianStem ?? "—").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     Text(pc.diStem).font(.caption).foregroundStyle(Ky.sub)
                 }
                 Text(pc.star.map { "\($0)星" } ?? "—").font(.callout).foregroundStyle(Ky.ink)
-                Text(pc.door.map { "\($0)门" } ?? "—").font(.callout).foregroundStyle(Ky.ink)
-                Text(pc.god.map { "\($0)神" } ?? "—").font(.caption).foregroundStyle(Ky.sub)
+                Text((pc.door.map { "\($0)门" } ?? "—").scriptConverted).font(.callout).foregroundStyle(Ky.ink)
+                Text((pc.god.map { "\($0)神" } ?? "—").scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                 HStack(spacing: 4) {
                     if pc.siHaiKong { Text("空").font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.cinnabar) }
                     if pc.siHaiJiXing { Text("刑").font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.cinnabar) }
@@ -1378,7 +1378,7 @@ struct QimenHomeView: View {
                     Text("暗\(ag)").font(.system(size: 10)).foregroundStyle(Ky.sub)
                 }
                 ForEach(pc.patterns) { pat in
-                    Text(pat.name).font(.system(size: 10)).fontWeight(.semibold)
+                    Text(pat.name.scriptConverted).font(.system(size: 10)).fontWeight(.semibold)
                         .foregroundStyle(pat.good ? Ky.jade : Ky.cinnabar)
                 }
             }
@@ -1394,38 +1394,38 @@ struct QimenHomeView: View {
     // MARK: - G3 后段层卡片
     private func layersCard(_ ch: QimenEngine.Chart) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("四害与克应").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            Text("四害与克应".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
             if ch.shiGanRumu {
-                Text("时干入墓：本局时柱入墓，问事多阻滞，宜缓。").font(.callout).foregroundStyle(Ky.cinnabar)
+                Text("时干入墓：本局时柱入墓，问事多阻滞，宜缓。".scriptConverted).font(.callout).foregroundStyle(Ky.cinnabar)
             }
             ForEach(1...9, id: \.self) { p in
                 if let pc = ch.palaces[p] {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
-                            Text("\(QimenEngine.palaceName[p] ?? "")宫").font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 34, alignment: .leading)
+                            Text("\(QimenEngine.palaceName[p] ?? "")宫".scriptConverted).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 34, alignment: .leading)
                             if pc.siHaiKong { Text("空").font(.system(size: 10)).fontWeight(.semibold).foregroundStyle(Ky.cinnabar) }
-                            if pc.siHaiJiXing { Text("击刑").font(.system(size: 10)).fontWeight(.semibold).foregroundStyle(Ky.cinnabar) }
-                            if pc.siHaiRuMu { Text("入墓").font(.system(size: 10)).fontWeight(.semibold).foregroundStyle(Ky.cinnabar) }
-                            if pc.siHaiMenPo { Text("门迫").font(.system(size: 10)).fontWeight(.semibold).foregroundStyle(Ky.cinnabar) }
+                            if pc.siHaiJiXing { Text("击刑".scriptConverted).font(.system(size: 10)).fontWeight(.semibold).foregroundStyle(Ky.cinnabar) }
+                            if pc.siHaiRuMu { Text("入墓".scriptConverted).font(.system(size: 10)).fontWeight(.semibold).foregroundStyle(Ky.cinnabar) }
+                            if pc.siHaiMenPo { Text("门迫".scriptConverted).font(.system(size: 10)).fontWeight(.semibold).foregroundStyle(Ky.cinnabar) }
                             if let ky = pc.keYingName {
                                 Text(ky).font(.callout).foregroundStyle(Ky.ink)
                             }
                             Spacer()
                         }
                         if let note = pc.keYingNote {
-                            Text(note).font(.caption).foregroundStyle(Ky.sub)
+                            Text(note.scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                         }
                     }
                 }
             }
-            Text("四害：空（旬空）、击刑（六仪击刑，天盘干口径）、入墓（三奇入墓）、门迫（门克宫）。克应：十干克应（天盘干加地盘干，hkfff.cn 全表）。")
+            Text("四害：空（旬空）、击刑（六仪击刑，天盘干口径）、入墓（三奇入墓）、门迫（门克宫）。克应：十干克应（天盘干加地盘干，hkfff.cn 全表）。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }.kyCard()
     }
 
     private func changshengCard(_ ch: QimenEngine.Chart) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("十二长生（阳顺阴逆）").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            Text("十二长生（阳顺阴逆）".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
             if let ri = ch.riGan {
                 changshengRow(label: "日干 \(ri)", table: ch.changshengTable(stem: ri))
             }
@@ -1433,21 +1433,21 @@ struct QimenHomeView: View {
                 let shi = String(ch.pillars[3].prefix(1))
                 changshengRow(label: "时干 \(shi)", table: ch.changshengTable(stem: shi))
             }
-            Text("每宫天盘干长生见九宫格小字：四正宫一值，四维宫两值，中宫无本位地支。出处：《五行大义·论生死》，《渊海子平》《三命通会》通行表。")
+            Text("每宫天盘干长生见九宫格小字：四正宫一值，四维宫两值，中宫无本位地支。出处：《五行大义·论生死》，《渊海子平》《三命通会》通行表。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }.kyCard()
     }
     private func changshengRow(label: String, table: [(branch: String, palace: Int, stage: String)]) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
-            Text(table.map { "\($0.branch)\($0.stage)" }.joined(separator: " ")).font(.caption).foregroundStyle(Ky.sub)
+            Text(label.scriptConverted).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text((table.map { "\($0.branch)\($0.stage)" }.joined(separator: " ")).scriptConverted).font(.caption).foregroundStyle(Ky.sub)
         }
     }
 
     private func rijiaCard(_ rj: QimenEngine.RijiaChart) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("日家奇门 · \(rj.yang ? "阳遁" : "阴遁") \(rj.ju) 局 · \(rj.jieqi)").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-            Text(rj.receiptText()).font(.caption).foregroundStyle(Ky.sub)
+            Text("日家奇门 · \(rj.yang ? "阳遁" : "阴遁") \(rj.ju) 局 · \(rj.jieqi)".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            Text(rj.receiptText().scriptConverted).font(.caption).foregroundStyle(Ky.sub)
             let rows = [[4, 9, 2], [3, 5, 7], [8, 1, 6]]
             ForEach(rows.indices, id: \.self) { r in
                 HStack(spacing: 8) {
@@ -1463,10 +1463,10 @@ struct QimenHomeView: View {
         let name = QimenEngine.palaceName[p] ?? ""
         return AnyView(
             VStack(alignment: .leading, spacing: 3) {
-                Text("\(name)\(p)").font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.sub)
+                Text("\(name)\(p)".scriptConverted).font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.sub)
                 Text(pc.diStem).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                 Text("\(pc.star)星").font(.callout).foregroundStyle(Ky.ink)
-                Text(pc.door.map { "\($0)门" } ?? "—").font(.callout).foregroundStyle(Ky.ink)
+                Text((pc.door.map { "\($0)门" } ?? "—").scriptConverted).font(.callout).foregroundStyle(Ky.ink)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8)
@@ -1478,19 +1478,19 @@ struct QimenHomeView: View {
 
     private func patternCard(_ ch: QimenEngine.Chart) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("格局（本局命中）").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            Text("格局（本局命中）".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
             if ch.hitPatterns.isEmpty {
-                Text("本局无 v1 格局命中——无格局也是一种信息：盘面平顺，无特殊吉凶标记。")
+                Text("本局无 v1 格局命中——无格局也是一种信息：盘面平顺，无特殊吉凶标记。".scriptConverted)
                     .font(.callout).foregroundStyle(Ky.sub)
             } else {
                 ForEach(ch.hitPatterns.indices, id: \.self) { i in
                     let (p, pat) = ch.hitPatterns[i]
                     HStack(alignment: .top, spacing: 8) {
-                        Text("\(QimenEngine.palaceName[p] ?? "")宫").font(.caption).fontWeight(.semibold)
+                        Text("\(QimenEngine.palaceName[p] ?? "")宫".scriptConverted).font(.caption).fontWeight(.semibold)
                             .foregroundStyle(pat.good ? Ky.jade : Ky.cinnabar).frame(width: 34, alignment: .leading)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(pat.name).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
-                            Text(pat.note).font(.caption).foregroundStyle(Ky.sub)
+                            Text(pat.name.scriptConverted).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                            Text(pat.note.scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                         }
                     }
                 }
@@ -1500,54 +1500,54 @@ struct QimenHomeView: View {
 
     private func yongShenCard() -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("用神速查（通参）").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            Text("用神速查（通参）".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
             ForEach(QimenGlossary.yongShen.indices, id: \.self) { i in
                 HStack {
-                    Text(QimenGlossary.yongShen[i].0).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 44, alignment: .leading)
-                    Text(QimenGlossary.yongShen[i].1).font(.callout).foregroundStyle(Ky.sub)
+                    Text(QimenGlossary.yongShen[i].0.scriptConverted).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 44, alignment: .leading)
+                    Text(QimenGlossary.yongShen[i].1.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                     Spacer()
                 }
             }
-            Text("用神只给看盘的入口，具体断语须结合落宫旺衰、格局与问事背景综合看，不可单凭一行取用。")
+            Text("用神只给看盘的入口，具体断语须结合落宫旺衰、格局与问事背景综合看，不可单凭一行取用。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }.kyCard()
     }
 
     private func glossaryCard() -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("释义库").font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
-            DisclosureGroup("八门") {
+            Text("释义库".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            DisclosureGroup("八门".scriptConverted) {
                 ForEach(QimenGlossary.doors.indices, id: \.self) { i in
                     HStack(alignment: .top) {
-                        Text(QimenGlossary.doors[i].0).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 52, alignment: .leading)
-                        Text(QimenGlossary.doors[i].1).font(.callout).foregroundStyle(Ky.sub)
+                        Text(QimenGlossary.doors[i].0.scriptConverted).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 52, alignment: .leading)
+                        Text(QimenGlossary.doors[i].1.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                         Spacer()
                     }.padding(.vertical, 2)
                 }
             }
-            DisclosureGroup("九星") {
+            DisclosureGroup("九星".scriptConverted) {
                 ForEach(QimenGlossary.stars.indices, id: \.self) { i in
                     HStack(alignment: .top) {
-                        Text(QimenGlossary.stars[i].0).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 52, alignment: .leading)
-                        Text(QimenGlossary.stars[i].1).font(.callout).foregroundStyle(Ky.sub)
+                        Text(QimenGlossary.stars[i].0.scriptConverted).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 52, alignment: .leading)
+                        Text(QimenGlossary.stars[i].1.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                         Spacer()
                     }.padding(.vertical, 2)
                 }
             }
-            DisclosureGroup("八神") {
+            DisclosureGroup("八神".scriptConverted) {
                 ForEach(QimenGlossary.gods.indices, id: \.self) { i in
                     HStack(alignment: .top) {
-                        Text(QimenGlossary.gods[i].0).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 52, alignment: .leading)
-                        Text(QimenGlossary.gods[i].1).font(.callout).foregroundStyle(Ky.sub)
+                        Text(QimenGlossary.gods[i].0.scriptConverted).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 52, alignment: .leading)
+                        Text(QimenGlossary.gods[i].1.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                         Spacer()
                     }.padding(.vertical, 2)
                 }
             }
-            DisclosureGroup("格局 v1") {
+            DisclosureGroup("格局 v1".scriptConverted) {
                 ForEach(QimenGlossary.patterns.indices, id: \.self) { i in
                     HStack(alignment: .top) {
-                        Text(QimenGlossary.patterns[i].0).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 72, alignment: .leading)
-                        Text(QimenGlossary.patterns[i].1).font(.callout).foregroundStyle(Ky.sub)
+                        Text(QimenGlossary.patterns[i].0.scriptConverted).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink).frame(width: 72, alignment: .leading)
+                        Text(QimenGlossary.patterns[i].1.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
                         Spacer()
                     }.padding(.vertical, 2)
                 }

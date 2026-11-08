@@ -115,14 +115,14 @@ struct AskView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("AI 问答 · 只引引擎事实")
+                Text("AI 问答 · 只引引擎事实".scriptConverted)
                     .font(.title2)
                     .fontWeight(.bold)
-                Text("回答只引用本机引擎现算的事实（八字／紫微／合参／奇门／梅花／称骨／五运六气／堪舆流年紫白／星命），事实包里没有的明说“盘上无据”，不编造、不落病名、不做寿数断语。")
+                Text("回答只引用本机引擎现算的事实（八字／紫微／合参／奇门／梅花／称骨／五运六气／堪舆流年紫白／星命），事实包里没有的明说“盘上无据”，不编造、不落病名、不做寿数断语。".scriptConverted)
                     .font(.callout)
                     .foregroundStyle(Ky.sub)
-                Picker("命主", selection: $selectedPerson) {
-                    Text("不选命主（通用问题）").tag(nil as Person?)
+                Picker("命主".scriptConverted, selection: $selectedPerson) {
+                    Text("不选命主（通用问题）".scriptConverted).tag(nil as Person?)
                     ForEach(peopleStore.people) { p in
                         Text(p.name).tag(p as Person?)
                     }
@@ -141,7 +141,7 @@ struct AskView: View {
                     KyLoadingState(title: "本机引擎现算事实，再请模型组织回答…")
                 }
                 if errorText.isEmpty == false {
-                    Text(errorText)
+                    Text(errorText.scriptConverted)
                         .font(.callout)
                         .foregroundStyle(.red)
                         .padding(10)
@@ -154,10 +154,10 @@ struct AskView: View {
                 if history.isEmpty == false {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("本机问答记录（只存本机）")
+                            Text("本机问答记录（只存本机）".scriptConverted)
                                 .font(.headline)
                             Spacer()
-                            Button("清空") {
+                            Button("清空".scriptConverted) {
                                 history = []
                                 AskView.saveHistory([])
                             }
@@ -165,7 +165,7 @@ struct AskView: View {
                         }
                         ForEach(history.prefix(10)) { item in
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("问：" + item.question)
+                                Text("问：".scriptConverted + item.question)
                                     .font(.callout)
                                     .fontWeight(.semibold)
                                 Text(item.answer)
@@ -178,13 +178,13 @@ struct AskView: View {
                         }
                     }
                 }
-                Text("依据与金标准：系统提示词硬约束＋逐句后校验（未通过则降级返回事实包原文）；模型不可用时同样降级。问题原文不写入服务端。奇门值使／天盘星／天德口径待裁决，现行引擎按旧口径输出，问答中如实标注。金标准见 Web test_ask.py。")
+                Text("依据与金标准：系统提示词硬约束＋逐句后校验（未通过则降级返回事实包原文）；模型不可用时同样降级。问题原文不写入服务端。奇门值使／天盘星／天德口径待裁决，现行引擎按旧口径输出，问答中如实标注。金标准见 Web test_ask.py。".scriptConverted)
                     .font(.caption)
                     .foregroundStyle(Ky.sub)
             }
             .padding()
         }
-        .navigationTitle("AI 问答")
+        .navigationTitle("AI 问答".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -229,14 +229,14 @@ struct AskResultCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if result.refused {
-                Text("本系统不作答：健康问题不落病名，寿数断语不在五典论命范围之内。")
+                Text("本系统不作答：健康问题不落病名，寿数断语不在五典论命范围之内。".scriptConverted)
                     .font(.callout)
                     .foregroundStyle(.red)
                     .padding(10)
                     .background(Color.red.opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             } else if result.degraded {
-                Text("模型暂不可用或回答未通过依据校验，以下是本机引擎现算的事实原文，仅供参考。")
+                Text("模型暂不可用或回答未通过依据校验，以下是本机引擎现算的事实原文，仅供参考。".scriptConverted)
                     .font(.callout)
                     .foregroundStyle(.orange)
                     .padding(10)
@@ -254,23 +254,23 @@ struct AskResultCard: View {
                     .font(.body)
             }
             if let model = result.model {
-                Text("模型：" + model + "（FreeLLMAPI 免费池）")
+                Text(("模型：" + model + "（FreeLLMAPI 免费池）").scriptConverted)
                     .font(.caption)
                     .foregroundStyle(Ky.sub)
             }
             ForEach(result.caveats, id: \.self) { c in
-                Text("口径提示：" + c)
+                Text(("口径提示：" + c).scriptConverted)
                     .font(.caption)
                     .foregroundStyle(Ky.sub)
             }
             if result.facts.isEmpty == false {
-                DisclosureGroup("依据链（\(result.facts.count) 条事实）") {
+                DisclosureGroup("依据链（\(result.facts.count) 条事实）".scriptConverted) {
                     ForEach(result.facts) { f in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(f.engine + " · " + f.field)
+                            Text((f.engine + " · " + f.field).scriptConverted)
                                 .font(.caption)
                                 .fontWeight(.semibold)
-                            Text(f.text)
+                            Text(f.text.scriptConverted)
                                 .font(.callout)
                                 .foregroundStyle(Ky.sub)
                         }

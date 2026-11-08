@@ -15,23 +15,23 @@ struct PalmHomeView: View {
                 if let q = quickPerson {
                     HStack(spacing: 6) {
                         Image(systemName: "person.fill").foregroundStyle(Ky.qingdai)
-                        Text("当前命主：\(q.name.isEmpty ? "未命名" : q.name)（测量记录按此人归档）").font(.caption).foregroundStyle(Ky.ink)
+                        Text("当前命主：".scriptConverted + (q.name.isEmpty ? "未命名" : q.name) + "（测量记录按此人归档）".scriptConverted).font(.caption).foregroundStyle(Ky.ink)
                     }
                 }
             }
             NavigationLink { HandMeasureView(personName: quickPerson?.name ?? "") } label: {
-                Label("手相 · 测量与描线", systemImage: "hand.raised")
+                Label("手相 · 测量与描线".scriptConverted, systemImage: "hand.raised")
             }
             NavigationLink { FaceMeasureView(personName: quickPerson?.name ?? "") } label: {
-                Label("面相 · 三停校准", systemImage: "face.smiling")
+                Label("面相 · 三停校准".scriptConverted, systemImage: "face.smiling")
             }
             NavigationLink { PalmRecordListView() } label: {
-                Label("测量记录（按人存档）", systemImage: "archivebox")
+                Label("测量记录（按人存档）".scriptConverted, systemImage: "archivebox")
             }
-            Text("用法：手相用掌心正对、光线均匀的照片；面相用正面自然光、无美颜的照片。测量是几何事实，判读为娱乐参考。")
+            Text("用法：手相用掌心正对、光线均匀的照片；面相用正面自然光、无美颜的照片。测量是几何事实，判读为娱乐参考。".scriptConverted)
                 .font(.caption).foregroundStyle(Ky.sub)
         }
-        .navigationTitle("手相面相")
+        .navigationTitle("手相面相".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -114,11 +114,11 @@ struct HandMeasureView: View {
                     }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                     lineChips
                     if selectedLine >= 0 {
-                        Text(lineCards[selectedLine]).font(.caption).foregroundStyle(Ky.ink)
+                        Text(lineCards[selectedLine].scriptConverted).font(.caption).foregroundStyle(Ky.ink)
                             .padding(12).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
-                if !note.isEmpty { Text(note).font(.caption).foregroundStyle(Ky.cinnabar) }
+                if !note.isEmpty { Text(note.scriptConverted).font(.caption).foregroundStyle(Ky.cinnabar) }
                 if let m = measure { measureCard(m) }
                 if box.image != nil && measure != nil {
                     VStack(alignment: .leading, spacing: 8) {
@@ -137,12 +137,12 @@ struct HandMeasureView: View {
                     }
                     .kyCard()
                 }
-                Text("测量口径：视觉识别 21 点关节点几何（学术同款管线在本工作室已实测）；三线为手描修正层——把每个圆点拖到你真实掌纹上，描准了判读才有意义。娱乐参考。")
+                Text("测量口径：视觉识别 21 点关节点几何（学术同款管线在本工作室已实测）；三线为手描修正层——把每个圆点拖到你真实掌纹上，描准了判读才有意义。娱乐参考。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("手相 · 测量与描线")
+        .navigationTitle("手相 · 测量与描线".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: item) { _, new in Task { @MainActor in await box.load(new); detect() } }
     }
@@ -150,7 +150,7 @@ struct HandMeasureView: View {
     private var lineChips: some View {
         HStack(spacing: 8) {
             KyFilterBar(options: [(title: "感情线", count: nil), (title: "智慧线", count: nil), (title: "生命线", count: nil)], selectedIndex: $selectedLine)
-            Text("拖动圆点修正").font(.caption2).foregroundStyle(Ky.sub)
+            Text("拖动圆点修正".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
         }
     }
 
@@ -212,12 +212,12 @@ struct HandMeasureView: View {
 
     private func measureCard(_ m: HandMeasure) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("测量结果").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text("测量结果".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
             Text("掌型：\(m.palmType)（掌宽/掌长 \(String(format: "%.2f", m.palmWidth / m.palmLen))）")
                 .font(.callout).foregroundStyle(Ky.ink)
-            Text("中指/掌长 \(String(format: "%.2f", m.middleLen / m.palmLen)) · 食指/无名指 \(String(format: "%.2f", m.ratio24))（\(m.ratio24 >= 1 ? "食指不短于无名指" : "无名指长于食指")）")
+            Text("中指/掌长 \(String(format: "%.2f", m.middleLen / m.palmLen)) · 食指/无名指 \(String(format: "%.2f", m.ratio24))（\(m.ratio24 >= 1 ? "食指不短于无名指".scriptConverted : "无名指长于食指".scriptConverted)）")
                 .font(.callout).foregroundStyle(Ky.ink)
-            Text("判读要点（按相书通说，娱乐参考）：掌型定大框架——方掌重实际与秩序，长掌重感受与想象；指长比看行事风格的细腻度。细读须结合修正后的三线。")
+            Text("判读要点（按相书通说，娱乐参考）：掌型定大框架——方掌重实际与秩序，长掌重感受与想象；指长比看行事风格的细腻度。细读须结合修正后的三线。".scriptConverted)
                 .font(.caption).foregroundStyle(Ky.sub)
         }
         .kyCard()
@@ -290,7 +290,7 @@ struct FaceMeasureView: View {
                                 let y = rect.minY + marks[i] * rect.height
                                 Rectangle().fill(i == 0 || i == 3 ? Ky.cinnabar : Ky.gold)
                                     .frame(width: rect.width, height: 1.6).position(x: rect.midX, y: y)
-                                Text(labels[i]).font(.caption2).foregroundStyle(Ky.ink)
+                                Text(labels[i].scriptConverted).font(.caption2).foregroundStyle(Ky.ink)
                                     .padding(.horizontal, 6).padding(.vertical, 2)
                                     .background(Ky.card.opacity(0.85)).clipShape(Capsule())
                                     .position(x: rect.minX + 30, y: y - 9)
@@ -318,12 +318,12 @@ struct FaceMeasureView: View {
                     }
                     .kyCard()
                 }
-                Text("校准口径：发际线以实际发际为准手动拖准（儿童发际未定型更要人工校正）；三停比例为几何事实，判读按相书通说、娱乐参考，不套成人断语于儿童。")
+                Text("校准口径：发际线以实际发际为准手动拖准（儿童发际未定型更要人工校正）；三停比例为几何事实，判读按相书通说、娱乐参考，不套成人断语于儿童。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("面相 · 三停校准")
+        .navigationTitle("面相 · 三停校准".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: item) { _, new in Task { @MainActor in await box.load(new) } }
     }
@@ -333,12 +333,12 @@ struct FaceMeasureView: View {
         let total = up + mid + low
         let p = [up, mid, low].map { total > 0 ? $0 / total * 100 : 0 }
         return VStack(alignment: .leading, spacing: 6) {
-            Text("三停比例").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text("三停比例".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
             Text(String(format: "上停 %.0f%% · 中停 %.0f%% · 下停 %.0f%%", p[0], p[1], p[2]))
                 .font(KyV2.tabular(15)).foregroundStyle(Ky.ink)
             Text(abs(p[0] - 33) <= 5 && abs(p[1] - 33) <= 5 && abs(p[2] - 33) <= 5
-                 ? "三停接近均等：面部比例匀称（相书谓三停平等、五岳丰盈者福相）。"
-                 : "三停不均：以最长一停为主象细读——上停主早年与额相，中停主中年与鼻相，下停主晚年与地阁；须结合五官逐项看，不单凭比例下断。")
+                 ? "三停接近均等：面部比例匀称（相书谓三停平等、五岳丰盈者福相）。".scriptConverted
+                 : "三停不均：以最长一停为主象细读——上停主早年与额相，中停主中年与鼻相，下停主晚年与地阁；须结合五官逐项看，不单凭比例下断。".scriptConverted)
                 .font(.caption).foregroundStyle(Ky.sub)
         }
         .kyCard()
@@ -380,6 +380,7 @@ final class PalmRecordStore: ObservableObject {
         do {
             let data = try JSONEncoder().encode(records)
             try data.write(to: indexURL, options: .atomic)
+            DataProtection.applyComplete(to: indexURL)
             StoreSchema.writeMeta(for: indexURL, count: records.count)
         } catch {
             AppErrorCenter.shared.report("手相测量记录保存失败，刚才的改动可能没存入：请重试，仍失败请先导出备份再联系助手。")
@@ -426,16 +427,16 @@ struct PalmRecordListView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\(r.personName.isEmpty ? "未命名" : r.personName) · \(r.kind)")
                                 .font(.subheadline).fontWeight(.medium).foregroundStyle(Ky.ink)
-                            Text(r.summary).font(.caption).foregroundStyle(Ky.sub).lineLimit(1)
+                            Text(r.summary.scriptConverted).font(.caption).foregroundStyle(Ky.sub).lineLimit(1)
                         }
                     }
                 }
                 .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) { store.remove(r) } label: { Label("删除", systemImage: "trash") }
+                    Button(role: .destructive) { store.remove(r) } label: { Label("删除".scriptConverted, systemImage: "trash") }
                 }
             }
         }
-        .navigationTitle("测量记录")
+        .navigationTitle("测量记录".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -480,7 +481,7 @@ struct PalmRecordDetailView: View {
                         }
                     }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                Text(record.summary).font(.callout).foregroundStyle(Ky.ink)
+                Text(record.summary.scriptConverted).font(.callout).foregroundStyle(Ky.ink)
                 NavigationLink { PalmPosterSheetView(record: record, store: store) } label: {
                     HStack(spacing: 6) {
                         KySettingsRow(icon: "photo.artframe", title: "生成鉴定海报", subtitle: "三线测量图 · 掌型指比／三停比例 · 相法综合断语", tint: Ky.gold)
@@ -491,7 +492,7 @@ struct PalmRecordDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
                 }.buttonStyle(.plain)
-                Text("记录时间：\(Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .shortened)) · 描线为当时人工修正的点位，已冻结存档。")
+                Text("记录时间：\(Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .shortened)) · 描线为当时人工修正的点位，已冻结存档。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
@@ -526,7 +527,7 @@ struct PalmPosterView: View {
             LinearGradient(colors: [cardBg, paper], startPoint: .top, endPoint: .bottom)
             RoundedRectangle(cornerRadius: 4).stroke(cin.opacity(0.55), lineWidth: 1.1).padding(18)
             VStack(spacing: 0) {
-                Text("手 相 面 相 鉴 定")
+                Text("手 相 面 相 鉴 定".scriptConverted)
                     .font(.system(size: 12, weight: .medium))
                     .tracking(4)
                     .foregroundStyle(cin)
@@ -567,29 +568,29 @@ struct PalmPosterView: View {
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(cin.opacity(0.35), lineWidth: 0.8))
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("测量数据")
+                    Text("测量数据".scriptConverted)
                         .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(cin)
-                    Text(record.summary)
+                    Text(record.summary.scriptConverted)
                         .font(.system(size: 12.5)).foregroundStyle(ink)
                         .lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(width: 444, alignment: .leading)
                 .padding(.top, 18)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(record.kind == "手相" ? "三线断语" : "三停断语")
+                    Text(record.kind == "手相" ? "三线断语".scriptConverted : "三停断语".scriptConverted)
                         .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(cin)
                     if record.kind == "手相" {
                         ForEach(lineCards, id: \.self) { t in
-                            Text(t)
+                            Text(t.scriptConverted)
                                 .font(.system(size: 11.5)).foregroundStyle(ink)
                                 .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                         }
                     } else {
-                        Text("三停比例为几何事实：上停看早年根基，中停看中年事业，下停看晚年归宿；判读按相书通说、娱乐参考，不套成人断语于儿童。")
+                        Text("三停比例为几何事实：上停看早年根基，中停看中年事业，下停看晚年归宿；判读按相书通说、娱乐参考，不套成人断语于儿童。".scriptConverted)
                             .font(.system(size: 11.5)).foregroundStyle(ink)
                             .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                     }
-                    Text("气色与相法古籍综合断语：相法以形定神、以神定气，掌纹观走势、面相观气色，皆为传统相法参考，不作定论、不落病名灾祸。")
+                    Text("气色与相法古籍综合断语：相法以形定神、以神定气，掌纹观走势、面相观气色，皆为传统相法参考，不作定论、不落病名灾祸。".scriptConverted)
                         .font(.system(size: 11.5)).foregroundStyle(sub)
                         .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 }
@@ -597,7 +598,7 @@ struct PalmPosterView: View {
                 .padding(.top, 16)
                 Spacer()
                 HStack(alignment: .bottom) {
-                    Text("三术合参")
+                    Text("三术合参".scriptConverted)
                         .font(.system(size: 14, weight: .bold, design: .serif))
                         .foregroundStyle(.white)
                         .frame(width: 42, height: 42)
@@ -605,7 +606,7 @@ struct PalmPosterView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                     Spacer()
                     VStack(alignment: .trailing, spacing: 3) {
-                        Text("传统相法参考 · 不作定论")
+                        Text("传统相法参考 · 不作定论".scriptConverted)
                             .font(.system(size: 11, design: .serif)).foregroundStyle(cin)
                         Text(dateText)
                             .font(.system(size: 10)).foregroundStyle(sub.opacity(0.8))
@@ -638,18 +639,18 @@ struct PalmPosterSheetView: View {
                 }
                 if let u = fileURL {
                     ShareLink(item: u) {
-                        Label("保存 / 分享鉴定海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
+                        Label("保存 / 分享鉴定海报（1080宽 · 自适应长图）".scriptConverted, systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
                     .buttonStyle(KyPrimaryButton())
-                    Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
+                    Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 }
             }
             .padding(20)
         }
         .background(Ky.bg)
-        .navigationTitle("手相面相鉴定海报").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("手相面相鉴定海报".scriptConverted).navigationBarTitleDisplayMode(.inline)
         .task { render() }
     }
     private func render() {

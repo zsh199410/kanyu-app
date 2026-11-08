@@ -352,7 +352,7 @@ struct CompassStandaloneView: View {
         }
         .background(Ky.instBg)
         .preferredColorScheme(.dark)
-        .navigationTitle("罗盘实测")
+        .navigationTitle("罗盘实测".scriptConverted)
         .onAppear {
             location.start()
             motion.start()
@@ -375,12 +375,12 @@ struct CompassStandaloneView: View {
                     .offset(x: bubbleOffset.0, y: bubbleOffset.1)
             }
             VStack(alignment: .leading, spacing: 3) {
-                Text("水平仪：倾斜 \(String(format: "%.1f°", motion.flatTilt))")
+                Text("水平仪：倾斜 \(String(format: "%.1f°", motion.flatTilt))".scriptConverted)
                     .font(.callout).fontWeight(.medium)
-                Text(motion.isLevelForCompass ? "已放平，可以锁定" : "把手机平放，气泡稳进绿圈")
+                Text(motion.isLevelForCompass ? "已放平，可以锁定".scriptConverted : "把手机平放，气泡稳进绿圈".scriptConverted)
                     .font(.caption)
                     .foregroundStyle(motion.isLevelForCompass ? .green : .orange)
-                Text("倾斜时罗盘会漂，锁定只采放平时的读数并取平均。")
+                Text("倾斜时罗盘会漂，锁定只采放平时的读数并取平均。".scriptConverted)
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -389,26 +389,26 @@ struct CompassStandaloneView: View {
     private var readoutCard: some View {
         VStack(spacing: 4) {
             let d = displayHeading
-            Text(northMode == 0 ? "真北 \(CompassMath.format(d))" : "磁北 \(CompassMath.format(d))")
+            Text(northMode == 0 ? "真北 \(CompassMath.format(d))".scriptConverted : "磁北 \(CompassMath.format(d))".scriptConverted)
                 .font(.system(size: 34, weight: .bold, design: .rounded))
-            Text(d >= 0 ? "\(CompassMath.mountain(for: d))山 · \(CompassMath.palace(for: d))宫" : "等待罗盘…")
+            Text((d >= 0 ? "\(CompassMath.mountain(for: d))山 · \(CompassMath.palace(for: d))宫" : "等待罗盘…").scriptConverted)
                 .font(.headline).foregroundStyle(.secondary)
-            Text("磁北 \(CompassMath.format(location.displayMagneticHeading)) · \(declinationText)")
+            Text("磁北 \(CompassMath.format(location.displayMagneticHeading)) · \(declinationText)".scriptConverted)
                 .font(.caption).foregroundStyle(.secondary)
             if northMode == 0 && location.trueHeading < 0 && location.magneticHeading >= 0 {
-                Text("系统真北未就绪：当前真北为磁北＋磁偏角推算值")
+                Text("系统真北未就绪：当前真北为磁北＋磁偏角推算值".scriptConverted)
                     .font(.caption).foregroundStyle(.orange)
             }
             if northMode == 1 {
-                Text("磁北模式仅供互校：入盘一律用真北坐山度数")
+                Text("磁北模式仅供互校：入盘一律用真北坐山度数".scriptConverted)
                     .font(.caption).foregroundStyle(.orange)
             }
             Text("定位：\(location.coordinateText)").font(.caption).foregroundStyle(.secondary)
             if let warn = location.accuracyWarning {
-                Text(warn).font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
+                Text(warn.scriptConverted).font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
             }
             if motion.fieldMicroTesla >= 0 {
-                Text("磁场强度 \(String(format: "%.0f", motion.fieldMicroTesla)) 微特（地磁场正常 25–65）\(motion.fieldAbnormal ? "：异常，附近有磁干扰" : "")")
+                Text("磁场强度 \(String(format: "%.0f", motion.fieldMicroTesla)) 微特（地磁场正常 25–65）\(motion.fieldAbnormal ? "：异常，附近有磁干扰" : "")".scriptConverted)
                     .font(.caption)
                     .foregroundStyle(motion.fieldAbnormal ? .red : .secondary)
             }
@@ -422,13 +422,13 @@ struct CompassStandaloneView: View {
         VStack(alignment: .leading, spacing: 8) {
             KyFilterBar(options: [("真北", nil), ("磁北", nil)], selectedIndex: $northMode)
             HStack(spacing: 8) {
-                Text("手动磁偏角（度，东偏为正）").font(.caption).foregroundStyle(.secondary)
+                Text("手动磁偏角（度，东偏为正）".scriptConverted).font(.caption).foregroundStyle(.secondary)
                 TextField("留空＝自动", text: $manualDeclination)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 110)
             }
-            Text("真北＝磁北＋磁偏角（东偏为正，西偏为负）；梁平 2026 年约 −3.3°（西偏）。")
+            Text("真北＝磁北＋磁偏角（东偏为正，西偏为负）；梁平 2026 年约 −3.3°（西偏）。".scriptConverted)
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -436,15 +436,15 @@ struct CompassStandaloneView: View {
     // 定位被拒专属提示卡：仅 authDenied 时显示；原因＋仍可用功能＋设置入口。
     private var authDeniedCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("定位未授权")
+            Text("定位未授权".scriptConverted)
                 .font(.headline)
-            Text("定位未授权，罗盘无法读取实时朝向。")
+            Text("定位未授权，罗盘无法读取实时朝向。".scriptConverted)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("仍可使用：手动填入磁偏角、查看已锁定记录、二十四山对照、校准指引。")
+            Text("仍可使用：手动填入磁偏角、查看已锁定记录、二十四山对照、校准指引。".scriptConverted)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Button("去设置开启定位") {
+            Button("去设置开启定位".scriptConverted) {
                 openLocationSettings()
             }
             .buttonStyle(KyPrimaryButton())
@@ -462,8 +462,8 @@ struct CompassStandaloneView: View {
 
     private var calibrationCard: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("精度自检（校准好后可达 ±5° 左右）").font(.caption).fontWeight(.semibold)
-            Text("1. 摘掉磁吸手机壳、磁吸支架（能让读数偏几十度）\n2. 离汽车、钢筋、电器 2 米以上\n3. 手腕画 8 字三圈校准\n4. 设置 → 隐私与安全性 → 定位服务 → 系统服务：打开「指南针校准」和「运动校准与距离」")
+            Text("精度自检（校准好后可达 ±5° 左右）".scriptConverted).font(.caption).fontWeight(.semibold)
+            Text("1. 摘掉磁吸手机壳、磁吸支架（能让读数偏几十度）\n2. 离汽车、钢筋、电器 2 米以上\n3. 手腕画 8 字三圈校准\n4. 设置 → 隐私与安全性 → 定位服务 → 系统服务：打开「指南针校准」和「运动校准与距离」".scriptConverted)
                 .font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -478,14 +478,14 @@ struct CompassStandaloneView: View {
                     startCollect()
                 }
             } label: {
-                Text(justLocked ? "✓ 已锁定" : (collecting ? "采样中…（\(trueSamples.count)/8）" : "锁定当前度数／山向（放平自动采样）"))
+                Text(justLocked ? "✓ 已锁定".scriptConverted : (collecting ? "采样中…（\(trueSamples.count)/8）".scriptConverted : "锁定当前度数／山向（放平自动采样）".scriptConverted))
                     .frame(maxWidth: .infinity).padding(.vertical, 6)
             }
             .buttonStyle(KyPrimaryButton())
             if !collectHint.isEmpty {
-                Text(collectHint).font(.caption).foregroundStyle(.secondary)
+                Text(collectHint.scriptConverted).font(.caption).foregroundStyle(.secondary)
             }
-            Text("测法：手机端平、远离汽车钢筋电器；原地慢转半圈等读数稳定后再锁定。坐向以真北读数为准入盘，磁北读数留作互校。")
+            Text("测法：手机端平、远离汽车钢筋电器；原地慢转半圈等读数稳定后再锁定。坐向以真北读数为准入盘，磁北读数留作互校。".scriptConverted)
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -493,42 +493,42 @@ struct CompassStandaloneView: View {
     private func lockCard(_ lock: CompassLock) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("已锁定").font(.headline)
+                Text("已锁定".scriptConverted).font(.headline)
                 Spacer()
                 Text(lock.sitFaceText).font(.subheadline).foregroundStyle(.secondary)
             }
             let fmt = lockDateFormatter
             VStack(alignment: .leading, spacing: 3) {
-                Text("真北 \(CompassMath.format(lock.trueNorth)) \(lock.mountain)山 · 磁北 \(CompassMath.format(lock.magnetic))")
+                Text("真北 \(CompassMath.format(lock.trueNorth)) \(lock.mountain)山 · 磁北 \(CompassMath.format(lock.magnetic))".scriptConverted)
                     .font(.subheadline)
-                Text("磁偏角 \(String(format: "%+.1f°", lock.declination))（\(lock.declinationSourceText)）")
+                Text("磁偏角 \(String(format: "%+.1f°", lock.declination))（\(lock.declinationSourceText)）".scriptConverted)
                     .font(.caption).foregroundStyle(.secondary)
-                Text("精度 ±\(Int(lock.accuracy))° · 倾斜 \(String(format: "%.1f°", lock.tilt)) · \(lock.samples) 次采样平均 · 集中度 \(String(format: "%.2f", lock.spread))")
+                Text("精度 ±\(Int(lock.accuracy))° · 倾斜 \(String(format: "%.1f°", lock.tilt)) · \(lock.samples) 次采样平均 · 集中度 \(String(format: "%.2f", lock.spread))".scriptConverted)
                     .font(.caption).foregroundStyle(.secondary)
                 Text("锁定时间 \(fmt.string(from: lock.timestamp))")
                     .font(.caption).foregroundStyle(.secondary)
                 if lock.spread >= 0 && lock.spread < 0.9 {
-                    Text("集中度偏低（<0.90）：这条不太稳，建议重测。")
+                    Text("集中度偏低（<0.90）：这条不太稳，建议重测。".scriptConverted)
                         .font(.caption).foregroundStyle(.orange)
                 }
             }
             HStack(spacing: 10) {
-                Button("新建勘察（用锁定坐向）") {
+                Button("新建勘察（用锁定坐向）".scriptConverted) {
                     createCaseFromLock()
                 }
                 .buttonStyle(.borderedProminent)
                 NavigationLink {
                     FloorPlanOverlayView()
                 } label: {
-                    Text("带入户型压盘器")
+                    Text("带入户型压盘器".scriptConverted)
                 }
                 .buttonStyle(.bordered)
             }
             if !createdCaseName.isEmpty {
-                Text("已新建勘察「\(createdCaseName)」：坐向已预填「大门外朝内」，进案件点「分析」即见罗盘定盘。")
+                Text("已新建勘察「".scriptConverted + createdCaseName + "」：坐向已预填「大门外朝内」，进案件点「分析」即见罗盘定盘。".scriptConverted)
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Button("清除锁定") {
+            Button("清除锁定".scriptConverted) {
                 lockStore.clear()
                 createdCaseName = ""
             }
@@ -547,7 +547,7 @@ struct CompassStandaloneView: View {
     }
 
     private var basisText: some View {
-        Text("依据与金标准：磁偏角按 WMM2025（NOAA NCEI＋英国地质调查局，Chulliat et al. 2025，doi:10.25923/prbcs316）现算，优先取设备真北（系统内建校正），无真北时按定位经纬度现算；梁平默认 30.654°N、107.770°E。二十四山与 FengshuiEngine 同口径（子起顺时针，每山 15°，＋7.5° 偏置，0°＝子山正北）；坐山度数＝罗盘「大门外朝内」真北读数，向山＝坐山＋12 山。金标准见 Web test_compass.py（NOAA §1.5 数值例逐项对拍，284 断言全过）与 test_compass_swift_table.py（Swift 系数表逐项对拍）。传感器精度约 ±5°（校准良好时）；远离磁铁／金属，出现校准提示时按系统提示画 8 字。")
+        Text("依据与金标准：磁偏角按 WMM2025（NOAA NCEI＋英国地质调查局，Chulliat et al. 2025，doi:10.25923/prbcs316）现算，优先取设备真北（系统内建校正），无真北时按定位经纬度现算；梁平默认 30.654°N、107.770°E。二十四山与 FengshuiEngine 同口径（子起顺时针，每山 15°，＋7.5° 偏置，0°＝子山正北）；坐山度数＝罗盘「大门外朝内」真北读数，向山＝坐山＋12 山。金标准见 Web test_compass.py（NOAA §1.5 数值例逐项对拍，284 断言全过）与 test_compass_swift_table.py（Swift 系数表逐项对拍）。传感器精度约 ±5°（校准良好时）；远离磁铁／金属，出现校准提示时按系统提示画 8 字。".scriptConverted)
             .font(.caption)
             .foregroundStyle(.secondary)
     }
@@ -693,7 +693,7 @@ struct CompassStandaloneView: View {
             ForEach(0..<24, id: \.self) { i in
                 let bearing = Double(i) * 15
                 let ang = (bearing - displayHeading) * Double.pi / 180
-                Text(CompassMath.mountains[i])
+                Text(CompassMath.mountains[i].scriptConverted)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(i == 0 ? Ky.instCinnabar : Ky.instGold)
                     .position(x: 130 + 97 * sin(ang), y: 130 - 97 * cos(ang))
@@ -701,7 +701,7 @@ struct CompassStandaloneView: View {
             ForEach(0..<8, id: \.self) { i in
                 let bearing = Double(i) * 45
                 let ang = (bearing - displayHeading) * Double.pi / 180
-                Text(CompassMath.palaces[i])
+                Text(CompassMath.palaces[i].scriptConverted)
                     .font(i % 2 == 0 ? .headline : .subheadline)
                     .foregroundStyle(i == 0 ? Ky.instCinnabar : Ky.instInk)
                     .position(x: 130 + 62 * sin(ang), y: 130 - 62 * cos(ang))
@@ -715,7 +715,7 @@ struct CompassStandaloneView: View {
                 Circle()
                     .fill(Color.black.opacity(0.45))
                     .frame(width: 248, height: 248)
-                Text("等待罗盘…")
+                Text("等待罗盘…".scriptConverted)
                     .font(.callout)
                     .fontWeight(.medium)
                     .foregroundStyle(.white)

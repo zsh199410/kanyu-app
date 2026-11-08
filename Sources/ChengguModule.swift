@@ -222,7 +222,7 @@ struct ChengguView: View {
         let result = ChengguEngine.from(chart: chart)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                Text(ChengguEngine.disclaimer)
+                Text(ChengguEngine.disclaimer.scriptConverted)
                     .font(.callout).fontWeight(.semibold).foregroundStyle(Ky.cinnabar)
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Ky.cinnabar.opacity(0.07))
@@ -242,7 +242,7 @@ struct ChengguView: View {
                         }
                         Divider()
                         HStack(spacing: 10) {
-                            Text("总骨重").font(.callout).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            Text("总骨重".scriptConverted).font(.callout).fontWeight(.bold).foregroundStyle(Ky.ink)
                             Spacer()
                             Text(ChengguEngine.fmtWeight(r.total))
                                 .font(.system(.title3, design: .serif)).fontWeight(.bold)
@@ -252,7 +252,7 @@ struct ChengguView: View {
                             Text(r.title).font(.callout).foregroundStyle(Ky.sub)
                         }
                         if r.total == 72 {
-                            Text("七两二格四重最大值合计仅 7.1 两，现实不可达；歌诀列入备查。")
+                            Text("七两二格四重最大值合计仅 7.1 两，现实不可达；歌诀列入备查。".scriptConverted)
                                 .font(.caption2).foregroundStyle(Ky.sub)
                         }
                     }.kyCard()
@@ -263,13 +263,13 @@ struct ChengguView: View {
                                 .font(.system(.body, design: .serif)).foregroundStyle(Ky.ink)
                                 .lineSpacing(3)
                         }
-                        Text(ChengguEngine.sourceNote)
+                        Text(ChengguEngine.sourceNote.scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }.kyCard()
                 } else {
                     KyEmptyState(icon: "scalemass", title: "称骨无法计算", message: "四柱或农历月日缺失，请检查档案出生时间。")
                 }
-                Text("依据与金标准：四重称重表与 52 格歌诀经三源逐字核对，异文裁决见 Web app/chenggu.py 注释；金标准见 Web tools/tests/test_chenggu.py（合成四柱 10 例＋实盘 4 例逐项复算）。")
+                Text("依据与金标准：四重称重表与 52 格歌诀经三源逐字核对，异文裁决见 Web app/chenggu.py 注释；金标准见 Web tools/tests/test_chenggu.py（合成四柱 10 例＋实盘 4 例逐项复算）。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16)
         }

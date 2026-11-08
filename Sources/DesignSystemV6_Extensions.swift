@@ -15,10 +15,8 @@ import UIKit
 
 enum KyV6 {
     static let pageHorizontalMargin: CGFloat = 20
-    static let cardCornerLarge: CGFloat = 18
     static let cardCornerSmall: CGFloat = 12
     static let sectionSpacing: CGFloat = 15
-    static let primaryButtonHeight: CGFloat = 50
     static let minTapTarget: CGFloat = 44
 
     /// 触感引擎（模拟机械罗盘微阻尼刻度感；与仓内内联写法同款，在调用线程执行，首击无 prepare 可能偏弱）
@@ -41,7 +39,7 @@ struct KyProfileHeader: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("浑天定盘 · 三术合参")
+                    Text("浑天定盘 · 三术合参".scriptConverted)
                         .font(.system(size: 17, weight: .bold, design: .serif))
                         .foregroundStyle(Ky.ink)
                 }
@@ -135,7 +133,7 @@ struct KyPersonSwitcher: View {
                                 KyBadge(text: "日主" + dayMasterElement, color: elementTint)
                             }
                         }
-                        Text(baziSummary)
+                        Text(baziSummary.scriptConverted)
                             .font(KyV2.tabular(12.5, weight: .medium))
                             .foregroundStyle(Ky.sub)
                             .lineLimit(1)
@@ -151,7 +149,7 @@ struct KyPersonSwitcher: View {
                         } label: {
                             HStack(spacing: 3) {
                                 Image(systemName: "arrow.left.arrow.right")
-                                Text("切换")
+                                Text("切换".scriptConverted)
                             }
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Ky.qingdai)
@@ -191,12 +189,12 @@ struct KyPersonSwitcher: View {
                         Text("尚未建立命主档案")
                             .font(.system(size: 16, weight: .bold, design: .serif))
                             .foregroundStyle(Ky.ink)
-                        Text("建档后，八字、紫微、合参及个人择吉将自动联动")
+                        Text("建档后，八字、紫微、合参及个人择吉将自动联动".scriptConverted)
                             .font(.system(size: 12))
                             .foregroundStyle(Ky.sub)
                     }
                     Spacer()
-                    Button("立即建档", action: onNewPerson)
+                    Button(action: onNewPerson) { Text("立即建档".scriptConverted) }
                         .font(.system(size: 12.5, weight: .bold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 12)
@@ -298,7 +296,7 @@ struct KyTimeline: View {
                                     .font(KyV2.tabular(11, weight: .medium))
                                     .foregroundStyle(isSel ? .white.opacity(0.9) : Ky.sub)
                                 if item.isCurrent {
-                                    Text("当运")
+                                    Text("当运".scriptConverted)
                                         .font(.system(size: 9, weight: .bold))
                                         .padding(.horizontal, 4)
                                         .padding(.vertical, 1)
@@ -453,16 +451,16 @@ struct KyEmptyState: View {
                 .font(.system(size: 28, weight: .medium))
                 .foregroundStyle(Ky.gold)
                 .padding(.bottom, 2)
-            Text(title)
+            Text(title.scriptConverted)
                 .font(.system(size: 15, weight: .bold, design: .serif))
                 .foregroundStyle(Ky.ink)
-            Text(message)
+            Text(message.scriptConverted)
                 .font(.system(size: 12.5))
                 .foregroundStyle(Ky.sub)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
             if let btn = actionTitle, let act = action {
-                Button(btn, action: act)
+                Button(action: act) { Text(btn.scriptConverted) }
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
@@ -486,7 +484,7 @@ struct KyLoadingState: View {
         HStack(spacing: 10) {
             ProgressView()
                 .tint(Ky.qingdai)
-            Text(title)
+            Text(title.scriptConverted)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Ky.sub)
         }
@@ -530,11 +528,11 @@ struct KySettingsRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(title.scriptConverted)
                     .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(Ky.ink)
                 if !subtitle.isEmpty {
-                    Text(subtitle)
+                    Text(subtitle.scriptConverted)
                         .font(.system(size: 11.5))
                         .foregroundStyle(Ky.sub)
                         .lineLimit(1)

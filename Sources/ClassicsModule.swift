@@ -526,12 +526,12 @@ struct ClassicsView: View {
                 .padding(.bottom, 4)
             List {
             if !query.isEmpty {
-                Section("检索命中 \(hits.count) 句") {
+                Section("检索命中 \(hits.count) 句".scriptConverted) {
                     ForEach(hits, id: \.2.id) { b, c, ln in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(ln.orig).font(.callout).foregroundStyle(Ky.ink)
-                            Text("白话转述：" + ln.baihua).font(.caption).foregroundStyle(Ky.sub)
-                            Text("\(b.title) · \(c.no) \(c.title) · \(c.source) 第 \(ln.n) 句").font(.caption2).foregroundStyle(Ky.sub)
+                            Text("白话转述：".scriptConverted + ln.baihua.scriptConverted).font(.caption).foregroundStyle(Ky.sub)
+                            Text("\(b.title) · \(c.no) \(c.title) · \(c.source) 第 \(ln.n) 句".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                         }
                     }
                     if hits.isEmpty {
@@ -541,22 +541,22 @@ struct ClassicsView: View {
             }
             ForEach(ClassicsData.books) { b in
                 Section(b.title + "（" + b.author + "）") {
-                    Text(b.source).font(.caption).foregroundStyle(Ky.sub)
-                    if !b.scopeNote.isEmpty { Text(b.scopeNote).font(.caption).foregroundStyle(Ky.sub) }
+                    Text(b.source.scriptConverted).font(.caption).foregroundStyle(Ky.sub)
+                    if !b.scopeNote.isEmpty { Text(b.scopeNote.scriptConverted).font(.caption).foregroundStyle(Ky.sub) }
                     ForEach(b.chapters) { c in
                         if c.status == "included" {
                             NavigationLink { ClassicChapterView(book: b, chapter: c) } label: {
-                                Text(c.no + " · " + c.title + "（\(c.lines.count) 句）").font(.subheadline).foregroundStyle(Ky.ink)
+                                Text((c.no + " · " + c.title + "（\(c.lines.count) 句）").scriptConverted).font(.subheadline).foregroundStyle(Ky.ink)
                             }
                         } else {
-                            Text(c.no + " · " + c.title + "（未收录）").font(.subheadline).foregroundStyle(Ky.sub)
+                            Text((c.no + " · " + c.title + "（未收录）").scriptConverted).font(.subheadline).foregroundStyle(Ky.sub)
                         }
                     }
                 }
             }
             }
         }
-        .navigationTitle("古籍检索")
+        .navigationTitle("古籍检索".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -567,16 +567,16 @@ struct ClassicChapterView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
-                Text(chapter.source).font(.caption).foregroundStyle(Ky.sub)
+                Text(chapter.source.scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                 ForEach(chapter.lines) { ln in
                     VStack(alignment: .leading, spacing: 4) {
                         Text("原文 \(ln.n)：" + ln.orig).font(.callout).foregroundStyle(Ky.ink)
-                        Text("白话转述：" + ln.baihua).font(.callout).foregroundStyle(Ky.sub)
-                        if !ln.note.isEmpty { Text("校勘：" + ln.note).font(.caption).foregroundStyle(Ky.sub) }
+                        Text("白话转述：".scriptConverted + ln.baihua.scriptConverted).font(.callout).foregroundStyle(Ky.sub)
+                        if !ln.note.isEmpty { Text("校勘：".scriptConverted + ln.note.scriptConverted).font(.caption).foregroundStyle(Ky.sub) }
                     }
                     Divider()
                 }
-                Text("白话为本系统自己的字面疏解，与原文严格区分，不得冒充原文。").font(.caption2).foregroundStyle(Ky.sub)
+                Text("白话为本系统自己的字面疏解，与原文严格区分，不得冒充原文。".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
@@ -589,19 +589,19 @@ struct ClassicChapterView: View {
 struct AcademyView: View {
     var body: some View {
         List {
-            Section("研习入口") {
-                NavigationLink { LibraryView() } label: { Text("图书馆 —— 100 条研习文本与典籍纲要，检索＋分类＋出处").font(.subheadline).foregroundStyle(Ky.ink) }
-                NavigationLink { ClassicsView() } label: { Text("古籍检索 —— 《滴天髓》《子平真诠》公有领域原文逐句对照＋检索").font(.subheadline).foregroundStyle(Ky.ink) }
-                NavigationLink { QuizView() } label: { Text("排盘口径自测 —— 44 题口径自测，答案由引擎现算复核").font(.subheadline).foregroundStyle(Ky.ink) }
+            Section("研习入口".scriptConverted) {
+                NavigationLink { LibraryView() } label: { Text("图书馆 —— 100 条研习文本与典籍纲要，检索＋分类＋出处".scriptConverted).font(.subheadline).foregroundStyle(Ky.ink) }
+                NavigationLink { ClassicsView() } label: { Text("古籍检索 —— 《滴天髓》《子平真诠》公有领域原文逐句对照＋检索".scriptConverted).font(.subheadline).foregroundStyle(Ky.ink) }
+                NavigationLink { QuizView() } label: { Text("排盘口径自测 —— 44 题口径自测，答案由引擎现算复核".scriptConverted).font(.subheadline).foregroundStyle(Ky.ink) }
             }
-            Section("依据与金标准（D3）") {
-                Text("每条断语、每个口径都以可复核的金标准为据：三方互校日柱 1900–2100、奇门 183 断言、紫微 14 例、堪舆 114 断言、户型 69 断言。不编造、无依据的断语不上线。").font(.callout).foregroundStyle(Ky.ink)
+            Section("依据与金标准（D3）".scriptConverted) {
+                Text("每条断语、每个口径都以可复核的金标准为据：三方互校日柱 1900–2100、奇门 183 断言、紫微 14 例、堪舆 114 断言、户型 69 断言。不编造、无依据的断语不上线。".scriptConverted).font(.callout).foregroundStyle(Ky.ink)
             }
-            Section("排盘口径收据行说明") {
-                Text("每张排盘都附收据行，写明本次排盘用的口径：真太阳时校正分钟数与经度、晚子时 sect=2（23:00–24:00 日柱不换、时干按次日日干推）、节气交节时刻、夏令时命中与处理、年份验证范围 1900–2100。收据行与引擎同式现算，口径有变即随盘更新。").font(.callout).foregroundStyle(Ky.ink)
+            Section("排盘口径收据行说明".scriptConverted) {
+                Text("每张排盘都附收据行，写明本次排盘用的口径：真太阳时校正分钟数与经度、晚子时 sect=2（23:00–24:00 日柱不换、时干按次日日干推）、节气交节时刻、夏令时命中与处理、年份验证范围 1900–2100。收据行与引擎同式现算，口径有变即随盘更新。".scriptConverted).font(.callout).foregroundStyle(Ky.ink)
             }
         }
-        .navigationTitle("学堂")
+        .navigationTitle("学堂".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

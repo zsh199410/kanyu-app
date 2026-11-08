@@ -514,8 +514,8 @@ struct TermButton: View {
             .kyBottomSheet(isPresented: $show, title: term) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(term).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text(TermGlossary.text(for: term)).font(.callout).foregroundStyle(Ky.ink)
-                    Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。")
+                    Text(TermGlossary.text(for: term).scriptConverted).font(.callout).foregroundStyle(Ky.ink)
+                    Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。".scriptConverted)
                         .font(.caption2).foregroundStyle(Ky.sub)
                 }
             }
@@ -571,16 +571,16 @@ struct InterpretView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(name.isEmpty ? "本盘" : name) · 30 条五典详批 · \(accuracyLine(titles: allItems.map { $0.title }))")
+                            Text((name.isEmpty ? "本盘" : name) + " · 30 条五典详批 · ".scriptConverted + accuracyLine(titles: allItems.map { $0.title }).scriptConverted)
                                 .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                            Text("日主 \(chart.rizhu) · 四柱 \(chart.pillars.joined(separator: " ")) · 每条附盘面与典籍依据")
+                            Text("日主 \(chart.rizhu) · 四柱 \(chart.pillars.joined(separator: " ")) · 每条附盘面与典籍依据".scriptConverted)
                                 .font(.caption2).foregroundStyle(Ky.sub)
                         }
                         Spacer()
                         Button { showGlossary = true } label: {
                             HStack(spacing: 5) {
                                 Image(systemName: "book.fill")
-                                Text("术语")
+                                Text("术语".scriptConverted)
                             }
                             .font(.caption).fontWeight(.semibold)
                             .padding(.horizontal, 11).padding(.vertical, 6)
@@ -594,7 +594,7 @@ struct InterpretView: View {
                         } label: {
                             HStack(spacing: 5) {
                                 Image(systemName: speaker.speaking ? "stop.circle.fill" : "speaker.wave.2.circle.fill")
-                                Text(speaker.speaking ? "停止" : "听本组")
+                                Text(speaker.speaking ? "停止".scriptConverted : "听本组".scriptConverted)
                             }
                             .font(.caption).fontWeight(.semibold)
                             .padding(.horizontal, 11).padding(.vertical, 6)
@@ -613,7 +613,7 @@ struct InterpretView: View {
                                 Button {
                                     withAnimation(.easeInOut(duration: 0.16)) { selectedCategory = cIdx }
                                 } label: {
-                                    Text("\(Self.categories[cIdx].0) \(count)")
+                                    Text("\(Self.categories[cIdx].0) \(count)".scriptConverted)
                                         .font(.caption).fontWeight(active ? .bold : .medium)
                                         .padding(.horizontal, 11).padding(.vertical, 6)
                                         .background(active ? Ky.qingdai : Ky.elevated)
@@ -633,6 +633,7 @@ struct InterpretView: View {
                             Button { searchQuery = "" } label: {
                                 Image(systemName: "xmark.circle.fill").font(.caption).foregroundStyle(Ky.sub)
                             }
+                            .accessibilityLabel("清除搜索")
                         }
                     }
                     .padding(.horizontal, 10).padding(.vertical, 7)
@@ -641,7 +642,7 @@ struct InterpretView: View {
                 }.kyCard()
 
                 if filteredIndices.isEmpty {
-                    Text("没有匹配的解盘维度，请切换上方分类或清空搜索词。")
+                    Text("没有匹配的解盘维度，请切换上方分类或清空搜索词。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.sub)
                         .frame(maxWidth: .infinity).padding(.vertical, 20)
                 } else {
@@ -654,7 +655,7 @@ struct InterpretView: View {
                         )) {
                             VStack(alignment: .leading, spacing: 10) {
                                 if !isCore {
-                                    Text("【原局底牌】").font(.caption2).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+                                    Text("【原局底牌】".scriptConverted).font(.caption2).fontWeight(.bold).foregroundStyle(Ky.qingdai)
                                 }
                                 EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links)
                                 if !isCore {
@@ -672,7 +673,7 @@ struct InterpretView: View {
                                         .frame(width: 24, height: 22)
                                         .background(tag.1)
                                         .clipShape(RoundedRectangle(cornerRadius: 6))
-                                    Text(allItems[i].title)
+                                    Text(allItems[i].title.scriptConverted)
                                         .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                                     KyBadge(text: tag.0, color: tag.1)
                                     Spacer()
@@ -690,7 +691,7 @@ struct InterpretView: View {
                                     .accessibilityLabel("朗读\(allItems[i].title)")
                                 }
                                 if !expandedItems.contains(i) {
-                                    Text(allItems[i].conclusion)
+                                    Text(allItems[i].conclusion.scriptConverted)
                                         .font(.callout).foregroundStyle(Ky.ink)
                                         .lineLimit(2)
                                 }
@@ -700,13 +701,13 @@ struct InterpretView: View {
                     }
                 }
 
-                Text("解盘纪律说明：以上 30 条（5 条总纲＋25 维）全部由本机确定性排盘数据推导，每条结论附「盘面事实＋典籍根据」可复核；健康只给部位与代谢倾向不落病名；守年只列强引动关口级年份。回测校准级的私人详批以工作室正式报告为准。")
+                Text("解盘纪律说明：以上 30 条（5 条总纲＋25 维）全部由本机确定性排盘数据推导，每条结论附「盘面事实＋典籍根据」可复核；健康只给部位与代谢倾向不落病名；守年只列强引动关口级年份。回测校准级的私人详批以工作室正式报告为准。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .onDisappear { speaker.stop() }
-        .navigationTitle(name.isEmpty ? "30 条五典解盘" : "解盘 · \(name)")
+        .navigationTitle(name.isEmpty ? "30 条五典解盘".scriptConverted : "解盘 · ".scriptConverted + name)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showGlossary) { glossarySheet }
     }
@@ -738,21 +739,21 @@ struct InterpretView: View {
         return VStack(alignment: .leading, spacing: 6) {
             Divider()
             HStack(spacing: 6) {
-                Text("验真溯源").font(.caption2).fontWeight(.bold).foregroundStyle(Ky.gold)
-                Text("紫金山天文台节气 · 真太阳时校正 · 五典卷目见上方「法则」").font(.caption2).foregroundStyle(Ky.sub)
+                Text("验真溯源".scriptConverted).font(.caption2).fontWeight(.bold).foregroundStyle(Ky.gold)
+                Text("紫金山天文台节气 · 真太阳时校正 · 五典卷目见上方「法则」".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
             }
-            Text("验真依据链：\(verifyChain)")
+            Text("验真依据链：\(verifyChain)".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                Button("已应验") { VerifyStore.set(item.title, true); verifyTick += 1 }
+                Button("已应验".scriptConverted) { VerifyStore.set(item.title, true); verifyTick += 1 }
                     .font(.caption2).fontWeight(.bold)
                     .padding(.horizontal, 9).padding(.vertical, 5)
                     .background(VerifyStore.mark(for: item.title) == true ? Ky.jade : Ky.elevated)
                     .foregroundStyle(VerifyStore.mark(for: item.title) == true ? Color.white : Ky.ink)
                     .clipShape(Capsule())
                     .buttonStyle(.plain)
-                Button("待回验") { VerifyStore.set(item.title, false); verifyTick += 1 }
+                Button("待回验".scriptConverted) { VerifyStore.set(item.title, false); verifyTick += 1 }
                     .font(.caption2).fontWeight(.bold)
                     .padding(.horizontal, 9).padding(.vertical, 5)
                     .background(VerifyStore.mark(for: item.title) == false ? Ky.cinnabar : Ky.elevated)
@@ -760,10 +761,10 @@ struct InterpretView: View {
                     .clipShape(Capsule())
                     .buttonStyle(.plain)
                 if let m = VerifyStore.mark(for: item.title) {
-                    Text(m ? "已标：应验 ✓" : "已标：待回验").font(.caption2).foregroundStyle(m ? Ky.jade : Ky.cinnabar)
+                    Text(m ? "已标：应验 ✓".scriptConverted : "已标：待回验".scriptConverted).font(.caption2).foregroundStyle(m ? Ky.jade : Ky.cinnabar)
                 }
                 Spacer()
-                Text("打标计入个人准确率").font(.caption2).foregroundStyle(Ky.sub)
+                Text("打标计入个人准确率".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
             }
         }
         .padding(.top, 2)
@@ -778,8 +779,8 @@ struct InterpretView: View {
     }
     private func threePartRow(_ label: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 6) {
-            Text(label).font(.caption2).fontWeight(.bold).foregroundStyle(Ky.gold).frame(width: 96, alignment: .leading)
-            Text(text).font(.caption).foregroundStyle(Ky.ink)
+            Text(label.scriptConverted).font(.caption2).fontWeight(.bold).foregroundStyle(Ky.gold).frame(width: 96, alignment: .leading)
+            Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink)
         }
     }
     private var glossarySheet: some View {
@@ -788,12 +789,12 @@ struct InterpretView: View {
                 ForEach(TermGlossary.texts.keys.sorted(), id: \.self) { term in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(term).font(.callout).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Text(TermGlossary.texts[term] ?? "").font(.caption).foregroundStyle(Ky.sub)
+                        Text((TermGlossary.texts[term] ?? "").scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                     }
                 }
             }
-            .navigationTitle("术语释义").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { showGlossary = false } } }
+            .navigationTitle("术语释义".scriptConverted).navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成".scriptConverted) { showGlossary = false } } }
         }
     }
 }

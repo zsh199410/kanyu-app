@@ -133,7 +133,7 @@ struct AlmanacView: View {
                     let verdict = clash[zdb] == yb ? "相冲 · 当日避大事" : (liuHe[zdb] == yb ? "六合 · 吉" : "无刑冲")
                     HStack(spacing: 6) {
                         Image(systemName: "person.fill").foregroundStyle(Ky.qingdai)
-                        Text("命主 \(zp.name.isEmpty ? "未命名" : zp.name)日支 \(zdb)：今日日支 \(yb)——\(verdict)").font(.caption).foregroundStyle(Ky.ink)
+                        Text("命主 \(zp.name.isEmpty ? "未命名" : zp.name)日支 \(zdb)：今日日支 \(yb)——\(verdict.scriptConverted)").font(.caption).foregroundStyle(Ky.ink)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12).padding(.vertical, 9)
@@ -152,7 +152,7 @@ struct AlmanacView: View {
                         Spacer()
                         KyBadge(text: "\(info.zhiXing)日", color: Ky.qingdai, filled: true)
                     }
-                    Text("年柱 \(info.yearInGanZhi) · 月柱 \(info.monthInGanZhi) · 日纳音 \(info.dayNaYin) · 星期\(info.weekInChinese)")
+                    Text("年柱 \(info.yearInGanZhi) · 月柱 \(info.monthInGanZhi) · 日纳音 \(info.dayNaYin) · 星期\(info.weekInChinese)".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                     Divider()
                     row("二十八宿", info.xiuText)
@@ -172,19 +172,19 @@ struct AlmanacView: View {
                         NavigationLink { ZejiView() } label: {
                             HStack(spacing: 3) {
                                 Image(systemName: "sparkles")
-                                Text("近30天择吉 ›")
+                                Text("近30天择吉 ›".scriptConverted)
                             }.font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                         }
                     }
                     HStack(alignment: .top, spacing: 8) {
                         KyBadge(text: "宜", color: Ky.jade, filled: true)
-                        Text(info.dayYi.isEmpty ? "诸事不宜" : info.dayYi.joined(separator: " · "))
+                        Text((info.dayYi.isEmpty ? "诸事不宜" : info.dayYi.joined(separator: " · ")).scriptConverted)
                             .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                     }
                     Divider().opacity(0.5)
                     HStack(alignment: .top, spacing: 8) {
                         KyBadge(text: "忌", color: Ky.cinnabar, filled: true)
-                        Text(info.dayJi.isEmpty ? "无特定忌事" : info.dayJi.joined(separator: " · "))
+                        Text((info.dayJi.isEmpty ? "无特定忌事" : info.dayJi.joined(separator: " · ")).scriptConverted)
                             .font(.callout).foregroundStyle(Ky.sub).lineSpacing(3)
                     }
                 }
@@ -214,8 +214,8 @@ struct AlmanacView: View {
                                 .frame(width: 44, alignment: .leading)
                             KyBadge(text: t.luck, color: t.luck == "吉" ? Ky.jade : Ky.cinnabar)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(t.yi).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
-                                Text(t.ji).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+                                Text(t.yi.scriptConverted).font(.caption).foregroundStyle(Ky.ink).lineLimit(1)
+                                Text(t.ji.scriptConverted).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
                             }
                             Spacer(minLength: 0)
                         }
@@ -230,14 +230,14 @@ struct AlmanacView: View {
             .padding(.bottom, 100)
         }
         .background(Ky.bg)
-        .navigationTitle("今日黄历")
+        .navigationTitle("今日黄历".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private func row(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Text(label).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.gold).frame(width: 68, alignment: .leading)
-            Text(value).font(.callout).foregroundStyle(Ky.ink)
+            Text(label.scriptConverted).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.gold).frame(width: 68, alignment: .leading)
+            Text(value.scriptConverted).font(.callout).foregroundStyle(Ky.ink)
         }
     }
 }
@@ -306,9 +306,9 @@ struct AlmanacCalendarCard: View {
         let tod = today
         VStack(spacing: 10) {
             HStack {
-                Text("选定日期").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                Text("选定日期".scriptConverted).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
                 Spacer()
-                Button("回今天") {
+                Button("回今天".scriptConverted) {
                     showYear = tod.0; showMonth = tod.1
                     pick(tod.2)
                 }
@@ -351,12 +351,12 @@ struct AlmanacCalendarCard: View {
                 }
             }
             HStack {
-                Button("‹ 前一天") { stepDay(-1) }.font(.caption).foregroundStyle(Ky.qingdai)
+                Button("‹ 前一天".scriptConverted) { stepDay(-1) }.font(.caption).foregroundStyle(Ky.qingdai)
                 Spacer()
                 Text("当前：\(sel.0)年\(sel.1)月\(sel.2)日")
                     .font(KyV2.tabular(12)).foregroundStyle(Ky.sub)
                 Spacer()
-                Button("后一天 ›") { stepDay(1) }.font(.caption).foregroundStyle(Ky.qingdai)
+                Button("后一天 ›".scriptConverted) { stepDay(1) }.font(.caption).foregroundStyle(Ky.qingdai)
             }
         }
         .kyCard()
@@ -393,23 +393,23 @@ struct YunQiView: View {
             KySectionTitle(title: "五运六气", trailing: "\(safeY) \(stems[sIdx])\(Array("子丑寅卯辰巳午未申酉戌亥")[bIdx])年")
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("大运统岁").font(.caption2).foregroundStyle(Ky.sub)
+                    Text("大运统岁".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                     Text("\(yun)运\(tai)").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
                 }.frame(maxWidth: .infinity, alignment: .leading).kySubCard()
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("上半年司天").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(sitian).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+                    Text("上半年司天".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+                    Text(sitian.scriptConverted).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.qingdai)
                 }.frame(maxWidth: .infinity, alignment: .leading).kySubCard()
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("下半年在泉").font(.caption2).foregroundStyle(Ky.sub)
-                    Text(zaiquan).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.gold)
+                    Text("下半年在泉".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+                    Text(zaiquan.scriptConverted).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.gold)
                 }.frame(maxWidth: .infinity, alignment: .leading).kySubCard()
             }
             ForEach(0..<6, id: \.self) { i in
                 HStack(spacing: 10) {
-                    Text(steps[i]).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.gold).frame(width: 48, alignment: .leading)
-                    Text("主气：\(zhu[i])").font(.caption).foregroundStyle(Ky.ink)
-                    Text("客气：\(ke[i])").font(.caption).foregroundStyle(ke[i] == zhu[i] ? Ky.jade : Ky.sub)
+                    Text(steps[i].scriptConverted).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.gold).frame(width: 48, alignment: .leading)
+                    Text("主气：\(zhu[i])".scriptConverted).font(.caption).foregroundStyle(Ky.ink)
+                    Text("客气：\(ke[i])".scriptConverted).font(.caption).foregroundStyle(ke[i] == zhu[i] ? Ky.jade : Ky.sub)
                     Spacer()
                     if i == 2 { KyBadge(text: "司天", color: Ky.qingdai) }
                     if i == 5 { KyBadge(text: "在泉", color: Ky.gold) }
@@ -432,12 +432,12 @@ struct YunQiView: View {
                     let tongText = tong ? "；主客同气为顺。" : "；客气与主气相异，以客胜主为逆。"
                     HStack(alignment: .top, spacing: 8) {
                         Text(q.0 + "季").font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai).frame(width: 28, alignment: .leading)
-                        Text("主气 \(qZhu)；客气 \(qKe)。\(q.2)\(tongText)")
+                        Text("主气 \(qZhu)；客气 \(qKe)。\(q.2)\(tongText)".scriptConverted)
                             .font(.caption).foregroundStyle(Ky.ink).lineSpacing(2)
                     }
                 }
             }
-            Text("主客同气为顺，客胜主为逆；此为《素问》运气节令通参，不作诊疗断语。")
+            Text("主客同气为顺，客胜主为逆；此为《素问》运气节令通参，不作诊疗断语。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
         }.kyCard()
     }
@@ -658,7 +658,7 @@ struct TodayFortuneCard: View {
                         .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.ink)
                 }
                 Spacer()
-                Text("本机现算 · 不编断语")
+                Text("本机现算 · 不编断语".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             if let ch = chart {
@@ -666,13 +666,13 @@ struct TodayFortuneCard: View {
                 ForEach(lines) { ln in
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(alignment: .top, spacing: 6) {
-                            Text(ln.title)
+                            Text(ln.title.scriptConverted)
                                 .font(.caption).fontWeight(.bold).foregroundStyle(Ky.gold)
                                 .frame(width: 86, alignment: .leading)
-                            Text(ln.text)
+                            Text(ln.text.scriptConverted)
                                 .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                         }
-                        Text(ln.basis)
+                        Text(ln.basis.scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
                             .padding(.leading, 92)
                     }
