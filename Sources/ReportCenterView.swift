@@ -200,6 +200,27 @@ struct ReportCenterView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                // G8：年度报告区段——有指定人物时链到该人当年年度报告页；无指定人物时只链档案。
+                KyHomeSection(title: "年度报告", trailing: "") {
+                    VStack(spacing: 8) {
+                        if let p = person {
+                            NavigationLink {
+                                AnnualReportView(
+                                    chart: BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil),
+                                    name: p.name,
+                                    initialYear: Calendar.current.component(.year, from: Date())
+                                )
+                            } label: {
+                                annualEntryRow(icon: "calendar.badge.clock", title: "年度报告 · ".scriptConverted + (p.name.isEmpty ? "此人" : p.name), subtitle: "连续 12 个流年聚合＋年度 verdict".scriptConverted)
+                            }.buttonStyle(.plain)
+                        }
+                        NavigationLink {
+                            AnnualArchiveView(person: person)
+                        } label: {
+                            annualEntryRow(icon: "archivebox", title: "年度档案".scriptConverted, subtitle: "按人物＋年份列出已生成的年度报告".scriptConverted)
+                        }.buttonStyle(.plain)
+                    }
+                }
                 if entries.isEmpty {
                     KyEmptyState(icon: "tray", title: "还没有已生成的报告", message: "在命主详情页点「生成命书文件」，或在各结果页导出海报，生成后会自动出现在这里。")
                 } else {
@@ -237,6 +258,33 @@ struct ReportCenterView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { entries = ReportHistory.scan() }
         .refreshable { entries = ReportHistory.scan() }
+    }
+
+    /// G8：年度报告区段入口行（与 historyRow 同款式，无分享按钮；标题与副标题由调用方一次转换）
+    private func annualEntryRow(icon: String, title: String, subtitle: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Ky.qingdai)
+                .frame(width: 36, height: 36)
+                .background(Ky.qingdai.opacity(0.13))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                Text(subtitle)
+                    .font(.caption2).foregroundStyle(Ky.sub)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Ky.sub)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Ky.elevated)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Ky.line.opacity(0.65), lineWidth: 0.6))
     }
 
     private func historyRow(_ e: ReportHistoryEntry) -> some View {

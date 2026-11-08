@@ -400,3 +400,123 @@ struct LifePlanView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+// MARK: - G8 年度聚合（Insight 第 2 批，2026-11-09）
+//
+// 年度 verdict 推导规则（纯函数 annualVerdict，输入只取三样，输出只由规则表推导，
+// 同一输入两次调用结果相同；Web 端实现同一规则表，两端对拍以本注释为准）：
+//
+// 输入：
+//   months —— 连续 12 个流年的 YearReport（本年起一轮，Y…Y+11），
+//     由 annualSummary 一次算出；计数只认 level 四档字符串
+//     （关口级／主线／参考／平年），其余 level 字符串不计入四档；
+//   dayunChanged —— 本轮 12 年内有无大运交接（起运或换运都算）；
+//   chongTigang —— 报告年份的流年支冲月支（提纲为月支）。
+//
+// 规则表（按顺序命中第一条即停，后条不再看）：
+//   1. 关口级 ≥ 3，或（冲提纲 且 关口级 ≥ 1）→「多事之年 · 守成为主」
+//   2. 关口级 == 2，或 冲提纲 →「变动较多年 · 先稳后进」
+//   3. 关口级 == 1，或 主线 ≥ 4 →「主线集中之年 · 抓重点、控节奏」
+//   4. 大运交接 →「换运之年 · 新旧交接」
+//   5. 主线 ≥ 2 →「有事可办之年 · 量力推进」
+//   6. 其余 →「平稳积累之年 · 按部就班」
+//
+// 附注：除第 4 条外，大运交接为真时 verdict 附注另加一行交接提示；
+//   冲提纲为真时 verdict 只落在第 1 或第 2 条。verdict 文案只写趋势与注意点。
+//
+// 手工推演示例（逐项算出，与实现逐项一致）：
+//   例 1：levels＝关口级×3、主线×2、参考×4、平年×3，dayunChanged＝false，
+//     chongTigang＝false → 关口级 3 → 命中规则 1 →「多事之年 · 守成为主」。
+//   例 2：levels＝主线×5、参考×3、平年×4，dayunChanged＝true，
+//     chongTigang＝false → 关口级 0、主线 5 → 规则 1、2 不命中，规则 3 主线 ≥ 4
+//     命中 →「主线集中之年 · 抓重点、控节奏」（大运交接为真，附注另加交接提示）。
+//   例 3：levels＝主线×1、参考×2、平年×9，dayunChanged＝false，
+//     chongTigang＝true → 关口级 0 → 规则 1 不命中，规则 2 冲提纲命中
+//     →「变动较多年 · 先稳后进」。
+
+/// G8 年度 verdict（纯值结构；各字段均无默认值，调用方须全量传参）。
+struct AnnualVerdict {
+    let title: String
+    let notes: [String]
+    let gateCount: Int
+    let mainCount: Int
+    let refCount: Int
+    let calmCount: Int
+}
+
+/// G8 年度聚合结果：报告年份＋连续 12 个流年报告＋verdict＋两标志。
+struct AnnualSummary {
+    let year: Int
+    let reports: [YearEngine.YearReport]
+    let verdict: AnnualVerdict
+    let dayunChanged: Bool
+    let chongTigang: Bool
+}
+
+extension YearEngine {
+    /// G8 年度 verdict 纯函数：只读 months 的 level 计数与两标志，不读盘面、不读时间。
+    static func annualVerdict(months: [YearReport], dayunChanged: Bool, chongTigang: Bool) -> AnnualVerdict {
+        let gateCount = months.filter { $0.level == "关口级" }.count
+        let mainCount = months.filter { $0.level == "主线" }.count
+        let refCount = months.filter { $0.level == "参考" }.count
+        let calmCount = months.filter { $0.level == "平年" }.count
+        let countsLine = "本轮 \(months.count) 个流年：关口级 \(gateCount) 个、主线 \(mainCount) 个、参考 \(refCount) 个、平年 \(calmCount) 个。"
+        var notes: [String] = [countsLine]
+        let title: String
+        if gateCount >= 3 || (chongTigang && gateCount >= 1) {
+            title = "多事之年 · 守成为主"
+            notes.append("强引动年份偏多，宜把大事拆小、分批办，留足余地。")
+            notes.append("现金流与作息先垫厚，借贷、担保与不可逆的决定宜缓。")
+            if chongTigang {
+                notes.append("流年支冲月支（提纲），平台与日常秩序一线先有动象，宜先稳住基本盘。")
+            }
+        } else if gateCount == 2 || chongTigang {
+            title = "变动较多年 · 先稳后进"
+            notes.append("变动年份偏多，宜先稳住基本盘，再图推进。")
+            if chongTigang {
+                notes.append("流年支冲月支（提纲），平台与日常秩序一线先有动象，宜先稳住基本盘。")
+            }
+        } else if gateCount == 1 || mainCount >= 4 {
+            title = "主线集中之年 · 抓重点、控节奏"
+            notes.append("主线年份偏多，宜把精力集中在主线年份对应的主题上，一年只抓一两件大事。")
+        } else if dayunChanged {
+            title = "换运之年 · 新旧交接"
+            notes.append("本轮内有大运交接，新旧运交替，宜稳不宜急，先适应新运的主题再铺开。")
+        } else if mainCount >= 2 {
+            title = "有事可办之年 · 量力推进"
+            notes.append("主线年份可按主题量力推进，节奏上先定方案再动手。")
+        } else {
+            title = "平稳积累之年 · 按部就班"
+            notes.append("关口级与主线年份都少，宜按大运背景积累本事、储蓄与作息，把发力留给后面的主线年。")
+        }
+        if dayunChanged && title != "换运之年 · 新旧交接" {
+            notes.append("本轮内另有大运交接，交接年份宜多留缓冲。")
+        }
+        return AnnualVerdict(title: title, notes: notes, gateCount: gateCount, mainCount: mainCount, refCount: refCount, calmCount: calmCount)
+    }
+
+    /// 冲提纲：报告年份的流年支冲月支（提纲为月支）；月柱缺失时返回 false。
+    static func isChongTigang(chart: BaziChart, year: Int) -> Bool {
+        guard let yearBranch = BaziChart.yearGanZhi(year).last else { return false }
+        guard chart.pillars.count > 1, let monthBranch = chart.pillars[1].last else { return false }
+        return BaziTables.relationFull(yearBranch, monthBranch)?.0 == "冲"
+    }
+
+    /// G8 年度聚合：连续 12 个流年报告（报告年份起一轮）＋两标志＋verdict。
+    /// 报告年份本身的 YearReport 为 reports[0]，直断原文一字不动。
+    static func annualSummary(chart: BaziChart, year: Int) -> AnnualSummary {
+        let reports = (year...(year + 11)).map { report(chart: chart, year: $0) }
+        let dayunChanged = chart.dayunGanZhi.indices.contains { i in
+            let start = chart.dayunStartYear(i)
+            return start >= year && start <= year + 11
+        }
+        let chongTigang = isChongTigang(chart: chart, year: year)
+        return AnnualSummary(
+            year: year,
+            reports: reports,
+            verdict: annualVerdict(months: reports, dayunChanged: dayunChanged, chongTigang: chongTigang),
+            dayunChanged: dayunChanged,
+            chongTigang: chongTigang
+        )
+    }
+}

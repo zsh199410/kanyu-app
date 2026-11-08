@@ -67,6 +67,9 @@ struct AllToolsData {
         ToolItem(id: "compass", title: "罗盘实测", desc: "磁北／真北 · 锁定带入堪舆", icon: "safari.fill", color: Ky.gold, group: .tools),
         ToolItem(id: "floorplan", title: "户型压盘", desc: "导入户型图 · 拖拽立极中宫", icon: "square.split.diagonal.2x2", color: Ky.qingdai, group: .tools),
         ToolItem(id: "ask", title: "AI 问答", desc: "只引引擎事实 · 附依据链", icon: "bubble.left.and.text.bubble.right.fill", color: Ky.jade, group: .tools),
+        ToolItem(id: "lucky", title: "开运指南", desc: "幸运色卡 · 场景分级 · 收藏", icon: "wand.and.stars", color: Ky.gold, group: .tools),
+        ToolItem(id: "annual", title: "年度报告", desc: "连续 12 个流年聚合 · 年度 verdict", icon: "calendar.badge.clock", color: Ky.gold, group: .tools),
+        ToolItem(id: "accessory", title: "配饰库", desc: "配饰材质 · 来源与可信度", icon: "diamond.fill", color: Ky.jade, group: .knowledge),
         ToolItem(id: "forecast", title: "前瞻登记簿", desc: "起卦断语封存 · 到期回验", icon: "checkmark.seal.fill", color: Ky.jade, group: .tools),
         ToolItem(id: "backup", title: "备份恢复", desc: "人物与前瞻备份 · ZIP 导入恢复", icon: "archivebox.fill", color: Ky.qingdai, group: .tools),
         ToolItem(id: "caliber", title: "排盘口径设置", desc: "晚子时 · 紫微闰月 · 签名证书", icon: "slider.horizontal.3", color: Ky.qingdai, group: .tools),
@@ -167,6 +170,12 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
         FloorPlanOverlayView()
     case "ask":
         AskView()
+    case "lucky":
+        LuckyGuideView(person: person, chart: chart)
+    case "annual":
+        AnnualReportView(chart: chart, name: person.name, initialYear: Calendar.current.component(.year, from: Date()))
+    case "accessory":
+        AccessoryListView()
     case "forecast":
         ForecastView()
     case "backup":
