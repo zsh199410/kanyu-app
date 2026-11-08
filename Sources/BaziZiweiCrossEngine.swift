@@ -88,12 +88,13 @@ enum BaziZiweiCrossEngine {
         let zwPioneer = !Set(gz).intersection(pioneer).isEmpty
         let baziStrong = guan >= 3 || (guan >= 1 && yin >= 2)
         let baziPioneer = shi >= 3 && cai >= 1
-        // 建禄格：月令本气为比肩／劫财（身强自立，宜专业技术与自主创业）
+        // 建禄／阳刃／月劫：月令本气为比肩／劫财（身强自立，宜专业技术与自主创业）
         let monthBenQi = BaziTables.cangGan[bazi.monthPillar.last!]!.first!
         let monthBenQiSS = BaziTables.shiShen(day: bazi.rizhu.first!, stem: monthBenQi)
         let jianLu = monthBenQiSS == "比肩" || monthBenQiSS == "劫财"
+        let geName = monthBenQiSS == "比肩" ? "建禄格" : (BaziTables.wx[bazi.rizhu.first!]?.1 == 1 ? "阳刃格" : "月劫格")
         let huaQuan = hua(guanP, "权"), huaLu = hua(guanP, "禄")
-        let bSig = "官杀\(guan) · 印\(yin) · 食伤\(shi) · 财\(cai)；建禄\(jianLu ? "见" : "不见")"
+        let bSig = "官杀\(guan) · 印\(yin) · 食伤\(shi) · 财\(cai)；禄刃\(jianLu ? "见" : "不见")"
         let zSig = "官禄坐\(starLine(guanP))；化权\(huaQuan.isEmpty ? "无" : huaQuan.joined(separator: "、"))／化禄\(huaLu.isEmpty ? "无" : huaLu.joined(separator: "、"))；命宫坐\(starLine(mingP))"
         if baziStrong && zwStable {
             return Verdict(title: "事业", bazi: bSig, ziwei: zSig,
@@ -107,7 +108,7 @@ enum BaziZiweiCrossEngine {
         }
         if jianLu && (zwPioneer || !huaQuan.isEmpty || !huaLu.isEmpty) {
             return Verdict(title: "事业", bazi: bSig, ziwei: zSig,
-                verdict: "同频相催：自主创业／专业技术线。八字建禄格（月令本气\(monthBenQiSS)）、紫微官禄见化权／化禄或开拓星，两术都指向自立——专业技术、自主创业是主场，靠本事吃饭。",
+                verdict: "同频相催：自主创业／专业技术线。八字\(geName)（月令本气\(monthBenQiSS)）、紫微官禄见化权／化禄或开拓星，两术都指向自立——专业技术、自主创业是主场，靠本事吃饭。",
                 kind: .tongPin)
         }
         let dir = baziStrong ? "官印成势" : (baziPioneer ? "食伤生财" : (jianLu ? "建禄自立" : "无单一主星压场"))

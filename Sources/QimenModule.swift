@@ -63,7 +63,13 @@ enum QimenEngine {
     static let seqGods = ["值符", "螣蛇", "太阴", "六合", "白虎", "玄武", "九地", "九天"]
     static let baseStar: [Int: String] = [1: "蓬", 2: "芮", 3: "冲", 4: "辅", 5: "禽", 6: "心", 7: "柱", 8: "任", 9: "英"]
     static let baseDoor: [Int: String] = [1: "休", 2: "死", 3: "伤", 4: "杜", 9: "景", 7: "惊", 6: "开", 8: "生"]
-    static let seq8 = [1, 2, 3, 4, 9, 8, 7, 6]
+    static let seq8 = [1, 2, 3, 4, 9, 8, 7, 6]  // 旧口径留档备查（2026-11-08 大修前值使／星／门／神飞宫序，已废止）
+    /// 方位环序（2026-11-08 大修口径）：星／干／门／神一律沿此环布（阴遁逆环），
+    /// 中宫不布星干，天禽与中宫原干随芮。依据《遁甲演义》卷一／卷二诸例。
+    static let ring = [1, 8, 3, 4, 9, 2, 7, 6]
+    static let ringStars = ["蓬", "任", "冲", "辅", "英", "芮", "柱", "心"]  // 本宫与 ring 一一对应
+    static let ringDoors = ["休", "生", "伤", "杜", "景", "死", "惊", "开"]  // 本宫与 ring 一一对应
+    static let ringGodsYin = ["值符", "九天", "九地", "玄武", "白虎", "六合", "太阴", "螣蛇"]  // 阴遁神序（沿顺时针环逆布）
     static let palaceName: [Int: String] = [1: "坎", 2: "坤", 3: "震", 4: "巽", 5: "中", 6: "乾", 7: "兑", 8: "艮", 9: "离"]
     static let palaceDir: [Int: String] = [1: "正北", 2: "西南", 3: "正东", 4: "东南", 5: "中宫", 6: "西北", 7: "正西", 8: "东北", 9: "正南"]
     static let yangJieqi: Set<String> = ["冬至", "小寒", "大寒", "立春", "雨水", "惊蛰", "春分", "清明", "谷雨", "立夏", "小满", "芒种"]
@@ -93,8 +99,10 @@ enum QimenEngine {
     }
     struct Palace {
         var diStem: String
-        var tianStem: String
-        var star: String
+        var tianStem: String?  // 中宫为 nil（无天盘干；中宫原干随芮，见 hostedTianStem）
+        var star: String?  // 中宫为 nil（无星；天禽随芮，见 hostedStar）
+        var hostedStar: String? = nil  // 天禽随芮落此宫时为 "禽"
+        var hostedTianStem: String? = nil  // 中宫原干随芮落此宫时为地盘中宫干
         var door: String?
         var god: String?
         var patterns: [Pattern] = []
@@ -118,8 +126,12 @@ enum QimenEngine {
         var sanyuan: String
         var zhiFuStar: String
         var zhiShiDoor: String
-        var hourPalace: Int
+        var hourPalace: Int  // 时干地盘原宫（可为中五 5）
         var zhiShiPalace: Int
+        var zhiFuPalace: Int = 1  // 值符星落宫（禽在芮宫，其余在时干宫寄宫后）
+        var tianRuiPalace: Int = 2  // 天芮落宫（天禽与中宫原干随芮落此宫）
+        var qinPalace: Int = 2  // 天禽落宫（随芮）
+        var zhishiRawPalace: Int = 1  // 值使移宫原宫（落 5 时寄宫，见 zhiShiPalace）
         var kongWang: String
         var maXing: String
         var xunShou: String
@@ -330,13 +342,16 @@ enum QimenEngine {
     /// 直接按局数/阴阳/时干支起盘（测试与金标准用；日期版见 chart(for:)）。
     /// G3：jigong 寄宫档（默认 kun2 恒寄坤二）、angan 是否布暗干、riGan 日干
     /// （十二长生盘级表用）、dingju 定局法、solarMinutes/longitude 真太阳时、
-    /// runqi 是否闰奇。默认参数下结果与 G3 前逐字一致。
+    /// runqi 是否闰奇。2026-11-08 大修口径：值使移宫旬首起数＋数字宫序 1→9，
+    /// 星／干／门／神一律沿方位环序 [1,8,3,4,9,2,7,6] 布（阴遁逆环），
+    /// 中宫不布星干，天禽与中宫原干随芮（《遁甲演义》卷一／卷二为据）。
     static func chart(ju: Int, yang: Bool, hourStem: String, hourBranch: String,
                       jigong: QimenJigong = .kun2, angan: Bool = true, riGan: String? = nil,
                       dingju: String = "拆补法", solarMinutes: Double? = nil,
                       longitude: Double? = nil, runqi: Bool = false) -> Chart? {
         guard let xun = xunShou(hourPillar: hourStem + hourBranch) else { return nil }
-        // 寄宫：只对中宫旬首仪门、时干宫中宫时的神盘寄宫生效（命之经纬口径）
+        // 寄宫：影响值使门本位（值使移宫落中五时）、值符神起宫、
+        // 值使移宫落中五时、时干宫中五时；星／干／门／神沿方位环序布（2026-11-08 大修口径）
         let jp = jigong.palace(yang: yang)
         // 地盘干
         var di: [Int: String] = [:]
@@ -350,39 +365,46 @@ enum QimenEngine {
         // 时干宫（甲时遁戊）
         let hs = hourStem == "甲" ? "戊" : hourStem
         guard let hourPal = di.first(where: { $0.value == hs })?.key else { return nil }
-        func flyPalace(from start: Int, steps: Int, yang: Bool) -> Int {
-            yang ? (start - 1 + steps) % 9 + 1 : ((start - 1 - steps) % 9 + 9) % 9 + 1
+        // 方位环序（2026-11-08 大修口径）：阳顺环、阴逆环
+        func rot<T>(_ arr: [T], _ start: T) -> [T] where T: Equatable {
+            guard let i = arr.firstIndex(of: start) else { return arr }
+            return Array(arr[i...] + arr[..<i])
         }
-        // 天盘星 / 天盘干（含中宫）
+        let ring: [Int] = yang ? Self.ring : Array(Self.ring.reversed())
+        let hourHosted = hourPal == 5 ? jp : hourPal
+        let xunHosted = dunPal == 5 ? jp : dunPal
+        // 值使移宫：从旬首遁干地盘宫（原宫，可为中五）起，按旬首起数
+        // （时支与旬首支的支序差，0–9）沿数字宫序 1→9 移宫（阳顺阴逆）；
+        // 落中五时寄所选寄宫档（默认坤二）。旧口径（时支绝对序号起、SEQ8 跳中五）已废止。
+        let xunBranch = String(xun.xun.suffix(1))
+        let hours = (branches.firstIndex(of: hourBranch)! - branches.firstIndex(of: xunBranch)! + 12) % 12
+        let zhiShiRaw = yang ? (dunPal - 1 + hours) % 9 + 1 : ((dunPal - 1 - hours) % 9 + 9) % 9 + 1
+        let zhiShiPal = zhiShiRaw == 5 ? jp : zhiShiRaw
+        // 天盘星：值符星飞到时干宫，余星沿环布；中宫不布星。
+        // 值符星的环首取旬首寄宫的本宫星（旬首在中宫时：寄坤取芮、寄艮取任——
+        // 寄宫切换时星盘整体不变，仅寄宫标签换位；默认坤二档下即芮，与「天禽随芮」一致）
+        let palaceOrder = rot(ring, hourHosted)
+        let effFu = ringStars[Self.ring.firstIndex(of: xunHosted)!]
+        let starSeq: [String] = yang ? ringStars : Array(ringStars.reversed())
         var stars: [Int: String] = [:]
+        for (p, s) in zip(palaceOrder, rot(starSeq, effFu)) { stars[p] = s }
+        let tianRuiPal = stars.first(where: { $0.value == "芮" })!.key
+        // 值符宫：值符为禽时禽随芮在芮宫；其余值符星在时干宫（寄宫后）。
+        // 默认坤二档下两者恒等，仅非默认寄宫档区分。
+        let zhiFuPal = zhiFu == "禽" ? tianRuiPal : hourHosted
+        // 天盘干：旬首遁干随值符到时干宫，余干按地盘干沿环序布；
+        // 旬首遁干落中五时，取寄宫地盘干为起排干；中宫原干随芮转至芮宫，中宫不布干
+        let outerEarth = ring.map { di[$0]! }
+        let skyStart = dunPal == 5 ? di[xunHosted]! : xun.dun
         var tian: [Int: String] = [:]
-        let si = seqStars.firstIndex(of: zhiFu)!
-        let di0 = seqStems.firstIndex(of: xun.dun)!
-        for k in 0..<9 {
-            let p = flyPalace(from: hourPal, steps: k, yang: yang)
-            stars[p] = seqStars[(si + k) % 9]
-            tian[p] = seqStems[(di0 + k) % 9]
-        }
-        // 人盘门（跳中宫）
-        let zhiShiBase = dunPal == 5 ? jp : dunPal
-        let pos = seq8.firstIndex(of: zhiShiBase)!
-        let bi = branches.firstIndex(of: hourBranch)!
-        let zhiShiPal = seq8[yang ? (pos + bi) % 8 : (pos - bi + 80) % 8]
+        for (p, s) in zip(palaceOrder, rot(outerEarth, skyStart)) { tian[p] = s }
+        // 人盘门：值使门在值使宫，余门沿环布
+        let doorSeq: [String] = yang ? ringDoors : Array(ringDoors.reversed())
         var doors: [Int: String] = [:]
-        let d0 = seqDoors.firstIndex(of: zhiShi)!
-        let zp = seq8.firstIndex(of: zhiShiPal)!
-        for k in 0..<8 {
-            let p = seq8[yang ? (zp + k) % 8 : (zp - k + 80) % 8]
-            doors[p] = seqDoors[(d0 + k) % 8]
-        }
-        // 神盘（跳中宫；时干宫为中宫时值符神寄宫）
+        for (p, d) in zip(rot(ring, zhiShiPal), rot(doorSeq, zhiShi)) { doors[p] = d }
+        // 神盘：值符神在时干宫（寄宫后），余神沿顺时针环布（阴遁用逆序，等价于沿逆环顺布）
         var gods: [Int: String] = [:]
-        let godStart = hourPal == 5 ? jp : hourPal
-        let sp = seq8.firstIndex(of: godStart)!
-        for k in 0..<8 {
-            let p = seq8[yang ? (sp + k) % 8 : (sp - k + 80) % 8]
-            gods[p] = seqGods[k]
-        }
+        for (p, g) in zip(rot(Self.ring, hourHosted), yang ? seqGods : ringGodsYin) { gods[p] = g }
         // G3 层：空亡宫、暗干映射（值使门起）
         let kongBranches = Array(kongWang(xun: xun.xun))
         let kongPals: Set<Int> = Set(kongBranches.compactMap { branchPalace[String($0)] })
@@ -391,10 +413,10 @@ enum QimenEngine {
         var palaces: [Int: Palace] = [:]
         for p in 1...9 {
             var pats: [Pattern] = []
-            let t = tian[p]!, d = di[p]!
+            let t = tian[p], d = di[p]!  // 中宫无天盘干（t 为 nil）；地盘干照常有值
             func add(_ name: String, _ good: Bool, _ note: String) { pats.append(Pattern(name: name, good: good, note: note)) }
             if t == d { add("伏吟", false, "天盘干与地盘干同宫：伏吟主迟滞，事宜缓、不宜急进。") }
-            if stemChong[t] == d { add("反吟", false, "天盘干冲地盘干：反吟主反复变动，计划易生变，宜留后手。") }
+            if let t, stemChong[t] == d { add("反吟", false, "天盘干冲地盘干：反吟主反复变动，计划易生变，宜留后手。") }
             if t == "戊" && d == "丙" { add("青龙返首", true, "天戊临丙：青龙回头看顾，事情容易顺着来，宜主动推进。") }
             if t == "丙" && d == "戊" { add("飞鸟跌穴", true, "天丙临戊：飞鸟落回巢里，谋事容易落定，宜静守、宜收成。") }
             if t == "辛" && d == "乙" { add("白虎猖狂", false, "天辛临乙：白虎猖狂，主口舌是非、意外损伤，宜低调避让。") }
@@ -410,13 +432,14 @@ enum QimenEngine {
                 add("门迫", false, "门克宫：此宫行事多阻力，不宜硬来，宜绕道或换个打法。")
             }
             // G3 层：四害（空／击刑／入墓／门迫）＋十干克应＋天盘干十二长生＋暗干
+            // 中宫无天盘干：长生／克应／击刑／入墓皆为 nil／false
             let pBranches = palaceBranches[p] ?? []
-            let csTian: [String: String]? = pBranches.isEmpty ? nil : Dictionary(uniqueKeysWithValues: pBranches.map { ($0, changshengStage(stem: t, branch: $0) ?? "—") })
-            let ky = keYingFor(tian: t, di: d)
-            palaces[p] = Palace(diStem: d, tianStem: t, star: stars[p]!, door: doors[p], god: gods[p], patterns: pats,
+            let csTian: [String: String]? = (t == nil || pBranches.isEmpty) ? nil : Dictionary(uniqueKeysWithValues: pBranches.map { ($0, changshengStage(stem: t!, branch: $0) ?? "—") })
+            let ky = t.flatMap { keYingFor(tian: $0, di: d) }
+            palaces[p] = Palace(diStem: d, tianStem: t, star: stars[p], hostedStar: p == tianRuiPal ? "禽" : nil, hostedTianStem: p == tianRuiPal ? di[5] : nil, door: doors[p], god: gods[p], patterns: pats,
                                 siHaiKong: kongPals.contains(p),
-                                siHaiJiXing: jiXing[t] == p,
-                                siHaiRuMu: ruMu[t] == p,
+                                siHaiJiXing: t.flatMap { jiXing[$0] } == p,
+                                siHaiRuMu: t.flatMap { ruMu[$0] } == p,
                                 siHaiMenPo: menpo,
                                 keYingName: ky?.name,
                                 keYingNote: ky?.note,
@@ -425,6 +448,7 @@ enum QimenEngine {
         }
         return Chart(date: Date(), pillars: [], lunarText: "", jieqi: "", yang: yang, ju: ju, sanyuan: "",
                      zhiFuStar: zhiFu, zhiShiDoor: zhiShi, hourPalace: hourPal, zhiShiPalace: zhiShiPal,
+                     zhiFuPalace: zhiFuPal, tianRuiPalace: tianRuiPal, qinPalace: tianRuiPal, zhishiRawPalace: zhiShiRaw,
                      kongWang: kongWang(xun: xun.xun), maXing: maXing(hourBranch: hourBranch), xunShou: xun.xun,
                      palaces: palaces, dingju: dingju, jigong: jigong, angan: angan, runqi: runqi,
                      solarMinutes: solarMinutes, longitude: longitude, riGan: riGan,
@@ -757,9 +781,9 @@ enum QimenGlossary {
 
 // MARK: - G3 案例库（只收公开记载、可核验案例；与 Web app/qimen_cases.json 同源）
 // 典籍／教程算例仅核定局与值符值使，无实战应验记录，应验栏如实写"无"。
-// 值使落宫口径差异：引擎按时支序数起，新浪教程按旬首起数＋含中五宫数法，
-// 两法在 10 例中仅 1 例相同；本库仅核定局与值符值使身份，值使落宫以引擎
-// 值为准并逐条标注教程值，待口径裁决后另行修正（见 G3 汇报 §⑥）。
+// 值使落宫口径已裁决（2026-11-08 奇门大修）：引擎改旬首起数＋数字宫序 1→9
+// （含中五寄坤二），依据《遁甲演义》卷二·地遁辛卯时；有教程值者（01–06）
+// 引擎值与教程值全部一致。
 struct QimenCase: Identifiable {
     var id: String
     var title: String
@@ -798,19 +822,19 @@ enum QimenCases {
             sanyuan: "下元",
             pillars: ["丙子", "癸巳", "丙午", "丙申"],
             zhifu: "天蓬带辛",
-            zhifuPalaceEngine: 5,
+            zhifuPalaceEngine: 2,
             zhifuPalaceSource: 2,
             zhishi: "休门",
-            zhishiPalaceEngine: 1,
+            zhishiPalaceEngine: 3,
             zhishiPalaceSource: 3,
             sourceName: "新浪《奇门遁甲入门教程》起局实例 1",
             sourceText: "丙午日甲辰壬旬，辰为下元，立夏阳 7 局；丙申时甲午辛旬，值符天蓬带辛，值使休门；时干丙落 5 宫寄二宫，值符落二宫；时支申（午1未2申3）落三宫，值使休门落三宫。",
             sourceUrl: "http://k.sina.cn/article_6398138586_17d5bd8da0010036ro.html",
             yingyan: "无（典籍算例，仅核定局与值符值使）",
-            verified: "引擎复核：立夏阳 7 局下元，值符天蓬，值使休门，局／星／门一致。",
+            verified: "引擎复核：立夏阳 7 局下元，值符天蓬落 2 宫，值使休门落 3 宫，局／星／门／落宫全部一致。",
             status: "已验",
-            zhifuNote: "值符落宫记法差异：时干丙之地盘宫为 5 宫（中五），引擎按九星在中五照常有值记为 5 宫，教程寄坤记为 2 宫；星同而落宫记法不同。",
-            zhishiNote: "值使落宫口径差异：引擎值使休门落 1 宫（时支序数起），教程落 3 宫（旬首起数法）；待口径裁决。",
+            zhifuNote: "时干丙之地盘宫为 5 宫（中五），新口径下值符星寄坤落 2 宫，与教程一致。",
+            zhishiNote: "口径已裁决（2026-11-08 奇门大修）：引擎改旬首起数＋数字宫序 1→9（含中五寄坤二），与教程值一致；依据《遁甲演义》卷二·地遁辛卯时。",
         ),
         QimenCase(
             id: "qimen-case-02",
@@ -832,7 +856,7 @@ enum QimenCases {
             sourceText: "戊申日甲辰壬旬，辰为下元，霜降阴 2 局；戊午时甲寅癸旬，值符天心带癸，值使开门；时干戊落二宫，值符落二宫；时支午（寅6卯5辰4巳3午2）落二宫，值使开门落二宫。",
             sourceUrl: "http://k.sina.cn/article_6398138586_17d5bd8da0010036ro.html",
             yingyan: "无（典籍算例，仅核定局与值符值使）",
-            verified: "引擎复核：霜降阴 2 局下元，值符天心落 2 宫，值使开门落 2 宫，局／星／门／落宫全部一致（10 例中唯一值使宫亦一致者）。",
+            verified: "引擎复核：霜降阴 2 局下元，值符天心落 2 宫，值使开门落 2 宫，局／星／门／落宫全部一致。",
             status: "已验",
             zhifuNote: "",
             zhishiNote: "",
@@ -851,7 +875,7 @@ enum QimenCases {
             zhifuPalaceEngine: 7,
             zhifuPalaceSource: 3,
             zhishi: "伤门",
-            zhishiPalaceEngine: 7,
+            zhishiPalaceEngine: 3,
             zhishiPalaceSource: 3,
             sourceName: "新浪《奇门遁甲入门教程》起局实例 3",
             sourceText: "壬子日甲辰壬旬，辰为下元，大暑阴 7 局；甲辰时甲辰壬旬，值符天冲带壬，值使伤门；时干壬落三宫，值符落三宫；时支辰落三宫，值使伤门落三宫。",
@@ -860,7 +884,7 @@ enum QimenCases {
             verified: "引擎复核：大暑阴 7 局上元，值符天冲，值使伤门，局／星／门一致。",
             status: "已验",
             zhifuNote: "教程“时干壬”实为旬首遁干壬（地盘宫 3 宫）；时干甲遁戊落 7 宫，引擎值符星落时干宫 7 宫。甲时教程以遁干代时干记宫，引擎按时干宫为准。",
-            zhishiNote: "值使落宫口径差异：引擎值使伤门落 7 宫（时支序数起），教程落 3 宫（旬首起数法）；待口径裁决。",
+            zhishiNote: "口径已裁决（2026-11-08 奇门大修）：引擎改旬首起数＋数字宫序 1→9（含中五寄坤二），与教程值一致；依据《遁甲演义》卷二·地遁辛卯时。",
         ),
         QimenCase(
             id: "qimen-case-04",
@@ -876,7 +900,7 @@ enum QimenCases {
             zhifuPalaceEngine: 8,
             zhifuPalaceSource: 8,
             zhishi: "死门",
-            zhishiPalaceEngine: 4,
+            zhishiPalaceEngine: 9,
             zhishiPalaceSource: 9,
             sourceName: "新浪《奇门遁甲入门教程》起局实例 4",
             sourceText: "丁卯日甲子戊旬，子为上元，寒露阴 6 局；丙午时甲辰壬旬，值符天芮带壬，值使死门；时干丙落八宫，值符落八宫；时支午（辰2巳1午9）落九宫，值使死门落九宫。",
@@ -885,7 +909,7 @@ enum QimenCases {
             verified: "引擎复核：寒露阴 6 局上元，值符天芮落 8 宫，值使死门，局／星／门／值符宫一致。",
             status: "已验",
             zhifuNote: "",
-            zhishiNote: "值使落宫口径差异：引擎值使死门落 4 宫（时支序数起），教程落 9 宫（旬首起数法）；待口径裁决。",
+            zhishiNote: "口径已裁决（2026-11-08 奇门大修）：引擎改旬首起数＋数字宫序 1→9（含中五寄坤二），与教程值一致；依据《遁甲演义》卷二·地遁辛卯时。",
         ),
         QimenCase(
             id: "qimen-case-05",
@@ -901,7 +925,7 @@ enum QimenCases {
             zhifuPalaceEngine: 6,
             zhifuPalaceSource: 6,
             zhishi: "惊门",
-            zhishiPalaceEngine: 3,
+            zhishiPalaceEngine: 1,
             zhishiPalaceSource: 1,
             sourceName: "新浪《奇门遁甲入门教程》起局实例 5",
             sourceText: "乙酉日甲申庚旬，申为中元，霜降阴 8 局；庚辰时甲戌己旬，值符天柱带己，值使惊门；时干庚落六宫，值符落六宫；时支辰（戌7亥6子5丑4寅3卯2辰1）落一宫，值使惊门落一宫。",
@@ -910,7 +934,7 @@ enum QimenCases {
             verified: "引擎复核：霜降阴 8 局中元，值符天柱落 6 宫，值使惊门，局／星／门／值符宫一致。",
             status: "已验",
             zhifuNote: "",
-            zhishiNote: "值使落宫口径差异：引擎值使惊门落 3 宫（时支序数起），教程落 1 宫（旬首起数法）；待口径裁决。",
+            zhishiNote: "口径已裁决（2026-11-08 奇门大修）：引擎改旬首起数＋数字宫序 1→9（含中五寄坤二），与教程值一致；依据《遁甲演义》卷二·地遁辛卯时。",
         ),
         QimenCase(
             id: "qimen-case-06",
@@ -926,7 +950,7 @@ enum QimenCases {
             zhifuPalaceEngine: 9,
             zhifuPalaceSource: 9,
             zhishi: "惊门",
-            zhishiPalaceEngine: 2,
+            zhishiPalaceEngine: 7,
             zhishiPalaceSource: 7,
             sourceName: "新浪《奇门遁甲入门教程》起局实例 6",
             sourceText: "壬辰日甲申庚旬，申为中元，惊蛰阳 4 局；癸卯时甲午辛旬，值符天柱带辛，值使惊门；时干癸落九宫，值符落九宫；时支卯（午7未8申9酉1戌2亥3子4丑5寅6卯7）落七宫，值使惊门落七宫。",
@@ -935,7 +959,7 @@ enum QimenCases {
             verified: "引擎复核：惊蛰阳 4 局下元，值符天柱落 9 宫，值使惊门，局／星／门／值符宫一致。",
             status: "已验",
             zhifuNote: "",
-            zhishiNote: "值使落宫口径差异：引擎值使惊门落 2 宫（时支序数起），教程落 7 宫（旬首起数法）；待口径裁决。",
+            zhishiNote: "口径已裁决（2026-11-08 奇门大修）：引擎改旬首起数＋数字宫序 1→9（含中五寄坤二），与教程值一致；依据《遁甲演义》卷二·地遁辛卯时。",
         ),
         QimenCase(
             id: "qimen-case-07",
@@ -951,13 +975,13 @@ enum QimenCases {
             zhifuPalaceEngine: 7,
             zhifuPalaceSource: nil,
             zhishi: "死门",
-            zhishiPalaceEngine: 8,
+            zhishiPalaceEngine: 7,
             zhishiPalaceSource: nil,
             sourceName: "《奇门元灵经》日奇门算例（芒种后癸亥日丙辰时，阳九局下元）",
             sourceText: "芒种后癸亥日丙辰时，阳九局下元。原书未给公历日期，本条以 2026-06-18 癸亥日丙辰时复核。",
             sourceUrl: "https://pdf.fengshui86.com/wzpdf/6254496.pdf",
             yingyan: "无（典籍算例，仅核定局）",
-            verified: "引擎复核：2026-06-18 癸亥日丙辰时，芒种阳 9 局下元，值符天禽落 7 宫，值使死门落 8 宫，局数一致。",
+            verified: "引擎复核：2026-06-18 癸亥日丙辰时，芒种阳 9 局下元，值符天禽落 7 宫，值使死门落 7 宫，局数一致。",
             status: "已验",
             zhifuNote: "",
             zhishiNote: "",
@@ -976,13 +1000,13 @@ enum QimenCases {
             zhifuPalaceEngine: 6,
             zhifuPalaceSource: nil,
             zhishi: "开门",
-            zhishiPalaceEngine: 4,
+            zhishiPalaceEngine: 1,
             zhishiPalaceSource: nil,
             sourceName: "《奇门遁甲统宗》卷一置闰法（康熙五十七年芒种置闰）",
             sourceText: "农历五月十六甲子日为闰奇上局（芒种闰奇上局阳 6 局）；农历五月初一己酉为芒种上局，五月廿一己巳为闰奇中局，五月廿六甲戌为闰奇下局，六月初二己卯始为夏至上局。农历日期经 lunar_python 换算为公历（五月十六甲子＝1718-06-14）。",
             sourceUrl: "https://ctext.org/wiki.pl?if=en&chapter=666094",
             yingyan: "无（典籍算例，仅核定局与置闰）",
-            verified: "引擎复核：置闰行走 1718-06-14 为芒种闰奇上局阳 6 局（runqi=True），值符天心落 6 宫，值使开门落 4 宫；拆补法同日为芒种上元阳 6 局（闰奇上局期间两者同局，分叉在夏至交节后）。",
+            verified: "引擎复核：置闰行走 1718-06-14 为芒种闰奇上局阳 6 局（runqi=True），值符天心落 6 宫，值使开门落 1 宫；拆补法同日为芒种上元阳 6 局（闰奇上局期间两者同局，分叉在夏至交节后）。",
             status: "已验",
             zhifuNote: "",
             zhishiNote: "",
@@ -1197,11 +1221,11 @@ struct QimenHomeView: View {
 
     private func cell(_ ch: QimenEngine.Chart, palace p: Int) -> some View {
         guard let pc = ch.palaces[p] else { return AnyView(EmptyView()) }
-        let isFu = ch.hourPalace == p
+        let isFu = ch.zhiFuPalace == p
         let isShi = ch.zhiShiPalace == p
         let name = QimenEngine.palaceName[p] ?? ""
         let dir = QimenEngine.palaceDir[p] ?? ""
-        let a11y = "\(name)宫·\(dir)：天盘\(pc.tianStem)，地盘\(pc.diStem)，\(pc.star)星，\(pc.door ?? "无门")，\(pc.god ?? "无神")\(pc.patterns.isEmpty ? "" : "，格局：" + pc.patterns.map { $0.name }.joined(separator: "、"))"
+        let a11y = "\(name)宫·\(dir)：天盘\(pc.tianStem ?? "无")，地盘\(pc.diStem)，\(pc.star.map { "\($0)星" } ?? "无星")，\(pc.door ?? "无门")，\(pc.god ?? "无神")\(pc.patterns.isEmpty ? "" : "，格局：" + pc.patterns.map { $0.name }.joined(separator: "、"))"
         return AnyView(
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 4) {
@@ -1210,10 +1234,10 @@ struct QimenHomeView: View {
                     if isShi { Text("值使").font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.cinnabar) }
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(pc.tianStem).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text(pc.tianStem ?? "—").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     Text(pc.diStem).font(.caption).foregroundStyle(Ky.sub)
                 }
-                Text("\(pc.star)星").font(.callout).foregroundStyle(Ky.ink)
+                Text(pc.star.map { "\($0)星" } ?? "—").font(.callout).foregroundStyle(Ky.ink)
                 Text(pc.door.map { "\($0)门" } ?? "—").font(.callout).foregroundStyle(Ky.ink)
                 Text(pc.god.map { "\($0)神" } ?? "—").font(.caption).foregroundStyle(Ky.sub)
                 HStack(spacing: 4) {

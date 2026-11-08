@@ -260,8 +260,8 @@ enum InterpretEngine {
             }
             return "成中有败：生财带煞——\(describe(cai))与\(describe(sha))同现；救形态「生财透杀而杀逢合」涉及合化，本查不判定。"
         }
-        // 羊刃格：忌形态为「无官煞」与「透官被伤」；救为重印护官杀；「透杀被合」涉及合化，本查不判定
-        if benQiSS == "劫财" {
+        // 阳刃格（仅阳干）：忌形态为「无官煞」与「透官被伤」；救为重印护官杀；「透杀被合」涉及合化，本查不判定
+        if benQiSS == "劫财" && BaziTables.wx[ch.rizhu.first!]?.1 == 1 {
             let guan = found(["正官"])
             let sha = found(["七杀"])
             let shang = found(["伤官"])
@@ -277,8 +277,8 @@ enum InterpretEngine {
             }
             return "格有成象：官杀在局，本查常见形态内未见「透官被伤」；「透杀被合」涉及合化，本查不判定。"
         }
-        // 建禄格：忌形态为「无财官透煞印」；救形态「伤被合／煞被合」涉及合化，本查不判定
-        if benQiSS == "比肩" {
+        // 建禄月劫格（比肩＋阴干劫财）：忌形态为「无财官透煞印」；救形态「伤被合／煞被合」涉及合化，本查不判定
+        if benQiSS == "比肩" || (benQiSS == "劫财" && BaziTables.wx[ch.rizhu.first!]?.1 == 0) {
             let caiGuan = found(["正财", "偏财", "正官"])
             let shaYin = found(["七杀", "正印", "偏印"])
             if caiGuan.isEmpty && !shaYin.isEmpty {
@@ -340,13 +340,14 @@ enum InterpretEngine {
         let benQi = BaziTables.cangGan[monthBranch]!.first!
         let benQiSS = BaziTables.shiShen(day: dayStem, stem: benQi)
         let touIdx = ch.stemShiShen.firstIndex(of: benQiSS)
-        let geName = benQiSS == "比肩" ? "建禄格" : (benQiSS == "劫财" ? "羊刃格" : "\(benQiSS)格")
+        let yangDay = BaziTables.wx[dayStem]?.1 == 1  // 阳刃惟五阳有之，阴干月令逢劫为月劫
+        let geName = benQiSS == "比肩" ? "建禄格" : (benQiSS == "劫财" ? (yangDay ? "羊刃格" : "月劫格") : "\(benQiSS)格")
         let chengBai = chengBaiCheck(chart: ch, benQiSS: benQiSS)
         items.append(InterpretItem(
             title: "月令格局（候选）",
             conclusion: "月令\(monthBranch)本气\(benQi)对日主为\(benQiSS)，先按\(geName)候选看。\(touIdx != nil ? "本气已透于\(["年", "月", "日", "时"][touIdx!])干，格象较明。" : "本气未透干，格象要结合透藏与岁运再定，此处只作候选。")成败核查：\(chengBai)",
             links: [("盘面", "月柱 \(ch.monthPillar)，本气 \(benQi)（\(benQiSS)）；四柱透干查 \(touIdx != nil ? "见透" : "未透")"),
-                    ("法则", "《子平真诠》：格以月令本气为纲，透干则格明；月令为比劫不立十神格，取建禄／羊刃"),
+                    ("法则", "《子平真诠》：格以月令本气为纲，透干则格明；月令为比劫不立十神格，取建禄／阳刃（阳干）／月劫（阴干）"),
                     ("成败核查", "《子平正法》之十六成败救应四态核查清单（现代博客展开，非典籍原文）；只查十神见否（透干＋藏干），合／冲／刑与身旺量级未入本查，未见忌字不等于全格无破")]))
         // 3 扶抑＋调候喜忌（初判）
         let (level, shengWo, tongDang) = fuYi(chart: ch)

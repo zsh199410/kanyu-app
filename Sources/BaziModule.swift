@@ -121,8 +121,10 @@ enum BaziTables {
         let yuede: [String: String] = ["寅": "丙", "午": "丙", "戌": "丙", "申": "壬", "子": "壬", "辰": "壬", "亥": "甲", "卯": "甲", "未": "甲", "巳": "庚", "酉": "庚", "丑": "庚"]
         if let g = yuede[mb] { for i in 0..<4 where stems[i] == g { out[i].append("月德贵人") } }
         // 天德（月支查：干/支混合表）
-        let tiandeStem: [String: String] = ["寅": "丁", "辰": "壬", "巳": "辛", "未": "甲", "申": "癸", "戌": "丙", "亥": "乙", "子": "庚"]
-        let tiandeBranch: [String: String] = ["卯": "申", "午": "亥", "酉": "寅", "丑": "巳"]
+        // 2026-11-08 天德订正（《三命通会》卷三〈论天月德〉：十一月巳、十二月庚）：
+        // 子月值巳为地支、丑月值庚为天干，旧表两值错放于对方的干／支表导致互换。
+        let tiandeStem: [String: String] = ["寅": "丁", "辰": "壬", "巳": "辛", "未": "甲", "申": "癸", "戌": "丙", "亥": "乙", "丑": "庚"]
+        let tiandeBranch: [String: String] = ["卯": "申", "午": "亥", "酉": "寅", "子": "巳"]
         if let g = tiandeStem[mb] { for i in 0..<4 where stems[i] == g { out[i].append("天德贵人") } }
         if let b = tiandeBranch[mb] { add("天德贵人", b) }
         return out
