@@ -4,7 +4,7 @@ import SwiftUI
 // 判分逻辑与 Web quiz.py grade() 一致；结果只存 UserDefaults，不落库。）
 struct QuizQuestion: Identifiable { let id: Int; let point: String; let type: String; let q: String; let options: [String]; let answerIndex: Int; let answerBool: Bool; let explain: String; let source: String }
 enum QuizData {
-    static let version = "G11-20261108"
+    static let version = "G17-20261109"
     static let questions: [QuizQuestion] = [
         QuizQuestion(id: 1, point: "真太阳时校正", type: "choice", q: "梁平经度 107.8，2024-12-21 08:30 出生，真太阳时校正多少分钟？", options: ["-47.9 分钟", "-48.8 分钟", "-44.4 分钟", "+4.4 分钟"], answerIndex: 0, answerBool: false, explain: "校正＝(经度-120)×4＋均时差：(107.8-120)×4＝-48.8，再加当日均时差 +0.9，得 -47.9。囿廷收据行同值。", source: "口径出处：app/paipan.py eot_minutes／app/paipan_client.py tst_minutes；引擎字段：排盘“口径”行“真太阳时校正 -47.9 分钟（经度 107.8 + 均时差）”。"),
         QuizQuestion(id: 2, point: "真太阳时校正", type: "choice", q: "真太阳时校正公式是哪一个？", options: ["(经度-120)×4＋均时差", "(经度-120)×4－均时差", "(120-经度)×4＋均时差", "经度×4"], answerIndex: 0, answerBool: false, explain: "公式为 (经度-120)×4＋均时差。经度取 120（东经 120°标准子午线）时，经度差为 0，校正只剩均时差。", source: "口径出处：app/paipan.py eot_minutes；app/paipan_client.py tst_minutes 与 paipan.py 同式。"),

@@ -50,7 +50,8 @@ struct AllToolsData {
         ToolItem(id: "compare", title: "多盘对比", desc: "2–4 人并排比四柱", icon: "person.3.fill", color: Ky.jade, group: .paipan),
         ToolItem(id: "yearly", title: "逐年四查", desc: "大运流年 · 逐年直断", icon: "calendar", color: Ky.qingdai, group: .paipan),
         ToolItem(id: "interpret", title: "30 维详批", desc: "30 条详批 · 分类导航", icon: "doc.text.fill", color: Ky.gold, group: .paipan),
-        ToolItem(id: "poster", title: "海报导出", desc: "四款海报 · 1080 宽长图", icon: "photo.fill", color: Ky.qingdai, group: .paipan),
+        ToolItem(id: "chartdepth", title: "深度图表", desc: "五行十神交互图 · 点一点定位干支", icon: "chart.bar.fill", color: Ky.qingdai, group: .paipan),
+        ToolItem(id: "poster", title: "海报导出", desc: "八款海报 · 1080 宽长图", icon: "photo.fill", color: Ky.qingdai, group: .paipan),
         ToolItem(id: "reportcenter", title: "报告中心", desc: "已生成命书与海报 · 按人物归档", icon: "archivebox.fill", color: Ky.qingdai, group: .paipan),
         ToolItem(id: "almanac", title: "万年历", desc: "公历农历 · 干支节气宜忌", icon: "calendar.day.timeline.left", color: Ky.qingdai, group: .calendar),
         ToolItem(id: "monthcal", title: "干支日历选日", desc: "按月翻日 · 干支速查", icon: "calendar", color: Ky.gold, group: .calendar),
@@ -62,6 +63,7 @@ struct AllToolsData {
         ToolItem(id: "classics", title: "古籍检索", desc: "《滴天髓》歌诀 · 《子平真诠》全文", icon: "book.fill", color: Ky.jade, group: .knowledge),
         ToolItem(id: "academy", title: "学堂", desc: "图书馆 · 古籍 · 题库一页收拢", icon: "graduationcap.fill", color: Ky.qingdai, group: .knowledge),
         ToolItem(id: "quiz", title: "排盘口径自测", desc: "44 题口径自测 · 引擎现算复核", icon: "questionmark.circle.fill", color: Ky.gold, group: .knowledge),
+        ToolItem(id: "blindtest", title: "盲测模式", desc: "BaziQA 555 题随机抽题 · 服务端判分", icon: "eye.slash.fill", color: Ky.qingdai, group: .knowledge),
         ToolItem(id: "celeb", title: "名人命例库", desc: "公开史料生辰 · 双盘即时对参", icon: "person.crop.rectangle.stack.fill", color: Ky.gold, group: .knowledge),
         ToolItem(id: "shahandbook", title: "风水知识与解煞手册", desc: "玄空八宅测法 · 17 类形煞分层化解", icon: "books.vertical.fill", color: Ky.cinnabar, group: .knowledge),
         ToolItem(id: "compass", title: "罗盘实测", desc: "磁北／真北 · 锁定带入堪舆", icon: "safari.fill", color: Ky.gold, group: .tools),
@@ -71,6 +73,7 @@ struct AllToolsData {
         ToolItem(id: "annual", title: "年度报告", desc: "连续 12 个流年聚合 · 年度 verdict", icon: "calendar.badge.clock", color: Ky.gold, group: .tools),
         ToolItem(id: "accessory", title: "配饰库", desc: "配饰材质 · 来源与可信度", icon: "diamond.fill", color: Ky.jade, group: .knowledge),
         ToolItem(id: "forecast", title: "前瞻登记簿", desc: "起卦断语封存 · 到期回验", icon: "checkmark.seal.fill", color: Ky.jade, group: .tools),
+        ToolItem(id: "backtest", title: "历史回测", desc: "前瞻验真汇总 · BaziQA 194/555", icon: "chart.bar.fill", color: Ky.jade, group: .tools),
         ToolItem(id: "backup", title: "备份恢复", desc: "人物与前瞻备份 · ZIP 导入恢复", icon: "archivebox.fill", color: Ky.qingdai, group: .tools),
         ToolItem(id: "caliber", title: "排盘口径设置", desc: "晚子时 · 紫微闰月 · 签名证书", icon: "slider.horizontal.3", color: Ky.qingdai, group: .tools),
         ToolItem(id: "workbench", title: "风水勘察", desc: "罗盘定盘 · 玄空八宅 · 案件", icon: "safari.fill", color: Ky.gold, group: .tools),
@@ -136,6 +139,8 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
         YearByYearView(chart: chart, name: person.name)
     case "interpret":
         InterpretView(chart: chart, name: person.name)
+    case "chartdepth":
+        ChartDepthView(person: person, chart: chart)
     case "poster":
         BaziResultView(chart: chart, name: person.name)
     case "reportcenter":
@@ -160,6 +165,8 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
         AcademyView()
     case "quiz":
         QuizView()
+    case "blindtest":
+        BlindTestView()
     case "celeb":
         CelebView()
     case "shahandbook":
@@ -178,6 +185,8 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
         AccessoryListView()
     case "forecast":
         ForecastView()
+    case "backtest":
+        BacktestView()
     case "backup":
         BackupView()
     case "caliber":

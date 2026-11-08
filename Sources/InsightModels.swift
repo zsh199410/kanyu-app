@@ -12,7 +12,7 @@
 // ＋ Web chart dict（paipan.py:225–241）
 // ReportDocument ← ReportBuilder.lines（ReportModule.swift:7–68）的 6 章结构
 // （四柱细盘／大运／逐年直断／解盘维度摘要／双术合参·交叉印证／紫微摘要）
-// PosterTemplate ← PosterStyle（PosterModule.swift:16–21，4 种）
+// PosterTemplate ← PosterStyle（PosterModule.swift:16–25，8 种）
 // ＋ Web 5 款白名单 qingdai／yucedan／hecan／xuanzhi／mojin（main.py:917–919）
 // ＋ 文件名后缀 -song／-yucedan／-xuan／-ink（PosterModule.swift:1498 前后）
 // ExportManager ← ReportCenterView.swift:29–32 前缀扫描
@@ -152,7 +152,10 @@ footerNote: footerNote
 }
 }
 
-/// 海报模板：PosterStyle 的 4 种各对应一个 Web 款式 id 与一个文件名后缀。
+/// 海报模板：PosterStyle 的 8 种各对应一个 Web 款式 id 与一个文件名后缀。
+/// 两端款式对照（G12）：songQingdai↔qingdai、yuceDan↔yucedan、xuanPaper↔xuanzhi、
+/// inkGold↔mojin、qingCi↔qingci、danSha↔dansha、moLan↔molan；
+/// jinQian（金笺雅集版）无 Web 对应款（webStyleId 为空串）；
 /// Web 的 hecan 款在 App 侧无 PosterStyle 对应 case（合参海报在 App 侧为独立渲染），故不硬凑。
 struct PosterTemplate {
 let style: PosterStyle
@@ -176,6 +179,18 @@ fileSuffix = "-xuan"
 case.inkGold:
 webStyleId = "mojin"
 fileSuffix = "-ink"
+case.qingCi:
+webStyleId = "qingci"
+fileSuffix = "-qingci"
+case.danSha:
+webStyleId = "dansha"
+fileSuffix = "-dansha"
+case.moLan:
+webStyleId = "molan"
+fileSuffix = "-molan"
+case.jinQian:
+webStyleId = ""
+fileSuffix = "-jinqian"
 }
 }
 

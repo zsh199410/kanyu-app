@@ -18,6 +18,10 @@ enum PosterStyle: String, CaseIterable {
     case yuceDan = "尊享预测单"
     case xuanPaper = "宣纸朱砂版"
     case inkGold = "玄夜墨金版"
+    case qingCi = "青瓷雅韵版"
+    case danSha = "丹砂暖纸版"
+    case moLan = "墨兰夜锦版"
+    case jinQian = "金笺雅集版"
 }
 
 private struct PosterPalette {
@@ -52,6 +56,56 @@ private extension PosterStyle {
             let paperHi = Color(red: 0.97, green: 0.95, blue: 0.88)
             return PosterPalette(bg0: pPaper, bg1: paperHi, main: ink, sub: inkSub, accent: pCin, accentHi: pCin,
                                  card: Color.white.opacity(0.55), cardStroke: pCin.opacity(0.35), track: Color.black.opacity(0.08))
+        case .qingCi:
+            // 青瓷雅韵：宋纸底＋青黛主色，辅色换雅金（与宋纸青黛版同版式、不同强调色）
+            let ink = Color(red: 0.18, green: 0.165, blue: 0.15)
+            let cardBg = Color(red: 0.992, green: 0.984, blue: 0.961) // #FDFBF5
+            let line = Color(red: 0.886, green: 0.851, blue: 0.769)   // #E2D9C4
+            return PosterPalette(bg0: pPaper, bg1: cardBg, main: ink, sub: pSub,
+                                 accent: pTeal, accentHi: pGold,
+                                 card: cardBg, cardStroke: line, track: Color.black.opacity(0.07))
+        case .jinQian:
+            // 金笺雅集：宋纸底＋雅金主色，辅色朱砂（与宋纸青黛版同版式、不同强调色）
+            let ink = Color(red: 0.18, green: 0.165, blue: 0.15)
+            let cardBg = Color(red: 0.992, green: 0.984, blue: 0.961) // #FDFBF5
+            let line = Color(red: 0.886, green: 0.851, blue: 0.769)   // #E2D9C4
+            let goldDark = Color(red: 0.62, green: 0.47, blue: 0.18)
+            return PosterPalette(bg0: pPaper, bg1: cardBg, main: ink, sub: pSub,
+                                 accent: goldDark, accentHi: pCin,
+                                 card: cardBg, cardStroke: line, track: Color.black.opacity(0.07))
+        case .danSha:
+            // 丹砂暖纸：宣纸底＋朱砂主色，辅色换青黛（与宣纸朱砂版同版式、不同强调色）
+            let ink = Color(red: 0.18, green: 0.16, blue: 0.13)
+            let inkSub = Color(red: 0.46, green: 0.42, blue: 0.35)
+            let paperHi = Color(red: 0.97, green: 0.95, blue: 0.88)
+            return PosterPalette(bg0: pPaper, bg1: paperHi, main: ink, sub: inkSub, accent: pCin, accentHi: pTeal,
+                                 card: Color.white.opacity(0.55), cardStroke: pCin.opacity(0.35), track: Color.black.opacity(0.08))
+        case .moLan:
+            // 墨兰夜锦：深墨蓝底＋亮青黛主色、亮金辅色（与玄夜墨金版同版式、不同强调色）
+            return PosterPalette(bg0: Color(red: 0.06, green: 0.09, blue: 0.13), bg1: Color(red: 0.11, green: 0.16, blue: 0.21), main: pPaper, sub: Color(red: 0.66, green: 0.62, blue: 0.54),
+                                 accent: Color(red: 0.44, green: 0.66, blue: 0.74), accentHi: pGoldHi,
+                                 card: Color.white.opacity(0.04), cardStroke: pGold.opacity(0.28), track: Color.white.opacity(0.08))
+        }
+    }
+}
+
+// MARK: - G12：8 款共用的版式归属与导出后缀（internal：PosterEditorModule 共用）
+// 新款只改渲染层：版式复用三类既有内容块（宋纸／宣纸／墨金），结论内容一字不动。
+extension PosterStyle {
+    var usesSongLayout: Bool { self == .songQingdai || self == .qingCi || self == .jinQian }
+    var usesXuanLayout: Bool { self == .xuanPaper || self == .danSha }
+    var usesInkLayout: Bool { self == .inkGold || self == .moLan }
+    var isDarkPoster: Bool { self == .inkGold || self == .moLan }
+    var fileSuffix: String {
+        switch self {
+        case .songQingdai: return "-song"
+        case .yuceDan: return "-yucedan"
+        case .xuanPaper: return "-xuan"
+        case .inkGold: return "-ink"
+        case .qingCi: return "-qingci"
+        case .danSha: return "-dansha"
+        case .moLan: return "-molan"
+        case .jinQian: return "-jinqian"
         }
     }
 }
@@ -226,12 +280,30 @@ struct PosterView: View {
     let chart: BaziChart
     let name: String
     var style: PosterStyle = .songQingdai
+    /// G13 编辑器覆盖项（默认 nil＝不覆盖，走既有渲染）：标题文案／落款副标／强调色。
+    var titleOverride: String? = nil
+    var subtitleOverride: String? = nil
+    var accentOverride: Color? = nil
 
     private var items: [InterpretItem] { InterpretEngine.interpret(chart: chart) }
     private var headline: String { items.first(where: { $0.title == "命局风景" })?.conclusion ?? "" }
     private var gejuLine: String { items.first(where: { $0.title == "月令格局（候选）" })?.conclusion ?? "" }
     private var yunLine: String { items.first(where: { $0.title == "岁运要点" })?.conclusion ?? "" }
-    private var pal: PosterPalette { style.palette }
+    private var pal: PosterPalette {
+        let base = style.palette
+        guard let accent = accentOverride else { return base }
+        return PosterPalette(bg0: base.bg0, bg1: base.bg1, main: base.main, sub: base.sub, accent: accent, accentHi: base.accentHi, card: base.card, cardStroke: base.cardStroke, track: base.track)
+    }
+    /// 编辑器标题：有覆盖且非空时用覆盖文案，否则用人物名。
+    private var displayName: String {
+        if let t = titleOverride, !t.isEmpty { return t }
+        return name
+    }
+    /// 编辑器落款副标：有覆盖且非空时用覆盖文案，否则用既有副标。
+    private var displaySubtitle: String {
+        if let s = subtitleOverride, !s.isEmpty { return s }
+        return "据五典而断 · 盘面为据 · 宋纸雅集"
+    }
 
     /// 大运卡片下方补实：原局核心神煞（只取天乙／文昌／羊刃／驿马四项，逐人现算）
     private var coreShenShaLine: String {
@@ -355,7 +427,7 @@ struct PosterView: View {
     private var standardPosterView: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-            if style != .songQingdai {
+            if !style.usesSongLayout {
                 RadialGradient(colors: [pal.accent.opacity(0.14), .clear], center: .init(x: 0.5, y: 0.16), startRadius: 10, endRadius: 300)
                 RoundedRectangle(cornerRadius: 10).stroke(pal.accent.opacity(0.55), lineWidth: 1.1).padding(18)
                 RoundedRectangle(cornerRadius: 6).stroke(pal.accent.opacity(0.25), lineWidth: 0.7).padding(24)
@@ -370,20 +442,20 @@ struct PosterView: View {
             }
 
             VStack(spacing: 0) {
-                if style == .songQingdai {
+                if style.usesSongLayout {
                     Text("子 平 五 典 · 命 盘 雅 集")
                         .font(.system(size: 12, weight: .medium))
                         .tracking(4)
                         .foregroundStyle(pal.accent)
                         .padding(.top, 52)
-                    Text(name.isEmpty ? "四柱命盘" : name)
+                    Text(displayName.isEmpty ? "四柱命盘" : displayName)
                         .font(.system(size: 44, weight: .bold, design: .serif))
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
                 } else {
                     BaguaRingView(size: 132, accent: pal.accent, accentHi: pal.accentHi).padding(.top, 42)
                     Text("三 术 合 参").font(.system(size: 14, design: .serif)).tracking(2).foregroundStyle(pal.accentHi).padding(.top, 12)
-                    Text(name.isEmpty ? "命盘" : name)
+                    Text(displayName.isEmpty ? "命盘" : displayName)
                         .font(.system(size: 40, weight: .semibold, design: .serif)).foregroundStyle(pal.main).padding(.top, 18)
                 }
 
@@ -401,8 +473,8 @@ struct PosterView: View {
                 HStack(spacing: 12) {
                     ForEach(0..<4, id: \.self) { i in
                         let gz = Array(chart.pillars[i])
-                        let sColor = style == .inkGold ? (i == 2 ? pal.accentHi : pal.main) : posterCharColor(gz[0], fallback: pal.main)
-                        let bColor = style == .inkGold ? (i == 2 ? pal.accentHi : pal.main) : posterCharColor(gz[1], fallback: pal.main)
+                        let sColor = style.isDarkPoster ? (i == 2 ? pal.accentHi : pal.main) : posterCharColor(gz[0], fallback: pal.main)
+                        let bColor = style.isDarkPoster ? (i == 2 ? pal.accentHi : pal.main) : posterCharColor(gz[1], fallback: pal.main)
                         VStack(spacing: 5) {
                             Text(["年柱", "月柱", "日柱", "时柱"][i])
                                 .font(.system(size: 10.5, weight: .medium)).foregroundStyle(pal.sub)
@@ -509,7 +581,7 @@ struct PosterView: View {
                 .padding(.top, 14)
 
                 // —— 四款版式差异化区块（宋纸重古籍与大运详批／宣纸重大字四柱六亲神煞／墨金重数据可视）——
-                if style == .songQingdai {
+                if style.usesSongLayout {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("五典原句")
                             .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
@@ -564,7 +636,7 @@ struct PosterView: View {
                     .frame(width: 444, alignment: .leading)
                     .padding(.top, 14)
                 }
-                if style == .xuanPaper {
+                if style.usesXuanLayout {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("六亲缘分")
                             .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
@@ -600,7 +672,7 @@ struct PosterView: View {
                     .frame(width: 444, alignment: .leading)
                     .padding(.top, 14)
                 }
-                if style == .inkGold {
+                if style.usesInkLayout {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("十神雷达 · 原局十神分布")
                             .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
@@ -650,7 +722,7 @@ struct PosterView: View {
                 Spacer()
 
                 // 统一品牌落款（P3 第 1 项）：四款同一印章＋同一品牌行，副标与日期各款保留
-                PosterBrandFooter(pal: pal, subtitle: "据五典而断 · 盘面为据 · 宋纸雅集")
+                PosterBrandFooter(pal: pal, subtitle: displaySubtitle)
             }
 
             // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
@@ -806,7 +878,7 @@ HStack(spacing: 0) {
 Text("农历：\(chart.lunarText.isEmpty ? "—": chart.lunarText)")
 Text("　上一节 \(chart.prevJieQiText.isEmpty ? "—": chart.prevJieQiText)　下一节 \(chart.nextJieQiText.isEmpty ? "—": chart.nextJieQiText)")
 Spacer()
-Text("\(chart.gender == "M" ? "男（乾造）": "女（坤造）")　\(name.isEmpty ? "命主": name)　\(chart.naYin.first ?? "")命")
+Text("\(chart.gender == "M" ? "男（乾造）": "女（坤造）")　\(displayName.isEmpty ? "命主" : displayName)　\(chart.naYin.first ?? "")命")
 }
 HStack(spacing: 0) {
 Text("真太阳时校正：\(correctionText)")
@@ -1432,6 +1504,7 @@ struct PosterSheetView: View {
     @State private var fileURL: URL?
     @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
+    @State private var showEditor = false
 
     var body: some View {
         ScrollView {
@@ -1441,6 +1514,11 @@ struct PosterSheetView: View {
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: style) { _, _ in fileURL = nil; previewImage = nil }
+
+                // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）
+                Button("打开海报编辑器（换字／换款／换色）") { showEditor = true }
+                    .buttonStyle(KyPrimaryButton())
+                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name) }
 
                 // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
                 HStack(spacing: 10) {
@@ -1488,13 +1566,7 @@ struct PosterSheetView: View {
             let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style).environment(\.colorScheme, .light))
             renderer.scale = 2.0
             guard let img = renderer.uiImage, let data = img.pngData() else { return }
-            let suffix: String
-            switch style {
-            case .songQingdai: suffix = "-song"
-            case .yuceDan: suffix = "-yucedan"
-            case .xuanPaper: suffix = "-xuan"
-            case .inkGold: suffix = "-ink"
-            }
+            let suffix = style.fileSuffix
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("poster-\(name.isEmpty ? "chart" : name)\(suffix).png")
             try? data.write(to: url, options: .atomic)
             await MainActor.run {
@@ -1702,7 +1774,7 @@ struct ZiweiPosterView: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-            if style != .songQingdai {
+            if !style.usesSongLayout {
                 RadialGradient(colors: [pal.accent.opacity(0.14), .clear], center: .init(x: 0.5, y: 0.16), startRadius: 10, endRadius: 300)
                 RoundedRectangle(cornerRadius: 10).stroke(pal.accent.opacity(0.55), lineWidth: 1.1).padding(18)
                 RoundedRectangle(cornerRadius: 6).stroke(pal.accent.opacity(0.25), lineWidth: 0.7).padding(24)
@@ -1716,7 +1788,7 @@ struct ZiweiPosterView: View {
             }
 
             VStack(spacing: 0) {
-                if style == .songQingdai {
+                if style.usesSongLayout {
                     Text("紫 微 斗 数 · 命 盘 雅 集")
                         .font(.system(size: 12, weight: .medium))
                         .tracking(4)
@@ -1904,13 +1976,7 @@ struct ZiweiPosterSheetView: View {
         let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style))
         renderer.scale = 2.0
         if let img = renderer.uiImage, let data = img.pngData() {
-            let suffix: String
-            switch style {
-            case .songQingdai: suffix = "-song"
-            case .yuceDan: suffix = "-yucedan"
-            case .xuanPaper: suffix = "-xuan"
-            case .inkGold: suffix = "-ink"
-            }
+            let suffix = style.fileSuffix
             previewImage = img
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("ziwei-poster-\(name.isEmpty ? "chart" : name)\(suffix).png")
             try? data.write(to: url, options: .atomic)
@@ -2015,7 +2081,7 @@ struct HeCanPosterView: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-            if style != .songQingdai {
+            if !style.usesSongLayout {
                 RadialGradient(colors: [pal.accent.opacity(0.14), .clear], center: .init(x: 0.5, y: 0.16), startRadius: 10, endRadius: 300)
                 RoundedRectangle(cornerRadius: 10).stroke(pal.accent.opacity(0.55), lineWidth: 1.1).padding(18)
                 RoundedRectangle(cornerRadius: 6).stroke(pal.accent.opacity(0.25), lineWidth: 0.7).padding(24)
@@ -2029,7 +2095,7 @@ struct HeCanPosterView: View {
             }
 
             VStack(spacing: 0) {
-                if style == .songQingdai {
+                if style.usesSongLayout {
                     Text("三 术 合 参 · 一 页 要 点")
                         .font(.system(size: 12, weight: .medium))
                         .tracking(4)
@@ -2230,13 +2296,7 @@ struct HeCanPosterSheetView: View {
         let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style))
         renderer.scale = 2.0
         if let img = renderer.uiImage, let data = img.pngData() {
-            let suffix: String
-            switch style {
-            case .songQingdai: suffix = "-song"
-            case .yuceDan: suffix = "-yucedan"
-            case .xuanPaper: suffix = "-xuan"
-            case .inkGold: suffix = "-ink"
-            }
+            let suffix = style.fileSuffix
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("hecan-poster-\(name.isEmpty ? "chart" : name)\(suffix).png")
             try? data.write(to: url, options: .atomic)
             previewImage = img
