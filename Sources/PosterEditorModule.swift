@@ -141,7 +141,7 @@ struct PosterEditorView: View {
     }
 
     private func refreshRenderKey() {
-        renderKey = style.rawValue + "-" + accent.rawValue + "-" + appliedTitle + "-" + appliedSubtitle
+        renderKey = "\(style.rawValue)-\(accent.rawValue)-\(appliedTitle)-\(appliedSubtitle)"
     }
 
     // 与 PosterSheetView.render 同款渲染路径（后台线程 ImageRenderer，前台只展示缓存图）
@@ -160,7 +160,7 @@ struct PosterEditorView: View {
             let renderer = ImageRenderer(content: view.environment(\.colorScheme, .light))
             renderer.scale = 2.0
             guard let img = renderer.uiImage, let data = img.pngData() else { return }
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("poster-" + (name.isEmpty ? "chart" : name) + style.fileSuffix + ".png")
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("poster-\((name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
             try? data.write(to: url, options: .atomic)
             await MainActor.run {
                 guard self.renderKey == expectedKey else { return }

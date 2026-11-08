@@ -102,7 +102,7 @@ enum BlindTestClient {
     static let submitEndpoint = "https://bazi.vip668.xin/api/blindtest/submit"
 
     static func fetchQuiz(count: Int) async throws -> BlindQuizResponse {
-        let urlString = quizEndpoint + "?n=" + String(count)
+        let urlString = "\(quizEndpoint)?n=\(count)"
         guard let url = URL(string: urlString) else {
             throw URLError(.badURL)
         }
@@ -178,7 +178,7 @@ struct BlindTestView: View {
             let total = rec["total"] as? Int ?? 0
             let at = rec["at"] as? String ?? ""
             if total > 0 {
-                return "上次：" + String(score) + " / " + String(total) + "（" + at + "）"
+                return "上次：\(score) / \(total)（\(at)）"
             }
         }
         return ""
@@ -261,7 +261,7 @@ struct BlindTestView: View {
         } else {
             let q = questions[currentIndex]
             VStack(alignment: .leading, spacing: 10) {
-                Text("第 " + String(currentIndex + 1) + " / " + String(questions.count) + " 题 · " + String(q.year) + " 年")
+                Text("第 \(currentIndex + 1) / \(questions.count) 题 · \(q.year) 年")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(Ky.gold)
@@ -341,7 +341,7 @@ struct BlindTestView: View {
         if unansweredCount == 0 {
             return "交卷"
         }
-        return "交卷（还有 " + String(unansweredCount) + " 题未答，未答按错计）"
+        return "交卷（还有 \(unansweredCount) 题未答，未答按错计）"
     }
 
     private func borderColor(_ q: BlindQuestion, _ opt: BlindOption) -> Color {
@@ -355,7 +355,7 @@ struct BlindTestView: View {
         var line = p.name
         let b = p.birth
         if let year = b.year {
-            line += " · " + String(year) + "年"
+            line += " · \(year)年"
             if let month = b.month {
                 line += String(month) + "月"
                 if let day = b.day {
@@ -379,15 +379,15 @@ struct BlindTestView: View {
     private var resultSection: some View {
         if let r = result {
             VStack(alignment: .leading, spacing: 10) {
-                Text("得分：" + String(r.score) + " / " + String(r.total))
+                Text("得分：\(r.score) / \(r.total)")
                     .font(.title3)
                     .fontWeight(.bold)
                     .foregroundStyle(Ky.ink)
-                Text("本轮正确率 " + percentText(r.accuracy) + " · 离线总账基线 194/555（约 35%），本轮得分只计当轮。")
+                Text("本轮正确率 \(percentText(r.accuracy)) · 离线总账基线 194/555（约 35%），本轮得分只计当轮。")
                     .font(.callout)
                     .foregroundStyle(Ky.sub)
                 if r.unanswered > 0 {
-                    Text("其中 " + String(r.unanswered) + " 题未作答，按错计。")
+                    Text("其中 \(r.unanswered) 题未作答，按错计。")
                         .font(.callout)
                         .foregroundStyle(Ky.sub)
                 }
@@ -414,10 +414,10 @@ struct BlindTestView: View {
                     Text(item.question.scriptConverted)
                         .font(.subheadline)
                         .foregroundStyle(Ky.ink)
-                    Text("命主：" + item.person_name + " · " + String(item.year) + " 年")
+                    Text("命主：\(item.person_name) · \(item.year) 年")
                         .font(.caption)
                         .foregroundStyle(Ky.sub)
-                    Text("你的答案：" + yourText(item) + "　正确答案：" + item.correct_answers.joined(separator: "、"))
+                    Text("你的答案：\(yourText(item))　正确答案：\(item.correct_answers.joined(separator: "、"))")
                         .font(.callout)
                         .foregroundStyle(Ky.ink)
                     if item.note.isEmpty == false {
