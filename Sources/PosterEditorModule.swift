@@ -104,7 +104,7 @@ struct PosterEditorView: View {
                     }
 
                     if fileURL != nil, let img = previewImage {
-                        ShareLink(item: img, preview: SharePreview("编辑后海报", image: img)) {
+                        ShareLink(item: Image(uiImage: img), preview: SharePreview("编辑后海报", image: img)) {
                             Label("保存 / 分享编辑后海报（1080宽 PNG）", systemImage: "square.and.arrow.down")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)

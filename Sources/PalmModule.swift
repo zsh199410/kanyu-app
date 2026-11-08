@@ -656,7 +656,7 @@ struct PalmPosterSheetView: View {
                     KyLoadingState(title: "正在渲染鉴定海报…")
                 }
                 if fileURL != nil, let img = previewImage {
-                    ShareLink(item: img, preview: SharePreview("手相面相鉴定海报", image: img)) {
+                    ShareLink(item: Image(uiImage: img), preview: SharePreview("手相面相鉴定海报", image: img)) {
                         Label("保存 / 分享鉴定海报（1080宽 · 自适应长图）".scriptConverted, systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }

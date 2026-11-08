@@ -1385,7 +1385,7 @@ struct PosterSheetView: View {
                 }
 
                 if fileURL != nil, let img = previewImage {
-                    ShareLink(item: img, preview: SharePreview(style == .yuceDan ? "尊享预测单长图海报" : "命盘海报", image: img)) {
+                    ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? "尊享预测单长图海报" : "命盘海报", image: img)) {
                         Label(style == .yuceDan ? "保存 / 分享高清长图海报（1080宽 · 自适应长图）" : "保存 / 分享高清命盘海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
@@ -1789,7 +1789,7 @@ struct ZiweiPosterSheetView: View {
                 }
 
                 if fileURL != nil, let img = previewImage {
-                    ShareLink(item: img, preview: SharePreview("紫微命盘海报", image: img)) {
+                    ShareLink(item: Image(uiImage: img), preview: SharePreview("紫微命盘海报", image: img)) {
                         Label("保存 / 分享高清紫微命盘海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
@@ -2100,7 +2100,7 @@ struct HeCanPosterSheetView: View {
                 }
 
                 if fileURL != nil, let img = previewImage {
-                    ShareLink(item: img, preview: SharePreview("合参海报", image: img)) {
+                    ShareLink(item: Image(uiImage: img), preview: SharePreview("合参海报", image: img)) {
                         Label("保存 / 分享高清合参海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
