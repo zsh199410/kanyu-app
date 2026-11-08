@@ -727,8 +727,6 @@ struct MyView: View {
                     myLink("info.circle.fill", "关于三术合参", "版本号 · 构建号 · 致谢 · 隐私说明", Ky.qingdai) { AboutView() }
                 }
 
-                }.kyCard()
-
             }
             .padding(16)
             .padding(.bottom, 100)
@@ -754,8 +752,6 @@ struct MyView: View {
             .kyCard()
         }.buttonStyle(.plain)
     }
-}
-
 }
 
 // MARK: - 关于页（UI 2.0 P0 新建，轻量）：版本号／构建号／致谢／隐私说明
