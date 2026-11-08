@@ -113,7 +113,7 @@ enum InterpretEngine {
 
     // MARK: - 解盘三段式（build-95）
     /// 核心总纲 5 条不参与三段（本身已是总纲层）；三段只用于 23 维
-    static let coreTitles: Set<String> = ["命局风景", "月令格局（候选）", "喜忌（扶抑初判）", "十神分布", "岁运要点"]
+    static let coreTitles: Set<String> = ["命局风景", "月令格局（候选）", "喜忌（扶抑初判）", "十神看点", "岁运要点"]
     /// 每维的关键行：财→财星、官→官星、印→印星、食伤→食伤、日主→比劫；喜用类维取喜用首行
     static func keyWxIndex(chart ch: BaziChart, title: String) -> Int {
         let dayWx = wxIndex(of: ch.rizhu.first!)
@@ -511,16 +511,13 @@ struct TermButton: View {
     var body: some View {
         Button(display) { show = true }
             .buttonStyle(.plain)
-            .popover(isPresented: $show) {
+            .kyBottomSheet(isPresented: $show, title: term) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(term).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     Text(TermGlossary.text(for: term)).font(.callout).foregroundStyle(Ky.ink)
                     Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。")
                         .font(.caption2).foregroundStyle(Ky.sub)
                 }
-                .padding(16)
-                .frame(maxWidth: 320)
-                .presentationCompactAdaptation(.popover)
             }
     }
 }
@@ -533,10 +530,11 @@ struct InterpretView: View {
     @State private var searchQuery = ""
     @State private var showGlossary = false
     @State private var verifyTick = 0
+    @State private var expandedItems: Set<Int> = [0, 1, 2, 3, 4]  // 详批折叠：interpret() 前 5 条恒为总纲，默认展开；25 维默认折叠，点标题展开
 
     private static let categories: [(String, Set<String>)] = [
         ("全部", []),
-        ("核心总纲", ["命局风景", "月令格局（候选）", "喜忌（扶抑初判）", "十神分布", "岁运要点"]),
+        ("核心总纲", ["命局风景", "月令格局（候选）", "喜忌（扶抑初判）", "十神看点", "岁运要点"]),
         ("性格事业", ["性格底色", "事业方向", "工作形态", "学业与文凭", "学业文书", "财运形态", "置业田宅", "名声声誉", "行业赛道深断", "财富量级蓄水池"]),
         ("婚恋六亲", ["婚姻感情", "子女", "子女缘分", "父母缘分", "兄弟同辈", "兄弟姐妹", "贵人与人际", "出行迁移", "六亲情境深读"]),
         ("身心守年", ["健康倾向", "中老年守年", "晚年光景"]),
@@ -649,39 +647,54 @@ struct InterpretView: View {
                 } else {
                     ForEach(filteredIndices, id: \.self) { i in
                         let tag = categoryTag(for: allItems[i].title)
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack(spacing: 8) {
-                                Text(String(format: "%02d", i + 1))
-                                    .font(KyV2.tabular(11, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 24, height: 22)
-                                    .background(tag.1)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                                Text(allItems[i].title)
-                                    .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                                KyBadge(text: tag.0, color: tag.1)
-                                Spacer()
-                                Button {
-                                    speaker.read("\(allItems[i].title)。\(allItems[i].conclusion)")
-                                } label: {
-                                    Image(systemName: "speaker.wave.2")
-                                        .font(.caption)
-                                        .foregroundStyle(Ky.qingdai)
-                                        .padding(6)
-                                        .background(Ky.elevated)
-                                        .clipShape(Circle())
+                        let isCore = InterpretEngine.coreTitles.contains(allItems[i].title)
+                        DisclosureGroup(isExpanded: Binding(
+                            get: { expandedItems.contains(i) },
+                            set: { if $0 { expandedItems.insert(i) } else { expandedItems.remove(i) } }
+                        )) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                if !isCore {
+                                    Text("【原局底牌】").font(.caption2).fontWeight(.bold).foregroundStyle(Ky.qingdai)
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("朗读\(allItems[i].title)")
+                                EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links)
+                                if !isCore {
+                                    threePartRows(chart: chart, item: allItems[i], allItems: allItems)
+                                }
+                                verificationFooter(item: allItems[i])
                             }
-                            if !InterpretEngine.coreTitles.contains(allItems[i].title) {
-                                Text("【原局底牌】").font(.caption2).fontWeight(.bold).foregroundStyle(Ky.qingdai)
+                            .padding(.top, 6)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 8) {
+                                    Text(String(format: "%02d", i + 1))
+                                        .font(KyV2.tabular(11, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 24, height: 22)
+                                        .background(tag.1)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    Text(allItems[i].title)
+                                        .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                    KyBadge(text: tag.0, color: tag.1)
+                                    Spacer()
+                                    Button {
+                                        speaker.read("\(allItems[i].title)。\(allItems[i].conclusion)")
+                                    } label: {
+                                        Image(systemName: "speaker.wave.2")
+                                            .font(.caption)
+                                            .foregroundStyle(Ky.qingdai)
+                                            .padding(6)
+                                            .background(Ky.elevated)
+                                            .clipShape(Circle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("朗读\(allItems[i].title)")
+                                }
+                                if !expandedItems.contains(i) {
+                                    Text(allItems[i].conclusion)
+                                        .font(.callout).foregroundStyle(Ky.ink)
+                                        .lineLimit(2)
+                                }
                             }
-                            EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links)
-                            if !InterpretEngine.coreTitles.contains(allItems[i].title) {
-                                threePartRows(chart: chart, item: allItems[i], allItems: allItems)
-                            }
-                            verificationFooter(item: allItems[i])
                         }
                         .kyCard()
                     }

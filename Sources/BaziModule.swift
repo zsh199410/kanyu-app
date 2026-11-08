@@ -891,6 +891,15 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
 }
 }
 
+/// 大运喜忌 → KyTimeline 三态（P1：只读调用 InterpretEngine.dayunMark，口径不动；喜 true、忌 false、中性 nil）
+func dayunFavorable(chart: BaziChart, index i: Int) -> Bool? {
+    switch InterpretEngine.dayunMark(chart: chart, index: i) {
+    case "喜": return true
+    case "忌": return false
+    default: return nil
+    }
+}
+
     // MARK: - 核心四柱命盘卡（消除旧版重复四柱按钮行，直接在四柱列点击查看详情，干支按五行分色）
     private var plateCard: some View {
         let dayEl = KyV2.element(ofChar: chart.rizhu.first!)
@@ -1139,10 +1148,18 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(names[idx]).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                            Text("天干：\(stem)（\(KyV2.element(ofChar: stem)) · \(chart.stemShiShen[idx])）")
-                                .font(.caption).foregroundStyle(Ky.sub)
-                            Text("地支：\(branch)（\(KyV2.element(ofChar: branch)) · 长生处「\(chart.diShi[idx])」）")
-                                .font(.caption).foregroundStyle(Ky.sub)
+                            HStack(spacing: 0) {
+                                Text("天干：\(stem)（\(KyV2.element(ofChar: stem)) · ")
+                                TermButton(term: chart.stemShiShen[idx], display: chart.stemShiShen[idx])
+                                Text("）")
+                            }
+                            .font(.caption).foregroundStyle(Ky.sub)
+                            HStack(spacing: 0) {
+                                Text("地支：\(branch)（\(KyV2.element(ofChar: branch)) · 长生处「")
+                                TermButton(term: chart.diShi[idx], display: chart.diShi[idx])
+                                Text("」）")
+                            }
+                            .font(.caption).foregroundStyle(Ky.sub)
                         }
                         Spacer()
                     }.kyCard()
@@ -1159,7 +1176,12 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                                     .font(.callout).fontWeight(.bold)
                                     .foregroundStyle(KyV2.color(forChar: hg.first ?? "甲"))
                                 Spacer()
-                                Text(hss).font(.callout).fontWeight(.medium).foregroundStyle(Ky.ink)
+                                if hss.isEmpty {
+                                    Text(hss).font(.callout).fontWeight(.medium).foregroundStyle(Ky.ink)
+                                } else {
+                                    TermButton(term: hss, display: hss)
+                                        .font(.callout).fontWeight(.medium).foregroundStyle(Ky.ink)
+                                }
                             }
                             .padding(.vertical, 3)
                         }
@@ -1169,12 +1191,14 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                         KySectionTitle(title: "星运 · 纳音 · 神煞")
                         HStack {
                             Text("长生十二宫").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
-                            Text(chart.diShi[idx]).font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                            TermButton(term: chart.diShi[idx], display: chart.diShi[idx])
+                                .font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
                             Spacer()
                         }
                         HStack {
                             Text("纳音五行").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
-                            Text(chart.naYin[idx]).font(.callout).foregroundStyle(Ky.ink)
+                            TermButton(term: "纳音", display: chart.naYin[idx])
+                                .font(.callout).foregroundStyle(Ky.ink)
                             Spacer()
                         }
                         if idx == 2 {
@@ -1186,8 +1210,13 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                         }
                         HStack(alignment: .top) {
                             Text("本柱神煞").font(.caption).foregroundStyle(Ky.sub).frame(width: 84, alignment: .leading)
-                            Text(sha.isEmpty ? "无特定神煞" : sha.joined(separator: "、"))
-                                .font(.callout).foregroundStyle(sha.isEmpty ? Ky.sub : Ky.gold)
+                            if sha.isEmpty {
+                                Text("无特定神煞")
+                                    .font(.callout).foregroundStyle(Ky.sub)
+                            } else {
+                                TermButton(term: "神煞", display: sha.joined(separator: "、"))
+                                    .font(.callout).foregroundStyle(Ky.gold)
+                            }
                             Spacer()
                         }
                         Text("注：藏干以本气为立格与通根之主；神煞属《三命通会》辅助层，随格局增减分量，不单凭神煞定吉凶。")
@@ -1344,55 +1373,36 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
     private var dayunLevel: some View {
         let nowYear = Calendar.current.component(.year, from: Date())
         return VStack(alignment: .leading, spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(chart.dayunGanZhi.indices, id: \.self) { i in
-                        let gz = chart.dayunGanZhi[i]
-                        let startY = chart.dayunStartYear(i)
-                        let isCurYun = (nowYear >= startY && nowYear <= startY + 9)
-                        let isSel = (i == selectedDayun)
-                        let ss = BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!)
-                        Button {
-                            tapHaptic()
-                            selectedDayun = i; selectedYear = startY; timeLevel = 1
-                            selectedPillar = nil
-                            yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(gz)运")
-                        } label: {
-                            VStack(spacing: 4) {
-                                HStack(spacing: 2) {
-                                    Text("\(String(startY))")
-                                        .font(KyV2.tabular(10, weight: .medium))
-                                    if isCurYun {
-                                        Text("当前").font(.system(size: 8, weight: .bold))
-                                            .padding(.horizontal, 4).padding(.vertical, 1)
-                                            .background(Ky.cinnabar).foregroundStyle(.white).clipShape(Capsule())
-                                    }
-                                }
-                                .foregroundStyle(isSel ? Color.white.opacity(0.9) : Ky.sub)
-
-                                Text(gz)
-                                    .font(.system(.title3, design: .serif)).fontWeight(.bold)
-                                    .foregroundStyle(isSel ? Color.white : Ky.ink)
-
-                                Text(ss)
-                                    .font(.caption2)
-                                    .foregroundStyle(isSel ? Color.white.opacity(0.9) : Ky.gold)
-                            }
-                            .padding(.horizontal, 12).padding(.vertical, 9)
-                            .background(isSel ? Ky.qingdai : (isCurYun ? Ky.gold.opacity(0.14) : Ky.elevated))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(isCurYun && !isSel ? Ky.gold : Color.clear, lineWidth: 1.2)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }.buttonStyle(.plain)
-                    }
+            KyTimeline(
+                items: chart.dayunGanZhi.indices.map { i in
+                    let gz = chart.dayunGanZhi[i]
+                    let startY = chart.dayunStartYear(i)
+                    return KyTimelineItem(
+                        id: "\(i)",
+                        topText: "\(startY)",
+                        mainText: gz,
+                        subText: BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!),
+                        isCurrent: nowYear >= startY && nowYear <= startY + 9,
+                        isFavorable: dayunFavorable(chart: chart, index: i)
+                    )
+                },
+                selectedID: Binding(
+                    get: { "\(selectedDayun)" },
+                    set: { selectedDayun = Int($0) ?? 0 }
+                ),
+                onSelect: { item in
+                    guard let i = Int(item.id), chart.dayunGanZhi.indices.contains(i) else { return }
+                    let gz = chart.dayunGanZhi[i]
+                    selectedDayun = i
+                    selectedYear = chart.dayunStartYear(i)
+                    timeLevel = 1
+                    selectedPillar = nil
+                    yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(gz)运")
                 }
-            }
-            Text("点任一步大运直接下钻该运十年流年；标「当前」者为今年所在大运。")
+            )
+            Text("点任一步大运直接下钻该运十年流年；标「当运」者为今年所在大运；✓ 喜运 × 忌运（无标为平运）。")
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
-
     }
 
     private var liunianLevel: some View {

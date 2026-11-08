@@ -432,6 +432,40 @@ struct ZiweiBoardView: View {
         return [s, (s + 4) % 12, (s + 8) % 12, (s + 6) % 12]   // 本宫＋三合两宫＋对宫
     }
 
+    // P1：全盘飞线——宫位真实中心（cellPos 行列＋实测格宽／行高换算，gap 5pt；中央 2×2 天心宫无宫位端点）
+    private func palaceCenter(branch: Int, size: CGSize) -> CGPoint {
+        let gap: CGFloat = 5
+        let cellW = (size.width - gap * 3) / 4
+        let cellH: CGFloat = 114
+        guard let (row, col) = Self.cellPos[branch] else {
+            return CGPoint(x: size.width / 2, y: size.height / 2)
+        }
+        let x = CGFloat(col) * (cellW + gap) + cellW / 2
+        let y = CGFloat(row) * (cellH + gap) + cellH / 2
+        return CGPoint(x: x, y: y)
+    }
+
+    // P1：单层 Canvas 画本宫→对宫／三合宫飞线（雅金三合虚线＋朱砂对宫虚线；只画线，不叠多层；不拦截点按）
+    private var flyLinesOverlay: some View {
+        Canvas { ctx, size in
+            let s = activeBranch
+            let from = palaceCenter(branch: s, size: size)
+            let targets: [(Int, Color, [CGFloat])] = [
+                ((s + 6) % 12, Ky.cinnabar, [3, 3]),
+                ((s + 4) % 12, Ky.gold, [4, 3]),
+                ((s + 8) % 12, Ky.gold, [4, 3])
+            ]
+            for (target, color, dash) in targets {
+                let to = palaceCenter(branch: target, size: size)
+                var path = Path()
+                path.move(to: from)
+                path.addLine(to: to)
+                ctx.stroke(path, with: .color(color.opacity(0.65)), style: StrokeStyle(lineWidth: 1.1, dash: dash))
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
     var body: some View {
         if typeSize.isAccessibilitySize { textBoard } else { gridBoard }
     }
@@ -457,7 +491,12 @@ struct ZiweiBoardView: View {
                     if !p.minors.isEmpty {
                         Text(p.minors.map { $0.star }.joined(separator: " ")).font(.caption).foregroundStyle(Ky.sub)
                     }
-                }.kyCard()
+                }
+                .kyCard()
+                .onTapGesture {
+                    KyV6.impact(.light)
+                    selected = p.branch
+                }
             }
         }
     }
@@ -511,6 +550,7 @@ struct ZiweiBoardView: View {
                     cell(chart.palaces[11], height: cellH)
                 }
             }
+            .overlay { flyLinesOverlay }
 
             // 选中宫位的三方四正与飞化详单
             selectedPalaceDetailBar
@@ -611,6 +651,7 @@ struct ZiweiBoardView: View {
         let isHL = highlighted.contains(p.branch)
         let isMing = p.branch == chart.mingGong
         return Button {
+            KyV6.impact(.light)
             withAnimation(.easeInOut(duration: 0.15)) {
                 selected = p.branch
             }
@@ -933,18 +974,31 @@ enum ZiweiReading {
 
 struct ZiweiReadingView: View {
     let chart: ZiweiChart
+    @State private var expandedCards: Set<String> = ["命宫定型"]  // P1：11 卡抽屉化，默认只展开首卡「命宫定型」
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             KySectionTitle(title: "天纪三合解读", trailing: "命身 · 十二宫 · 三方 · 四化 · 大限")
             ForEach(ZiweiReading.cards(chart: chart), id: \.title) { c in
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(c.title)
-                            .font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        Spacer()
-                        KyBadge(text: "天纪口径", color: Ky.qingdai)
-                    }
+                DisclosureGroup(isExpanded: Binding(
+                    get: { expandedCards.contains(c.title) },
+                    set: { if $0 { expandedCards.insert(c.title) } else { expandedCards.remove(c.title) } }
+                )) {
                     EvidenceChainView(conclusion: c.conclusion, links: [("盘面", c.facts), ("天纪赋文", c.source)])
+                        .padding(.top, 6)
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(c.title)
+                                .font(.system(.subheadline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            Spacer()
+                            KyBadge(text: "天纪口径", color: Ky.qingdai)
+                        }
+                        if !expandedCards.contains(c.title) {
+                            Text(c.conclusion)
+                                .font(.callout).foregroundStyle(Ky.ink)
+                                .lineLimit(2)
+                        }
+                    }
                 }
                 .kyCard()
             }

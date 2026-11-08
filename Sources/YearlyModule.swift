@@ -76,6 +76,39 @@ enum YearEngine {
     }
 }
 
+// MARK: - 大运时间线（P1：逐年与全程两视图共用；喜忌挂 dayunFavorable，与 BaziModule 同一套口径；展示用，点按只切换选中态）
+private struct DayunTimelineSection: View {
+    let chart: BaziChart
+    @State private var selectedID: String = ""
+    var body: some View {
+        let nowYear = Calendar.current.component(.year, from: Date())
+        return VStack(alignment: .leading, spacing: 8) {
+            KySectionTitle(title: "大运时间线", trailing: "喜 ✓ · 忌 × · 平无标")
+            KyTimeline(
+                items: chart.dayunGanZhi.indices.map { i in
+                    let gz = chart.dayunGanZhi[i]
+                    let startY = chart.dayunStartYear(i)
+                    return KyTimelineItem(
+                        id: "\(i)",
+                        topText: "\(startY)",
+                        mainText: gz,
+                        subText: BaziTables.shiShen(day: chart.rizhu.first!, stem: gz.first!),
+                        isCurrent: nowYear >= startY && nowYear <= startY + 9,
+                        isFavorable: dayunFavorable(chart: chart, index: i)
+                    )
+                },
+                selectedID: $selectedID
+            )
+        }
+        .kyCard()
+        .onAppear {
+            if selectedID.isEmpty, let di = YearEngine.dayunIndex(chart: chart, year: nowYear) {
+                selectedID = "\(di)"
+            }
+        }
+    }
+}
+
 struct YearByYearView: View {
     let chart: BaziChart
     let name: String
@@ -134,6 +167,8 @@ struct YearByYearView: View {
                         .clipShape(Capsule())
                     }.buttonStyle(.plain)
                 }.kyCard()
+
+                DayunTimelineSection(chart: chart)
 
                 ForEach(displayYears, id: \.self) { y in
                     let r = YearEngine.report(chart: chart, year: y)
@@ -297,6 +332,8 @@ struct LifePlanView: View {
                         }
                     }
                 }.kyCard()
+
+                DayunTimelineSection(chart: chart)
 
                 // 阶段总纲卡（选全部时展示全部阶段总纲，选单阶段时只置顶展示该阶段总纲）
                 KySectionTitle(title: "阶段总规划", trailing: selectedStage < 0 ? "八阶段全览" : stages[selectedStage].name)
