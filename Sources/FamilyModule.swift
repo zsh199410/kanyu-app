@@ -120,8 +120,7 @@ struct FamilyChartView: View {
                     crossCards(ps)
                     posterSection(ps)
                 } else {
-                    Text("从人物档案里选三位不同的人。档案里不足三人时，先去「人物档案」建档。")
-                        .font(.callout).foregroundStyle(Ky.sub)
+                    KyEmptyState(icon: "person.3.fill", title: "从人物档案里选三位不同的人", message: "档案里不足三人时，先去「人物档案」建档。")
                 }
                 Text("全家盘海报与 Web 端同款（1080 宽、左右 28px 零墨）；App 端海报由本页内容直接渲染导出。")
                     .font(.caption2).foregroundStyle(Ky.sub)
@@ -405,8 +404,7 @@ struct SynastryShareCardView: View {
                     }
                     .kyCard()
                 } else {
-                    Text("从人物档案里选两个人。档案里不足两人时，先去「人物档案」建档。")
-                        .font(.callout).foregroundStyle(Ky.sub)
+                    KyEmptyState(icon: "person.2.fill", title: "从人物档案里选两个人", message: "档案里不足两人时，先去「人物档案」建档。")
                 }
             }.padding(16).padding(.bottom, 100)
         }
