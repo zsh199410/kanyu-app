@@ -265,6 +265,16 @@ struct CompassStandaloneView: View {
     @State private var collectTask: Task<Void, Never>? = nil
     @State private var justLocked = false
     @State private var createdCaseName = ""
+    // 第4批新增状态（只影响显示，不进采样／锁定／存储）。
+    @State private var smoothedHeading: Double = -1 // 航向圆周平滑后的显示读数
+    @State private var showBaguaLayer = true // 八卦内圈（八宫）
+    @State private var showStemsBranchesLayer = true // 二十四山外圈（天干地支＋四维）
+    @State private var dialScale: CGFloat = 1.0 // 盘面缩放 1.0–2.5
+    @State private var scaleBase: CGFloat = 1.0
+    @State private var manualRotation: Double = 0 // 手动旋转度数（不写回传感器航向）
+    @State private var rotationBase: Double = 0
+    @State private var showCalibrationGuide = false
+    @State private var calibrationStep = 0
 
     // 磁偏角解析（优先级：手动填入 ＞ 设备真北实测 ＞ 按定位经纬度 WMM2025 现算 ＞ 梁平默认坐标现算）。
     private var declinationInfo: (value: Double, source: String) {
@@ -331,7 +341,36 @@ struct CompassStandaloneView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                dial.frame(width: 260, height: 260).padding(.top, 8)
+                // 盘面自适应：宽度取容器宽（上限 560），缩放改重绘尺寸（布局跟随，不裁切）。
+                GeometryReader { geo in
+                    let base = min(geo.size.width, 560)
+                    dial(size: base * dialScale)
+                        .frame(width: base * dialScale, height: base * dialScale)
+                        .rotationEffect(.degrees(manualRotation))
+                        .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                        .gesture(TapGesture(count: 2).onEnded { resetDialView() })
+                        .simultaneousGesture(
+                            MagnificationGesture()
+                                .onChanged { value in
+                                    dialScale = min(2.5, max(1.0, scaleBase * value))
+                                }
+                                .onEnded { _ in
+                                    scaleBase = dialScale
+                                }
+                        )
+                        .simultaneousGesture(
+                            RotationGesture()
+                                .onChanged { angle in
+                                    manualRotation = CompassMath.normalize(rotationBase + angle.degrees)
+                                }
+                                .onEnded { _ in
+                                    rotationBase = manualRotation
+                                }
+                        )
+                }
+                .frame(height: dialOuterHeight)
+                .padding(.top, 8)
+                layerRow
                 if location.authDenied {
                     authDeniedCard
                 }
@@ -341,7 +380,10 @@ struct CompassStandaloneView: View {
                 if (location.accuracyWarning != nil && !location.authDenied) || motion.fieldAbnormal {
                     calibrationCard
                 }
-                lockButtonRow
+                if showCalibrationGuide {
+                    calibrationGuideCard
+                }
+                lockHintRow
                 if let lock = lockStore.lock {
                     lockCard(lock)
                 } else {
@@ -356,11 +398,18 @@ struct CompassStandaloneView: View {
         .onAppear {
             location.start()
             motion.start()
+            smoothedHeading = displayHeading
+        }
+        .onChange(of: displayHeading) { _, newValue in
+            smoothHeading(newValue)
         }
         .onDisappear {
             collectTask?.cancel()
             location.stop()
             motion.stop()
+        }
+        .safeAreaInset(edge: .bottom) {
+            lockBottomBar
         }
     }
 
@@ -388,7 +437,7 @@ struct CompassStandaloneView: View {
 
     private var readoutCard: some View {
         VStack(spacing: 4) {
-            let d = displayHeading
+            let d = smoothedDisplayHeading
             Text(northMode == 0 ? "真北 \(CompassMath.format(d))".scriptConverted : "磁北 \(CompassMath.format(d))".scriptConverted)
                 .font(.system(size: 34, weight: .bold, design: .rounded))
             Text((d >= 0 ? "\(CompassMath.mountain(for: d))山 · \(CompassMath.palace(for: d))宫" : "等待罗盘…").scriptConverted)
@@ -412,6 +461,15 @@ struct CompassStandaloneView: View {
                     .font(.caption)
                     .foregroundStyle(motion.fieldAbnormal ? .red : .secondary)
             }
+            Divider()
+            // 真北／磁北切换放读数卡内（读数附近）。
+            KyFilterBar(options: [("真北", nil), ("磁北", nil)], selectedIndex: $northMode)
+            Button("校准三步引导".scriptConverted) {
+                calibrationStep = 0
+                showCalibrationGuide = true
+            }
+            .font(.caption)
+            .foregroundStyle(Ky.instGold)
         }
         .padding(14)
         .frame(maxWidth: .infinity)
@@ -420,7 +478,6 @@ struct CompassStandaloneView: View {
 
     private var northModeRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            KyFilterBar(options: [("真北", nil), ("磁北", nil)], selectedIndex: $northMode)
             HStack(spacing: 8) {
                 Text("手动磁偏角（度，东偏为正）".scriptConverted).font(.caption).foregroundStyle(.secondary)
                 TextField("留空＝自动", text: $manualDeclination)
@@ -471,17 +528,9 @@ struct CompassStandaloneView: View {
         .kyGlass(corner: 12)
     }
 
-    private var lockButtonRow: some View {
+    // 锁定按钮已移到底部安全区（safeAreaInset）；此处只留采样提示与测法说明。
+    private var lockHintRow: some View {
         VStack(spacing: 8) {
-            Button {
-                if !collecting {
-                    startCollect()
-                }
-            } label: {
-                Text(justLocked ? "✓ 已锁定".scriptConverted : (collecting ? "采样中…（\(trueSamples.count)/8）".scriptConverted : "锁定当前度数／山向（放平自动采样）".scriptConverted))
-                    .frame(maxWidth: .infinity).padding(.vertical, 6)
-            }
-            .buttonStyle(KyPrimaryButton())
             if !collectHint.isEmpty {
                 Text(collectHint.scriptConverted).font(.caption).foregroundStyle(.secondary)
             }
@@ -507,9 +556,14 @@ struct CompassStandaloneView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Text("锁定时间 \(fmt.string(from: lock.timestamp))")
                     .font(.caption).foregroundStyle(.secondary)
-                if lock.spread >= 0 && lock.spread < 0.9 {
-                    Text("集中度偏低（<0.90）：这条不太稳，建议重测。".scriptConverted)
-                        .font(.caption).foregroundStyle(.orange)
+                // 稳定性分析：只展示已有 samples＋spread，不新增存储。
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("稳定性分析".scriptConverted).font(.caption).fontWeight(.semibold)
+                    Text("采样 \(lock.samples) 次 · 集中度 \(String(format: "%.2f", lock.spread))（越接近 1 越稳）".scriptConverted)
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text(stabilityVerdict(for: lock).scriptConverted)
+                        .font(.caption)
+                        .foregroundStyle(stabilityColor(for: lock))
                 }
             }
             HStack(spacing: 10) {
@@ -669,57 +723,260 @@ struct CompassStandaloneView: View {
     }
 
     // 仪器盘面（墨金恒深）：Canvas 金线刻度环＋二十四山（金）＋八宫（内圈）＋定盘针；
-    // 与案内 CompassView 同画法，盘面随所选北向读数实时旋转。
-    private var dial: some View {
-        ZStack {
-            Canvas { ctx, size in
-                let c = CGPoint(x: size.width / 2, y: size.height / 2)
-                let r = size.width / 2 - 6
+    // 与案内 CompassView 同画法，盘面随平滑后的显示读数实时旋转；尺寸自适应（上限 560）。
+    // 二十四山外圈＝天干地支＋四维，八宫内圈＝八卦；两图层开关只影响显示。
+    private func dial(size: CGFloat) -> some View {
+        let half = size / 2
+        let mountainR = size * 97 / 260
+        let palaceR = size * 62 / 260
+        let overlayR = size * 248 / 260
+        let heading = smoothedDisplayHeading
+        return ZStack {
+            Canvas { ctx, canvasSize in
+                let c = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+                let r = canvasSize.width / 2 - 6
                 ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)),
                            with: .color(Ky.instGold.opacity(0.55)), lineWidth: 1.5)
-                let rIn = r - 34
+                let rIn = r - size * 34 / 260
                 ctx.stroke(Path(ellipseIn: CGRect(x: c.x - rIn, y: c.y - rIn, width: 2 * rIn, height: 2 * rIn)),
                            with: .color(Ky.instGold.opacity(0.25)), lineWidth: 1)
                 for i in 0..<72 {
                     let a = Double(i) * 5 * Double.pi / 180
                     let isLong = i % 3 == 0
-                    let r1 = r - (isLong ? 11 : 6)
+                    let r1 = r - (isLong ? size * 11 / 260 : size * 6 / 260)
                     var p = Path()
                     p.move(to: CGPoint(x: c.x + r * sin(a), y: c.y - r * cos(a)))
                     p.addLine(to: CGPoint(x: c.x + r1 * sin(a), y: c.y - r1 * cos(a)))
                     ctx.stroke(p, with: .color(Ky.instGold.opacity(isLong ? 0.9 : 0.35)), lineWidth: isLong ? 1.4 : 1)
                 }
             }
-            ForEach(0..<24, id: \.self) { i in
-                let bearing = Double(i) * 15
-                let ang = (bearing - displayHeading) * Double.pi / 180
-                Text(CompassMath.mountains[i].scriptConverted)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(i == 0 ? Ky.instCinnabar : Ky.instGold)
-                    .position(x: 130 + 97 * sin(ang), y: 130 - 97 * cos(ang))
+            if showStemsBranchesLayer {
+                ForEach(0..<24, id: \.self) { i in
+                    let bearing = Double(i) * 15
+                    let ang = (bearing - heading) * Double.pi / 180
+                    Text(CompassMath.mountains[i].scriptConverted)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(i == 0 ? Ky.instCinnabar : Ky.instGold)
+                        .position(x: half + mountainR * sin(ang), y: half - mountainR * cos(ang))
+                }
             }
-            ForEach(0..<8, id: \.self) { i in
-                let bearing = Double(i) * 45
-                let ang = (bearing - displayHeading) * Double.pi / 180
-                Text(CompassMath.palaces[i].scriptConverted)
-                    .font(i % 2 == 0 ? .headline : .subheadline)
-                    .foregroundStyle(i == 0 ? Ky.instCinnabar : Ky.instInk)
-                    .position(x: 130 + 62 * sin(ang), y: 130 - 62 * cos(ang))
+            if showBaguaLayer {
+                ForEach(0..<8, id: \.self) { i in
+                    let bearing = Double(i) * 45
+                    let ang = (bearing - heading) * Double.pi / 180
+                    Text(CompassMath.palaces[i].scriptConverted)
+                        .font(i % 2 == 0 ? .headline : .subheadline)
+                        .foregroundStyle(i == 0 ? Ky.instCinnabar : Ky.instInk)
+                        .position(x: half + palaceR * sin(ang), y: half - palaceR * cos(ang))
+                }
             }
             Image(systemName: "arrowtriangle.up.fill")
                 .font(.system(size: 17)).foregroundStyle(Ky.instGold)
-                .offset(y: -26)
-            Circle().fill(Ky.instCinnabar).frame(width: 7, height: 7).offset(y: 24)
+                .offset(y: -size * 26 / 260)
+            Circle().fill(Ky.instCinnabar).frame(width: 7, height: 7).offset(y: size * 24 / 260)
             Circle().fill(Ky.instGold).frame(width: 9, height: 9)
-            if displayHeading < 0 {
+            if heading < 0 {
                 Circle()
                     .fill(Color.black.opacity(0.45))
-                    .frame(width: 248, height: 248)
+                    .frame(width: overlayR, height: overlayR)
                 Text("等待罗盘…".scriptConverted)
                     .font(.callout)
                     .fontWeight(.medium)
                     .foregroundStyle(.white)
             }
         }
+    }
+
+    // MARK: - 第4批新增（UI 2.1 罗盘）：图层开关／缩放旋转／平滑／校准引导／稳定性展示
+
+    // 盘面外框高＝自适应边长 × 缩放（GeometryReader 在 ScrollView 里须显式定高）。
+    private var dialOuterHeight: CGFloat {
+        min(UIScreen.main.bounds.width - 32, 560) * dialScale
+    }
+
+    // 图层开关行：二十四山（天干地支＋四维）／八卦（八宫内圈），只影响显示。
+    private var layerRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                layerChip(title: "二十四山", selected: showStemsBranchesLayer) {
+                    showStemsBranchesLayer.toggle()
+                }
+                layerChip(title: "八卦", selected: showBaguaLayer) {
+                    showBaguaLayer.toggle()
+                }
+                Spacer()
+                Button("复位视图".scriptConverted) {
+                    resetDialView()
+                }
+                .font(.caption)
+                .foregroundStyle(Ky.instGold)
+            }
+            Text("图层开关只影响显示，不改变计算结果；双指缩放 1.0–2.5 倍，双击复位，旋转手势手动转盘（不写回传感器航向）。".scriptConverted)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func layerChip(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title.scriptConverted)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(selected ? Ky.instGold : Color.clear)
+                .foregroundStyle(selected ? Ky.instInk : Ky.instGold)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Ky.instGold, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func resetDialView() {
+        dialScale = 1.0
+        scaleBase = 1.0
+        manualRotation = 0
+        rotationBase = 0
+    }
+
+    // 航向圆周平滑（atan2 平均）：只平滑显示读数，不进采样与锁定。
+    private var smoothedDisplayHeading: Double {
+        smoothedHeading >= 0 ? smoothedHeading : displayHeading
+    }
+
+    private func smoothHeading(_ newValue: Double) {
+        guard newValue >= 0 else {
+            smoothedHeading = -1
+            return
+        }
+        if smoothedHeading < 0 {
+            smoothedHeading = newValue
+            return
+        }
+        let w = 0.35
+        let s = sin(smoothedHeading * Double.pi / 180) * (1 - w) + sin(newValue * Double.pi / 180) * w
+        let c = cos(smoothedHeading * Double.pi / 180) * (1 - w) + cos(newValue * Double.pi / 180) * w
+        smoothedHeading = CompassMath.normalize(atan2(s, c) * 180 / Double.pi)
+    }
+
+    // 锁定按钮（底部安全区）：采样进度＋实时集中度反馈。
+    private var lockBottomBar: some View {
+        VStack(spacing: 6) {
+            if collecting {
+                ProgressView(value: Double(trueSamples.count), total: 8)
+                Text("采样 \(trueSamples.count)/8 · 集中度 \(samplingSpreadText)".scriptConverted)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Button {
+                if !collecting {
+                    startCollect()
+                }
+            } label: {
+                Text(justLocked ? "✓ 已锁定".scriptConverted : (collecting ? "采样中…（\(trueSamples.count)/8）".scriptConverted : "锁定当前度数／山向（放平自动采样）".scriptConverted))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(KyPrimaryButton())
+            .disabled(collecting)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Ky.instBg)
+    }
+
+    private var samplingSpreadText: String {
+        if trueSamples.count >= 2 {
+            let (_, r) = CompassMath.circularMean(trueSamples)
+            return String(format: "%.2f", r)
+        }
+        return "—"
+    }
+
+    // 校准三步引导（纯 UI 流程，不动传感器逻辑）。
+    private var calibrationSteps: [(title: String, body: String)] {
+        [
+            ("远离干扰", "摘掉磁吸手机壳、磁吸支架，离汽车、钢筋、电器 2 米以上。"),
+            ("画 8 字校准", "手腕画 8 字三圈；并确认设置 → 隐私与安全性 → 定位服务 → 系统服务里打开「指南针校准」和「运动校准与距离」。"),
+            ("放平慢转", "手机放平，气泡进绿圈，原地慢转半圈，等读数稳定后再锁定。")
+        ]
+    }
+
+    private var calibrationLiveAccuracyText: String {
+        let acc = location.headingAccuracy >= 0 ? "±\(Int(location.headingAccuracy))°" : "未就绪"
+        return "当前精度：" + acc + "（校准好后约 ±5°）"
+    }
+
+    private var calibrationGuideCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("校准三步引导".scriptConverted)
+                .font(.headline)
+            ForEach(0..<3, id: \.self) { i in
+                HStack(alignment: .top, spacing: 8) {
+                    Text(calibrationStep > i ? "✓" : "\(i + 1)")
+                        .font(.callout)
+                        .fontWeight(.bold)
+                        .foregroundStyle(calibrationStep > i ? Color.green : Ky.instGold)
+                        .frame(width: 22)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(calibrationSteps[i].title.scriptConverted)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text(calibrationSteps[i].body.scriptConverted)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if i == 2 {
+                            Text(calibrationLiveAccuracyText.scriptConverted)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .opacity(calibrationStep >= i ? 1 : 0.45)
+            }
+            HStack(spacing: 10) {
+                if calibrationStep < 2 {
+                    Button("下一步".scriptConverted) {
+                        calibrationStep += 1
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    Button("完成校准".scriptConverted) {
+                        showCalibrationGuide = false
+                        calibrationStep = 0
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                Button("取消".scriptConverted) {
+                    showCalibrationGuide = false
+                    calibrationStep = 0
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .kyGlass(corner: 16)
+    }
+
+    // 锁定记录稳定性分析（只展示已有 samples＋spread，不新增存储）。
+    private func stabilityVerdict(for lock: CompassLock) -> String {
+        if lock.samples < 4 {
+            return "采样偏少（<4 次）：结论仅供参考，建议重测。"
+        }
+        if lock.spread >= 0.95 {
+            return "很稳：多次采样高度一致，可直接入盘。"
+        }
+        if lock.spread >= 0.90 {
+            return "较稳：采样基本一致，入盘可用；条件允许可再测一次互校。"
+        }
+        return "不太稳：集中度偏低，建议换个位置重测。"
+    }
+
+    private func stabilityColor(for lock: CompassLock) -> Color {
+        if lock.samples < 4 || lock.spread < 0.90 {
+            return Color.orange
+        }
+        return Color.green
     }
 }

@@ -2565,7 +2565,7 @@ struct CompassView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                dial.frame(width: 260, height: 260).padding(.top, 8)
+                dial.frame(width: min(UIScreen.main.bounds.width - 32, 560), height: min(UIScreen.main.bounds.width - 32, 560)).padding(.top, 8)
                 // 水平仪：气泡进小圈（倾斜≤3°）才算放平
                 HStack(spacing: 14) {
                     ZStack {
