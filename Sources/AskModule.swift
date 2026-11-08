@@ -24,6 +24,11 @@ struct AskResponse: Decodable {
     let model: String?
     let facts: [AskFact]
     let caveats: [String]
+    // G5 可信度标签（与 Web ask.py _confidence 同口径，封闭集合：高／中／降级／拒绝）：
+    // 服务端有值时直接采用；缺失（旧响应）时按 refused／degraded／答案是否含
+    // “盘上无据”同口径推导，绝不把降级答案包装成高可信。
+    let confidence: String?
+    let confidenceReason: String?
 
     enum CodingKeys: String, CodingKey {
         case answer
@@ -33,6 +38,24 @@ struct AskResponse: Decodable {
         case model
         case facts
         case caveats
+        case confidence
+        case confidenceReason = "confidence_reason"
+    }
+
+    var confidenceLabel: String {
+        if let c = confidence, !c.isEmpty { return c }
+        if refused { return "拒绝" }
+        if degraded { return "降级" }
+        if answer.contains("盘上无据") { return "中" }
+        return "高"
+    }
+
+    var confidenceDetail: String {
+        if let r = confidenceReason, !r.isEmpty { return r }
+        if refused { return "健康落病名／寿数断语类问题，调模型前直接拒绝，不作答。" }
+        if degraded { return "降级原因：" + (degradedReason ?? "未注明") + "；答案为事实包原文或提示语，非模型组织结论。" }
+        if answer.contains("盘上无据") { return "后校验通过，但答案含明说无据的句子，部分结论无事实支撑。" }
+        return "后校验通过：逐句均有事实包原文片段支撑。"
     }
 }
 
@@ -42,6 +65,9 @@ struct AskHistoryItem: Codable, Identifiable {
     let answer: String
     let degraded: Bool
     let at: String
+    // G5：提问当时服务端给的可信度标签＋定档依据（旧记录无此二键，解码为 nil，显示“未标注”）
+    let confidence: String? = nil
+    let confidenceDetail: String? = nil
 }
 
 enum AskClient {
@@ -182,6 +208,10 @@ struct AskView: View {
                                     .font(.callout)
                                     .foregroundStyle(Ky.sub)
                                     .lineLimit(3)
+                                // G5：历史每条展示提问当时的可信度标签（旧记录显示“未标注”）
+                                Text(("可信度：" + (item.confidence ?? "未标注")).scriptConverted)
+                                    .font(.caption2)
+                                    .foregroundStyle(Ky.sub)
                             }
                             .padding(.vertical, 4)
                             Divider()
@@ -209,7 +239,7 @@ struct AskView: View {
             let r = try await AskClient.ask(question: q, person: selectedPerson)
             result = r
             let formatter = ISO8601DateFormatter()
-            let item = AskHistoryItem(question: q, answer: r.answer, degraded: r.degraded, at: formatter.string(from: Date()))
+            let item = AskHistoryItem(question: q, answer: r.answer, degraded: r.degraded, at: formatter.string(from: Date()), confidence: r.confidenceLabel, confidenceDetail: r.confidenceDetail)
             history.insert(item, at: 0)
             history = Array(history.prefix(20))
             AskView.saveHistory(history)
@@ -237,8 +267,33 @@ struct AskView: View {
 struct AskResultCard: View {
     let result: AskResponse
 
+    // G5 可信度标签配色（只用已有令牌／系统色，不新增色值）：高＝玉色，中＝金色，降级＝橙，拒绝＝朱砂
+    private var confidenceColor: Color {
+        switch result.confidenceLabel {
+        case "高": return Ky.jade
+        case "中": return Ky.gold
+        case "降级": return .orange
+        default: return Ky.cinnabar
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // G5 可信度标签：标签值＋定档依据同行可见，来源可追溯（定档依据见下方文字与事实包）
+            HStack(alignment: .top, spacing: 6) {
+                Text(("可信度：" + result.confidenceLabel).scriptConverted)
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(confidenceColor.opacity(0.13))
+                    .foregroundStyle(confidenceColor)
+                    .clipShape(Capsule())
+                Text(result.confidenceDetail.scriptConverted)
+                    .font(.caption)
+                    .foregroundStyle(Ky.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if result.refused {
                 Text("本系统不作答：健康问题不落病名，寿数断语不在五典论命范围之内。".scriptConverted)
                     .font(.callout)

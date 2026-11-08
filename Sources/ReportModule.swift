@@ -2,9 +2,54 @@
 // 逐年直断（当前大运十年）/紫微摘要。UIGraphicsPDFRenderer 纯文本排版，宋体优先。
 import SwiftUI
 import UIKit
+import CryptoKit
+
+/// 命书三档（G1 报告体系）：档位只做章节取舍，不改任何结论文案与引擎口径。
+/// 简洁＝总纲＋核心结论＋要点；专业＝现行全部 6 章（默认档位，等于改版前输出）；
+/// 完整＝6 章＋逐项依据与附录级明细。
+enum ReportTier: String, CaseIterable {
+    case concise = "简洁"
+    case professional = "专业"
+    case complete = "完整"
+    var displayName: String { rawValue }
+    /// 文件名与元数据用 ASCII 码，避免文件名／PDF 关键字编码歧义
+    var fileCode: String {
+        switch self {
+        case .concise: return "concise"
+        case .professional: return "professional"
+        case .complete: return "complete"
+        }
+    }
+    /// 报告中心档位分组顺序：简洁 → 专业 → 完整 → 无档位（旧文件／海报）
+    var sortOrder: Int {
+        switch self {
+        case .concise: return 0
+        case .professional: return 1
+        case .complete: return 2
+        }
+    }
+}
 
 enum ReportBuilder {
-    static func lines(for person: Person) -> [String] {
+    /// 引擎口径版本（G1）：随口径变更才递增；进入 contentHash 口径与 PDF 元数据，
+    /// 同一版本同一输入哈希相同。
+    static let engineVersion = "2026.11-g1"
+
+    /// 内容哈希口径（G1 版本锁定）：只对规范化内容算哈希——输入为 lines() 排版行数组
+    /// 之前缀档位码与引擎口径版本；封面日期、PDF 自身 CreationDate / ModDate、
+    /// 文件名时间戳一律不进入哈希输入，故同一输入两次生成哈希必相同。
+    /// 实现用 CryptoKit SHA256（系统库，无第三方依赖）。
+    static func contentHash(lines: [String], tier: ReportTier) -> String {
+        let normalized = ([engineVersion, tier.fileCode] + lines).joined(separator: "\n")
+        let digest = SHA256.hash(data: Data(normalized.utf8))
+        var out = ""
+        for b in digest {
+            out += String(format: "%02x", b)
+        }
+        return out
+    }
+
+    static func lines(for person: Person, tier: ReportTier = .professional) -> [String] {
         let ch = BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,
                                    longitude: person.useLongitude ? person.longitude : nil)
         var L: [String] = []
@@ -21,44 +66,82 @@ enum ReportBuilder {
         let wxNames = ["木", "火", "土", "金", "水"]
         L.append("五行占比：" + (0..<5).map { "\(wxNames[$0]) \(String(format: "%.0f%%", ch.wuxingPercents[$0]))" }.joined(separator: " · "))
         L.append("")
-        L.append("【大运】\(ch.qiyunYear) 年起运（起运日 \(ch.qiyunDate)）")
-        for i in ch.dayunGanZhi.indices {
-            let y0 = ch.dayunStartYear(i)
-            L.append("\(y0)–\(y0 + 9) \(ch.dayunGanZhi[i])运")
+        // G1 三档取舍：简洁档只留总纲（上文四柱细盘）＋核心结论（下文总纲摘要）＋要点（末尾口径行），
+        // 大运／逐年明细、双术合参、紫微摘要只在专业／完整档出现；专业档走下面全部分支，输出与改版前逐行一致。
+        if tier != .concise {
+            L.append("【大运】\(ch.qiyunYear) 年起运（起运日 \(ch.qiyunDate)）")
+            for i in ch.dayunGanZhi.indices {
+                let y0 = ch.dayunStartYear(i)
+                L.append("\(y0)–\(y0 + 9) \(ch.dayunGanZhi[i])运")
+            }
+            L.append("")
+            L.append("【逐年直断（当前大运十年）】")
+            let now = Calendar.current.component(.year, from: Date())
+            let di = YearEngine.dayunIndex(chart: ch, year: now) ?? 0
+            let start = ch.dayunStartYear(di)
+            for y in start...(start + 9) {
+                let r = YearEngine.report(chart: ch, year: y)
+                L.append("\(y) \(r.gz)［\(r.level)］")
+                for line in r.lines { L.append("  · \(line)") }
+            }
+            L.append("")
         }
-        L.append("")
-        L.append("【逐年直断（当前大运十年）】")
-        let now = Calendar.current.component(.year, from: Date())
-        let di = YearEngine.dayunIndex(chart: ch, year: now) ?? 0
-        let start = ch.dayunStartYear(di)
-        for y in start...(start + 9) {
-            let r = YearEngine.report(chart: ch, year: y)
-            L.append("\(y) \(r.gz)［\(r.level)］")
-            for line in r.lines { L.append("  · \(line)") }
-        }
-        L.append("")
         // 2026-10-31 批次二核对结论：此前命书只含四柱／大运／逐年／紫微摘要，未含解盘 30 条；
         // 此处补一页「维度摘要」：30 条逐条标题＋该维首行结论（首句按「。」切分），不改已验证的排盘字段引用。
+        // G1：实际条目数为 InterpretEngine.interpret 全量（5 总纲＋25 维，十神看点为条件项，
+        // 有则 30 条、无则 29 条，按实际报数不凑数）；简洁档只列 5 总纲首行。
         let dims = InterpretEngine.interpret(chart: ch)
-        L.append("【解盘维度摘要（\(dims.count)维）】")
-        for (i, it) in dims.enumerated() {
+        let shownDims = tier == .concise ? dims.filter { InterpretEngine.coreTitles.contains($0.title) } : dims
+        L.append("【解盘维度摘要（\(shownDims.count)维）】")
+        for (i, it) in shownDims.enumerated() {
             let first = it.conclusion.split(separator: "。", maxSplits: 1, omittingEmptySubsequences: true).first.map { String($0) + "。" } ?? it.conclusion
             L.append("\(i + 1). \(it.title)：\(first)")
         }
         L.append("")
-        L.append("【双术合参 · 交叉印证】")
-        let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
-                                   longitude: person.useLongitude ? person.longitude : nil)
-        for v in BaziZiweiCrossEngine.verdicts(bazi: ch, ziwei: zw) {
-            L.append("\(v.title)［\(v.kind.rawValue)］：\(v.verdict)")
-            L.append("  八字：\(v.bazi)；紫微：\(v.ziwei)")
+        if tier != .concise {
+            L.append("【双术合参 · 交叉印证】")
+            let zw = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
+                                       longitude: person.useLongitude ? person.longitude : nil)
+            for v in BaziZiweiCrossEngine.verdicts(bazi: ch, ziwei: zw) {
+                L.append("\(v.title)［\(v.kind.rawValue)］：\(v.verdict)")
+                L.append("  八字：\(v.bazi)；紫微：\(v.ziwei)")
+            }
+            L.append("")
+            L.append("【紫微摘要】")
+            let ming = zw.palaces[zw.mingGong]
+            L.append("\(zw.juName)，命宫在\(ming.stem)\(ZiweiCore.DZ[ming.branch])，主星：\(ming.majors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: "、"))；身宫在\(zw.palaces[zw.shenGong].name)")
+            for c in ZiweiReading.cards(chart: zw) { L.append("\(c.title)：\(c.conclusion)") }
+            L.append("")
         }
-        L.append("")
-        L.append("【紫微摘要】")
-        let ming = zw.palaces[zw.mingGong]
-        L.append("\(zw.juName)，命宫在\(ming.stem)\(ZiweiCore.DZ[ming.branch])，主星：\(ming.majors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: "、"))；身宫在\(zw.palaces[zw.shenGong].name)")
-        for c in ZiweiReading.cards(chart: zw) { L.append("\(c.title)：\(c.conclusion)") }
-        L.append("")
+        if tier == .complete {
+            // 完整档附录：逐项依据只收拢引擎已有内容（全文结论＋依据链＋G2 六段字段），不新编文案；
+            // 附录行首用「附录 N · 标题」格式，不与摘要条目的「N. 标题」格式重合，故目录条目级
+            // 检测只会命中摘要区，不会把附录重复计入目录。
+            L.append("【逐项依据（附录）】")
+            for (i, it) in dims.enumerated() {
+                L.append("附录 \(i + 1) · \(it.title)")
+                L.append(it.conclusion)
+                for link in it.links {
+                    L.append("  \(link.label)：\(link.text)")
+                }
+                if let mechanism = it.mechanism {
+                    L.append("  作用机制：\(mechanism)")
+                }
+                if let timeRange = it.timeRange {
+                    L.append("  时间范围：\(timeRange)")
+                }
+                if let advice = it.advice {
+                    L.append("  现实建议：\(advice)")
+                }
+            }
+            L.append("")
+            L.append("【附录 · 版本与口径】")
+            let coreCount = dims.filter { InterpretEngine.coreTitles.contains($0.title) }.count
+            L.append("报告档位：完整")
+            L.append("引擎口径版本：\(engineVersion)")
+            L.append("详批条目：\(dims.count) 条（总纲 \(coreCount) 条＋分维 \(dims.count - coreCount) 条，十神看点为条件项）")
+            L.append("")
+        }
         L.append("口径：八字五典为据、结论带依据链；逐年为四查规则生成，重断须多项引动同现，健康只给倾向、非西医疾病诊断、六亲生死不在此列。紫微为三合派。娱乐与研习参考。")
         return L
     }
@@ -67,21 +150,33 @@ enum ReportBuilder {
     /// 页码铁律：分页只由 paginate() 算一次——目录读到的章节页码与绘制时逐页 beginPage 的顺序
     /// 共用同一份 pages 数组；内容第 k 页（k 从 0 起）恒为绝对页 k + 3（封面 1、目录 2），
     /// 绘制循环不再另算断页，故目录页码与实际分页不可能错位。
-    static func makePDF(for person: Person) -> URL? {
-        let lines = lines(for: person)
+    /// G1：默认档位为专业（等于改版前输出）；文件名带档位＋时间戳＋内容哈希短码，
+    /// PDF 元数据 Keywords 内写全量 contentHash（64 位 hex）＋档位码＋引擎口径版本。
+    static func makePDF(for person: Person, tier: ReportTier = .professional) -> URL? {
+        let lines = lines(for: person, tier: tier)
+        let hash = contentHash(lines: lines, tier: tier)
+        let hashShort = String(hash.prefix(12))
         let pageRect = CGRect(x: 0, y: 0, width: 595, height: 842)   // A4 @72dpi
-        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+        let format = UIGraphicsPDFRendererFormat()
+        format.documentInfo = [
+            "Title": "命书 · \(person.name)",
+            "Author": "三术合参",
+            "Creator": "三术合参 \(engineVersion)",
+            "Subject": "档位：\(tier.displayName)",
+            "Keywords": "contentHash=\(hash);tier=\(tier.fileCode);engine=\(engineVersion)"
+        ]
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
         let titleFont = UIFont(name: "STSongti-SC-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)
         let bodyFont = UIFont(name: "STSongti-SC-Regular", size: 11.5) ?? UIFont.systemFont(ofSize: 11.5)
         let headFont = UIFont(name: "STSongti-SC-Bold", size: 12.5) ?? UIFont.boldSystemFont(ofSize: 12.5)
-        let (pages, chapters) = paginate(lines: lines, titleFont: titleFont, bodyFont: bodyFont, headFont: headFont, pageRect: pageRect)
+        let (pages, chapters, tocItems) = paginate(lines: lines, titleFont: titleFont, bodyFont: bodyFont, headFont: headFont, pageRect: pageRect)
         let totalPages = pages.count + 2
         let data = renderer.pdfData { ctx in
             ctx.beginPage()
-            drawCover(ctx: ctx, lines: lines, pageRect: pageRect)
+            drawCover(ctx: ctx, lines: lines, pageRect: pageRect, tier: tier, hashShort: hashShort)
             drawFooter(ctx: ctx, pageRect: pageRect, page: 1, total: totalPages)
             ctx.beginPage()
-            drawTOC(ctx: ctx, person: person, chapters: chapters, total: totalPages, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)
+            drawTOC(ctx: ctx, person: person, chapters: chapters, tocItems: tocItems, total: totalPages, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)
             drawFooter(ctx: ctx, pageRect: pageRect, page: 2, total: totalPages)
             for (idx, page) in pages.enumerated() {
                 ctx.beginPage()
@@ -95,8 +190,12 @@ enum ReportBuilder {
                 drawFooter(ctx: ctx, pageRect: pageRect, page: idx + 3, total: totalPages)
             }
         }
+        let stampFormatter = DateFormatter()
+        stampFormatter.dateFormat = "yyyyMMdd-HHmmss"
+        stampFormatter.timeZone = TimeZone(secondsFromGMT: 8 * 3600)
+        let stamp = stampFormatter.string(from: Date())
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("命书-\(person.name).pdf")
+            .appendingPathComponent("命书-\(person.name)-\(tier.displayName)-\(stamp)-\(hashShort).pdf")
         do { try data.write(to: url); return url } catch { return nil }
     }
 
@@ -115,18 +214,25 @@ enum ReportBuilder {
 
     /// 单一分页函数（P3 第 7 项）：逐行复刻旧 draw() 的断页逻辑——同一字体／同一行距／
     /// 同一强制断页（【解盘维度摘要】前另起页）／同一溢出判断（y + h > 页高 − 48 即另起页）。
-    /// 返回 pages（逐页已排版行）与 chapters（章节标题 → 绝对页码，含封面 1、目录 2 的偏移）。
-    private static func paginate(lines: [String], titleFont: UIFont, bodyFont: UIFont, headFont: UIFont, pageRect: CGRect) -> (pages: [ContentPage], chapters: [(title: String, page: Int)]) {
+    /// 返回 pages（逐页已排版行）、chapters（章节标题 → 绝对页码，含封面 1、目录 2 的偏移）
+    /// 与 tocItems（解盘维度摘要区内的条目级目录：序号＋标题 → 绝对页码，与 chapters 同源、
+    /// 同一偏移，故页码同样构造性保证；完整档附录行首为「附录 N · 标题」，不在此列）。
+    private static func paginate(lines: [String], titleFont: UIFont, bodyFont: UIFont, headFont: UIFont, pageRect: CGRect) -> (pages: [ContentPage], chapters: [(title: String, page: Int)], tocItems: [(title: String, page: Int)]) {
         let inset: CGFloat = 48
         let width = pageRect.width - inset * 2
         let bottom = pageRect.height - 48
         var pages: [ContentPage] = [ContentPage()]
         var chapters: [(title: String, page: Int)] = []
+        var tocItems: [(title: String, page: Int)] = []
+        var inSummary = false
         var y: CGFloat = 48
         for (i, line) in lines.enumerated() {
             if line.hasPrefix("【解盘维度摘要") {
                 pages.append(ContentPage())
                 y = 48
+            }
+            if line.hasPrefix("【") {
+                inSummary = line.hasPrefix("【解盘维度摘要")
             }
             let font = i == 0 ? titleFont : (line.hasPrefix("【") ? headFont : bodyFont)
             let gap: CGFloat = i == 0 ? 10 : (line.hasPrefix("【") ? 6 : 5)
@@ -143,9 +249,28 @@ enum ReportBuilder {
             if line.hasPrefix("【") {
                 chapters.append((title: line, page: pages.count - 1 + 3))
             }
+            if inSummary, let itemTitle = summaryItemTitle(line) {
+                tocItems.append((title: itemTitle, page: pages.count - 1 + 3))
+            }
             y += h + gap
         }
-        return (pages, chapters)
+        return (pages, chapters, tocItems)
+    }
+
+    /// 摘要区条目行「N. 标题：首句…」→ 目录条目「N. 标题」；非此格式返回 nil。
+    /// 标题取到中文冒号之前；序号必须为纯数字，避免误命中逐年行等其他数字开头行。
+    private static func summaryItemTitle(_ line: String) -> String? {
+        guard let dot = line.firstIndex(of: ".") else { return nil }
+        let num = line[line.startIndex..<dot]
+        guard !num.isEmpty, num.allSatisfy({ $0.isNumber }) else { return nil }
+        let rest = line[line.index(after: dot)...].trimmingCharacters(in: .whitespaces)
+        guard !rest.isEmpty else { return nil }
+        if let colon = rest.firstIndex(of: "：") {
+            let title = String(rest[rest.startIndex..<colon])
+            if title.isEmpty { return nil }
+            return "\(num). \(title)"
+        }
+        return "\(num). \(rest)"
     }
 
     /// 居中画一行并返回下一行 y（行高按实际 bounding 高度取，不写死）
@@ -174,7 +299,8 @@ enum ReportBuilder {
     }
 
     /// 封面（第 1 页）：品牌＋命书名＋生辰／四柱收据＋朱砂印＋日期；只取 lines() 前三行原文，不另编断语。
-    private static func drawCover(ctx: UIGraphicsPDFRendererContext, lines: [String], pageRect: CGRect) {
+    /// G1：封面底部加档位与内容哈希短码（与 PDF 元数据 Keywords 内全量哈希同源），版本可目视核对。
+    private static func drawCover(ctx: UIGraphicsPDFRendererContext, lines: [String], pageRect: CGRect, tier: ReportTier, hashShort: String) {
         let brandFont = UIFont(name: "STSongti-SC-Bold", size: 28) ?? UIFont.boldSystemFont(ofSize: 28)
         let nameFont = UIFont(name: "STSongti-SC-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)
         let bodyFont = UIFont(name: "STSongti-SC-Regular", size: 11.5) ?? UIFont.systemFont(ofSize: 11.5)
@@ -213,16 +339,20 @@ enum ReportBuilder {
         let dateText = "报告日期：" + df.string(from: Date())
         _ = drawCentered(ctx: ctx, text: dateText, font: bodyFont, y: sealRect.maxY + 26, width: pageRect.width, color: ink)
         _ = drawCentered(ctx: ctx, text: "据子平五典与天纪三合推演 · 仅供娱乐与研习参考", font: smallFont, y: sealRect.maxY + 52, width: pageRect.width, color: sub)
+        _ = drawCentered(ctx: ctx, text: "档位：\(tier.displayName) · 内容哈希 \(hashShort) · 口径 \(engineVersion)", font: smallFont, y: sealRect.maxY + 78, width: pageRect.width, color: sub)
     }
 
     /// 目录（第 2 页）：章节标题＋绝对页码，页码取自 paginate() 的同一份 chapters；
     /// 另注总页数，页码与正文逐页绘制顺序一致。
-    private static func drawTOC(ctx: UIGraphicsPDFRendererContext, person: Person, chapters: [(title: String, page: Int)], total: Int, pageRect: CGRect, headFont: UIFont, bodyFont: UIFont) {
+    /// G1：章节之下加条目级目录（tocItems，与 chapters 同源、同偏移，页码同样构造性保证），
+    /// 30 条分两栏紧凑排布，仍在一页内；简洁档只列总纲条目（实际数），完整档不重复列附录。
+    private static func drawTOC(ctx: UIGraphicsPDFRendererContext, person: Person, chapters: [(title: String, page: Int)], tocItems: [(title: String, page: Int)], total: Int, pageRect: CGRect, headFont: UIFont, bodyFont: UIFont) {
         let inset: CGFloat = 48
         let width = pageRect.width - inset * 2
         let ink = UIColor(red: 0.18, green: 0.165, blue: 0.15, alpha: 1)
         let sub = UIColor(red: 0.478, green: 0.447, blue: 0.408, alpha: 1)
         let accent = UIColor(red: 0.153, green: 0.306, blue: 0.361, alpha: 1)
+        let itemFont = UIFont(name: "STSongti-SC-Regular", size: 10) ?? UIFont.systemFont(ofSize: 10)
         var y: CGFloat = 48
         y = drawLeft(ctx: ctx, text: "目录", font: headFont, y: y, x: inset, width: width, color: ink)
         y += 6
@@ -232,8 +362,43 @@ enum ReportBuilder {
             y = drawTOCRow(ctx: ctx, title: ch.title, page: ch.page, y: y, x: inset, width: width, bodyFont: bodyFont, ink: ink, sub: sub)
             y += 8
         }
+        if !tocItems.isEmpty {
+            y += 6
+            y = drawLeft(ctx: ctx, text: "详批条目（\(tocItems.count) 条）", font: headFont, y: y, x: inset, width: width, color: ink)
+            y += 4
+            let colWidth = (width - 16) / 2
+            let rows = (tocItems.count + 1) / 2
+            let rowHeight: CGFloat = 16
+            for r in 0..<rows {
+                let left = tocItems[r]
+                drawTOCItemCell(ctx: ctx, title: left.title, page: left.page, y: y, x: inset, width: colWidth, font: itemFont, ink: ink)
+                let rightIndex = r + rows
+                if rightIndex < tocItems.count {
+                    let right = tocItems[rightIndex]
+                    drawTOCItemCell(ctx: ctx, title: right.title, page: right.page, y: y, x: inset + colWidth + 16, width: colWidth, font: itemFont, ink: ink)
+                }
+                y += rowHeight
+            }
+        }
         y += 10
         _ = drawLeft(ctx: ctx, text: "页码与正文实际分页一致；正文每页页脚亦标页码，可逐页核对。", font: bodyFont, y: y, x: inset, width: width, color: accent)
+    }
+
+    /// 目录条目级小格（两栏用）：标题左对齐、页码右对齐，无发丝线；单行高度固定 16pt
+    private static func drawTOCItemCell(ctx: UIGraphicsPDFRendererContext, title: String, page: Int, y: CGFloat, x: CGFloat, width: CGFloat, font: UIFont, ink: UIColor) {
+        let style = NSMutableParagraphStyle()
+        style.lineSpacing = 3
+        let titleAttr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: ink, .paragraphStyle: style]
+        let h = (title as NSString).boundingRect(with: CGSize(width: width - 40, height: .greatestFiniteMagnitude),
+                                                  options: [.usesLineFragmentOrigin], attributes: titleAttr, context: nil).height
+        (title as NSString).draw(with: CGRect(x: x, y: y, width: width - 40, height: h),
+                                  options: [.usesLineFragmentOrigin], attributes: titleAttr, context: nil)
+        let pageText = "\(page)"
+        let pageStyle = NSMutableParagraphStyle()
+        pageStyle.alignment = NSTextAlignment.right
+        let pageAttr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: ink, .paragraphStyle: pageStyle]
+        (pageText as NSString).draw(with: CGRect(x: x + width - 32, y: y, width: 32, height: h),
+                                     options: [.usesLineFragmentOrigin], attributes: pageAttr, context: nil)
     }
 
     /// 目录一行：标题左对齐、页码右对齐、行下发丝线；返回下一行 y

@@ -8,6 +8,14 @@ struct InterpretItem {
     let title: String
     let conclusion: String
     let links: [(label: String, text: String)]
+    // G2 六段结构字段（Insight 第 1 批）：只收拢已有内容，不新编文案。
+    // mechanism 取 links 中首个「根据」／「法则」文本；timeRange 取引擎已算出的
+    // 时间窗口（大运／流年／运段）；advice 取三段式【现实避坑指南】（guideHint）；
+    // confidence 由 G5 填（InterpretEngine.confidenceLabel：VerifyStore 打标＋机制文本层级）。
+    let mechanism: String? = nil
+    let confidence: String? = nil
+    let timeRange: String? = nil
+    let advice: String? = nil
 }
 
 /// 解盘验真打标：每条断语一键标「已应验／待回验」，沉淀个人准确率；随备份导出。
@@ -111,8 +119,152 @@ enum InterpretEngine {
         return ""
     }
 
+    // MARK: - G5 可信度标签（Insight 第 1 批）
+    /// 每条解盘的可信程度，封闭集合：验真状态（已验真／待回验／未打标）＋依据层级。
+    /// 只用已有数据，不编造：
+    ///   验真状态取 VerifyStore 打标（已应验＝true、待回验＝false、未打标＝nil）；
+    ///   依据层级取 mechanism 文本（即 links 首个「根据」／「法则」，G2 已收拢），
+    ///   按文本自身措辞判定，优先级如下——
+    ///     含「纪律」／「回测」→ 本系统回测纪律（如“学历三查（工作室纪律 27…）”）；
+    ///     含《》书名号 → 五典原文（如《子平真诠》《滴天髓》《三命通会》）；
+    ///     含「通说」／「取象」／「类象」／「演绎」→ 流派应用；
+    ///     含「象征」／「民间」／「民俗」→ 民间象征；
+    ///     其余无引文的方法陈述（如“应期看引动…”）只作流派应用，绝不升格为五典原文；
+    ///     mechanism 为空（命局风景／十神看点只有「盘面」＋「口径」链）→ 盘面事实。
+    /// 标签是展示层收口：未打标绝不写成已验证；30 条逐条有值，无留空。
+    static func confidenceLabel(title: String, mechanism: String?) -> String {
+        let state: String
+        switch VerifyStore.mark(for: title) {
+        case true: state = "已验真"
+        case false: state = "待回验"
+        case nil: state = "未打标"
+        }
+        let level: String
+        if let m = mechanism, !m.isEmpty {
+            if m.contains("纪律") || m.contains("回测") {
+                level = "本系统回测纪律"
+            } else if m.contains("《") {
+                level = "五典原文"
+            } else if m.contains("通说") || m.contains("取象") || m.contains("类象") || m.contains("演绎") {
+                level = "流派应用"
+            } else if m.contains("象征") || m.contains("民间") || m.contains("民俗") {
+                level = "民间象征"
+            } else {
+                level = "流派应用"
+            }
+        } else {
+            level = "盘面事实"
+        }
+        return state + " · " + level
+    }
+
+    // MARK: - G4 反向定位：结论 → 干支／十神所在柱（Insight 第 1 批）
+    /// 每条结论派生一个目标柱（0 年／1 月／2 日／3 时）＋该柱相关十神名，只读已有文本，不新编依据。
+    /// 判定顺序（每一步内部按文本中出现先后逐个尝试，命中本盘才算）：
+    /// 1. 柱关键词：mechanism／links／conclusion 文本中首次出现的 年柱／月柱／日柱／时柱
+    ///    （含 年干／月干／日干／时干、年支／月支／日支／时支、月令→月柱）；
+    /// 2. 十神名：文本中出现、且本盘四柱天干／藏干里确实有的十神，取其所在柱（天干优先于藏干）；
+    /// 3. 组词：官杀／官星／官、印星／印、财星／财、食伤、比劫，取成员（正官／七杀等）在本盘的所在柱；
+    /// 4. 文本含「日主」→ 日柱；5. 以上皆无 → 默认日柱（日主锚点）。
+    /// 返回的十神：柱关键词路径下取该柱内文本提到的十神，否则取该柱天干十神（日柱时为「日主」）。
+    static func locateTarget(for item: InterpretItem, chart ch: BaziChart) -> (pillar: Int, shishen: String) {
+        let text = [item.mechanism ?? "", item.links.map { $0.text }.joined(separator: " "), item.conclusion].joined(separator: " ")
+        let pillarKeys: [(String, Int)] = [
+            ("年柱", 0), ("年干", 0), ("年支", 0),
+            ("月柱", 1), ("月干", 1), ("月支", 1), ("月令", 1),
+            ("日柱", 2), ("日干", 2), ("日支", 2),
+            ("时柱", 3), ("时干", 3), ("时支", 3),
+        ]
+        if let p = earliestPillar(in: text, keys: pillarKeys) {
+            let inPillar = earliestName(in: text, names: shiShenNames) { name in
+                ch.stemShiShen[p] == name || ch.hideShiShen[p].contains(name)
+            }
+            return (p, inPillar ?? ch.stemShiShen[p])
+        }
+        for name in namesByPosition(in: text, names: shiShenNames) {
+            for p in 0..<4 {
+                if ch.stemShiShen[p] == name {
+                    return (p, name)
+                }
+            }
+            for p in 0..<4 {
+                if ch.hideShiShen[p].contains(name) {
+                    return (p, name)
+                }
+            }
+        }
+        for group in namesByPosition(in: text, names: shiShenGroups.map { $0.0 }) {
+            let members = shiShenGroups.first { $0.0 == group }?.1 ?? []
+            // 透干优先于藏干：先扫全部成员的天干，再扫全部成员的藏干
+            for name in members {
+                for p in 0..<4 {
+                    if ch.stemShiShen[p] == name {
+                        return (p, name)
+                    }
+                }
+            }
+            for name in members {
+                for p in 0..<4 {
+                    if ch.hideShiShen[p].contains(name) {
+                        return (p, name)
+                    }
+                }
+            }
+        }
+        if text.contains("日主") {
+            return (2, ch.stemShiShen[2])
+        }
+        return (2, ch.stemShiShen[2])
+    }
+
+    private static let shiShenNames = ["正官", "七杀", "正印", "偏印", "比肩", "劫财", "食神", "伤官", "正财", "偏财"]
+
+    /// 组词 → 成员十神（官杀／官星／官→正官／七杀；印星／印→正印／偏印；
+    /// 财星／财→正财／偏财；食伤→食神／伤官；比劫→比肩／劫财）
+    private static let shiShenGroups: [(String, [String])] = [
+        ("官杀", ["正官", "七杀"]), ("官星", ["正官", "七杀"]), ("食伤", ["食神", "伤官"]),
+        ("比劫", ["比肩", "劫财"]), ("印星", ["正印", "偏印"]), ("财星", ["正财", "偏财"]),
+        ("官", ["正官", "七杀"]), ("印", ["正印", "偏印"]), ("财", ["正财", "偏财"]),
+    ]
+
+    /// 文本中最早出现的柱关键词对应的柱；没有则返回 nil
+    private static func earliestPillar(in text: String, keys: [(String, Int)]) -> Int? {
+        var bestIdx: String.Index? = nil
+        var best: Int? = nil
+        for (k, p) in keys {
+            if let r = text.range(of: k), bestIdx == nil || r.lowerBound < bestIdx! {
+                bestIdx = r.lowerBound
+                best = p
+            }
+        }
+        return best
+    }
+
+    /// 文本中最早出现、且满足条件的名字；没有则返回 nil
+    private static func earliestName(in text: String, names: [String], matching ok: (String) -> Bool) -> String? {
+        var bestIdx: String.Index? = nil
+        var best: String? = nil
+        for name in names {
+            if ok(name), let r = text.range(of: name), bestIdx == nil || r.lowerBound < bestIdx! {
+                bestIdx = r.lowerBound
+                best = name
+            }
+        }
+        return best
+    }
+
+    /// 文本中出现过的名字，按首次出现位置排序（供十神／组词两步逐个尝试）
+    private static func namesByPosition(in text: String, names: [String]) -> [String] {
+        names.compactMap { name -> (String.Index, String)? in
+            guard let r = text.range(of: name) else {
+                return nil
+            }
+            return (r.lowerBound, name)
+        }.sorted { $0.0 < $1.0 }.map { $0.1 }
+    }
+
     // MARK: - 解盘三段式（build-95）
-    /// 核心总纲 5 条不参与三段（本身已是总纲层）；三段只用于 23 维
+    /// 核心总纲 5 条不参与三段（本身已是总纲层）；三段只用于 25 维
     static let coreTitles: Set<String> = ["命局风景", "月令格局（候选）", "喜忌（扶抑初判）", "十神看点", "岁运要点"]
     /// 每维的关键行：财→财星、官→官星、印→印星、食伤→食伤、日主→比劫；喜用类维取喜用首行
     static func keyWxIndex(chart ch: BaziChart, title: String) -> Int {
@@ -439,11 +591,35 @@ enum InterpretEngine {
             let mark = dayunMark(chart: ch, index: i)
             return "\(gz)（\(ch.dayunStartYear(i))起，运干\(ss)，喜忌\(mark)）"
         }.joined(separator: "、")
+        // G2 时间范围：现行大运起止＋本年流年（引擎已算出的时间行，只收拢）
+        let yunTimeRange: String
+        if let i = curIdx {
+            yunTimeRange = "现行\(ch.dayunGanZhi[i])大运（\(ch.dayunStartYear(i))–\(ch.dayunStartYear(i) + 9)）· \(nowYear)年流年\(ln)"
+        } else {
+            yunTimeRange = "尚未起运或已出已排大运范围 · \(nowYear)年流年\(ln)"
+        }
         items.append(InterpretItem(
             title: "岁运要点",
             conclusion: "\(yunText) \(nowYear) 年流年\(ln)：\(relText)逐运喜忌（调候优先）：\(yunMarks)。",
-            links: [("盘面", yunFacts), ("法则", "应期看引动：冲合落到哪一宫，哪一线的事先动；逐运标记看运干五行：扶抑初判叠加调候优先（寒月去金水、热月去火土），中和盘标中性，不升格为定论")]))
-        return items + dimensions(ch)
+            links: [("盘面", yunFacts), ("法则", "应期看引动：冲合落到哪一宫，哪一线的事先动；逐运标记看运干五行：扶抑初判叠加调候优先（寒月去金水、热月去火土），中和盘标中性，不升格为定论")],
+            timeRange: yunTimeRange))
+        // G2 六段补全（只收拢、不新编）：作用机制取 links 首个「根据」／「法则」文本
+        // （命局风景／十神看点只有「口径」链，无机制，留空）；现实建议取三段式
+        // 【现实避坑指南】（guideHint），核心总纲 5 条在 UI 层无此行，留空；
+        // G5 可信程度：confidenceLabel 按 VerifyStore 打标＋机制文本层级填值（见上），
+        // 30 条逐条有值。结论正文与 links 一字不动。
+        let all = items + dimensions(ch)
+        return all.map { item in
+            let mechanism = item.links.first { $0.label == "根据" || $0.label == "法则" }?.text
+            let advice: String?
+            if coreTitles.contains(item.title) {
+                advice = nil
+            } else {
+                let guide = guideHint(items: all, title: item.title)
+                advice = guide.isEmpty ? nil : guide
+            }
+            return InterpretItem(title: item.title, conclusion: item.conclusion, links: item.links, mechanism: mechanism, confidence: confidenceLabel(title: item.title, mechanism: mechanism), timeRange: item.timeRange, advice: advice)
+        }
     }
 }
 
@@ -531,6 +707,10 @@ struct InterpretView: View {
     @SceneStorage("interpret.searchQuery") private var searchQuery = ""
     @State private var showGlossary = false
     @State private var verifyTick = 0
+    // G4 反向定位：写共享 SceneStorage 选柱键（与 BaziResultView 同键同场景共享）＋滚动请求键
+    @SceneStorage("bazi.selectedPillar") private var locatePillarStored: Int = -1
+    @SceneStorage("bazi.scrollToPlateRequest") private var scrollRequestStored: Int = 0
+    @Environment(\.dismiss) private var dismiss
     @State private var expandedItems: Set<Int> = [0, 1, 2, 3, 4]  // 详批折叠：interpret() 前 5 条恒为总纲，默认展开；25 维默认折叠，点标题展开
 
     private static let categories: [(String, Set<String>)] = [
@@ -553,6 +733,20 @@ struct InterpretView: View {
             }
         }
         return ("详批", Ky.qingdai)
+    }
+
+    /// G4：目标柱的可读标签，如「月柱 己巳 · 正印」（干支与十神为盘面数据，不做繁简转换）
+    private func locateLabel(for target: (pillar: Int, shishen: String)) -> String {
+        let cols = ["年柱", "月柱", "日柱", "时柱"]
+        return "\(cols[target.pillar]) \(chart.pillars[target.pillar]) · \(target.shishen)"
+    }
+
+    /// G4：定位动作——写共享选柱（四柱卡高亮＋牵动提示）＋滚动请求，返回八字页
+    private func locate(_ target: (pillar: Int, shishen: String)) {
+        locatePillarStored = target.pillar
+        scrollRequestStored += 1
+        KyV6.impact(.light)
+        dismiss()
     }
 
     var body: some View {
@@ -651,6 +845,7 @@ struct InterpretView: View {
                     ForEach(filteredIndices, id: \.self) { i in
                         let tag = categoryTag(for: allItems[i].title)
                         let isCore = InterpretEngine.coreTitles.contains(allItems[i].title)
+                        let target = InterpretEngine.locateTarget(for: allItems[i], chart: chart)
                         DisclosureGroup(isExpanded: Binding(
                             get: { expandedItems.contains(i) },
                             set: { if $0 { expandedItems.insert(i) } else { expandedItems.remove(i) } }
@@ -659,7 +854,23 @@ struct InterpretView: View {
                                 if !isCore {
                                     Text("【原局底牌】".scriptConverted).font(.caption2).fontWeight(.bold).foregroundStyle(Ky.qingdai)
                                 }
-                                EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links)
+                                EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links, mechanism: allItems[i].mechanism, confidence: allItems[i].confidence, timeRange: allItems[i].timeRange, advice: allItems[i].advice)
+                                Button {
+                                    locate(target)
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "scope").font(.caption2).foregroundStyle(Ky.qingdai)
+                                        Text("定位到".scriptConverted).font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                                        Text(locateLabel(for: target)).font(.caption).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                        Spacer()
+                                        Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
+                                    }
+                                    .padding(.horizontal, 10).padding(.vertical, 7)
+                                    .background(Ky.elevated)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("定位到\(locateLabel(for: target))，返回八字页查看四柱")
                                 if !isCore {
                                     threePartRows(chart: chart, item: allItems[i], allItems: allItems)
                                 }
@@ -691,6 +902,18 @@ struct InterpretView: View {
                                     }
                                     .buttonStyle(.plain)
                                     .accessibilityLabel("朗读\(allItems[i].title)")
+                                    Button {
+                                        locate(target)
+                                    } label: {
+                                        Image(systemName: "scope")
+                                            .font(.caption)
+                                            .foregroundStyle(Ky.qingdai)
+                                            .padding(6)
+                                            .background(Ky.elevated)
+                                            .clipShape(Circle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("定位到\(locateLabel(for: target))")
                                 }
                                 if !expandedItems.contains(i) {
                                     Text(allItems[i].conclusion.scriptConverted)
@@ -848,8 +1071,8 @@ extension InterpretEngine {
         let tong = pct[dayWx] + pct[shengWo]
         let level = tong >= 55 ? "偏强" : (tong <= 40 ? "偏弱" : "中和")
         let cntText = "官杀 \(guan) · 印 \(yin) · 财 \(cai) · 食伤 \(shi) · 比劫 \(bi)（透干＋藏干合计）"
-        func item(_ t: String, _ c: String, _ fact: String, _ rule: String) -> InterpretItem {
-            InterpretItem(title: t, conclusion: c, links: [("盘面", fact), ("根据", rule)])
+        func item(_ t: String, _ c: String, _ fact: String, _ rule: String, timeRange: String? = nil) -> InterpretItem {
+            InterpretItem(title: t, conclusion: c, links: [("盘面", fact), ("根据", rule)], timeRange: timeRange)
         }
         // 根气判法（纪律 46②）：根＝四支本气藏有该十神之干；余气藏干只算弱根，不许拿计数冒充有根
         func rootInfo(_ names: [String]) -> (tou: Bool, rootIdx: [Int], weak: Int) {
@@ -955,7 +1178,8 @@ extension InterpretEngine {
         if !kaoNote.isEmpty { xue += kaoNote + "。" }
         out.append(item("学业文书", xue,
             "印星根气：\(rootText(yinR))；财星计数 \(cai)；文昌\(sha.contains("文昌") ? "见" : "不见")、学堂\(sha.contains("学堂") ? "见" : "不见")",
-            "学历三查（工作室纪律 27＋第 38 轮修正）：印星根气定底、财克印降档、大运补印升档并叠加时代基线；文昌学堂只作旁证（《三命通会》印绶论、神煞表）"))
+            "学历三查（工作室纪律 27＋第 38 轮修正）：印星根气定底、财克印降档、大运补印升档并叠加时代基线；文昌学堂只作旁证（《三命通会》印绶论、神煞表）",
+            timeRange: kaoNote.isEmpty ? nil : kaoNote))
 
         // 天赋能力（主导十神＋日主五行定天赋取向；天赋须岁运引动，不作定数与等级）
         let talent: String
@@ -995,7 +1219,8 @@ extension InterpretEngine {
         career += tiZhi + "；" + (bi >= 3 ? "合伙须谨慎（比劫重，账目、分工、退出机制先立字据）" : "合伙可为，宜选互补型搭档") + "。"
         out.append(item("事业方向", career,
             cntText + "；身\(level)（扶抑初判），喜用先取\(xiWx)",
-            "十神定事业形态（类象通说）；行业以喜用五行取象（五行类象通说，与调候无关）；官印理会出《滴天髓》何知章"))
+            "十神定事业形态（类象通说）；行业以喜用五行取象（五行类象通说，与调候无关）；官印理会出《滴天髓》何知章",
+            timeRange: stages.isEmpty ? nil : stages.joined(separator: "；")))
 
         // 工作形态
         var form = ""
@@ -1040,7 +1265,8 @@ extension InterpretEngine {
         if !poHao.isEmpty { wealth += "破耗年份预警：\(poHao.joined(separator: "；"))——这些年份钱财进出大，忌借贷担保与冲动置产。" }
         out.append(item("财运形态", wealth,
             "财星合计 \(cai)，日主\(level)（扶抑初判）；财库\(kuBranch)支见 \(ku) 处；财根气：\(rootText(caiR))",
-            "财星量级看身与财的任受（扶抑通说）；财库随日主五行定（木未、火戌、土辰、水辰、金丑，《三命通会》墓库说）；财气通门户出《滴天髓》何知章"))
+            "财星量级看身与财的任受（扶抑通说）；财库随日主五行定（木未、火戌、土辰、水辰、金丑，《三命通会》墓库说）；财气通门户出《滴天髓》何知章",
+            timeRange: poHao.isEmpty ? nil : poHao.joined(separator: "；")))
 
         // 婚姻感情
         let spouseNames = ch.gender == "M" ? ["正财", "偏财"] : ["正官", "七杀"]
@@ -1144,7 +1370,8 @@ extension InterpretEngine {
         if !childChan.isEmpty { child += "时柱通道：" + childChan.joined(separator: "；") + "。" }
         out.append(item("子女缘分", child,
             "子女星（\(ch.gender == "M" ? "男命官杀" : "女命食伤")）计数 \(childStar)，根气：\(rootText(childR))；时柱 \(ch.timePillar)",
-            "子女星配属（《渊海子平》六亲配属）；个数须走子星＋时柱＋时代基线三通道（纪律 48③、50），单星不下定数；时柱通道已接（子女宫动／子星藏支填实冲开，运段级）"))
+            "子女星配属（《渊海子平》六亲配属）；个数须走子星＋时柱＋时代基线三通道（纪律 48③、50），单星不下定数；时柱通道已接（子女宫动／子星藏支填实冲开，运段级）",
+            timeRange: childChan.isEmpty ? nil : childChan.joined(separator: "；")))
 
         // 父母（根气判读；情/境两层：根气宫位看助力之境，透藏看亲疏之情）
         let fatherR = rootInfo(["偏财"])
@@ -1205,9 +1432,19 @@ extension InterpretEngine {
         // 节气养生（按最弱五行取象，非医疗建议）
         let yangSheng = ["木": "春季养肝（早睡、少怒、护眼）", "火": "夏季养心（午休、静心、少熬夜）", "土": "长夏养脾（规律饮食、少生冷）", "金": "秋季养肺（润燥、早睡、护呼吸道）", "水": "冬季养肾（藏精、保暖、少透支）"][weakest]!
         health += "节气养生：\(yangSheng)。"
+        // G2 时间范围：印星受克之运段＋调养防范期（引擎已算出的运段，只收拢）
+        var healthTimeParts: [String] = []
+        if !keYinYun.isEmpty {
+            healthTimeParts.append("印星受克之运段：\(keYinYun.prefix(2).joined(separator: "、"))")
+        }
+        if !fangFan.isEmpty {
+            healthTimeParts.append("调养防范期：\(fangFan.joined(separator: "、"))")
+        }
+        let healthTimeRange: String? = healthTimeParts.isEmpty ? nil : healthTimeParts.joined(separator: "；")
         out.append(item("健康倾向", health,
             "五行占比 " + (0..<5).map { "\(wxN[$0])\(Int(pct[$0].rounded()))" }.joined(separator: " ") + "；日主\(level)",
-            "五行配脏腑五窍（《素问》：肝开窍于目、心开窍于舌）；三查出工作室《健康与寿元》十神与健康（枭神夺食／杀旺攻身／印星受克之运）；只给部位倾向，不落病名"))
+            "五行配脏腑五窍（《素问》：肝开窍于目、心开窍于舌）；三查出工作室《健康与寿元》十神与健康（枭神夺食／杀旺攻身／印星受克之运）；只给部位倾向，不落病名",
+            timeRange: healthTimeRange))
 
         // 寿元关口（守年）；高龄/历史命例（距今逾 92 年）改回看一生口径，不按当前年扫描
         let nowYY = Calendar.current.component(.year, from: Date())
@@ -1231,7 +1468,8 @@ extension InterpretEngine {
         }
         out.append(item("中老年守年", gateText,
             "逐年四查定级扫描（关口级＝强引动 ≥2 项同现，或冲、自刑落在日柱）",
-            "应期引动法；寿元专用断法须寿元星、大运地势等多类条件同现，不在 App 层冒充——此条只作守年提醒"))
+            "应期引动法；寿元专用断法须寿元星、大运地势等多类条件同现，不在 App 层冒充——此条只作守年提醒",
+            timeRange: gates.isEmpty ? nil : gates.joined(separator: "；")))
 
         // 贵人人际
         var noble = sha.contains("天乙贵人")
@@ -1268,7 +1506,8 @@ extension InterpretEngine {
         if !zhiYeWin.isEmpty { home += zhiYeWin + "。" }
         out.append(item("置业田宅", home,
             "土占比 \(Int(pct[2].rounded()))%，印星 \(yin)，财库\(kuBranch)支见 \(ku) 处",
-            "土为田宅之象、印为房产文书（类象通说）"))
+            "土为田宅之象、印为房产文书（类象通说）",
+            timeRange: zhiYeWin.isEmpty ? nil : zhiYeWin))
 
         // 名声
         var fame = ""
@@ -1342,7 +1581,8 @@ extension InterpretEngine {
         if sha.contains("驿马") { notes.append("注意四：带驿马，一生动象多——出行与交通安全是常年课题，忌疲劳驾驶、忌赶夜路。") }
         out.append(item("注意事项", notes.joined(separator: ""),
             "主导十神组 \(topGroup)；最弱五行 \(weakest)；近六年关口扫描 \(nearGate ?? "无")；神煞 \(sha.sorted().joined(separator: "、"))",
-            "过用之弊按主导十神取象（类象通说）；关口年按逐年四查定级；健康只给体检提醒、不落病名"))
+            "过用之弊按主导十神取象（类象通说）；关口年按逐年四查定级；健康只给体检提醒、不落病名",
+            timeRange: nearGate))
 
         // 如何化解（破局五层，工作室定版口径）
         let branchWx: [Character: Int] = ["子": 4, "丑": 2, "寅": 0, "卯": 0, "辰": 2, "巳": 1, "午": 1, "未": 2, "申": 3, "酉": 3, "戌": 2, "亥": 4]
@@ -1358,17 +1598,28 @@ extension InterpretEngine {
                 daiYun.append("\(gz)运（\(ch.dayunStartYear(i))–\(ch.dayunStartYear(i) + 9)）")
             }
         }
+        // G2 时间范围：补喜用大运／借势小补／流年小补（引擎已算出的时间行，只收拢）
+        var huaYrs: [String] = []
         var buText: String
         if !buYun.isEmpty { buText = "补得到喜用\(xiNames)的大运是 \(buYun.prefix(2).joined(separator: "、"))（判据：运干或运支本气属喜用之行）——那是你命里的回血期，升学、创业、婚嫁、置业这类大事，优先压到这些十年里办。" }
         else if !daiYun.isEmpty { buText = "没有整步直补喜用\(xiNames)的大运；\(daiYun.prefix(1).joined(separator: "、"))只是支里带一点喜用之气，算借势小补——大事仍以守势积累为主，不必硬等。" }
         else {
-            var yrs: [String] = []
             for y in nowY...(nowY + 10) {
                 let gz = BaziChart.yearGanZhi(y)
-                if xiSet.contains(wxIdx(gz.first!)) { yrs.append("\(y)（\(gz)）") }
-                if yrs.count >= 3 { break }
+                if xiSet.contains(wxIdx(gz.first!)) { huaYrs.append("\(y)（\(gz)）") }
+                if huaYrs.count >= 3 { break }
             }
-            buText = "大运里没有整步直补喜用\(xiNames)的，靠流年小补：\(yrs.isEmpty ? "近十年流年天干亦少见直补，以守势积累为主" : yrs.joined(separator: "、") + " 这几年天干带喜用，是借势推进的窗口")。"
+            buText = "大运里没有整步直补喜用\(xiNames)的，靠流年小补：\(huaYrs.isEmpty ? "近十年流年天干亦少见直补，以守势积累为主" : huaYrs.joined(separator: "、") + " 这几年天干带喜用，是借势推进的窗口")。"
+        }
+        let huaTimeRange: String?
+        if !buYun.isEmpty {
+            huaTimeRange = buYun.prefix(2).joined(separator: "、")
+        } else if !daiYun.isEmpty {
+            huaTimeRange = daiYun.prefix(1).joined(separator: "、")
+        } else if !huaYrs.isEmpty {
+            huaTimeRange = huaYrs.joined(separator: "、")
+        } else {
+            huaTimeRange = nil
         }
         var realRules: [String] = ["把\(organ[weakest]!)一线写进年度体检固定项"]
         if bi >= 3 { realRules.append("合伙与借贷一律先立字据再谈感情") }
@@ -1378,7 +1629,8 @@ extension InterpretEngine {
         let hua = "先说典籍的实话：命里的『病』，典籍只负责断出来，『药』不靠摆件求、靠岁运带来——人能用的典籍手段只有择时进退。【时间表】\(buText)【修身路】《了凡四训》的路子：改过、积善、谦德——命数之外，日用行为能改的那一半在这条路上，与任何物品无关。【借势路】行业、城市、方位往喜用\(xiNames)靠（见事业方向、适合方位），取其势帮扶。【象征路】颜色、数字、佩饰按喜用取（见幸运颜色与数字），这是民间象征层，图提醒与心安，别花高价买『开运物』。【现实路】真正落地的是这几条：\(realRules.joined(separator: "；"))。"
         out.append(item("如何化解（破局调理）", hua,
             "喜用 \(xiNames)；大运序列 \(ch.dayunGanZhi.joined(separator: " "))；最弱 \(weakest)；十神计数 \(cntText)",
-            "破局五层法（工作室 2026-10-30 调研定版）：五典病药是诊断学不是治疗学，药靠原局与岁运；典籍伦理层出《了凡四训》；方位行业为流派应用层；颜色数字佩饰为民间象征层——五层分开标注，不混卖"))
+            "破局五层法（工作室 2026-10-30 调研定版）：五典病药是诊断学不是治疗学，药靠原局与岁运；典籍伦理层出《了凡四训》；方位行业为流派应用层；颜色数字佩饰为民间象征层——五层分开标注，不混卖",
+            timeRange: huaTimeRange))
 
         // 21 行业百神与赛道格局深断（细化事业方向：将五行与十神具体落地为现代实业/体制/研发三类赛道）
         var industryAdvice = ""

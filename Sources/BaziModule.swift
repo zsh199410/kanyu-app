@@ -470,15 +470,18 @@ struct BaziHomeView: View {
     @State private var chartSnapshot = ""
     @State private var savedTip = false
     @State private var inputCollapsed = false
+    // G4 反向定位：InterpretView 写滚动请求后，本页滚动到四柱卡（与选柱同 SceneStorage 机制）
+    @SceneStorage("bazi.scrollToPlateRequest") private var scrollRequest = 0
     @StateObject private var palmStore = PalmRecordStore()
 
     private var inputSnapshot: String { "\(name)|\(gender)|\(birth.timeIntervalSince1970)|\(useLongitude)|\(longitudeText)" }
     private var isStale: Bool { chart != nil && chartSnapshot != inputSnapshot }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
-                if chart != nil && inputCollapsed && !isStale {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    if chart != nil && inputCollapsed && !isStale {
                     collapsedInputBar
                 } else {
                     inputCard
@@ -530,15 +533,19 @@ struct BaziHomeView: View {
                         .font(.caption).foregroundStyle(Ky.sub)
                     }.buttonStyle(.plain)
                 }.padding(.horizontal, 4)
+                }
+                .padding(16)
+                .padding(.bottom, 100)
             }
-            .padding(16)
-            .padding(.bottom, 100)
+            .background(Ky.bg)
+            .navigationTitle("八字排盘".scriptConverted)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Ky.bg, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .onChange(of: scrollRequest) { _, _ in
+                withAnimation(KyMotion.toggle) { proxy.scrollTo("bazi.plateCard", anchor: .top) }
+            }
         }
-        .background(Ky.bg)
-        .navigationTitle("八字排盘".scriptConverted)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Ky.bg, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
     }
 
     // 排盘后自动折叠为一行精致眉卡，释放首屏空间直接看盘
@@ -712,7 +719,7 @@ struct BaziResultView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            plateCard
+            plateCard.id("bazi.plateCard")
             yucedanSummaryCard
             CrossCheckCard(bazi: chart, ziwei: ZiweiEngine.cachedChart(clock: chart.birthDate, gender: chart.gender, longitude: chart.longitude))
             deepDiveGrid

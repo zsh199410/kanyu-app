@@ -6,6 +6,9 @@
 import SwiftUI
 
 /// 报告中心一条历史记录（只读文件派生，不落库）
+/// G1：命书条目另带档位（tierName：简洁／专业／完整；旧文件无档位后缀时按专业计，
+/// 因旧版单格式输出即等同专业档）与版本哈希短码（hashShort：PDF 元数据 Keywords 内
+/// contentHash 前 12 位，读不到时用文件名短码兜底，旧文件为 nil）。
 struct ReportHistoryEntry: Identifiable {
     let id: URL
     let url: URL
@@ -14,6 +17,8 @@ struct ReportHistoryEntry: Identifiable {
     let icon: String
     let generatedAt: Date
     let sizeKB: Int
+    let tierName: String?
+    let hashShort: String?
 }
 
 enum ReportHistory {
@@ -51,10 +56,17 @@ enum ReportHistory {
         let kind: String
         let icon: String
         let personName: String
+        var tierName: String? = nil
+        var hashShort: String? = nil
         if raw.hasPrefix("命书-") {
             kind = "命书 PDF"
             icon = "doc.text.fill"
-            personName = String(raw.dropFirst("命书-".count))
+            let rest = String(raw.dropFirst("命书-".count))
+            let parsed = parseReportFileName(rest)
+            personName = parsed.name
+            tierName = parsed.tier
+            // 哈希优先读 PDF 元数据（权威来源），读不到时用文件名短码兜底
+            hashShort = pdfHashShort(for: url) ?? parsed.hash
         } else if raw.hasPrefix("ziwei-poster-") {
             kind = "紫微命盘海报"
             icon = "moon.stars.fill"
@@ -73,7 +85,48 @@ enum ReportHistory {
             }
             personName = stripStyleSuffix(String(raw.dropFirst("poster-".count)))
         }
-        return ReportHistoryEntry(id: url, url: url, personName: personName, kind: kind, icon: icon, generatedAt: date, sizeKB: max(1, size / 1024))
+        return ReportHistoryEntry(id: url, url: url, personName: personName, kind: kind, icon: icon, generatedAt: date, sizeKB: max(1, size / 1024), tierName: tierName, hashShort: hashShort)
+    }
+
+    /// 解析 G1 命书文件名（不含扩展名、不含「命书-」前缀）：
+    /// 新格式「姓名-档位-yyyyMMdd-HHmmss-哈希12位」，旧格式只有姓名。
+    /// 姓名本身可含「-」，故从末尾倒推校验四段（档位／8 位日期／6 位时间／12 位 hex），
+    /// 校验失败即按旧文件处理：姓名为整段、档位按专业计、哈希为空。
+    private static func parseReportFileName(_ rest: String) -> (name: String, tier: String, hash: String?) {
+        let parts = rest.split(separator: "-", omittingEmptySubsequences: false).map { String($0) }
+        let tiers = ["简洁", "专业", "完整"]
+        if parts.count >= 5 {
+            let hash = parts[parts.count - 1]
+            let time = parts[parts.count - 2]
+            let day = parts[parts.count - 3]
+            let tier = parts[parts.count - 4]
+            let hashOK = hash.count == 12 && hash.allSatisfy { $0.isHexDigit }
+            let timeOK = time.count == 6 && time.allSatisfy { $0.isNumber }
+            let dayOK = day.count == 8 && day.allSatisfy { $0.isNumber }
+            if hashOK && timeOK && dayOK && tiers.contains(tier) {
+                let name = parts[0..<(parts.count - 4)].joined(separator: "-")
+                return (name: name, tier: tier, hash: hash)
+            }
+        }
+        return (name: rest, tier: "专业", hash: nil)
+    }
+
+    /// 读 PDF 元数据 Keywords 中的 contentHash（G1 版本锁定的权威来源），返回前 12 位短码；
+    /// 元数据缺失或无 contentHash 时返回 nil（调用方用文件名短码兜底）。
+    private static func pdfHashShort(for url: URL) -> String? {
+        guard let doc = CGPDFDocument(url as CFURL) else { return nil }
+        guard let info = doc.info else { return nil }
+        var value: CGPDFStringRef?
+        guard CGPDFDictionaryGetString(info, "Keywords", &value) else { return nil }
+        guard let value = value else { return nil }
+        guard let text = CGPDFStringCopyTextString(value) as String? else { return nil }
+        for part in text.split(separator: ";") {
+            let kv = part.split(separator: "=", maxSplits: 1).map { String($0) }
+            if kv.count == 2 && kv[0] == "contentHash" {
+                return String(kv[1].prefix(12))
+            }
+        }
+        return nil
     }
 
     /// 去掉文件名末尾的款式后缀（-song／-yucedan／-xuan／-ink），余下即命主姓名
@@ -105,7 +158,29 @@ struct ReportCenterView: View {
             if map[key] == nil { order.append(key) }
             map[key, default: []].append(e)
         }
-        return order.map { ($0, map[$0]!) }
+        // G1：组内按档位分组（简洁 → 专业 → 完整 → 无档位），同档内按生成时间倒序
+        return order.map { key in
+            let sorted = (map[key] ?? []).sorted { a, b in
+                let oa = a.tierName.flatMap { ReportTier(rawValue: $0)?.sortOrder } ?? 99
+                let ob = b.tierName.flatMap { ReportTier(rawValue: $0)?.sortOrder } ?? 99
+                if oa != ob { return oa < ob }
+                return a.generatedAt > b.generatedAt
+            }
+            return (key, sorted)
+        }
+    }
+
+    /// G1：命书档位计数行（只读扫描派生，不落库）
+    private var tierSummary: String? {
+        let books = entries.filter { $0.kind == "命书 PDF" }
+        if books.isEmpty { return nil }
+        var counts: [String: Int] = [:]
+        for e in books {
+            let t = e.tierName ?? "专业"
+            counts[t, default: 0] += 1
+        }
+        let parts = ["简洁", "专业", "完整"].map { t in "\(t) \(counts[t] ?? 0)" }
+        return "命书档位：" + parts.joined(separator: " · ") + " 份"
     }
 
     private static var dateFmt: DateFormatter {
@@ -131,6 +206,11 @@ struct ReportCenterView: View {
                     HStack(spacing: 10) {
                         KyMetricCard(label: "命书 PDF", value: "\(entries.filter { $0.kind == "命书 PDF" }.count) 份")
                         KyMetricCard(label: "海报", value: "\(entries.filter { $0.kind != "命书 PDF" }.count) 张")
+                    }
+                    if let summary = tierSummary {
+                        Text(summary.scriptConverted)
+                            .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
+                            .padding(.horizontal, 2)
                     }
                     if shown.isEmpty {
                         KyEmptyState(icon: "person.crop.circle.badge.questionmark", title: "此人还没有报告", message: "切换到「全部」可看其他人的已生成报告。")
@@ -168,10 +248,24 @@ struct ReportCenterView: View {
                 .background(Ky.qingdai.opacity(0.13))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(e.kind.scriptConverted)
-                    .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                Text("\(Self.dateFmt.string(from: e.generatedAt)) · \(e.sizeKB) KB")
-                    .font(.caption2).foregroundStyle(Ky.sub)
+                HStack(spacing: 6) {
+                    Text(e.kind.scriptConverted)
+                        .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    if let tier = e.tierName {
+                        Text(tier.scriptConverted)
+                            .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Ky.qingdai.opacity(0.13))
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    }
+                }
+                if let hash = e.hashShort {
+                    Text("\(Self.dateFmt.string(from: e.generatedAt)) · \(e.sizeKB) KB · 哈希 \(hash)")
+                        .font(.caption2).foregroundStyle(Ky.sub)
+                } else {
+                    Text("\(Self.dateFmt.string(from: e.generatedAt)) · \(e.sizeKB) KB")
+                        .font(.caption2).foregroundStyle(Ky.sub)
+                }
             }
             Spacer()
             ShareLink(item: e.url) {

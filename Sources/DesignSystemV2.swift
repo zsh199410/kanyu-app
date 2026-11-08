@@ -198,6 +198,11 @@ private func evidenceLinkText(_ text: String) -> String {
 struct EvidenceChainView: View {
     let conclusion: String
     let links: [(label: String, text: String)]  // 自上而下：盘面/法则/根据
+    // G2 六段结构字段（全部可选，有值才显示，无值不占位；confidence 由 G5 填值）
+    var mechanism: String? = nil
+    var confidence: String? = nil
+    var timeRange: String? = nil
+    var advice: String? = nil
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(conclusion.scriptConverted)
@@ -228,6 +233,34 @@ struct EvidenceChainView: View {
                 .background(Ky.elevated.opacity(0.75))
                 .clipShape(RoundedRectangle(cornerRadius: 9))
             }
+            // 六段字段行（结论＋links 之下；机制走典籍原文黑名单同款处理，其余走简繁转换）
+            if let mechanism = mechanism, !mechanism.isEmpty {
+                fieldRow("作用机制", evidenceLinkText(mechanism))
+            }
+            if let timeRange = timeRange, !timeRange.isEmpty {
+                fieldRow("时间范围", timeRange.scriptConverted)
+            }
+            if let advice = advice, !advice.isEmpty {
+                fieldRow("现实建议", advice.scriptConverted)
+            }
+            if let confidence = confidence, !confidence.isEmpty {
+                fieldRow("可信程度", confidence.scriptConverted)
+            }
+        }
+    }
+    private func fieldRow(_ label: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(label.scriptConverted)
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(Ky.gold)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(Ky.gold.opacity(0.13))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(Ky.sub)
+                .lineSpacing(2.5)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
