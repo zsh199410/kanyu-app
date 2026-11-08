@@ -2204,15 +2204,7 @@ struct KanyuWorkbenchTabView: View {
             }
 
             if store.cases.isEmpty {
-                VStack(spacing: 10) {
-                    Image(systemName: "safari").font(.system(size: 36)).foregroundStyle(Ky.qingdai)
-                    Text("尚无现场勘察案件".scriptConverted).font(.headline).foregroundStyle(Ky.ink)
-                    Text("点击上方「新建勘察」，按作业标准任务单测罗盘坐向、拍立面与明堂，一键生成本地玄空/八宅排盘与回传数据包。".scriptConverted)
-                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 22).padding(.horizontal, 16)
-                .kyCard()
+                KyEmptyState(icon: "safari", title: "尚无现场勘察案件", message: "点击上方「新建勘察」，按作业标准任务单测罗盘坐向、拍立面与明堂，一键生成本地玄空/八宅排盘与回传数据包。")
             } else if filtered.isEmpty {
                 Text("未找到匹配的案件")
                     .font(.callout).foregroundStyle(Ky.sub)

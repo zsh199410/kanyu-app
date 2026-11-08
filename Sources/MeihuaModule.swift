@@ -1131,6 +1131,7 @@ struct MeihuaView: View {
             }
             .padding()
         }
+        .background(Ky.bg)
     }
 
     private func cast(register: Bool) {
@@ -1164,7 +1165,7 @@ struct MeihuaView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Ky.elevated)
         .cornerRadius(12)
     }
 
@@ -1181,7 +1182,7 @@ struct MeihuaView: View {
                     .font(.subheadline)
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Ky.elevated)
             .cornerRadius(12)
             guaCard(title: "本卦", g: r.ben)
             guaCard(title: "互卦", g: r.hu)
@@ -1198,7 +1199,7 @@ struct MeihuaView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Ky.elevated)
             .cornerRadius(12)
             VStack(alignment: .leading, spacing: 6) {
                 Text("体用生克".scriptConverted)
@@ -1210,7 +1211,7 @@ struct MeihuaView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Ky.elevated)
             .cornerRadius(12)
             VStack(alignment: .leading, spacing: 6) {
                 Text("六爻 · \(r.palace)\(r.generation)（世\(r.shi)应\(r.ying)）".scriptConverted)
@@ -1237,7 +1238,7 @@ struct MeihuaView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(Color(.secondarySystemBackground))
+            .background(Ky.elevated)
             .cornerRadius(12)
             if registered {
                 Text("已自动进前瞻登记，原文冻结，到期在前瞻登记簿回验。".scriptConverted)

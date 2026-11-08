@@ -289,13 +289,7 @@ struct WealthView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
                 if peopleStore.people.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "person.crop.circle.badge.exclamationmark").font(.largeTitle).foregroundStyle(Ky.gold)
-                        Text("尚无人物档案".scriptConverted).font(.headline).foregroundStyle(Ky.ink)
-                        Text("请先在「人物档案」或「八字排盘」中保存至少一位命主，即可在此查看专盘论财。".scriptConverted)
-                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 24).kyCard()
+                    KyEmptyState(icon: "person.crop.circle.badge.exclamationmark", title: "尚无人物档案", message: "请先在「人物档案」或「八字排盘」中保存至少一位命主，即可在此查看专盘论财。")
                 } else {
                     PersonQuickBar(store: peopleStore, selectedID: selectedID) { p in selectedID = p.id }
                     if let p = person, let ch = chart {

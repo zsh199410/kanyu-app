@@ -184,6 +184,7 @@ struct AskView: View {
             }
             .padding()
         }
+        .background(Ky.bg)
         .navigationTitle("AI 问答".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
     }

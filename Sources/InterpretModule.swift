@@ -709,7 +709,7 @@ struct InterpretView: View {
         .onDisappear { speaker.stop() }
         .navigationTitle(name.isEmpty ? "30 条五典解盘".scriptConverted : "解盘 · ".scriptConverted + name)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showGlossary) { glossarySheet }
+        .sheet(isPresented: $showGlossary) { glossarySheet.presentationDetents([.medium, .large]).presentationDragIndicator(.visible) }
     }
 
     /// 个人准确率行（已应验／待回验／命中率；未打标时不显示命中率）
