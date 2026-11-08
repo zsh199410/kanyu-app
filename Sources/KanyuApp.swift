@@ -503,7 +503,8 @@ final class SurveyStore: ObservableObject {
         let lines = [
             "\(Self.timeFormatter.string(from: stamp))",
             "真北 \(CompassMath.format(trueH)) \(mountain)山 · 磁北 \(CompassMath.format(magH))",
-            loc.coordinateText
+            loc.coordinateText,
+            task.title
         ]
         let stamped = StampDrawer.stamped(image: image, lines: lines)
         if let jpg = stamped.jpegData(compressionQuality: 0.9) {
@@ -650,7 +651,11 @@ final class SurveyStore: ObservableObject {
 enum StampDrawer {
     static func stamped(image: UIImage, lines: [String]) -> UIImage {
         let w = image.size.width
-        let barH = max(120, image.size.height * 0.105)
+        let fontSize = max(26, w * 0.026)
+        // 黑条高度随行数自适应：3 行旧口径不变，4 行及以上自动加高，末行不裁。
+        let baseBarH = max(120, image.size.height * 0.105)
+        let needBarH = baseBarH * 0.10 + fontSize * 1.35 * CGFloat(lines.count) + fontSize * 0.25
+        let barH = max(baseBarH, needBarH)
         let newSize = CGSize(width: w, height: image.size.height + barH)
         let format = UIGraphicsImageRendererFormat()
         format.scale = image.scale
@@ -659,7 +664,6 @@ enum StampDrawer {
             UIColor.black.setFill()
             ctx.fill(CGRect(origin: .zero, size: newSize))
             image.draw(at: .zero)
-            let fontSize = max(26, w * 0.026)
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: fontSize, weight: .medium),
                 .foregroundColor: UIColor.white
@@ -682,6 +686,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     @Published var headingAccuracy: Double = -1
     @Published var currentLocation: CLLocation?
     @Published var authorized = false
+    @Published var authDenied = false
 
     private let manager = CLLocationManager()
     // 线程安全快照：ARKit 委托回调在非主线程读罗盘值走这里（类本身是 MainActor，直读会编译报错）
@@ -703,6 +708,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         return String(format: "%.6f, %.6f", l.coordinate.latitude, l.coordinate.longitude)
     }
     var accuracyWarning: String? {
+        if authDenied { return "定位未授权，罗盘无法读取实时朝向，请在设置中开启定位；磁偏角仍按梁平默认坐标现算" }
         if headingAccuracy < 0 { return "罗盘未就绪：请远离钢筋、电器、汽车，原地画 8 字校准" }
         if headingAccuracy > 25 { return "精度偏低（±\(Int(headingAccuracy))°）：请远离金属与电器后重测" }
         return nil
@@ -714,6 +720,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.headingFilter = 1
         manager.requestWhenInUseAuthorization()
+        authDenied = (manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted)
     }
 
     // 按需启停（需求计数）：只有罗盘/拍照/轨迹/扫描页在前台时才跑 GPS＋磁力计；
@@ -739,6 +746,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             self.authorized = (manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways)
+            self.authDenied = (manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted)
             if self.authorized, self.demand > 0 { self.applyStart() }
         }
     }
@@ -1964,12 +1972,21 @@ struct KanyuWorkbenchTabView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
                 heroCard
-                compassToolCard
-                floorPlanToolCard
-                casesSection
-                surveyKnowledgeSection
+                VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "罗盘工作区", trailing: "二十四山")
+                    compassToolCard
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "户型工作区", trailing: "九运飞星")
+                    floorPlanToolCard
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "勘察工作区", trailing: "案件 · 手册 · 要诀")
+                    casesSection
+                    surveyKnowledgeSection
+                    tipCard
+                }
                 systemSettingsSection
-                tipCard
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
@@ -2548,7 +2565,7 @@ struct CompassView: View {
                 .padding(14)
                 .frame(maxWidth: .infinity)
                 .kyGlass(corner: 16)
-                if location.accuracyWarning != nil || motion.fieldAbnormal {
+                if (location.accuracyWarning != nil && !location.authDenied) || motion.fieldAbnormal {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("精度自检（校准好后可达 ±5° 左右）").font(.caption).fontWeight(.semibold)
                         Text("1. 摘掉磁吸手机壳、磁吸支架（能让读数偏几十度）\n2. 离汽车、钢筋、电器 2 米以上\n3. 手腕画 8 字三圈校准\n4. 设置 → 隐私与安全性 → 定位服务 → 系统服务：打开「指南针校准」和「运动校准与距离」")

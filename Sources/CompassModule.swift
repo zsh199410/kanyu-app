@@ -12,6 +12,7 @@
 import SwiftUI
 import CoreLocation
 import CoreMotion
+import UIKit
 
 // MARK: - WMM2025 磁偏角现算（Swift 移植，与 Web app/compass.py 同式）
 //
@@ -331,10 +332,13 @@ struct CompassStandaloneView: View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 dial.frame(width: 260, height: 260).padding(.top, 8)
+                if location.authDenied {
+                    authDeniedCard
+                }
                 levelRow
                 readoutCard
                 northModeRow
-                if location.accuracyWarning != nil || motion.fieldAbnormal {
+                if (location.accuracyWarning != nil && !location.authDenied) || motion.fieldAbnormal {
                     calibrationCard
                 }
                 lockButtonRow
@@ -428,6 +432,33 @@ struct CompassStandaloneView: View {
             Text("真北＝磁北＋磁偏角（东偏为正，西偏为负）；梁平 2026 年约 −3.3°（西偏）。")
                 .font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    // 定位被拒专属提示卡：仅 authDenied 时显示；原因＋仍可用功能＋设置入口。
+    private var authDeniedCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("定位未授权")
+                .font(.headline)
+            Text("定位未授权，罗盘无法读取实时朝向。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("仍可使用：手动填入磁偏角、查看已锁定记录、二十四山对照、校准指引。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button("去设置开启定位") {
+                openLocationSettings()
+            }
+            .buttonStyle(KyPrimaryButton())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .kyGlass(corner: 16)
+    }
+
+    // 照抄 KanyuApp.swift 里 openCameraSettings() 的写法：打开系统设置。
+    private func openLocationSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     private var calibrationCard: some View {
@@ -681,6 +712,15 @@ struct CompassStandaloneView: View {
                 .offset(y: -26)
             Circle().fill(Ky.instCinnabar).frame(width: 7, height: 7).offset(y: 24)
             Circle().fill(Ky.instGold).frame(width: 9, height: 9)
+            if displayHeading < 0 {
+                Circle()
+                    .fill(Color.black.opacity(0.45))
+                    .frame(width: 248, height: 248)
+                Text("等待罗盘…")
+                    .font(.callout)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.white)
+            }
         }
     }
 }

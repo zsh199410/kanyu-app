@@ -1031,6 +1031,19 @@ struct QimenCasesView: View {
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
     }
+    // P2：案例纯文本分享摘要（不新增图片渲染、不碰引擎）
+    private func caseShareText(_ c: QimenCase) -> String {
+        let lines = [
+            "【奇门案例】\(c.title)",
+            "起局时间：\(c.datetime)",
+            "定局：\(c.dingju) · \(c.dun) \(c.ju) 局 · \(c.sanyuan) · \(c.jieqi)",
+            "四柱：\(c.pillars.joined(separator: " "))",
+            "值符 / 值使：\(c.zhifu) / \(c.zhishi)",
+            "来源：\(c.sourceName)",
+            "应验：\(c.yingyan)",
+        ]
+        return lines.joined(separator: "\n")
+    }
     private func caseCard(_ c: QimenCase) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(c.title).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
@@ -1051,6 +1064,10 @@ struct QimenCasesView: View {
             Text("应验：\(c.yingyan)").font(.callout).foregroundStyle(Ky.ink)
             Text("复核：\(c.verified)").font(.callout).foregroundStyle(Ky.qingdai)
             Text("状态：\(c.status)").font(.caption).foregroundStyle(Ky.sub)
+            ShareLink(item: caseShareText(c)) {
+                Label("分享案例", systemImage: "square.and.arrow.up")
+            }
+            .font(.callout).foregroundStyle(Ky.qingdai)
         }.kyCard()
     }
     private func infoRow(_ label: String, _ value: String) -> some View {
@@ -1075,6 +1092,9 @@ struct QimenHomeView: View {
     @State private var longitude = 107.8
     @State private var showRijia = false
     @State private var rijiaChart: QimenEngine.RijiaChart? = nil
+    // P2：九宫盘宫位点击详情弹层
+    @State private var selectedPalace: Int? = nil
+    @State private var showPalaceSheet = false
     // 起局只在时间变时算一次：排盘是纯计算但不便宜，body 每求值一次就重算会拖滑动；
     // 初值直接起局，避免首帧先闪一下「未能起局」
     @State private var cachedChart: QimenEngine.Chart? = QimenEngine.chart(for: Date())
@@ -1126,32 +1146,37 @@ struct QimenHomeView: View {
                     }
                     Text("默认此刻；改时间即重起局。时辰按北京时间取，晚子时口径与八字排盘一致。")
                         .font(.caption2).foregroundStyle(Ky.sub)
-                    Picker("定局法", selection: $dingju) {
-                        Text("拆补法").tag("拆补法")
-                        Text("置闰法").tag("置闰法")
-                    }.pickerStyle(.segmented)
-                    Picker("寄宫", selection: $jigong) {
-                        ForEach(QimenJigong.allCases, id: \.self) { j in
-                            Text(j.name).tag(j)
+                    DisclosureGroup("起局口径") {
+                        Picker("定局法", selection: $dingju) {
+                            Text("拆补法").tag("拆补法")
+                            Text("置闰法").tag("置闰法")
+                        }.pickerStyle(.segmented)
+                        Picker("寄宫", selection: $jigong) {
+                            ForEach(QimenJigong.allCases, id: \.self) { j in
+                                Text(j.name).tag(j)
+                            }
                         }
+                        Toggle("布暗干（值使门起）", isOn: $angan)
+                        Toggle("真太阳时校正", isOn: $solar)
+                        HStack {
+                            Text("经度").font(.caption).foregroundStyle(Ky.sub)
+                            TextField("经度", value: $longitude, format: .number)
+                                .keyboardType(.decimalPad)
+                                .disabled(!solar)
+                                .textFieldStyle(.roundedBorder)
+                            Text("°（默认 107.8 梁平）").font(.caption2).foregroundStyle(Ky.sub)
+                        }
+                        Toggle("显示日家盘", isOn: $showRijia)
+                        Text("定局法、寄宫、暗干、真太阳时切换即重起局；口径见局象卡收据行。")
+                            .font(.caption2).foregroundStyle(Ky.sub)
                     }
-                    Toggle("布暗干（值使门起）", isOn: $angan)
-                    Toggle("真太阳时校正", isOn: $solar)
-                    HStack {
-                        Text("经度").font(.caption).foregroundStyle(Ky.sub)
-                        TextField("经度", value: $longitude, format: .number)
-                            .keyboardType(.decimalPad)
-                            .disabled(!solar)
-                            .textFieldStyle(.roundedBorder)
-                        Text("°（默认 107.8 梁平）").font(.caption2).foregroundStyle(Ky.sub)
-                    }
-                    Toggle("显示日家盘", isOn: $showRijia)
-                    Text("定局法、寄宫、暗干、真太阳时切换即重起局；口径见局象卡收据行。")
-                        .font(.caption2).foregroundStyle(Ky.sub)
                 }.kyCard()
                 if let ch = cachedChart {
                     infoCard(ch)
                     boardCard(ch)
+                        .kyBottomSheet(isPresented: $showPalaceSheet, title: palaceSheetTitle) {
+                            palaceSheetContent(ch)
+                        }
                     layersCard(ch)
                     changshengCard(ch)
                     if let rj = rijiaChart { rijiaCard(rj) }
@@ -1212,11 +1237,110 @@ struct QimenHomeView: View {
             ForEach(rows.indices, id: \.self) { r in
                 HStack(spacing: 8) {
                     ForEach(rows[r], id: \.self) { p in
-                        cell(ch, palace: p)
+                        Button {
+                            selectedPalace = p
+                            showPalaceSheet = true
+                        } label: {
+                            cell(ch, palace: p)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
         }.kyCard()
+    }
+
+    // MARK: - P2 宫位详情弹层（只复用已有盘面数据，不改引擎）
+    private var palaceSheetTitle: String {
+        guard let p = selectedPalace else { return "宫位详情" }
+        let name = QimenEngine.palaceName[p] ?? ""
+        let dir = QimenEngine.palaceDir[p] ?? ""
+        return "\(name)宫 · \(dir)"
+    }
+    private func glossaryNote(_ list: [(String, String)], key: String) -> String? {
+        list.first { $0.0 == key }?.1
+    }
+    private func siHaiText(_ pc: QimenEngine.Palace) -> String {
+        var marks: [String] = []
+        if pc.siHaiKong { marks.append("空") }
+        if pc.siHaiJiXing { marks.append("击刑") }
+        if pc.siHaiRuMu { marks.append("入墓") }
+        if pc.siHaiMenPo { marks.append("门迫") }
+        return marks.isEmpty ? "无" : marks.joined(separator: "、")
+    }
+    private func palaceSheetContent(_ ch: QimenEngine.Chart) -> some View {
+        Group {
+            if let p = selectedPalace, let pc = ch.palaces[p] {
+                VStack(alignment: .leading, spacing: 8) {
+                    let name = QimenEngine.palaceName[p] ?? ""
+                    let dir = QimenEngine.palaceDir[p] ?? ""
+                    Text("\(name)宫 · \(dir) · \(p) 宫")
+                        .font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+                    infoRow("天盘 / 地盘", "\(pc.tianStem ?? "—") / \(pc.diStem)")
+                    if let hosted = pc.hostedTianStem {
+                        Text("中宫原干 \(hosted) 随芮落此宫").font(.caption).foregroundStyle(Ky.sub)
+                    }
+                    if let star = pc.star {
+                        infoRow("星", "\(star)星")
+                        if let note = glossaryNote(QimenGlossary.stars, key: "天\(star)") {
+                            Text(note).font(.callout).foregroundStyle(Ky.sub)
+                        }
+                    } else {
+                        infoRow("星", "—")
+                    }
+                    if pc.hostedStar == "禽" {
+                        Text("天禽随芮落此宫").font(.caption).foregroundStyle(Ky.sub)
+                    }
+                    if let door = pc.door {
+                        infoRow("门", "\(door)门")
+                        if let note = glossaryNote(QimenGlossary.doors, key: "\(door)门") {
+                            Text(note).font(.callout).foregroundStyle(Ky.sub)
+                        }
+                    } else {
+                        infoRow("门", "—")
+                    }
+                    if let god = pc.god {
+                        infoRow("神", god)
+                        if let note = glossaryNote(QimenGlossary.gods, key: god) {
+                            Text(note).font(.callout).foregroundStyle(Ky.sub)
+                        }
+                    } else {
+                        infoRow("神", "—")
+                    }
+                    infoRow("四害", siHaiText(pc))
+                    if let ky = pc.keYingName {
+                        infoRow("克应", ky)
+                        if let note = pc.keYingNote {
+                            Text(note).font(.callout).foregroundStyle(Ky.sub)
+                        }
+                    } else {
+                        infoRow("克应", "无")
+                    }
+                    if let cs = pc.changshengTian {
+                        let ordered = cs.sorted { (QimenEngine.branches.firstIndex(of: $0.key) ?? 0) < (QimenEngine.branches.firstIndex(of: $1.key) ?? 0) }
+                        infoRow("长生", ordered.map { "\($0.key)\($0.value)" }.joined(separator: " "))
+                    } else {
+                        infoRow("长生", "中宫无本位地支")
+                    }
+                    infoRow("暗干", pc.angan.map { "暗\($0)" } ?? "无")
+                    if pc.patterns.isEmpty {
+                        infoRow("格局", "无")
+                    } else {
+                        Text("格局").font(.callout).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                        ForEach(pc.patterns) { pat in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(pat.name).font(.callout).fontWeight(.semibold)
+                                    .foregroundStyle(pat.good ? Ky.jade : Ky.cinnabar)
+                                Text(glossaryNote(QimenGlossary.patterns, key: pat.name) ?? pat.note)
+                                    .font(.callout).foregroundStyle(Ky.sub)
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text("未选中宫位").font(.callout).foregroundStyle(Ky.sub)
+            }
+        }
     }
 
     private func cell(_ ch: QimenEngine.Chart, palace p: Int) -> some View {
