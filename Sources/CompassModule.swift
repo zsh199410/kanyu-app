@@ -344,6 +344,8 @@ struct CompassStandaloneView: View {
                 lockButtonRow
                 if let lock = lockStore.lock {
                     lockCard(lock)
+                } else {
+                    KyEmptyState(icon: "location.north.fill", title: "尚未锁定", message: "测法：手机端平、远离汽车钢筋电器；原地慢转半圈等读数稳定后再锁定。坐向以真北读数为准入盘，磁北读数留作互校。")
                 }
                 basisText
             }.padding()
@@ -418,10 +420,7 @@ struct CompassStandaloneView: View {
 
     private var northModeRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("北向", selection: $northMode) {
-                Text("真北").tag(0)
-                Text("磁北").tag(1)
-            }.pickerStyle(.segmented)
+            KyFilterBar(options: [("真北", nil), ("磁北", nil)], selectedIndex: $northMode)
             HStack(spacing: 8) {
                 Text("手动磁偏角（度，东偏为正）").font(.caption).foregroundStyle(.secondary)
                 TextField("留空＝自动", text: $manualDeclination)

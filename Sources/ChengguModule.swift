@@ -267,8 +267,7 @@ struct ChengguView: View {
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }.kyCard()
                 } else {
-                    Text("称骨无法计算：四柱或农历月日缺失，请检查档案出生时间。")
-                        .font(.callout).foregroundStyle(Ky.sub)
+                    KyEmptyState(icon: "scalemass", title: "称骨无法计算", message: "四柱或农历月日缺失，请检查档案出生时间。")
                 }
                 Text("依据与金标准：四重称重表与 52 格歌诀经三源逐字核对，异文裁决见 Web app/chenggu.py 注释；金标准见 Web tools/tests/test_chenggu.py（合成四柱 10 例＋实盘 4 例逐项复算）。")
                     .font(.caption2).foregroundStyle(Ky.sub)

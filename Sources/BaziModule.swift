@@ -691,6 +691,8 @@ struct BaziResultView: View {
     @State private var flowDate = Date()
     @State private var flowHour = 12
     @State private var copied = false
+    @State private var showRizhuTerm = false
+    @State private var showXunKongTerm = false
     @State private var detailPillar = 0
     @State private var showDetail = false
     @State private var showShichen = false  // 十二时辰对照默认折叠，不喧宾夺主
@@ -909,8 +911,30 @@ Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, v
                     HStack(spacing: 6) {
                         Text(name.isEmpty ? "四柱命盘" : name)
                             .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                        KyBadge(text: "日主 \(chart.rizhu)\(dayEl)", color: KyV2.color(forChar: chart.rizhu.first!))
-                        KyBadge(text: "旬空 \(chart.xunKong)", color: Ky.gold)
+                        Button { showRizhuTerm = true } label: {
+                            KyBadge(text: "日主 \(chart.rizhu)\(dayEl)", color: KyV2.color(forChar: chart.rizhu.first!))
+                        }
+                        .buttonStyle(.plain)
+                        .kyBottomSheet(isPresented: $showRizhuTerm, title: "日主") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("日主").font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                Text(TermGlossary.text(for: "日主")).font(.callout).foregroundStyle(Ky.ink)
+                                Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。")
+                                    .font(.caption2).foregroundStyle(Ky.sub)
+                            }
+                        }
+                        Button { showXunKongTerm = true } label: {
+                            KyBadge(text: "旬空 \(chart.xunKong)", color: Ky.gold)
+                        }
+                        .buttonStyle(.plain)
+                        .kyBottomSheet(isPresented: $showXunKongTerm, title: "旬空") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("旬空").font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                                Text(TermGlossary.text(for: "旬空")).font(.callout).foregroundStyle(Ky.ink)
+                                Text("释义取自本系统知识库表达层（十神五关系／长生查法／刑冲合会表），不作断语。")
+                                    .font(.caption2).foregroundStyle(Ky.sub)
+                            }
+                        }
                     }
                     Text("胎元 \(chart.taiYuan) · 命宫 \(chart.mingGong) · 身宫 \(chart.shenGong)")
                         .font(.caption2).foregroundStyle(Ky.sub)

@@ -91,7 +91,6 @@ struct HandMeasureView: View {
     @State private var personName = ""
     init(personName: String = "") { _personName = State(initialValue: personName) }
     @State private var savedTip = false
-    private let lineNames = ["感情线", "智慧线", "生命线"]
     private let lineCards = [
         "感情线看情感表达的方式：走向、深浅、终点位置三项，须以你修正后的描线为准细读。",
         "智慧线看思维与决断的方式：起止、倾斜、长短三项，须以你修正后的描线为准细读。",
@@ -150,15 +149,7 @@ struct HandMeasureView: View {
 
     private var lineChips: some View {
         HStack(spacing: 8) {
-            ForEach(lineNames.indices, id: \.self) { i in
-                Button { selectedLine = i } label: {
-                    Text(lineNames[i]).font(.caption).fontWeight(selectedLine == i ? .semibold : .regular)
-                        .padding(.horizontal, 12).padding(.vertical, 7)
-                        .background(selectedLine == i ? Ky.gold.opacity(0.22) : Ky.card)
-                        .clipShape(Capsule())
-                }.buttonStyle(.plain).foregroundStyle(Ky.ink)
-            }
-            Spacer()
+            KyFilterBar(options: [(title: "感情线", count: nil), (title: "智慧线", count: nil), (title: "生命线", count: nil)], selectedIndex: $selectedLine)
             Text("拖动圆点修正").font(.caption2).foregroundStyle(Ky.sub)
         }
     }
@@ -423,8 +414,7 @@ struct PalmRecordListView: View {
     var body: some View {
         List {
             if store.records.isEmpty {
-                Text("还没有记录。在手相/面相测量页填上姓名、描准线条后点「保存记录」，描线和测量值会按人存档在这里。")
-                    .font(.callout).foregroundStyle(Ky.sub)
+                KyEmptyState(icon: "archivebox", title: "还没有记录", message: "在手相/面相测量页填上姓名、描准线条后点「保存记录」，描线和测量值会按人存档在这里。")
             }
             ForEach(store.records) { r in
                 NavigationLink { PalmRecordDetailView(store: store, record: r) } label: {
@@ -492,18 +482,8 @@ struct PalmRecordDetailView: View {
                 }
                 Text(record.summary).font(.callout).foregroundStyle(Ky.ink)
                 NavigationLink { PalmPosterSheetView(record: record, store: store) } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "photo.artframe")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Ky.gold)
-                            .frame(width: 34, height: 34)
-                            .background(Ky.gold.opacity(0.13))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("生成鉴定海报").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                            Text("三线测量图 · 掌型指比／三停比例 · 相法综合断语").font(.caption2).foregroundStyle(Ky.sub)
-                        }
-                        Spacer()
+                    HStack(spacing: 6) {
+                        KySettingsRow(icon: "photo.artframe", title: "生成鉴定海报", subtitle: "三线测量图 · 掌型指比／三停比例 · 相法综合断语", tint: Ky.gold)
                         Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
                     }
                     .padding(.horizontal, 14).padding(.vertical, 12)
@@ -654,8 +634,7 @@ struct PalmPosterSheetView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
-                    ProgressView("正在渲染鉴定海报…")
-                        .frame(maxWidth: .infinity)
+                    KyLoadingState(title: "正在渲染鉴定海报…")
                 }
                 if let u = fileURL {
                     ShareLink(item: u) {

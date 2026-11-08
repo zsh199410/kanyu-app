@@ -1116,6 +1116,8 @@ struct MeihuaView: View {
                 }
                 if let r = result {
                     resultView(r)
+                } else {
+                    KyEmptyState(icon: "moon.stars.fill", title: "尚未起卦", message: "只做时间起卦：一事一断的占卜辅助线，不编断语。起卦后自动进前瞻登记，到期回验。", actionTitle: "现在起卦", action: { cast(register: true) })
                 }
                 Text(MeihuaEngine.disclaimer)
                     .font(.caption)

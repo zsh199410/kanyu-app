@@ -519,7 +519,12 @@ struct ClassicsView: View {
         }
     }
     var body: some View {
-        List {
+        VStack(spacing: 0) {
+            KySearchBar(text: $query, placeholder: "搜原文或白话（如：提纲、用神、月令）")
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+            List {
             if !query.isEmpty {
                 Section("检索命中 \(hits.count) 句") {
                     ForEach(hits, id: \.2.id) { b, c, ln in
@@ -529,7 +534,9 @@ struct ClassicsView: View {
                             Text("\(b.title) · \(c.no) \(c.title) · \(c.source) 第 \(ln.n) 句").font(.caption2).foregroundStyle(Ky.sub)
                         }
                     }
-                    if hits.isEmpty { Text("没有命中，换个词试试。").font(.callout).foregroundStyle(Ky.sub) }
+                    if hits.isEmpty {
+                        KyEmptyState(icon: "magnifyingglass", title: "没有命中", message: "没有命中，换个词试试。")
+                    }
                 }
             }
             ForEach(ClassicsData.books) { b in
@@ -547,8 +554,8 @@ struct ClassicsView: View {
                     }
                 }
             }
+            }
         }
-        .searchable(text: $query, prompt: "搜原文或白话（如：提纲、用神、月令）")
         .navigationTitle("古籍检索")
         .navigationBarTitleDisplayMode(.inline)
     }

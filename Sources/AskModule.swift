@@ -138,7 +138,7 @@ struct AskView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(busy || question.trimmingCharacters(in: .whitespaces).count < 2)
                 if busy {
-                    ProgressView("本机引擎现算事实，再请模型组织回答…")
+                    KyLoadingState(title: "本机引擎现算事实，再请模型组织回答…")
                 }
                 if errorText.isEmpty == false {
                     Text(errorText)

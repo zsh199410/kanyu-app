@@ -106,8 +106,15 @@ LibraryEntry(id: 99, cat: "论命", title: "宽断降权（回测纪律）", bod
 // MARK: - 断语库（可搜索的研习条文库：类象/长生/排盘/论命/五典/健康/合婚/紫微/实务/破局）
 struct LibraryView: View {
     @State private var query = ""
-    @State private var cat = "全部"
+    @State private var catIndex = 0
     private var cats: [String] { ["全部"] + Array(Set(LibraryData.entries.map { $0.cat })).sorted() }
+    private var cat: String { cats[catIndex] }
+    private var filterOptions: [(title: String, count: Int?)] {
+        cats.map { c in
+            let n = c == "全部" ? LibraryData.entries.count : LibraryData.entries.filter { $0.cat == c }.count
+            return (title: c, count: n)
+        }
+    }
     private var filtered: [LibraryEntry] {
         LibraryData.entries.filter { e in
             (cat == "全部" || e.cat == cat) &&
@@ -115,7 +122,15 @@ struct LibraryView: View {
         }
     }
     var body: some View {
-        List {
+        VStack(spacing: 0) {
+            KySearchBar(text: $query, placeholder: "搜条文（如：伤官、调候、羊刃）")
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+            KyFilterBar(options: filterOptions, selectedIndex: $catIndex)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 4)
+            List {
             ForEach(filtered) { e in
                 NavigationLink { LibraryDetailView(entry: e) } label: {
                     VStack(alignment: .leading, spacing: 3) {
@@ -127,19 +142,12 @@ struct LibraryView: View {
                     }
                 }
             }
-            if filtered.isEmpty { Text("没有匹配的条文，换个关键词试试。").font(.callout).foregroundStyle(Ky.sub) }
-        }
-        .searchable(text: $query, prompt: "搜条文（如：伤官、调候、羊刃）")
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Menu {
-                    ForEach(cats, id: \.self) { c in Button(c) { cat = c } }
-                } label: {
-                    Text(cat == "全部" ? "断语库 · 全部分类" : "断语库 · \(cat)")
-                        .font(.headline).foregroundStyle(Ky.ink)
-                }
+            if filtered.isEmpty {
+                KyEmptyState(icon: "magnifyingglass", title: "没有匹配的条文", message: "没有匹配的条文，换个关键词试试。")
+            }
             }
         }
+        .navigationTitle(cat == "全部" ? "断语库 · 全部分类" : "断语库 · \(cat)")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

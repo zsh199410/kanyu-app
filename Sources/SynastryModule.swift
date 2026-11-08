@@ -35,8 +35,7 @@ struct SynastryView: View {
                 if let a = selected(aId), let b = selected(bId), a.id != b.id {
                     resultCards(a: a, b: b)
                 } else {
-                    Text("从人物档案里选两个人。档案里不足两人时，先去「人物档案」建档。")
-                        .font(.callout).foregroundStyle(Ky.sub)
+                    KyEmptyState(icon: "person.2", title: "从人物档案里选两个人", message: "档案里不足两人时，先去「人物档案」建档。")
                 }
                 Text("流程按合婚四看：双盘先各自立 → 喜用互补 → 日柱 → 配偶星；生肖合冲只作民间末位参，不入主断。")
                     .font(.caption2).foregroundStyle(Ky.sub)

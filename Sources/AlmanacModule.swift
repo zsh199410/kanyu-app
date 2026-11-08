@@ -681,8 +681,7 @@ struct TodayFortuneCard: View {
                     }
                 }
             } else {
-                Text("建档后可见命主专属三行（今日五行旺衰 · 今日冲合 · 大运流年），均由本机引擎现算。")
-                    .font(.callout).foregroundStyle(Ky.sub).lineSpacing(3)
+                KyEmptyState(icon: "calendar.badge.plus", title: "今日运势", message: "建档后可见命主专属三行（今日五行旺衰 · 今日冲合 · 大运流年），均由本机引擎现算。")
             }
         }
         .kyCard()
