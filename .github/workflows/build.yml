@@ -42,6 +42,7 @@ jobs:
           xcodebuild -project Kanyu.xcodeproj -scheme Kanyu \
             -sdk iphoneos -configuration Release \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             -derivedDataPath build/DD build
 
       - name: Package IPA
