@@ -1095,11 +1095,27 @@ struct QimenHomeView: View {
     // P2：九宫盘宫位点击详情弹层
     @State private var selectedPalace: Int? = nil
     @State private var showPalaceSheet = false
+    // UI 2.1 第3批：九宫盘图层开关（默认全开；只影响显示，不改变计算结果）
+    @State private var showTianPan = true
+    @State private var showDiPan = true
+    @State private var showStar = true
+    @State private var showDoor = true
+    @State private var showGod = true
+    // UI 2.1 第3批：参数变更后「正在重新起局」轻量提示
+    @State private var showRecomputeHint = false
     // 起局只在时间变时算一次：排盘是纯计算但不便宜，body 每求值一次就重算会拖滑动；
     // 初值直接起局，避免首帧先闪一下「未能起局」
     @State private var cachedChart: QimenEngine.Chart? = QimenEngine.chart(for: Date())
     /// 按当前 G3 参数重起局（定局法／寄宫／暗干／真太阳时／日家）
-    private func recompute() {
+    /// showHint 为真时，先亮起「正在重新起局」轻量提示，0.6 秒后自动熄灭
+    private func recompute(showHint: Bool = false) {
+        if showHint {
+            showRecomputeHint = true
+            Task {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                showRecomputeHint = false
+            }
+        }
         let lon: Double? = solar ? longitude : nil
         if dingju == "置闰法" {
             cachedChart = QimenEngine.zhiyunChart(for: date, jigong: jigong, angan: angan, longitude: lon)
@@ -1146,18 +1162,30 @@ struct QimenHomeView: View {
                     }
                     Text("默认此刻；改时间即重起局。时辰按北京时间取，晚子时口径与八字排盘一致。".scriptConverted)
                         .font(.caption2).foregroundStyle(Ky.sub)
+                    if showRecomputeHint {
+                        Text("参数已变更，正在重新起局…".scriptConverted)
+                            .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                    }
                     DisclosureGroup("起局口径".scriptConverted) {
                         Picker("定局法".scriptConverted, selection: $dingju) {
                             Text("拆补法".scriptConverted).tag("拆补法")
                             Text("置闰法".scriptConverted).tag("置闰法")
                         }.pickerStyle(.segmented)
+                        Text("定局法：拆补法为现行口径（已与《遁甲演义》金标准对拍）；置闰法为另一传统定局法。".scriptConverted)
+                            .font(.caption2).foregroundStyle(Ky.sub)
                         Picker("寄宫".scriptConverted, selection: $jigong) {
                             ForEach(QimenJigong.allCases, id: \.self) { j in
                                 Text(j.name.scriptConverted).tag(j)
                             }
                         }
+                        Text("寄宫：中宫寄宫口径，默认恒寄坤二；也可改恒寄艮八或阴阳分寄。".scriptConverted)
+                            .font(.caption2).foregroundStyle(Ky.sub)
                         Toggle("布暗干（值使门起）".scriptConverted, isOn: $angan)
+                        Text("暗干：值使门起暗干，开则布暗干，关则不布。".scriptConverted)
+                            .font(.caption2).foregroundStyle(Ky.sub)
                         Toggle("真太阳时校正".scriptConverted, isOn: $solar)
+                        Text("真太阳时：开则按经度校正起局时间，关则直接用北京时间。".scriptConverted)
+                            .font(.caption2).foregroundStyle(Ky.sub)
                         HStack {
                             Text("经度".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                             TextField("经度", value: $longitude, format: .number)
@@ -1166,9 +1194,23 @@ struct QimenHomeView: View {
                                 .textFieldStyle(.roundedBorder)
                             Text("°（默认 107.8 梁平）".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
                         }
+                        Text("时间换算三档：北京时间是东八区标准时；地方平太阳时按经度换算（经度每差 1°，时间差 4 分钟）；真太阳时＝地方平太阳时＋均时差。本页只提供两档：开关关时用北京时间，开时按经度校正为真太阳时。".scriptConverted)
+                            .font(.caption2).foregroundStyle(Ky.sub)
                         Toggle("显示日家盘".scriptConverted, isOn: $showRijia)
+                        Text("日家盘：另起当日的日家奇门盘，与时家盘并列参考。".scriptConverted)
+                            .font(.caption2).foregroundStyle(Ky.sub)
                         Text("定局法、寄宫、暗干、真太阳时切换即重起局；口径见局象卡收据行。".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub)
+                        Button("恢复默认起局参数".scriptConverted) {
+                            dingju = "拆补法"
+                            jigong = .kun2
+                            angan = true
+                            solar = false
+                            longitude = 107.8
+                            showRijia = false
+                            recompute(showHint: true)
+                        }
+                        .font(.callout).foregroundStyle(Ky.cinnabar)
                     }
                 }.kyCard()
                 if let ch = cachedChart {
@@ -1199,13 +1241,13 @@ struct QimenHomeView: View {
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .onAppear { recompute() }
-        .onChange(of: date) { _, _ in recompute() }
-        .onChange(of: dingju) { _, _ in recompute() }
-        .onChange(of: jigong) { _, _ in recompute() }
-        .onChange(of: angan) { _, _ in recompute() }
-        .onChange(of: solar) { _, _ in recompute() }
-        .onChange(of: longitude) { _, _ in recompute() }
-        .onChange(of: showRijia) { _, _ in recompute() }
+        .onChange(of: date) { _, _ in recompute(showHint: true) }
+        .onChange(of: dingju) { _, _ in recompute(showHint: true) }
+        .onChange(of: jigong) { _, _ in recompute(showHint: true) }
+        .onChange(of: angan) { _, _ in recompute(showHint: true) }
+        .onChange(of: solar) { _, _ in recompute(showHint: true) }
+        .onChange(of: longitude) { _, _ in recompute(showHint: true) }
+        .onChange(of: showRijia) { _, _ in recompute(showHint: true) }
     }
 
     private func infoCard(_ ch: QimenEngine.Chart) -> some View {
@@ -1233,6 +1275,15 @@ struct QimenHomeView: View {
             Text("九宫盘面（后天八卦方位）".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
             Text("大字为天盘干，小字为地盘干；金框为值符星宫，红框为值使门宫。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
+            HStack(spacing: 10) {
+                layerChip("天盘", $showTianPan)
+                layerChip("地盘", $showDiPan)
+                layerChip("九星", $showStar)
+                layerChip("八门", $showDoor)
+                layerChip("八神", $showGod)
+            }
+            Text("图层开关只影响显示，不改变计算结果。".scriptConverted)
+                .font(.caption2).foregroundStyle(Ky.sub)
             let rows = [[4, 9, 2], [3, 5, 7], [8, 1, 6]]
             ForEach(rows.indices, id: \.self) { r in
                 HStack(spacing: 8) {
@@ -1248,6 +1299,23 @@ struct QimenHomeView: View {
                 }
             }
         }.kyCard()
+    }
+
+    // UI 2.1 第3批：九宫盘图层开关小芯片（开为实心勾，关为空心圈）
+    private func layerChip(_ title: String, _ isOn: Binding<Bool>) -> some View {
+        Button {
+            isOn.wrappedValue.toggle()
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: isOn.wrappedValue ? "checkmark.circle.fill" : "circle")
+                    .font(.caption)
+                Text(title.scriptConverted)
+                    .font(.caption)
+            }
+            .foregroundStyle(isOn.wrappedValue ? Ky.ink : Ky.sub)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title + (isOn.wrappedValue ? "图层，已显示" : "图层，已隐藏"))
     }
 
     // MARK: - P2 宫位详情弹层（只复用已有盘面数据，不改引擎）
@@ -1357,13 +1425,25 @@ struct QimenHomeView: View {
                     if isFu { Text("值符".scriptConverted).font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.gold) }
                     if isShi { Text("值使".scriptConverted).font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.cinnabar) }
                 }
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(pc.tianStem ?? "—").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text(pc.diStem).font(.caption).foregroundStyle(Ky.sub)
+                if showTianPan || showDiPan {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        if showTianPan {
+                            Text(pc.tianStem ?? "—").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        }
+                        if showDiPan {
+                            Text(pc.diStem).font(.caption).foregroundStyle(Ky.sub)
+                        }
+                    }
                 }
-                Text(pc.star.map { "\($0)星" } ?? "—").font(.callout).foregroundStyle(Ky.ink)
-                Text((pc.door.map { "\($0)门" } ?? "—").scriptConverted).font(.callout).foregroundStyle(Ky.ink)
-                Text((pc.god.map { "\($0)神" } ?? "—").scriptConverted).font(.caption).foregroundStyle(Ky.sub)
+                if showStar {
+                    Text(pc.star.map { "\($0)星" } ?? "—").font(.callout).foregroundStyle(Ky.ink)
+                }
+                if showDoor {
+                    Text((pc.door.map { "\($0)门" } ?? "—").scriptConverted).font(.callout).foregroundStyle(Ky.ink)
+                }
+                if showGod {
+                    Text((pc.god.map { "\($0)神" } ?? "—").scriptConverted).font(.caption).foregroundStyle(Ky.sub)
+                }
                 HStack(spacing: 4) {
                     if pc.siHaiKong { Text("空").font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.cinnabar) }
                     if pc.siHaiJiXing { Text("刑").font(.system(size: 9)).fontWeight(.bold).foregroundStyle(Ky.cinnabar) }
