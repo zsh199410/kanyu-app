@@ -133,6 +133,50 @@ private struct VerticalText: View {
     }
 }
 
+/// 海报统一品牌印章（P3 第 1 项）：四款海报共用同一枚朱砂印章——42×42、朱砂底、白字「三术合参」两行；
+/// 替代此前三处 42×42 与预测单 40×40 描边章各自为政的写法，印文一字不动。
+private struct PosterSealView: View {
+    var body: some View {
+        VStack(spacing: 1) {
+            HStack(spacing: 1) {
+                Text("三")
+                Text("术")
+            }
+            HStack(spacing: 1) {
+                Text("合")
+                Text("参")
+            }
+        }
+        .font(.system(size: 14, weight: .bold, design: .serif))
+        .foregroundStyle(.white)
+        .frame(width: 42, height: 42)
+        .background(pCin)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+/// 海报统一品牌落款条（P3 第 1 项）：印章＋品牌行「三术合参 · 堪舆命理院 谨制」＋各款副标＋日期；
+/// 四款同一结构、同一品牌行；副标与日期各款原文保留，底留白统一 42pt（P3 第 6 项）。
+private struct PosterBrandFooter: View {
+    let pal: PosterPalette
+    let subtitle: String
+    var body: some View {
+        HStack(alignment: .bottom) {
+            PosterSealView()
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("三术合参 · 堪舆命理院 谨制")
+                    .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
+                Text(subtitle)
+                    .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
+                Text(Date.now.formatted(date: .abbreviated, time: .omitted))
+                    .font(.system(size: 10)).foregroundStyle(pal.sub.opacity(0.8))
+            }
+        }
+        .padding(.horizontal, 48).padding(.bottom, 42)
+    }
+}
+
 /// 五行雷达大图（五边形：木火土金水顺时针；按占比归一化，最大者满半径；供墨金版海报用）
 private struct WuxingRadarView: View {
     let pcts: [Double]
@@ -426,7 +470,7 @@ struct PosterView: View {
                     if !yunLine.isEmpty {
                         Text(yunLine)
                             .font(.system(size: 11.5)).foregroundStyle(pal.sub)
-                            .lineSpacing(3).lineLimit(3)
+                            .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(16)
@@ -496,7 +540,7 @@ struct PosterView: View {
                             ForEach(firstSixDims, id: \.title) { d in
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(d.title).font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                                    Text(d.conclusion).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true).lineLimit(4)
+                                    Text(d.conclusion).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
                                 }
                                 .padding(8)
                                 .background(pal.card)
@@ -529,7 +573,6 @@ struct PosterView: View {
                                 (Text(t + "：").font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                                  + Text(c).font(.system(size: 11)).foregroundStyle(pal.main))
                                 .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                                .lineLimit(2)
                             }
                         }
                         Text("吉凶神煞全解：\(shenShaFullLine)")
@@ -551,7 +594,6 @@ struct PosterView: View {
                                 (Text(t + "：").font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                                  + Text(c).font(.system(size: 11)).foregroundStyle(pal.main))
                                 .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                                .lineLimit(3)
                             }
                         }
                     }
@@ -607,32 +649,8 @@ struct PosterView: View {
 
                 Spacer()
 
-                // 落款印章与出处声明
-                HStack(alignment: .bottom) {
-                    VStack(spacing: 1) {
-                        HStack(spacing: 1) {
-                            Text("三").font(.system(size: 14, weight: .bold, design: .serif))
-                            Text("术").font(.system(size: 14, weight: .bold, design: .serif))
-                        }
-                        HStack(spacing: 1) {
-                            Text("合").font(.system(size: 14, weight: .bold, design: .serif))
-                            Text("参").font(.system(size: 14, weight: .bold, design: .serif))
-                        }
-                    }
-                    .foregroundStyle(.white)
-                    .frame(width: 42, height: 42)
-                    .background(pCin)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 3) {
-                        Text("据五典而断 · 盘面为据 · 宋纸雅集")
-                            .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
-                        Text(Date.now.formatted(date: .abbreviated, time: .omitted))
-                            .font(.system(size: 10)).foregroundStyle(pal.sub.opacity(0.8))
-                    }
-                }
-                .padding(.horizontal, 48).padding(.bottom, 42)
+                // 统一品牌落款（P3 第 1 项）：四款同一印章＋同一品牌行，副标与日期各款保留
+                PosterBrandFooter(pal: pal, subtitle: "据五典而断 · 盘面为据 · 宋纸雅集")
             }
 
             // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
@@ -822,11 +840,8 @@ pillarTable
 .padding(.horizontal, 32)
 .padding(.vertical, 4)
 
-// ③ 五行气运雷达（五行占比图谱＋同党异党量化比率＋日主强弱定档＋通关气势）
-VStack(alignment:.leading, spacing: 4) {
-Text("五行气运雷达")
-.font(.system(size: 12.5, weight:.bold, design:.serif))
-.foregroundStyle(pal.accent)
+// ③ 五行气运雷达（五行占比图谱＋同党异党量化比率＋日主强弱定档＋通关气势；P3：组头改走 V6 KyHomeSection 静态版式，标题文案不动）
+KyHomeSection(title: "五行气运雷达", trailing: "") {
 HStack(alignment:.top, spacing: 14) {
 wuxingRadar
 VStack(alignment:.leading, spacing: 3) {
@@ -932,15 +947,14 @@ Text("\(Int(v.rounded()))%")
 }
 Text("四季五行：春木 · 夏火 · 秋金 · 冬水；农历三、九月土（个数分布仅供参考，强弱以月令格局为准）")
 .font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
+// P3：喜用／忌神改走 V6 KyMetricCard 静态版式（标签、五行名、✓／× 标记原文保留；中性行仍为正文）
 HStack(spacing: 10) {
-Text("喜用神：\(xiNames.isEmpty ? "—": xiNames) ✓")
-.font(.system(size: 13, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
-Text("忌神：\(jiNames.isEmpty ? "—": jiNames) ×")
-.font(.system(size: 13, weight:.bold, design:.serif)).foregroundStyle(pal.sub)
+KyMetricCard(label: "喜用神", value: xiNames.isEmpty ? "—" : xiNames, badgeText: "✓", tint: Ky.cinnabar)
+KyMetricCard(label: "忌神", value: jiNames.isEmpty ? "—" : jiNames, badgeText: "×", tint: Ky.sub)
+}
 if !xj.neutral.isEmpty && xj.level != "中和" {
 Text("\(xj.neutral.map { Self.wxNames[$0]}.joined(separator: "、"))：中性（可用）")
 .font(.system(size: 10, design:.serif)).foregroundStyle(pal.sub)
-}
 }
 Text("依据：日主\(xj.level)（同党约\(Int(xj.tongDang.rounded()))%）\(xiJiBasis)")
 .font(.system(size: 10, design:.serif)).foregroundStyle(pal.sub)
@@ -1131,20 +1145,12 @@ Text("报告日期：\(Self.dateFmt.string(from: Date()))")
 Text(chart.lunarText.isEmpty ? "" : "农历：\(chart.lunarText)")
 .font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
 }
-ZStack {
-RoundedRectangle(cornerRadius: 3, style:.continuous)
-.fill(pal.accentHi.opacity(0.12))
-.overlay(RoundedRectangle(cornerRadius: 3, style:.continuous).stroke(pal.accentHi, lineWidth: 1.4))
-VStack(spacing: 1) {
-Text("三术").font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
-Text("合参").font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accentHi)
-}
-}
-.frame(width: 40, height: 40)
+// P3 第 1 项：预测单印章与另三款统一为同一枚朱砂印（原 40×40 描边章）
+PosterSealView()
 }
 .padding(.horizontal, 32)
 }
-.padding(.bottom, 22)
+.padding(.bottom, 42)
 }
 }
 // 加长版长图：只定宽 540，高随内容自适应（九大板块全量展开，约 3000pt；渲染 scale 2 → 1080 宽超清长图），禁止定死 960 裁切内容
@@ -1436,6 +1442,12 @@ struct PosterSheetView: View {
                 .pickerStyle(.segmented)
                 .onChange(of: style) { _, _ in fileURL = nil; previewImage = nil }
 
+                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
+                HStack(spacing: 10) {
+                    KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
+                    KyMetricCard(label: "渲染倍率", value: "2.0×", badgeText: "540 pt")
+                }
+
                 // 预览只展示缓存图片：海报矢量树绝不直接进 ScrollView（每帧重算 InterpretEngine.interpret 与 Canvas 重绘是粘滞主因之一）
                 if let img = previewImage {
                     Image(uiImage: img)
@@ -1471,7 +1483,9 @@ struct PosterSheetView: View {
     private func render() {
         let chart = chart, name = name, style = style
         Task.detached(priority: .userInitiated) {
-            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style))
+            // P3：海报内含 V6 Ky 组件（预测单的 KyMetricCard／KyHomeSection）时，Ky token 须按浅色定版渲染，
+            // 不随系统深色走；海报自有 palette 为固定色，不受此环境值影响。
+            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style).environment(\.colorScheme, .light))
             renderer.scale = 2.0
             guard let img = renderer.uiImage, let data = img.pngData() else { return }
             let suffix: String
@@ -1517,7 +1531,7 @@ private struct ZiweiMiniCell: View {
             if !p.majors.isEmpty {
                 Text(p.majors.map { $0.star + ($0.mutagen.map { "化\($0)" } ?? "") }.joined(separator: "、"))
                     .font(.system(size: 10, weight: .semibold, design: .serif))
-                    .foregroundStyle(pal.main).lineLimit(1)
+                    .foregroundStyle(pal.main).lineLimit(2)
             }
             if !p.minors.isEmpty {
                 Text(p.minors.prefix(4).map { $0.star }.joined(separator: " "))
@@ -1737,7 +1751,7 @@ struct ZiweiPosterView: View {
                             .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                         Text(mc.conclusion)
                             .font(.system(size: 12.5)).foregroundStyle(pal.main)
-                            .lineSpacing(3.5).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                            .lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(14)
                     .frame(width: 444, alignment: .leading)
@@ -1802,7 +1816,7 @@ struct ZiweiPosterView: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.name).font(.system(size: 9.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                                 Text(p.majors.map { $0.star }.joined(separator: "·").isEmpty ? "—" : p.majors.map { $0.star }.joined(separator: "·"))
-                                    .font(.system(size: 9)).foregroundStyle(pal.main).lineLimit(1)
+                                    .font(.system(size: 9)).foregroundStyle(pal.main).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                                 Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.system(size: 8.5)).foregroundStyle(pal.sub)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1818,31 +1832,8 @@ struct ZiweiPosterView: View {
 
                 Spacer()
 
-                HStack(alignment: .bottom) {
-                    VStack(spacing: 1) {
-                        HStack(spacing: 1) {
-                            Text("三").font(.system(size: 14, weight: .bold, design: .serif))
-                            Text("术").font(.system(size: 14, weight: .bold, design: .serif))
-                        }
-                        HStack(spacing: 1) {
-                            Text("合").font(.system(size: 14, weight: .bold, design: .serif))
-                            Text("参").font(.system(size: 14, weight: .bold, design: .serif))
-                        }
-                    }
-                    .foregroundStyle(.white)
-                    .frame(width: 42, height: 42)
-                    .background(pCin)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 3) {
-                        Text("三合派天纪口径 · 方盘缩印 · 生年四化")
-                            .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
-                        Text(Date.now.formatted(date: .abbreviated, time: .omitted))
-                            .font(.system(size: 10)).foregroundStyle(pal.sub.opacity(0.8))
-                    }
-                }
-                .padding(.horizontal, 48).padding(.bottom, 42)
+                // 统一品牌落款（P3 第 1 项）：四款同一印章＋同一品牌行，副标与日期各款保留
+                PosterBrandFooter(pal: pal, subtitle: "三合派天纪口径 · 方盘缩印 · 生年四化")
             }
 
             // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
@@ -1870,6 +1861,12 @@ struct ZiweiPosterSheetView: View {
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: style) { _, _ in fileURL = nil; previewImage = nil; render() }
+
+                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
+                HStack(spacing: 10) {
+                    KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
+                    KyMetricCard(label: "渲染倍率", value: "2.0×", badgeText: "540 pt")
+                }
 
                 if let img = previewImage {
                     Image(uiImage: img)
@@ -2090,10 +2087,10 @@ struct HeCanPosterView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("八字总断").font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                         if !headline.isEmpty {
-                            Text(headline).font(.system(size: 11.5)).foregroundStyle(pal.main).lineSpacing(3).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                            Text(headline).font(.system(size: 11.5)).foregroundStyle(pal.main).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                         }
                         if !gejuLine.isEmpty {
-                            Text(gejuLine).font(.system(size: 11)).foregroundStyle(pal.accent).lineSpacing(3).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                            Text(gejuLine).font(.system(size: 11)).foregroundStyle(pal.accent).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .padding(12)
@@ -2104,10 +2101,10 @@ struct HeCanPosterView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("紫微方盘 · \(mingStars)").font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                         if let mc = mingCard {
-                            Text(mc.conclusion).font(.system(size: 11.5)).foregroundStyle(pal.main).lineSpacing(3).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                            Text(mc.conclusion).font(.system(size: 11.5)).foregroundStyle(pal.main).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                         }
                         if !huaLine.isEmpty {
-                            Text(huaLine).font(.system(size: 11)).foregroundStyle(pal.accent).lineSpacing(3).lineLimit(2)
+                            Text(huaLine).font(.system(size: 11)).foregroundStyle(pal.accent).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .padding(12)
@@ -2126,9 +2123,9 @@ struct HeCanPosterView: View {
                         ForEach(crossCards, id: \.dim) { c in
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(c.dim).font(.system(size: 11.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                                Text("八字：" + c.bazi).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                                Text("紫微：" + c.ziwei).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                                Text(c.verdict).font(.system(size: 10.5, weight: .bold)).foregroundStyle(Ky.gold).lineSpacing(2.5).lineLimit(1).fixedSize(horizontal: false, vertical: true)
+                                Text("八字：" + c.bazi).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
+                                Text("紫微：" + c.ziwei).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
+                                Text(c.verdict).font(.system(size: 10.5, weight: .bold)).foregroundStyle(Ky.gold).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
                             }
                             .padding(10)
                             .background(pal.card)
@@ -2144,12 +2141,12 @@ struct HeCanPosterView: View {
                 sectionCard(title: "手相面相要点") {
                     if palmLines.isEmpty {
                         Text("尚未测量：在「手相面相」页测一张掌纹并按人保存后，这里会自动带上测量摘要。判读为娱乐参考。")
-                            .font(.system(size: 12)).foregroundStyle(pal.sub).lineSpacing(3.5).lineLimit(2)
+                            .font(.system(size: 12)).foregroundStyle(pal.sub).lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
                     } else {
                         ForEach(palmLines.prefix(2), id: \.self) { line in
                             Text(line)
                                 .font(.system(size: 12.5)).foregroundStyle(pal.main)
-                                .lineSpacing(3.5).fixedSize(horizontal: false, vertical: true).lineLimit(2)
+                                .lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
@@ -2157,31 +2154,8 @@ struct HeCanPosterView: View {
 
                 Spacer()
 
-                HStack(alignment: .bottom) {
-                    VStack(spacing: 1) {
-                        HStack(spacing: 1) {
-                            Text("三").font(.system(size: 14, weight: .bold, design: .serif))
-                            Text("术").font(.system(size: 14, weight: .bold, design: .serif))
-                        }
-                        HStack(spacing: 1) {
-                            Text("合").font(.system(size: 14, weight: .bold, design: .serif))
-                            Text("参").font(.system(size: 14, weight: .bold, design: .serif))
-                        }
-                    }
-                    .foregroundStyle(.white)
-                    .frame(width: 42, height: 42)
-                    .background(pCin)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 3) {
-                        Text("八字总断 · 紫微方盘 · 双术交叉印证 · 一页合参")
-                            .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
-                        Text(Date.now.formatted(date: .abbreviated, time: .omitted))
-                            .font(.system(size: 10)).foregroundStyle(pal.sub.opacity(0.8))
-                    }
-                }
-                .padding(.horizontal, 48).padding(.bottom, 36)
+                // 统一品牌落款（P3 第 1 项）：四款同一印章＋同一品牌行，副标与日期各款保留；底留白由 36 统一为 42（P3 第 6 项）
+                PosterBrandFooter(pal: pal, subtitle: "八字总断 · 紫微方盘 · 双术交叉印证 · 一页合参")
             }
 
             // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
@@ -2212,6 +2186,12 @@ struct HeCanPosterSheetView: View {
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: style) { _, _ in fileURL = nil; previewImage = nil; render() }
+
+                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
+                HStack(spacing: 10) {
+                    KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
+                    KyMetricCard(label: "渲染倍率", value: "2.0×", badgeText: "540 pt")
+                }
 
                 // 预览只展示缓存图片（与命盘／紫微海报同款；旧 live 缩放预览依赖 960 定高，自适应高度后改走缓存图）
                 if let img = previewImage {

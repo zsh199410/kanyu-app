@@ -305,6 +305,27 @@ struct PersonDetailView: View {
                 }
                 .buttonStyle(.plain)
                 actionToolbar(person: p, chart: ch, ziwei: zw)
+                // P3：报告中心入口——命书与海报一经生成即落盘，中心按磁盘文件只读列出，无需另记，故生成后自动进历史
+                NavigationLink {
+                    ReportCenterView(person: p)
+                } label: {
+                    HStack {
+                        Image(systemName: "doc.text.fill")
+                            .foregroundStyle(Ky.qingdai)
+                        Text("我的命书／报告中心 ›")
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(Ky.ink)
+                        Spacer()
+                        Text(pdfURL == nil ? "生成后自动归档" : "已生成 · 可查看历史")
+                            .font(.caption2)
+                            .foregroundStyle(Ky.sub)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(Ky.card)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
                 CrossCheckCard(bazi: ch, ziwei: zw)
 
                 // 四合一分段控制器（无需反复进出子页面，一页切换八字、紫微、30条详批、逐年）

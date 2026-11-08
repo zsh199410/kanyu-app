@@ -649,8 +649,8 @@ struct MyView: View {
                     myLink("hand.raised.fill", "手相面相与测量记录", "21点几何掌型 · 三线手描 · 三停校准归档", Ky.gold) { PalmHomeView() }
                 }
 
-                // (4) 我的命书／报告中心：报告中心（命书档案馆）随 P3 新建；P0 先接现有一次性生成入口
-                KySectionTitle(title: "我的命书／报告中心", trailing: "报告中心随 P3 上线")
+                // (4) 我的命书／报告中心（P3）：报告中心已上线——按人物归档已生成的命书 PDF 与海报
+                KySectionTitle(title: "我的命书／报告中心", trailing: "已生成命书与海报")
                 VStack(alignment: .leading, spacing: 8) {
                     myLink("doc.text.fill", "生成我的命书（PDF）", "当前命主的命书文件 · 在详情页生成后分享", Ky.qingdai) {
                         if let p = PeopleStore.shared.currentPerson {
@@ -659,9 +659,9 @@ struct MyView: View {
                             PeopleView()
                         }
                     }
-                    Text("命书档案馆（已生成命书的历史列表与归档）随 P3 报告中心上线；现版本每次在命主详情页即时生成，不留历史记录。")
-                        .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
-                        .padding(.horizontal, 2)
+                    myLink("archivebox.fill", "报告中心", "已生成的命书 PDF 与海报 · 按人物归档 · 含生成时间与类型", Ky.gold) {
+                        ReportCenterView()
+                    }
                 }
 
                 // (5) 智库设置

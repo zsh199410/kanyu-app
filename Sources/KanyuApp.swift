@@ -1906,7 +1906,7 @@ struct HomePageView: View {
         .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
     }
 
-    // 06 末：全部工具入口（29 项专项工具 · 搜索与分类）
+    // 06 末：全部工具入口（专项工具 · 搜索与分类；条数取 AllToolsData 清单实数，不写死）
     private var allToolsLink: some View {
         NavigationLink { AllToolsView(selectedTab: $selectedTab) } label: {
             HStack(spacing: 12) {
@@ -1919,7 +1919,7 @@ struct HomePageView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("全部工具")
                         .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text("29 项专项工具 · 搜索与分类")
+                    Text("\(AllToolsData.allItems.count) 项专项工具 · 搜索与分类")
                         .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
                 }
                 Spacer()

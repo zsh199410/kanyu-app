@@ -51,6 +51,7 @@ struct AllToolsData {
         ToolItem(id: "yearly", title: "逐年四查", desc: "大运流年 · 逐年直断", icon: "calendar", color: Ky.qingdai, group: .paipan),
         ToolItem(id: "interpret", title: "30 维详批", desc: "30 条详批 · 分类导航", icon: "doc.text.fill", color: Ky.gold, group: .paipan),
         ToolItem(id: "poster", title: "海报导出", desc: "四款海报 · 1080 宽长图", icon: "photo.fill", color: Ky.qingdai, group: .paipan),
+        ToolItem(id: "reportcenter", title: "报告中心", desc: "已生成命书与海报 · 按人物归档", icon: "archivebox.fill", color: Ky.qingdai, group: .paipan),
         ToolItem(id: "almanac", title: "万年历", desc: "公历农历 · 干支节气宜忌", icon: "calendar.day.timeline.left", color: Ky.qingdai, group: .calendar),
         ToolItem(id: "monthcal", title: "干支日历选日", desc: "按月翻日 · 干支速查", icon: "calendar", color: Ky.gold, group: .calendar),
         ToolItem(id: "zeji", title: "择吉", desc: "近 30 天择吉通参", icon: "sparkles", color: Ky.gold, group: .calendar),
@@ -134,6 +135,8 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
         InterpretView(chart: chart, name: person.name)
     case "poster":
         BaziResultView(chart: chart, name: person.name)
+    case "reportcenter":
+        ReportCenterView()
     case "almanac":
         AlmanacView()
     case "monthcal":
