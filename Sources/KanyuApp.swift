@@ -1420,6 +1420,7 @@ struct HomePageView: View {
     @State private var showingMyView = false
     @State private var showingPersonDetail = false
     @State private var showingPersonPicker = false
+    @State private var signBannerDismissed = false // 证书提醒收起：仅本次启动有效，下次启动若仍 ≤7 天重新出现（证书过期打不开 App，绝不能永久隐藏）
 
     init(selectedTab: Binding<Int> = .constant(0)) {
         self._selectedTab = selectedTab
@@ -1434,13 +1435,11 @@ struct HomePageView: View {
                 signBanner
                 // 02 当前命主中枢卡
                 personSwitcherCard
-                // 03 今日天地卡
-                todayAlmanacCard
-                // 04 今日运势卡
-                todayFortuneCard
-                // 05 核心排盘 2×2 矩阵
+                // 03 今日天地（黄历＋运势同一区域）
+                todaySection
+                // 04 核心排盘 2×2 矩阵
                 primaryBentoGrid
-                // 06 最近使用与专项工具（dueCard 置顶常驻）
+                // 05 最近使用与专项工具（dueCard 置顶常驻）
                 dueCard
                 recentToolsSection
                 allToolsLink
@@ -1505,7 +1504,7 @@ struct HomePageView: View {
     }
 
     @ViewBuilder private var signBanner: some View {
-        if signDateEpoch > 0 {
+        if !signBannerDismissed, signDateEpoch > 0 {
             let expiry = Date(timeIntervalSince1970: signDateEpoch).addingTimeInterval(Double(signCertDays) * 86400)
             let remain = Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 99
             if remain <= 7 {
@@ -1513,12 +1512,29 @@ struct HomePageView: View {
                     Image(systemName: "exclamationmark.shield.fill").foregroundStyle(Ky.cinnabar)
                     Text(remain >= 0 ? "签名证书还有 \(remain) 天到期，请提前续签覆盖安装（本机数据全部保留）。" : "签名证书已到期：续签后覆盖安装即可恢复打开，切勿删除应用。")
                         .font(.caption).foregroundStyle(Ky.ink)
+                    Spacer()
+                    Button { signBannerDismissed = true } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Ky.sub)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("收起证书提醒")
                 }.kyCard()
             }
         }
     }
 
-    // 03 今日天地卡（干支黄历与择吉一体；读取内存缓存 AlmanacLunarCache，0ms 零延迟；点卡进 AlmanacView、点胶囊进 ZejiView）
+    // 03 今日天地（黄历＋运势同一区域；两块内容本身与数据一字不动，只共用一个分区标题）
+    private var todaySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            KySectionTitle(title: "今日天地", trailing: "黄历 · 运势")
+            todayAlmanacCard
+            todayFortuneCard
+        }
+    }
+
+    // 今日黄历卡（今日天地区内第一块；干支黄历与择吉一体；读取内存缓存 AlmanacLunarCache，0ms 零延迟；点卡进 AlmanacView、点胶囊进 ZejiView）
     private var todayAlmanacCard: some View {
         let info = AlmanacLunarCache.dayInfo(for: Date())
         return VStack(alignment: .leading, spacing: 10) {
@@ -1585,7 +1601,7 @@ struct HomePageView: View {
         .kyCard()
     }
 
-    // 04 今日运势卡（G1 每日运势「今日」卡：与 Web /api/today 同款三行；命主取全局 currentPersonId，同义回落）
+    // 今日运势卡（今日天地区内第二块；G1 每日运势「今日」卡：与 Web /api/today 同款三行；命主取全局 currentPersonId，同义回落）
     private var todayFortuneCard: some View {
         let person = peopleStore.currentPerson
         if let p = person {
@@ -1623,7 +1639,7 @@ struct HomePageView: View {
         }
     }
 
-    // 05 核心排盘 2×2 矩阵（标题严格 4 字「核心排盘」，绝不断行！）
+    // 04 核心排盘 2×2 矩阵（标题严格 4 字「核心排盘」，绝不断行！）
     private var primaryBentoGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
             KySectionTitle(title: "核心排盘", trailing: "四柱 · 斗数 · 奇门 · 相法")
@@ -1815,7 +1831,7 @@ struct HomePageView: View {
         .presentationDetents([.medium, .large])
     }
 
-    // 06 最近使用与专项工具（最近排盘／最近勘察／最近命书＋常用 4 项；其余全部进「全部工具」）
+    // 05 最近使用与专项工具（最近排盘／最近勘察／最近命书＋常用 4 项；其余全部进「全部工具」）
     private var recentToolsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             KySectionTitle(title: "最近使用", trailing: "最近打开的人物与工具")
@@ -1931,7 +1947,7 @@ struct HomePageView: View {
         .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
     }
 
-    // 06 末：全部工具入口（专项工具 · 搜索与分类；条数取 AllToolsData 清单实数，不写死）
+    // 05 末：全部工具入口（专项工具 · 搜索与分类；条数取 AllToolsData 清单实数，不写死）
     private var allToolsLink: some View {
         NavigationLink { AllToolsView(selectedTab: $selectedTab) } label: {
             HStack(spacing: 12) {
