@@ -116,6 +116,23 @@ private struct SongMountainHeaderView: View {
     }
 }
 
+/// 竖排短题（中文竖排：字形不旋转，逐字自上而下；只用于宋纸版眉题短句。全文竖排不做：长文逐字排版拖垮渲染且须手写断栏，见本轮汇报）
+private struct VerticalText: View {
+    let text: String
+    var fontSize: CGFloat = 13
+    var color: Color = pTeal
+    var spacing: CGFloat = 5
+    var body: some View {
+        VStack(spacing: spacing) {
+            ForEach(Array(text.enumerated()), id: \.offset) { _, ch in
+                Text(String(ch))
+                    .font(.system(size: fontSize, weight: .medium, design: .serif))
+                    .foregroundStyle(color)
+            }
+        }
+    }
+}
+
 /// 五行雷达大图（五边形：木火土金水顺时针；按占比归一化，最大者满半径；供墨金版海报用）
 private struct WuxingRadarView: View {
     let pcts: [Double]
@@ -616,6 +633,12 @@ struct PosterView: View {
                     }
                 }
                 .padding(.horizontal, 48).padding(.bottom, 42)
+            }
+
+            // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
+            if style == .songQingdai {
+                VerticalText(text: "子平五典", fontSize: 13, color: pal.accent, spacing: 5)
+                    .position(x: 506, y: 110)
             }
         }
         .frame(width: 540)
@@ -1512,6 +1535,47 @@ private struct ZiweiMiniCell: View {
     }
 }
 
+/// 中央天心宫三方四正飞线（与 ZiweiBoardView 同式：三合虚线三角＋对宫虚线＋罗经圆；画在天心宫底纹层，文字在上。Canvas 在 ImageRenderer 渲染路径下可用，宋纸远山 Canvas 已在同路径使用）
+private struct ZiweiCenterFlyLines: View {
+    let chart: ZiweiChart
+    let pal: PosterPalette
+    /// 十二宫在 4×4 方盘中的（行，列），与 ZiweiBoardView.cellPos 同表
+    private static let cellPos: [Int: (Int, Int)] = [
+        5: (0, 0), 6: (0, 1), 7: (0, 2), 8: (0, 3),
+        4: (1, 0), 9: (1, 3),
+        3: (2, 0), 10: (2, 3),
+        2: (3, 0), 1: (3, 1), 0: (3, 2), 11: (3, 3)
+    ]
+    var body: some View {
+        Canvas { ctx, size in
+            let c = CGPoint(x: size.width / 2, y: size.height / 2)
+            let r = min(size.width, size.height) * 0.42
+            ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(pal.accent.opacity(0.22)), lineWidth: 0.9)
+            func dirPoint(_ branch: Int) -> CGPoint {
+                guard let rc = Self.cellPos[branch] else { return c }
+                let nx = (CGFloat(rc.1) - 1.5) / 1.5
+                let ny = (CGFloat(rc.0) - 1.5) / 1.5
+                return CGPoint(x: c.x + nx * (size.width * 0.46), y: c.y + ny * (size.height * 0.46))
+            }
+            let ming = chart.mingGong
+            let p0 = dirPoint(ming)
+            let pT1 = dirPoint((ming + 4) % 12)
+            let pT2 = dirPoint((ming + 8) % 12)
+            let pOpp = dirPoint((ming + 6) % 12)
+            var triPath = Path()
+            triPath.move(to: p0)
+            triPath.addLine(to: pT1)
+            triPath.addLine(to: pT2)
+            triPath.closeSubpath()
+            ctx.stroke(triPath, with: .color(pal.accent.opacity(0.32)), style: StrokeStyle(lineWidth: 1.1, dash: [4, 3]))
+            var oppPath = Path()
+            oppPath.move(to: p0)
+            oppPath.addLine(to: pOpp)
+            ctx.stroke(oppPath, with: .color(pal.accentHi.opacity(0.38)), style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+        }
+    }
+}
+
 // 方盘中央合并 2×2 天心宫：命宫主星＋五行局＋现行大限（虚岁落入哪步大限）
 private struct ZiweiCenterCell: View {
     let chart: ZiweiChart
@@ -1524,7 +1588,9 @@ private struct ZiweiCenterCell: View {
         let daxian = chart.palaces.first { p in
             age > 0 && age >= (p.decadal.first ?? 0) && age <= (p.decadal.last ?? 0)
         }
-        return VStack(spacing: 5) {
+        return ZStack {
+            ZiweiCenterFlyLines(chart: chart, pal: pal)
+            VStack(spacing: 5) {
             Text(chart.juName)
                 .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
             Text(ming.majors.isEmpty ? "命宫无主星（借对宫）" : "命宫主星 \(stars)")
@@ -1538,6 +1604,7 @@ private struct ZiweiCenterCell: View {
             }
             Text(chart.lunarText)
                 .font(.system(size: 9)).foregroundStyle(pal.sub).multilineTextAlignment(.center)
+        }
         }
         .frame(width: 219, height: 189)
         .background(pal.card)
@@ -1777,6 +1844,12 @@ struct ZiweiPosterView: View {
                 }
                 .padding(.horizontal, 48).padding(.bottom, 42)
             }
+
+            // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
+            if style == .songQingdai {
+                VerticalText(text: "紫微斗数", fontSize: 13, color: pal.accent, spacing: 5)
+                    .position(x: 506, y: 110)
+            }
         }
         .frame(width: 540)
     }
@@ -1804,7 +1877,7 @@ struct ZiweiPosterSheetView: View {
                         .scaledToFit()
                         .frame(maxWidth: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
                     ProgressView("正在渲染 1080宽长图海报…")
                         .frame(maxWidth: .infinity)
@@ -1819,7 +1892,7 @@ struct ZiweiPosterSheetView: View {
                     Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 } else {
-                    ProgressView("正在渲染 1080×1920 高清海报…")
+                    ProgressView("正在渲染 1080宽长图海报…")
                 }
             }
             .padding(20)
@@ -2110,8 +2183,15 @@ struct HeCanPosterView: View {
                 }
                 .padding(.horizontal, 48).padding(.bottom, 36)
             }
+
+            // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
+            if style == .songQingdai {
+                VerticalText(text: "三术合参", fontSize: 13, color: pal.accent, spacing: 5)
+                    .position(x: 506, y: 110)
+            }
         }
-        .frame(width: 540, height: 960)
+        // 自适应高度（与预测单长图同款：只定宽 540，高随内容走；旧 960 定高在宋纸版留约 100pt 底白）
+        .frame(width: 540)
     }
 }
 
@@ -2121,6 +2201,7 @@ struct HeCanPosterSheetView: View {
     let name: String
     var palmLines: [String] = []
     @State private var fileURL: URL?
+    @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
 
     var body: some View {
@@ -2130,24 +2211,31 @@ struct HeCanPosterSheetView: View {
                     ForEach(PosterStyle.allCases, id: \.self) { s in Text(s.rawValue).tag(s) }
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: style) { _, _ in fileURL = nil; render() }
+                .onChange(of: style) { _, _ in fileURL = nil; previewImage = nil; render() }
 
-                HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)
-                    .scaleEffect(0.62)
-                    .frame(width: 540 * 0.62, height: 960 * 0.62)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
+                // 预览只展示缓存图片（与命盘／紫微海报同款；旧 live 缩放预览依赖 960 定高，自适应高度后改走缓存图）
+                if let img = previewImage {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
+                } else {
+                    ProgressView("正在渲染 1080宽长图海报…")
+                        .frame(maxWidth: .infinity)
+                }
 
                 if let u = fileURL {
                     ShareLink(item: u) {
-                        Label("保存 / 分享高清合参海报（1080×1920）", systemImage: "square.and.arrow.down")
+                        Label("保存 / 分享高清合参海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
                     .buttonStyle(KyPrimaryButton())
                     Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 } else {
-                    ProgressView("正在渲染 1080×1920 高清海报…")
+                    ProgressView("正在渲染 1080宽长图海报…")
                 }
             }
             .padding(20)
@@ -2171,6 +2259,7 @@ struct HeCanPosterSheetView: View {
             }
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("hecan-poster-\(name.isEmpty ? "chart" : name)\(suffix).png")
             try? data.write(to: url, options: .atomic)
+            previewImage = img
             fileURL = url
         }
     }
