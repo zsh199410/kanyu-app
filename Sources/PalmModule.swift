@@ -641,6 +641,7 @@ struct PalmPosterSheetView: View {
     @ObservedObject var store: PalmRecordStore
     @State private var fileURL: URL?
     @State private var previewImage: UIImage?
+    @State private var saveMessage: String?
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
@@ -654,13 +655,24 @@ struct PalmPosterSheetView: View {
                 } else {
                     KyLoadingState(title: "正在渲染鉴定海报…")
                 }
-                if let u = fileURL {
-                    ShareLink(item: u) {
+                if fileURL != nil, let img = previewImage {
+                    ShareLink(item: img, preview: SharePreview("手相面相鉴定海报", image: img)) {
                         Label("保存 / 分享鉴定海报（1080宽 · 自适应长图）".scriptConverted, systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
                     .buttonStyle(KyPrimaryButton())
-                    Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。".scriptConverted)
+                    Button {
+                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                    } label: {
+                        Label("保存到相册", systemImage: "photo.badge.plus")
+                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                    }
+                    .buttonStyle(KyPrimaryButton())
+                    if let saveMessage {
+                        Text(saveMessage)
+                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                    }
+                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 }
             }

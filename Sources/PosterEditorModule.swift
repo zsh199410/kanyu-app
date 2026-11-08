@@ -1,9 +1,9 @@
 import SwiftUI
 import UIKit
+import Photos
 
-// MARK: - 海报编辑器基础版（G13，Insight 第 3 批）
-// 换字（标题／落款副标文案）＋换款（PosterStyle.allCases 全部 8 款）＋换色（品牌色板内 4 档强调色）。
-// 样式无关：款式选择器直接驱动 PosterStyle.allCases，新款自动出现，不硬编码款式表。
+// MARK: - 海报编辑器基础版（G13，Insight 第 3 批；2026-11-09 精简：只留宋纸青黛一款）
+// 换字（标题／落款副标文案）＋换色（品牌色板内 4 档强调色）；款式选择器已随砍款去掉，编辑器只出宋纸青黛。
 // 导出走 PosterSheetView 同款渲染路径（ImageRenderer，scale 2.0，540pt 画布 → 1080 宽 PNG），
 // 文件名后缀走 PosterStyle.fileSuffix，与既有海报同规格；结论内容只取 PosterView 既有解盘，一字不动。
 // 入口：PosterSheetView 内「打开海报编辑器」按钮，以 .sheet 弹出（禁 fullScreenCover）。
@@ -46,6 +46,7 @@ struct PosterEditorView: View {
     @State private var previewImage: UIImage?
     @State private var fileURL: URL?
     @State private var renderKey: String
+    @State private var saveMessage: String?
 
     init(chart: BaziChart, name: String) {
         self.chart = chart
@@ -57,20 +58,6 @@ struct PosterEditorView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("换款：海报样式")
-                        .font(.headline)
-                    Picker("海报款式", selection: $style) {
-                        ForEach(PosterStyle.allCases, id: \.self) { s in
-                            Text(s.rawValue).tag(s)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: style) { _, _ in
-                        fileURL = nil
-                        previewImage = nil
-                        refreshRenderKey()
-                    }
-
                     Text("换色：强调色（品牌色板内）")
                         .font(.headline)
                     Picker("强调色", selection: $accent) {
@@ -100,7 +87,7 @@ struct PosterEditorView: View {
                     }
                     .buttonStyle(KyPrimaryButton())
 
-                    Text("导出与既有海报同规格：1080 宽 PNG，scale 2.0；只改标题、副标、款式与强调色，结论内容不动。")
+                    Text("导出与既有海报同规格：1080 宽 PNG，scale 2.0；只改标题、副标与强调色，结论内容不动。")
                         .font(.caption)
                         .foregroundStyle(Ky.sub)
 
@@ -116,14 +103,29 @@ struct PosterEditorView: View {
                             .frame(maxWidth: .infinity)
                     }
 
-                    if let u = fileURL {
-                        ShareLink(item: u) {
+                    if fileURL != nil, let img = previewImage {
+                        ShareLink(item: img, preview: SharePreview("编辑后海报", image: img)) {
                             Label("保存 / 分享编辑后海报（1080宽 PNG）", systemImage: "square.and.arrow.down")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)
                         }
                         .buttonStyle(KyPrimaryButton())
+                        Button {
+                            PosterPhotoSaver.save(img) { saveMessage = $0 }
+                        } label: {
+                            Label("保存到相册", systemImage: "photo.badge.plus")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                        }
+                        .buttonStyle(KyPrimaryButton())
+                        if let saveMessage {
+                            Text(saveMessage)
+                                .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                        }
+                        Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
+                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                     }
                 }
                 .padding(20)

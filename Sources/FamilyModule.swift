@@ -20,6 +20,8 @@ struct FamilyChartView: View {
     @State private var bId: UUID?
     @State private var cId: UUID?
     @State private var posterURL: URL?
+    @State private var posterImage: UIImage?
+    @State private var saveMessage: String?
 
     private var year: Int { Calendar.current.component(.year, from: Date()) }
     private let wxNames = ["木", "火", "土", "金", "水"]
@@ -215,6 +217,7 @@ struct FamilyChartView: View {
                 if let img = renderer.uiImage, let data = img.pngData() {
                     let url = FileManager.default.temporaryDirectory.appendingPathComponent("family-poster.png")
                     try? data.write(to: url, options: .atomic)
+                    posterImage = img
                     posterURL = url
                 }
             } label: {
@@ -222,13 +225,24 @@ struct FamilyChartView: View {
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
             }
             .buttonStyle(KyPrimaryButton())
-            if let u = posterURL {
-                ShareLink(item: u) {
+            if posterURL != nil, let img = posterImage {
+                ShareLink(item: img, preview: SharePreview("全家盘海报", image: img)) {
                     Label("保存 / 分享全家盘海报".scriptConverted, systemImage: "square.and.arrow.up")
                         .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                 }
                 .buttonStyle(KyPrimaryButton())
-                Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。".scriptConverted)
+                Button {
+                    PosterPhotoSaver.save(img) { saveMessage = $0 }
+                } label: {
+                    Label("保存到相册", systemImage: "photo.badge.plus")
+                        .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                }
+                .buttonStyle(KyPrimaryButton())
+                if let saveMessage {
+                    Text(saveMessage)
+                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                }
+                Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。".scriptConverted)
                     .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
             }
         }

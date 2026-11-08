@@ -1,27 +1,18 @@
 import SwiftUI
 import UIKit
+import Photos
 
-// MARK: - 命盘海报 v5（新增定版「宋纸青黛版」为首推样式，严格对齐《模板规范-2026-10-29.md》，同时保留宣纸浅色版与墨金版）
+// MARK: - 命盘海报 v5（定版「宋纸青黛版」为唯一款式，严格对齐《模板规范-2026-10-29.md》）
 
-private let pBg0 = Color(red: 0.05, green: 0.07, blue: 0.10)
-private let pBg1 = Color(red: 0.10, green: 0.13, blue: 0.18)
-private let pGold = Color(red: 0.78, green: 0.64, blue: 0.36)
-private let pGoldHi = Color(red: 0.90, green: 0.79, blue: 0.52)
 private let pPaper = Color(red: 0.968, green: 0.949, blue: 0.906) // #F7F2E7 宋纸
 private let pSub = Color(red: 0.478, green: 0.447, blue: 0.408)   // #7A7268 次级
 private let pCin = Color(red: 0.604, green: 0.165, blue: 0.133)   // #9A2A22 故宫红
 private let pTeal = Color(red: 0.153, green: 0.306, blue: 0.361)  // #274E5C 青黛
 
-// MARK: - 海报版本：宋纸青黛版（定版规范） / 宣纸浅色版 / 墨金版
+// MARK: - 海报版本：只留一款——宋纸青黛版（定版规范），做到极致；尊享预测单为独立长图产品（不占款式位）
 enum PosterStyle: String, CaseIterable {
     case songQingdai = "宋纸青黛版"
     case yuceDan = "尊享预测单"
-    case xuanPaper = "宣纸朱砂版"
-    case inkGold = "玄夜墨金版"
-    case qingCi = "青瓷雅韵版"
-    case danSha = "丹砂暖纸版"
-    case moLan = "墨兰夜锦版"
-    case jinQian = "金笺雅集版"
 }
 
 private struct PosterPalette {
@@ -46,66 +37,38 @@ private extension PosterStyle {
             return PosterPalette(bg0: pPaper, bg1: cardBg, main: ink, sub: pSub,
                                  accent: pTeal, accentHi: pCin,
                                  card: cardBg, cardStroke: line, track: Color.black.opacity(0.07))
-        case .inkGold:
-            return PosterPalette(bg0: pBg0, bg1: pBg1, main: pPaper, sub: Color(red: 0.66, green: 0.62, blue: 0.54),
-                                 accent: pGold, accentHi: pGoldHi,
-                                 card: Color.white.opacity(0.04), cardStroke: pGold.opacity(0.28), track: Color.white.opacity(0.08))
-        case .xuanPaper:
-            let ink = Color(red: 0.18, green: 0.16, blue: 0.13)
-            let inkSub = Color(red: 0.46, green: 0.42, blue: 0.35)
-            let paperHi = Color(red: 0.97, green: 0.95, blue: 0.88)
-            return PosterPalette(bg0: pPaper, bg1: paperHi, main: ink, sub: inkSub, accent: pCin, accentHi: pCin,
-                                 card: Color.white.opacity(0.55), cardStroke: pCin.opacity(0.35), track: Color.black.opacity(0.08))
-        case .qingCi:
-            // 青瓷雅韵：宋纸底＋青黛主色，辅色换雅金（与宋纸青黛版同版式、不同强调色）
-            let ink = Color(red: 0.18, green: 0.165, blue: 0.15)
-            let cardBg = Color(red: 0.992, green: 0.984, blue: 0.961) // #FDFBF5
-            let line = Color(red: 0.886, green: 0.851, blue: 0.769)   // #E2D9C4
-            return PosterPalette(bg0: pPaper, bg1: cardBg, main: ink, sub: pSub,
-                                 accent: pTeal, accentHi: pGold,
-                                 card: cardBg, cardStroke: line, track: Color.black.opacity(0.07))
-        case .jinQian:
-            // 金笺雅集：宋纸底＋雅金主色，辅色朱砂（与宋纸青黛版同版式、不同强调色）
-            let ink = Color(red: 0.18, green: 0.165, blue: 0.15)
-            let cardBg = Color(red: 0.992, green: 0.984, blue: 0.961) // #FDFBF5
-            let line = Color(red: 0.886, green: 0.851, blue: 0.769)   // #E2D9C4
-            let goldDark = Color(red: 0.62, green: 0.47, blue: 0.18)
-            return PosterPalette(bg0: pPaper, bg1: cardBg, main: ink, sub: pSub,
-                                 accent: goldDark, accentHi: pCin,
-                                 card: cardBg, cardStroke: line, track: Color.black.opacity(0.07))
-        case .danSha:
-            // 丹砂暖纸：宣纸底＋朱砂主色，辅色换青黛（与宣纸朱砂版同版式、不同强调色）
-            let ink = Color(red: 0.18, green: 0.16, blue: 0.13)
-            let inkSub = Color(red: 0.46, green: 0.42, blue: 0.35)
-            let paperHi = Color(red: 0.97, green: 0.95, blue: 0.88)
-            return PosterPalette(bg0: pPaper, bg1: paperHi, main: ink, sub: inkSub, accent: pCin, accentHi: pTeal,
-                                 card: Color.white.opacity(0.55), cardStroke: pCin.opacity(0.35), track: Color.black.opacity(0.08))
-        case .moLan:
-            // 墨兰夜锦：深墨蓝底＋亮青黛主色、亮金辅色（与玄夜墨金版同版式、不同强调色）
-            return PosterPalette(bg0: Color(red: 0.06, green: 0.09, blue: 0.13), bg1: Color(red: 0.11, green: 0.16, blue: 0.21), main: pPaper, sub: Color(red: 0.66, green: 0.62, blue: 0.54),
-                                 accent: Color(red: 0.44, green: 0.66, blue: 0.74), accentHi: pGoldHi,
-                                 card: Color.white.opacity(0.04), cardStroke: pGold.opacity(0.28), track: Color.white.opacity(0.08))
         }
     }
 }
 
-// MARK: - G12：8 款共用的版式归属与导出后缀（internal：PosterEditorModule 共用）
-// 新款只改渲染层：版式复用三类既有内容块（宋纸／宣纸／墨金），结论内容一字不动。
+// MARK: - 导出后缀（internal：PosterEditorModule 共用）
+// 只留宋纸青黛一款：三视图均已解包为无条件宋式版式；尊享预测单走独立布局分支，不进 standardPosterView。
 extension PosterStyle {
-    var usesSongLayout: Bool { self == .songQingdai || self == .qingCi || self == .jinQian }
-    var usesXuanLayout: Bool { self == .xuanPaper || self == .danSha }
-    var usesInkLayout: Bool { self == .inkGold || self == .moLan }
-    var isDarkPoster: Bool { self == .inkGold || self == .moLan }
     var fileSuffix: String {
         switch self {
         case .songQingdai: return "-song"
         case .yuceDan: return "-yucedan"
-        case .xuanPaper: return "-xuan"
-        case .inkGold: return "-ink"
-        case .qingCi: return "-qingci"
-        case .danSha: return "-dansha"
-        case .moLan: return "-molan"
-        case .jinQian: return "-jinqian"
+        }
+    }
+}
+
+// MARK: - 保存图片到相册（4 个海报导出点共用）
+// PHPhotoLibrary 回调在任意队列，状态一律回主线程再写；成功／失败都给一句话，绝不静默失败。
+// 权限：Info.plist 须配 NSPhotoLibraryAddUsageDescription（仅写入相册）。
+struct PosterPhotoSaver {
+    static func save(_ image: UIImage, completion: @escaping (String) -> Void) {
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.creationRequestForAsset(from: image)
+        }) { success, error in
+            DispatchQueue.main.async {
+                if success {
+                    completion("已存入相册")
+                } else if let error = error {
+                    completion("保存失败：\(error.localizedDescription)")
+                } else {
+                    completion("保存失败：未知原因，请检查相册权限后重试")
+                }
+            }
         }
     }
 }
@@ -124,27 +87,6 @@ private func posterCharColor(_ ch: Character, fallback: Color) -> Color {
     return wxColor[el] ?? fallback
 }
 
-struct BaguaRingView: View {
-    let size: CGFloat
-    var accent: Color = pGold
-    var accentHi: Color = pGoldHi
-    private let grams = ["☰", "☱", "☲", "☳", "☴", "☵", "☶", "☷"]
-    var body: some View {
-        ZStack {
-            Circle().stroke(accent.opacity(0.55), lineWidth: 1)
-            Circle().stroke(accent.opacity(0.30), lineWidth: 1).padding(size * 0.085)
-            ForEach(0..<8, id: \.self) { i in
-                Text(grams[i])
-                    .font(.system(size: size * 0.115))
-                    .foregroundStyle(accentHi)
-                    .frame(width: size, height: size, alignment: .top)
-                    .rotationEffect(.degrees(Double(i) * 45))
-            }
-            Text("☯").font(.system(size: size * 0.44)).foregroundStyle(accent)
-        }
-        .frame(width: size, height: size)
-    }
-}
 
 // 宋式远山线描装饰带（用于宋纸青黛版，替代道教八卦太极符）
 private struct SongMountainHeaderView: View {
@@ -187,7 +129,7 @@ private struct VerticalText: View {
     }
 }
 
-/// 海报统一品牌印章（P3 第 1 项）：四款海报共用同一枚朱砂印章——42×42、朱砂底、白字「三术合参」两行；
+/// 海报统一品牌印章（P3 第 1 项）：全站海报共用同一枚朱砂印章——42×42、朱砂底、白字「三术合参」两行；
 /// 替代此前三处 42×42 与预测单 40×40 描边章各自为政的写法，印文一字不动。
 private struct PosterSealView: View {
     var body: some View {
@@ -210,7 +152,7 @@ private struct PosterSealView: View {
 }
 
 /// 海报统一品牌落款条（P3 第 1 项）：印章＋品牌行「三术合参 · 堪舆命理院 谨制」＋各款副标＋日期；
-/// 四款同一结构、同一品牌行；副标与日期各款原文保留，底留白统一 42pt（P3 第 6 项）。
+/// 全站同一结构、同一品牌行；副标与日期各款原文保留，底留白统一 42pt（P3 第 6 项）。
 private struct PosterBrandFooter: View {
     let pal: PosterPalette
     let subtitle: String
@@ -427,11 +369,6 @@ struct PosterView: View {
     private var standardPosterView: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-            if !style.usesSongLayout {
-                RadialGradient(colors: [pal.accent.opacity(0.14), .clear], center: .init(x: 0.5, y: 0.16), startRadius: 10, endRadius: 300)
-                RoundedRectangle(cornerRadius: 10).stroke(pal.accent.opacity(0.55), lineWidth: 1.1).padding(18)
-                RoundedRectangle(cornerRadius: 6).stroke(pal.accent.opacity(0.25), lineWidth: 0.7).padding(24)
-            } else {
                 // 宋式极简发丝外框＋底部远山意境
                 RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
                 VStack {
@@ -439,10 +376,8 @@ struct PosterView: View {
                     SongMountainHeaderView(accent: pal.accent)
                         .padding(.horizontal, 23).padding(.bottom, 23)
                 }
-            }
 
             VStack(spacing: 0) {
-                if style.usesSongLayout {
                     Text("子 平 五 典 · 命 盘 雅 集")
                         .font(.system(size: 12, weight: .medium))
                         .tracking(4)
@@ -452,12 +387,6 @@ struct PosterView: View {
                         .font(.system(size: 44, weight: .bold, design: .serif))
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
-                } else {
-                    BaguaRingView(size: 132, accent: pal.accent, accentHi: pal.accentHi).padding(.top, 42)
-                    Text("三 术 合 参").font(.system(size: 14, design: .serif)).tracking(2).foregroundStyle(pal.accentHi).padding(.top, 12)
-                    Text(displayName.isEmpty ? "命盘" : displayName)
-                        .font(.system(size: 40, weight: .semibold, design: .serif)).foregroundStyle(pal.main).padding(.top, 18)
-                }
 
                 Text("日主 \(chart.rizhu) · 胎元 \(chart.taiYuan) · 命宫 \(chart.mingGong) · 身宫 \(chart.shenGong)")
                     .font(.system(size: 12)).foregroundStyle(pal.sub).padding(.top, 8)
@@ -473,8 +402,8 @@ struct PosterView: View {
                 HStack(spacing: 12) {
                     ForEach(0..<4, id: \.self) { i in
                         let gz = Array(chart.pillars[i])
-                        let sColor = style.isDarkPoster ? (i == 2 ? pal.accentHi : pal.main) : posterCharColor(gz[0], fallback: pal.main)
-                        let bColor = style.isDarkPoster ? (i == 2 ? pal.accentHi : pal.main) : posterCharColor(gz[1], fallback: pal.main)
+                        let sColor = posterCharColor(gz[0], fallback: pal.main)
+                        let bColor = posterCharColor(gz[1], fallback: pal.main)
                         VStack(spacing: 5) {
                             Text(["年柱", "月柱", "日柱", "时柱"][i])
                                 .font(.system(size: 10.5, weight: .medium)).foregroundStyle(pal.sub)
@@ -580,8 +509,7 @@ struct PosterView: View {
                 .frame(width: 444, alignment: .leading)
                 .padding(.top, 14)
 
-                // —— 四款版式差异化区块（宋纸重古籍与大运详批／宣纸重大字四柱六亲神煞／墨金重数据可视）——
-                if style.usesSongLayout {
+                // —— 宋纸版专属区块（重古籍与大运详批）——
                     VStack(alignment: .leading, spacing: 6) {
                         Text("五典原句")
                             .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
@@ -635,101 +563,16 @@ struct PosterView: View {
                     }
                     .frame(width: 444, alignment: .leading)
                     .padding(.top, 14)
-                }
-                if style.usesXuanLayout {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("六亲缘分")
-                            .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                        ForEach(["婚姻感情", "父母缘分", "兄弟姐妹", "子女"], id: \.self) { t in
-                            if let c = items.first(where: { $0.title == t })?.conclusion, !c.isEmpty {
-                                (Text(t + "：").font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                                 + Text(c).font(.system(size: 11)).foregroundStyle(pal.main))
-                                .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        Text("吉凶神煞全解：\(shenShaFullLine)")
-                            .font(.system(size: 11, design: .serif)).foregroundStyle(pal.main)
-                            .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                        Text("十二步大运流年长表")
-                            .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                            .padding(.top, 4)
-                        ForEach(dayun12Lines, id: \.self) { line in
-                            Text(line)
-                                .font(.system(size: 11)).foregroundStyle(pal.main)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        Text("三大核心精批")
-                            .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                            .padding(.top, 4)
-                        ForEach(["婚姻感情", "事业方向", "财运形态"], id: \.self) { t in
-                            if let c = items.first(where: { $0.title == t })?.conclusion, !c.isEmpty {
-                                (Text(t + "：").font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                                 + Text(c).font(.system(size: 11)).foregroundStyle(pal.main))
-                                .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    .frame(width: 444, alignment: .leading)
-                    .padding(.top, 14)
-                }
-                if style.usesInkLayout {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("十神雷达 · 原局十神分布")
-                            .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                        ForEach(shiShenBars, id: \.0) { name, count in
-                            HStack(spacing: 8) {
-                                Text(name).font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.main).frame(width: 44, alignment: .leading)
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 3).fill(pal.track)
-                                    RoundedRectangle(cornerRadius: 3).fill(pal.accent)
-                                        .frame(width: max(3, 300 * CGFloat(count) / 8.0))
-                                }
-                                .frame(width: 300, height: 7)
-                                Text("\(count)").font(.system(size: 11, design: .monospaced)).foregroundStyle(pal.sub).frame(width: 20, alignment: .trailing)
-                            }
-                        }
-                        Text("流年吉凶速览：\(liuNianLine)")
-                            .font(.system(size: 11, design: .serif)).foregroundStyle(pal.main)
-                            .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                        Text("五行雷达")
-                            .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                            .padding(.top, 4)
-                        HStack {
-                            Spacer()
-                            WuxingRadarView(pcts: chart.wuxingPercents, accent: pal.accentHi, track: pal.cardStroke, size: 200)
-                            Spacer()
-                        }
-                        Text("紫微命身三方四正")
-                            .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                            .padding(.top, 4)
-                        ForEach(zwRows, id: \.0) { row in
-                            HStack(alignment: .top, spacing: 6) {
-                                Text(row.0).font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent).frame(width: 62, alignment: .leading)
-                                Text(row.1).font(.system(size: 11)).foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).lineLimit(nil)
-                            }
-                        }
-                        Text("核心调理指南")
-                            .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                            .padding(.top, 4)
-                        Text(InterpretEngine.conclusion(items: items, titles: "如何化解（破局调理）"))
-                            .font(.system(size: 11)).foregroundStyle(pal.main)
-                            .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(width: 444, alignment: .leading)
-                    .padding(.top, 14)
-                }
 
                 Spacer()
 
-                // 统一品牌落款（P3 第 1 项）：四款同一印章＋同一品牌行，副标与日期各款保留
+                // 统一品牌落款（P3 第 1 项）：同一印章＋同一品牌行，副标与日期各款保留
                 PosterBrandFooter(pal: pal, subtitle: displaySubtitle)
             }
 
             // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
-            if style == .songQingdai {
                 VerticalText(text: "子平五典", fontSize: 13, color: pal.accent, spacing: 5)
                     .position(x: 506, y: 110)
-            }
         }
         .frame(width: 540)
     }
@@ -1505,18 +1348,20 @@ struct PosterSheetView: View {
     @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
     @State private var showEditor = false
+    @State private var saveMessage: String?
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                Picker("海报版本", selection: $style) {
-                    ForEach(PosterStyle.allCases, id: \.self) { s in Text(s.rawValue).tag(s) }
+                // 尊享预测单独立入口（不占款式位）：宋纸青黛与预测单长图二选一
+                Button(style == .yuceDan ? "切换回宋纸青黛海报" : "切换到尊享预测单长图") {
+                    style = style == .yuceDan ? .songQingdai : .yuceDan
+                    fileURL = nil; previewImage = nil; saveMessage = nil
                 }
-                .pickerStyle(.segmented)
-                .onChange(of: style) { _, _ in fileURL = nil; previewImage = nil }
+                .buttonStyle(.bordered)
 
                 // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）
-                Button("打开海报编辑器（换字／换款／换色）") { showEditor = true }
+                Button("打开海报编辑器（换字／换色）") { showEditor = true }
                     .buttonStyle(KyPrimaryButton())
                     .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name) }
 
@@ -1539,13 +1384,24 @@ struct PosterSheetView: View {
                         .frame(maxWidth: .infinity)
                 }
 
-                if let u = fileURL {
-                    ShareLink(item: u) {
+                if fileURL != nil, let img = previewImage {
+                    ShareLink(item: img, preview: SharePreview(style == .yuceDan ? "尊享预测单长图海报" : "命盘海报", image: img)) {
                         Label(style == .yuceDan ? "保存 / 分享高清长图海报（1080宽 · 自适应长图）" : "保存 / 分享高清命盘海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
                     .buttonStyle(KyPrimaryButton())
-                    Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
+                    Button {
+                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                    } label: {
+                        Label("保存到相册", systemImage: "photo.badge.plus")
+                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                    }
+                    .buttonStyle(KyPrimaryButton())
+                    if let saveMessage {
+                        Text(saveMessage)
+                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                    }
+                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 }
             }
@@ -1774,21 +1630,14 @@ struct ZiweiPosterView: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-            if !style.usesSongLayout {
-                RadialGradient(colors: [pal.accent.opacity(0.14), .clear], center: .init(x: 0.5, y: 0.16), startRadius: 10, endRadius: 300)
-                RoundedRectangle(cornerRadius: 10).stroke(pal.accent.opacity(0.55), lineWidth: 1.1).padding(18)
-                RoundedRectangle(cornerRadius: 6).stroke(pal.accent.opacity(0.25), lineWidth: 0.7).padding(24)
-            } else {
                 RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
                 VStack {
                     Spacer()
                     SongMountainHeaderView(accent: pal.accent)
                         .padding(.horizontal, 23).padding(.bottom, 23)
                 }
-            }
 
             VStack(spacing: 0) {
-                if style.usesSongLayout {
                     Text("紫 微 斗 数 · 命 盘 雅 集")
                         .font(.system(size: 12, weight: .medium))
                         .tracking(4)
@@ -1798,12 +1647,6 @@ struct ZiweiPosterView: View {
                         .font(.system(size: 44, weight: .bold, design: .serif))
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
-                } else {
-                    BaguaRingView(size: 132, accent: pal.accent, accentHi: pal.accentHi).padding(.top, 42)
-                    Text("三 术 合 参").font(.system(size: 14, design: .serif)).tracking(2).foregroundStyle(pal.accentHi).padding(.top, 12)
-                    Text(name.isEmpty ? "紫微命盘" : name)
-                        .font(.system(size: 40, weight: .semibold, design: .serif)).foregroundStyle(pal.main).padding(.top, 18)
-                }
 
                 Text("\(chart.juName) · \(chart.lunarText)")
                     .font(.system(size: 12)).foregroundStyle(pal.sub).padding(.top, 8)
@@ -1904,15 +1747,13 @@ struct ZiweiPosterView: View {
 
                 Spacer()
 
-                // 统一品牌落款（P3 第 1 项）：四款同一印章＋同一品牌行，副标与日期各款保留
+                // 统一品牌落款（P3 第 1 项）：同一印章＋同一品牌行，副标与日期各款保留
                 PosterBrandFooter(pal: pal, subtitle: "三合派天纪口径 · 方盘缩印 · 生年四化")
             }
 
             // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
-            if style == .songQingdai {
                 VerticalText(text: "紫微斗数", fontSize: 13, color: pal.accent, spacing: 5)
                     .position(x: 506, y: 110)
-            }
         }
         .frame(width: 540)
     }
@@ -1924,16 +1765,11 @@ struct ZiweiPosterSheetView: View {
     @State private var fileURL: URL?
     @State private var style: PosterStyle = .songQingdai
     @State private var previewImage: UIImage?
+    @State private var saveMessage: String?
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                Picker("海报版本", selection: $style) {
-                    ForEach(PosterStyle.allCases, id: \.self) { s in Text(s.rawValue).tag(s) }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: style) { _, _ in fileURL = nil; previewImage = nil; render() }
-
                 // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
                 HStack(spacing: 10) {
                     KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
@@ -1952,13 +1788,24 @@ struct ZiweiPosterSheetView: View {
                         .frame(maxWidth: .infinity)
                 }
 
-                if let u = fileURL {
-                    ShareLink(item: u) {
+                if fileURL != nil, let img = previewImage {
+                    ShareLink(item: img, preview: SharePreview("紫微命盘海报", image: img)) {
                         Label("保存 / 分享高清紫微命盘海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
                     .buttonStyle(KyPrimaryButton())
-                    Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
+                    Button {
+                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                    } label: {
+                        Label("保存到相册", systemImage: "photo.badge.plus")
+                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                    }
+                    .buttonStyle(KyPrimaryButton())
+                    if let saveMessage {
+                        Text(saveMessage)
+                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                    }
+                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 } else {
                     ProgressView("正在渲染 1080宽长图海报…")
@@ -2081,21 +1928,14 @@ struct HeCanPosterView: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-            if !style.usesSongLayout {
-                RadialGradient(colors: [pal.accent.opacity(0.14), .clear], center: .init(x: 0.5, y: 0.16), startRadius: 10, endRadius: 300)
-                RoundedRectangle(cornerRadius: 10).stroke(pal.accent.opacity(0.55), lineWidth: 1.1).padding(18)
-                RoundedRectangle(cornerRadius: 6).stroke(pal.accent.opacity(0.25), lineWidth: 0.7).padding(24)
-            } else {
                 RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
                 VStack {
                     Spacer()
                     SongMountainHeaderView(accent: pal.accent)
                         .padding(.horizontal, 23).padding(.bottom, 23)
                 }
-            }
 
             VStack(spacing: 0) {
-                if style.usesSongLayout {
                     Text("三 术 合 参 · 一 页 要 点")
                         .font(.system(size: 12, weight: .medium))
                         .tracking(4)
@@ -2105,12 +1945,6 @@ struct HeCanPosterView: View {
                         .font(.system(size: 44, weight: .bold, design: .serif))
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
-                } else {
-                    BaguaRingView(size: 104, accent: pal.accent, accentHi: pal.accentHi).padding(.top, 36)
-                    Text("三 术 合 参").font(.system(size: 14, design: .serif)).tracking(2).foregroundStyle(pal.accentHi).padding(.top, 8)
-                    Text(name.isEmpty ? "合参总览" : name)
-                        .font(.system(size: 34, weight: .semibold, design: .serif)).foregroundStyle(pal.main).padding(.top, 12)
-                }
 
                 Text("日主 \(bazi.rizhu) · \(ziwei.juName) · 命宫\(ziwei.palaces[ziwei.mingGong].stem)\(ZiweiCore.DZ[ziwei.mingGong])")
                     .font(.system(size: 12)).foregroundStyle(pal.sub).padding(.top, 8)
@@ -2220,15 +2054,13 @@ struct HeCanPosterView: View {
 
                 Spacer()
 
-                // 统一品牌落款（P3 第 1 项）：四款同一印章＋同一品牌行，副标与日期各款保留；底留白由 36 统一为 42（P3 第 6 项）
+                // 统一品牌落款（P3 第 1 项）：同一印章＋同一品牌行，副标与日期各款保留；底留白由 36 统一为 42（P3 第 6 项）
                 PosterBrandFooter(pal: pal, subtitle: "八字总断 · 紫微方盘 · 双术交叉印证 · 一页合参")
             }
 
             // 宋纸版右缘竖排题签（真竖排：中文单字直下；只用于眉题短句，全文不竖排）
-            if style == .songQingdai {
                 VerticalText(text: "三术合参", fontSize: 13, color: pal.accent, spacing: 5)
                     .position(x: 506, y: 110)
-            }
         }
         // 自适应高度（与预测单长图同款：只定宽 540，高随内容走；旧 960 定高在宋纸版留约 100pt 底白）
         .frame(width: 540)
@@ -2243,16 +2075,11 @@ struct HeCanPosterSheetView: View {
     @State private var fileURL: URL?
     @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
+    @State private var saveMessage: String?
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                Picker("海报版本", selection: $style) {
-                    ForEach(PosterStyle.allCases, id: \.self) { s in Text(s.rawValue).tag(s) }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: style) { _, _ in fileURL = nil; previewImage = nil; render() }
-
                 // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
                 HStack(spacing: 10) {
                     KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
@@ -2272,13 +2099,24 @@ struct HeCanPosterSheetView: View {
                         .frame(maxWidth: .infinity)
                 }
 
-                if let u = fileURL {
-                    ShareLink(item: u) {
+                if fileURL != nil, let img = previewImage {
+                    ShareLink(item: img, preview: SharePreview("合参海报", image: img)) {
                         Label("保存 / 分享高清合参海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
                     .buttonStyle(KyPrimaryButton())
-                    Text("在系统分享菜单中点「存储图像」即可存入手机相册，或直接转发微信。")
+                    Button {
+                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                    } label: {
+                        Label("保存到相册", systemImage: "photo.badge.plus")
+                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                    }
+                    .buttonStyle(KyPrimaryButton())
+                    if let saveMessage {
+                        Text(saveMessage)
+                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                    }
+                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 } else {
                     ProgressView("正在渲染 1080宽长图海报…")

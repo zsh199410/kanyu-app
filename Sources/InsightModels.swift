@@ -12,9 +12,9 @@
 // ＋ Web chart dict（paipan.py:225–241）
 // ReportDocument ← ReportBuilder.lines（ReportModule.swift:7–68）的 6 章结构
 // （四柱细盘／大运／逐年直断／解盘维度摘要／双术合参·交叉印证／紫微摘要）
-// PosterTemplate ← PosterStyle（PosterModule.swift:16–25，8 种）
-// ＋ Web 5 款白名单 qingdai／yucedan／hecan／xuanzhi／mojin（main.py:917–919）
-// ＋ 文件名后缀 -song／-yucedan／-xuan／-ink（PosterModule.swift:1498 前后）
+// PosterTemplate ← PosterStyle（PosterModule.swift，2 种：宋纸青黛／尊享预测单）
+// ＋ Web 3 款白名单 qingdai／yucedan／hecan（main.py /api/poster）
+// ＋ 文件名后缀 -song／-yucedan（PosterModule.swift 各海报 sheet 的 render）
 // ExportManager ← ReportCenterView.swift:29–32 前缀扫描
 // ＋ ReportModule.swift:99「命书-人名.pdf」
 // ＋ PosterModule.swift:1498／1915／2240 文件名拼法
@@ -152,10 +152,8 @@ footerNote: footerNote
 }
 }
 
-/// 海报模板：PosterStyle 的 8 种各对应一个 Web 款式 id 与一个文件名后缀。
-/// 两端款式对照（G12）：songQingdai↔qingdai、yuceDan↔yucedan、xuanPaper↔xuanzhi、
-/// inkGold↔mojin、qingCi↔qingci、danSha↔dansha、moLan↔molan；
-/// jinQian（金笺雅集版）无 Web 对应款（webStyleId 为空串）；
+/// 海报模板：PosterStyle 的 2 种各对应一个 Web 款式 id 与一个文件名后缀。
+/// 两端款式对照：songQingdai↔qingdai、yuceDan↔yucedan；
 /// Web 的 hecan 款在 App 侧无 PosterStyle 对应 case（合参海报在 App 侧为独立渲染），故不硬凑。
 struct PosterTemplate {
 let style: PosterStyle
@@ -173,24 +171,6 @@ fileSuffix = "-song"
 case.yuceDan:
 webStyleId = "yucedan"
 fileSuffix = "-yucedan"
-case.xuanPaper:
-webStyleId = "xuanzhi"
-fileSuffix = "-xuan"
-case.inkGold:
-webStyleId = "mojin"
-fileSuffix = "-ink"
-case.qingCi:
-webStyleId = "qingci"
-fileSuffix = "-qingci"
-case.danSha:
-webStyleId = "dansha"
-fileSuffix = "-dansha"
-case.moLan:
-webStyleId = "molan"
-fileSuffix = "-molan"
-case.jinQian:
-webStyleId = ""
-fileSuffix = "-jinqian"
 }
 }
 
