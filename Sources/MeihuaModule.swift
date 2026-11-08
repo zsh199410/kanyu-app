@@ -1175,7 +1175,9 @@ struct MeihuaView: View {
                     .font(.headline)
                 Text("钟表时间 \(dateFormatter.string(from: r.clock)) · 真太阳时 \(dateFormatter.string(from: r.corrected))（校正 \(String(format: "%.1f", r.correctionMinutes)) 分钟，经度 \(String(format: "%.1f", r.lon))）".scriptConverted)
                     .font(.subheadline)
-                Text("农历".scriptConverted + "\(r.yearBranch)年\(r.month)月\(r.day)日\(r.hourBranch)时" + (r.isLeap ? "（闰月）".scriptConverted : "") + " · 问事：".scriptConverted + (r.question.isEmpty ? "（未填）" : r.question))
+                let lunarHead: String = "农历".scriptConverted + "\(r.yearBranch)年\(r.month)月\(r.day)日\(r.hourBranch)时" + (r.isLeap ? "（闰月）".scriptConverted : "")
+                let lunarLine: String = lunarHead + " · 问事：".scriptConverted + (r.question.isEmpty ? "（未填）" : r.question)
+                Text(lunarLine)
                     .font(.subheadline)
             }
             .padding()

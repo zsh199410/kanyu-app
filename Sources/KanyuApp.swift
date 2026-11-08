@@ -2318,19 +2318,19 @@ struct NewCaseView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("案件") {
+                Section("案件".scriptConverted) {
                     TextField("名称（如：案例001 临街自建房）", text: $c.name)
                     Picker("类型", selection: $c.type) {
                         ForEach(CaseType.allCases) { t in Text(t.rawValue.scriptConverted).tag(t) }
                     }
                     TextField("所在乡镇/小区（粗略即可）", text: $c.locationNote)
                 }
-                Section(Text("年份（定运要用，务必准）".scriptConverted)) {
+                Section("年份（定运要用，务必准）".scriptConverted) {
                     TextField("建成年（如 2016）", text: $c.builtYear).keyboardType(.numberPad)
                     TextField("入住年", text: $c.movedInYear).keyboardType(.numberPad)
                     TextField("大装修年（没有留空）", text: $c.renovatedYear).keyboardType(.numberPad)
                 }
-                Section("常住人（八宅命卦用）") {
+                Section("常住人（八宅命卦用）".scriptConverted) {
                     ForEach($c.residents) { $r in
                         HStack {
                             TextField("称谓", text: $r.label)
@@ -2370,17 +2370,17 @@ struct CaseDetailView: View {
         Group {
             if let d = draft {
                 List {
-                    Section(Text("定盘摘要".scriptConverted)) {
+                    Section("定盘摘要".scriptConverted) {
                         sittingCard(d)
                     }
-                    Section(Text("采集进度".scriptConverted)) {
+                    Section("采集进度".scriptConverted) {
                         let tasks = TaskFactory.tasks(for: d.surveyCase.type)
                         let done = tasks.filter { d.taskDone[$0.id] == true }.count
                         ProgressView(value: Double(done), total: Double(max(1, tasks.count)))
                         Text("任务 \(done)/\(tasks.count) 已完成 · 罗盘 \(d.headings.count) 个 · 已采集媒体 \(d.media.count) 项".scriptConverted)
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Section("基本信息") {
+                    Section("基本信息".scriptConverted) {
                         LabeledContent("类型", value: d.surveyCase.type.rawValue)
                         LabeledContent("地点", value: d.surveyCase.locationNote)
                         LabeledContent("建成 / 入住 / 装修", value: "\(d.surveyCase.builtYear) / \(d.surveyCase.movedInYear) / \(d.surveyCase.renovatedYear)")
@@ -2388,7 +2388,7 @@ struct CaseDetailView: View {
                             LabeledContent("常住人", value: "\(r.label) \(r.birthYear)年 \(r.gender)")
                         }
                     }
-                    Section(Text("罗盘读数（\(d.headings.count)）".scriptConverted)) {
+                    Section("罗盘读数（\(d.headings.count)）".scriptConverted) {
                         NavigationLink {
                             CompassView(draft: binding)
                         } label: { Label { Text("去测罗盘 / 记录方位".scriptConverted) } icon: { Image(systemName: "location.north.circle") } }
@@ -2405,7 +2405,7 @@ struct CaseDetailView: View {
                         }
                         crossCheckNote(d)
                     }
-                    Section(Text("本地勘测（离线）".scriptConverted)) {
+                    Section("本地勘测（离线）".scriptConverted) {
                         NavigationLink {
                             AnalysisView(draft: binding)
                         } label: { Label { Text("排盘断宅：玄空＋八宅＋流年".scriptConverted) } icon: { Image(systemName: "square.grid.3x3.square") } }
@@ -2420,7 +2420,7 @@ struct CaseDetailView: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    Section(Text("任务单".scriptConverted)) {
+                    Section("任务单".scriptConverted) {
                         ForEach(TaskFactory.tasks(for: d.surveyCase.type)) { task in
                             NavigationLink {
                                 TaskDetailView(task: task, draft: binding)
@@ -2436,7 +2436,7 @@ struct CaseDetailView: View {
                             }
                         }
                     }
-                    Section("导出") {
+                    Section("导出".scriptConverted) {
                         NavigationLink {
                             RemoteView(draft: binding)
                         } label: { Label { Text("远程上传 / 检查更新（远程服务）".scriptConverted) } icon: { Image(systemName: "icloud.and.arrow.up") } }
@@ -2814,7 +2814,7 @@ struct AnalysisView: View {
 
     var body: some View {
         List {
-            Section(Text("定盘".scriptConverted)) {
+            Section("定盘".scriptConverted) {
                 if let r = sitReading {
                     LabeledContent("坐向来源", value: "罗盘实测「大门外朝内」\(CompassMath.format(r.trueNorth))")
                 } else {
@@ -2832,16 +2832,16 @@ struct AnalysisView: View {
                 let (ps, pe) = FengshuiEngine.periodRange(period)
                 LabeledContent("本运区间", value: "\(ps)–\(pe) 年")
             }
-            Section(Text("玄空飞星盘（\(period)运 · 下卦）左上山星 右上向星 下运星".scriptConverted)) {
+            Section("玄空飞星盘（\(period)运 · 下卦）左上山星 右上向星 下运星".scriptConverted) {
                 chartGrid
                 patternNote
                 ForEach(comboLines, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
             }
-            Section(Text("流年飞星（入中星沿洛书顺飞）".scriptConverted)) {
+            Section("流年飞星（入中星沿洛书顺飞）".scriptConverted) {
                 Stepper("年份：\(annualYear)（\(FengshuiEngine.starNames[FengshuiEngine.annualStar(year: annualYear)])入中）", value: $annualYear, in: 2000...2050)
                 annualGrid
             }
-            Section("八宅（宅卦 \(sitPalace) · \(FengshuiEngine.group(of: sitPalace))宅）") {
+            Section("八宅（宅卦 \(sitPalace) · \(FengshuiEngine.group(of: sitPalace))宅）".scriptConverted) {
                 let yn = FengshuiEngine.youNian(house: sitPalace)
                 ForEach(FengshuiEngine.displayPalaces.filter { $0 != "中" }, id: \.self) { p in
                     HStack {
@@ -2858,7 +2858,7 @@ struct AnalysisView: View {
                 }
                 Text("出生年以立春为界：立春前出生归上一年；只记年份、立春前后未核对者，命卦定不了精确值，须核对后再定。".scriptConverted).font(.caption).foregroundStyle(.secondary)
             }
-            Section(Text("本地结论（分层）".scriptConverted)) {
+            Section("本地结论（分层）".scriptConverted) {
                 ForEach(conclusionLines, id: \.self) { Text($0).font(.callout) }
                 Button {
                     draft.analysisText = conclusionLines.joined(separator: "\n")
@@ -3097,10 +3097,10 @@ struct ShaDetailView: View {
     let entry: ShaEntry
     var body: some View {
         List {
-            Section(Text("怎么识别".scriptConverted)) { Text(entry.identify.scriptConverted).font(.callout) }
-            Section(Text("哪里不好".scriptConverted)) { Text(entry.why.scriptConverted).font(.callout) }
-            Section(Text("有什么影响（传统主应）".scriptConverted)) { Text(entry.impact.scriptConverted).font(.callout) }
-            Section(Text("怎么化解（分层）".scriptConverted)) { Text(entry.remedy.scriptConverted).font(.callout) }
+            Section("怎么识别".scriptConverted) { Text(entry.identify.scriptConverted).font(.callout) }
+            Section("哪里不好".scriptConverted) { Text(entry.why.scriptConverted).font(.callout) }
+            Section("有什么影响（传统主应）".scriptConverted) { Text(entry.impact.scriptConverted).font(.callout) }
+            Section("怎么化解（分层）".scriptConverted) { Text(entry.remedy.scriptConverted).font(.callout) }
             Section { Text("层级说明：L1 结构/功能调整（可由建筑、卫生、人体工学独立解释，先做）；L2 流派应用（只在所据流派内成立）；L3 民俗/象征（心理安顿，不承诺效力）。".scriptConverted).font(.caption).foregroundStyle(.secondary) }
         }
         .scrollContentBackground(.hidden)
@@ -3124,7 +3124,7 @@ struct RemoteView: View {
 
     var body: some View {
         List {
-            Section(Text("服务器".scriptConverted)) {
+            Section("服务器".scriptConverted) {
                 TextField("服务器地址", text: $serverURL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -3136,7 +3136,7 @@ struct RemoteView: View {
                 } label: { Label { Text("测试连接".scriptConverted) } icon: { Image(systemName: "antenna.radiowaves.left.and.right") } }
                 .disabled(busy)
             }
-            Section(Text("上传本案数据包".scriptConverted)) {
+            Section("上传本案数据包".scriptConverted) {
                 Button {
                     Task { await upload() }
                 } label: { Label(busy ? "上传中…" : "一键上传数据包", systemImage: "icloud.and.arrow.up") }
@@ -3147,7 +3147,7 @@ struct RemoteView: View {
                 }
                 if !status.isEmpty { Text(status).font(.callout) }
             }
-            Section("版本") {
+            Section("版本".scriptConverted) {
                 LabeledContent("当前版本", value: appTag)
                 Button {
                     Task { await checkVersion() }
@@ -3259,12 +3259,12 @@ struct ShaJudgeView: View {
 
     var body: some View {
         List {
-            Section(Text("判定对象".scriptConverted)) {
+            Section("判定对象".scriptConverted) {
                 Picker("煞目", selection: $shaName) {
                     ForEach(ShaLibrary.entries) { Text($0.name).tag($0.name) }
                 }
             }
-            Section(Text("入门三问不过者不成立：①对位？②有受体？③有实害？".scriptConverted)) {
+            Section("入门三问不过者不成立：①对位？②有受体？③有实害？".scriptConverted) {
                 Picker("对位程度", selection: $align) {
                     Text("正对门窗".scriptConverted).tag(2); Text("斜对/偏".scriptConverted).tag(1); Text("侧对/背对".scriptConverted).tag(0)
                 }
@@ -3273,7 +3273,7 @@ struct ShaJudgeView: View {
                 }
                 Toggle("有可观察实害（风/光/声/水/安全/卫生）", isOn: $harm)
             }
-            Section(Text("五变量加权".scriptConverted)) {
+            Section("五变量加权".scriptConverted) {
                 Picker("距离", selection: $dist) {
                     Text("近（<10 米）").tag(2); Text("中（10–30 米）").tag(1); Text("远（>30 米）".scriptConverted).tag(0)
                 }
@@ -3284,7 +3284,7 @@ struct ShaJudgeView: View {
                     Text("煞体远大于宅".scriptConverted).tag(2); Text("相当").tag(1); Text("煞体小于宅").tag(0)
                 }
             }
-            Section(Text("判定结果".scriptConverted)) {
+            Section("判定结果".scriptConverted) {
                 Text("定级：\(level)").font(.headline)
                     .foregroundStyle(level.hasPrefix("重") ? .red : (level.hasPrefix("中") ? .orange : .secondary))
                 Text(advice).font(.callout)
@@ -3330,7 +3330,7 @@ struct KnowledgeView: View {
             ForEach(cards, id: \.0) { card in
                 Section(card.0) { Text(card.1).font(.callout) }
             }
-            Section(Text("来源".scriptConverted)) {
+            Section("来源".scriptConverted) {
                 Text("本卡片为风水堪舆专窗知识库（00–08）的离线精简版，口径以工作手册五条定调为准；完整版与出处在知识库，随安装包升级更新。".scriptConverted).font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -3347,8 +3347,8 @@ struct TaskDetailView: View {
     @Binding var draft: CaseData
     var body: some View {
         List {
-            Section("怎么做") { Text(task.instruction) }
-            Section(Text("备注".scriptConverted)) {
+            Section("怎么做".scriptConverted) { Text(task.instruction) }
+            Section("备注".scriptConverted) {
                 TextField("补充说明（可选）", text: noteBinding, axis: .vertical).lineLimit(2...5)
             }
             Section {
@@ -3375,7 +3375,7 @@ struct TaskDetailView: View {
             }
             let items = draft.media.filter { $0.taskId == task.id }
             if !items.isEmpty {
-                Section("本项已采集（\(items.count)）") {
+                Section("本项已采集（\(items.count)）".scriptConverted) {
                     ForEach(items) { m in
                         Text("\(CompassMath.kindLabel(m.kind)) · 真北 \(CompassMath.format(m.trueHeading)) \(m.mountain) · \(SurveyStore.timeFormatter.string(from: m.timestamp))")
                             .font(.caption)
