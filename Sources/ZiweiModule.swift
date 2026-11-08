@@ -501,6 +501,7 @@ struct ZiweiBoardView: View {
             Text("\(chart.juName) · 命宫\(ZiweiCore.DZ[chart.mingGong]) · 身宫\(chart.palaces[chart.shenGong].name)".scriptConverted)
                 .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
             ForEach(chart.palaces.sorted { ($0.decadal.first ?? 0) < ($1.decadal.first ?? 0) }, id: \.branch) { p in
+                let majorsText: String = p.majors.map { $0.star + ZiweiBrightness.of($0.star, branch: p.branch) + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: "、")
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(p.name.scriptConverted).font(.callout).fontWeight(.bold).foregroundStyle(p.branch == chart.mingGong ? Ky.cinnabar : Ky.ink)
@@ -510,7 +511,7 @@ struct ZiweiBoardView: View {
                         Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.caption).foregroundStyle(Ky.sub)
                     }
                     if !p.majors.isEmpty {
-                        Text((p.majors.map { $0.star + ZiweiBrightness.of($0.star, branch: p.branch) + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: "、")).scriptConverted)
+                        Text(majorsText.scriptConverted)
                             .font(.callout).foregroundStyle(Ky.ink)
                     }
                     if !p.minors.isEmpty {
@@ -528,7 +529,7 @@ struct ZiweiBoardView: View {
                 )
                 .onTapGesture {
                     KyV6.impact(.light)
-                    selected = p.branch
+                    selectedStored = p.branch
                     showPalaceSheet = true
                 }
             }
@@ -543,7 +544,7 @@ struct ZiweiBoardView: View {
             HStack {
                 KySectionTitle(title: "紫微十二宫方盘", trailing: "点任意宫位切换三方四正")
                 if selected != nil {
-                    Button("回命宫".scriptConverted) { selected = nil }
+                    Button("回命宫".scriptConverted) { selectedStored = -1 }
                         .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                 }
                 Button(boardScale > 1.0 ? "复位".scriptConverted : "放大".scriptConverted) {
@@ -734,7 +735,7 @@ struct ZiweiBoardView: View {
         return Button {
             KyV6.impact(.light)
             withAnimation(KyMotion.toggle) {
-                selected = p.branch
+                selectedStored = p.branch
             }
             showPalaceSheet = true
         } label: {

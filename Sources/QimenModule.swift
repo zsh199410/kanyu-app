@@ -1307,7 +1307,7 @@ struct QimenHomeView: View {
                     ForEach(rows[r], id: \.self) { p in
                         Button {
                             KyV6.impact(.light)
-                            selectedPalace = p
+                            selectedPalaceStored = p
                             showPalaceSheet = true
                         } label: {
                             cell(ch, palace: p)
