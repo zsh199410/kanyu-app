@@ -154,7 +154,8 @@ struct YearByYearView: View {
                     }
                     Spacer()
                     Button {
-                        withAnimation(.easeInOut(duration: 0.16)) { onlyKeyYears.toggle() }
+                        KyV6.impact(.light)
+                        withAnimation(KyMotion.toggle) { onlyKeyYears.toggle() }
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: onlyKeyYears ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
@@ -230,8 +231,9 @@ struct LifePlanView: View {
     let name: String
     private let reps: [YearEngine.YearReport]
     private let stageList: [Stage]
-    @State private var selectedStage: Int = -1   // -1 表示全阶段，0..7 表示对应阶段
-    @State private var onlyKeyYears: Bool = false
+    // UI 2.1 第6批：阶段与关键年筛选跨启动保留（SceneStorage）
+    @SceneStorage("lifePlan.selectedStage") private var selectedStage: Int = -1   // -1 表示全阶段，0..7 表示对应阶段
+    @SceneStorage("lifePlan.onlyKeyYears") private var onlyKeyYears: Bool = false
 
     init(chart: BaziChart, name: String) {
         self.chart = chart
@@ -291,7 +293,8 @@ struct LifePlanView: View {
                             .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                         Spacer()
                         Button {
-                            withAnimation(.easeInOut(duration: 0.16)) { onlyKeyYears.toggle() }
+                            KyV6.impact(.light)
+                            withAnimation(KyMotion.toggle) { onlyKeyYears.toggle() }
                         } label: {
                             Text(onlyKeyYears ? "仅关键年".scriptConverted : "全部年份".scriptConverted)
                                 .font(.caption).fontWeight(.semibold)
@@ -305,7 +308,8 @@ struct LifePlanView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 7) {
                             Button {
-                                withAnimation(.easeInOut(duration: 0.16)) { selectedStage = -1 }
+                                KyV6.impact(.light)
+                                withAnimation(KyMotion.toggle) { selectedStage = -1 }
                             } label: {
                                 Text("全部阶段 (1–88岁)".scriptConverted)
                                     .font(.caption).fontWeight(selectedStage == -1 ? .bold : .medium)
@@ -319,7 +323,8 @@ struct LifePlanView: View {
                                 let active = selectedStage == si
                                 let st = stages[si]
                                 Button {
-                                    withAnimation(.easeInOut(duration: 0.16)) { selectedStage = si }
+                                    KyV6.impact(.light)
+                                    withAnimation(KyMotion.toggle) { selectedStage = si }
                                 } label: {
                                     Text("\(st.name) (\(st.range.lowerBound)–\(st.range.upperBound))".scriptConverted)
                                         .font(.caption).fontWeight(active ? .bold : .medium)

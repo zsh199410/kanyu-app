@@ -412,6 +412,9 @@ final class PalmRecordStore: ObservableObject {
 struct PalmRecordListView: View {
     @StateObject private var store = PalmRecordStore()
     @State private var exportCache: URL?
+    // UI 2.1 第6批：删除测量记录须确认（照片文件随记录删，照片原件不在备份包内）
+    @State private var pendingDeleteRecord: PalmRecord? = nil
+    @State private var showDeleteConfirm = false
     var body: some View {
         List {
             if store.records.isEmpty {
@@ -432,8 +435,22 @@ struct PalmRecordListView: View {
                     }
                 }
                 .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) { store.remove(r) } label: { Label("删除".scriptConverted, systemImage: "trash") }
+                    Button(role: .destructive) {
+                        pendingDeleteRecord = r
+                        showDeleteConfirm = true
+                    } label: { Label("删除".scriptConverted, systemImage: "trash") }
                 }
+            }
+        }
+        .confirmationDialog("删除测量记录？".scriptConverted, isPresented: $showDeleteConfirm) {
+            Button("删除".scriptConverted, role: .destructive) {
+                if let r = pendingDeleteRecord { store.remove(r) }
+                pendingDeleteRecord = nil
+            }
+            Button("取消".scriptConverted, role: .cancel) { pendingDeleteRecord = nil }
+        } message: {
+            if let r = pendingDeleteRecord {
+                Text("将删除「\(r.personName.isEmpty ? "未命名" : r.personName)」的测量记录，照片文件随记录一并删除，照片原件不在备份包内。".scriptConverted)
             }
         }
         .navigationTitle("测量记录".scriptConverted)

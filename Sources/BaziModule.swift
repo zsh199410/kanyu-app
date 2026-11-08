@@ -576,7 +576,7 @@ struct BaziHomeView: View {
                 .accessibilityLabel("存入人物档案")
             }
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = false }
+                withAnimation(KyMotion.toggle) { inputCollapsed = false }
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "slider.horizontal.below.rectangle")
@@ -598,7 +598,7 @@ struct BaziHomeView: View {
                 KySectionTitle(title: "生辰录入", trailing: "支持公农历与真太阳时")
                 if chart != nil {
                     Button("收起".scriptConverted) {
-                        withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
+                        withAnimation(KyMotion.toggle) { inputCollapsed = true }
                     }
                     .font(.caption).foregroundStyle(Ky.qingdai)
                 }
@@ -639,7 +639,7 @@ struct BaziHomeView: View {
                 chart = BaziEngine.paipan(clock: birth, gender: gender,
                                           longitude: useLongitude ? Double(longitudeText) : nil)
                 chartSnapshot = inputSnapshot; savedTip = false
-                withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
+                withAnimation(KyMotion.toggle) { inputCollapsed = true }
             }.buttonStyle(KyPrimaryButton())
 
             if isStale {
@@ -685,9 +685,14 @@ struct BaziResultView: View {
     let name: String
     @State private var proMode = true       // 默认开启专业细盘，干支藏干十神星运一次看全
     @State private var timeLevel = 0        // 0 大运 1 流年 2 流月 3 流日
-    @State private var selectedDayun = 0
+    // UI 2.1 第6批：大运／流年／点柱选中跨启动保留（SceneStorage；Int? 用 -1＝未选）
+    @SceneStorage("bazi.selectedDayun") private var selectedDayun = 0
     private var safeDayun: Int { chart.dayunGanZhi.isEmpty ? 0 : min(selectedDayun, chart.dayunGanZhi.count - 1) }
-    @State private var selectedYear: Int? = nil
+    @SceneStorage("bazi.selectedYear") private var selectedYearStored: Int = -1
+    private var selectedYear: Int? {
+        get { selectedYearStored >= 0 ? selectedYearStored : nil }
+        set { selectedYearStored = newValue ?? -1 }
+    }
     @State private var flowDate = Date()
     @State private var flowHour = 12
     @State private var copied = false
@@ -697,7 +702,11 @@ struct BaziResultView: View {
     @State private var showDetail = false
     @State private var showEnlargedPlate = false  // UI 2.1 第2批：放大四柱用 .sheet 弹出
     @State private var showShichen = false  // 十二时辰对照默认折叠，不喧宾夺主
-    @State private var selectedPillar: Int? = nil  // 点柱牵动源（nil＝未选）
+    @SceneStorage("bazi.selectedPillar") private var selectedPillarStored: Int = -1
+    private var selectedPillar: Int? {  // 点柱牵动源（nil＝未选）
+        get { selectedPillarStored >= 0 ? selectedPillarStored : nil }
+        set { selectedPillarStored = newValue ?? -1 }
+    }
     @State private var yunSource: YunSource? = nil  // 下钻大运／流年牵动源（与点柱互斥）
     @State private var pulse = false  // 呼吸高光相位
 
@@ -1146,7 +1155,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                         RoundedRectangle(cornerRadius: 11)
                             .stroke(highlightColor(for: i), lineWidth: 1.6)
                             .opacity(highlightOpacity(for: i))
-                            .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: pulse)
+                            .animation(KyMotion.breathing, value: pulse)
                     )
                     .onTapGesture {
                         tapHaptic()
@@ -1327,7 +1336,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
         let ranges = ["23–1", "1–3", "3–5", "5–7", "7–9", "9–11", "11–13", "13–15", "15–17", "17–19", "19–21", "21–23"]
         return VStack(alignment: .leading, spacing: 10) {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) { showShichen.toggle() }
+                withAnimation(KyMotion.toggle) { showShichen.toggle() }
             } label: {
                 HStack {
                     KySectionTitle(title: "同日十二时辰对照", trailing: "本盘时柱 \(chart.timePillar)")

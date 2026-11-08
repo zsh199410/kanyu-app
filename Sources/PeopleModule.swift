@@ -124,11 +124,15 @@ struct PeopleView: View {
     @State private var editing: Person?
     @State private var showingNew = false
     @State private var exportCache: URL?
+    // UI 2.1 第6批：删除人物须确认（出生时间是唯一输入，无自动备份）
+    @State private var pendingDeletePerson: Person? = nil
+    @State private var showDeleteConfirm = false
     private static var fmt: DateFormatter {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH:mm"
         f.timeZone = TimeZone(secondsFromGMT: 8 * 3600); return f
     }
-    @State private var query = ""
+    // UI 2.1 第6批：搜索跨启动保留（SceneStorage）
+    @SceneStorage("people.query") private var query = ""
     @State private var importing = false
     @State private var importNote = ""
     private var filtered: [Person] {
@@ -190,6 +194,17 @@ struct PeopleView: View {
             PersonFormView(store: store, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970), onSaved: { showingNew = false })
         }
         .sheet(item: $editing) { p in PersonFormView(store: store, person: p, onSaved: { editing = nil }) }
+        .confirmationDialog("删除人物？".scriptConverted, isPresented: $showDeleteConfirm) {
+            Button("删除".scriptConverted, role: .destructive) {
+                if let p = pendingDeletePerson { store.remove(p) }
+                pendingDeletePerson = nil
+            }
+            Button("取消".scriptConverted, role: .cancel) { pendingDeletePerson = nil }
+        } message: {
+            if let p = pendingDeletePerson {
+                Text("将删除「\(p.name)」的人物档案，出生时间只能凭记忆重建；恢复只依赖手动导出的备份包。".scriptConverted)
+            }
+        }
     }
     private func exportURL() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("people-export.json")
@@ -211,7 +226,10 @@ struct PeopleView: View {
             }
         }
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive) { store.remove(p) } label: { Label("删除".scriptConverted, systemImage: "trash") }
+            Button(role: .destructive) {
+                pendingDeletePerson = p
+                showDeleteConfirm = true
+            } label: { Label("删除".scriptConverted, systemImage: "trash") }
             Button { editing = p } label: { Label("编辑".scriptConverted, systemImage: "pencil") }
         }
     }

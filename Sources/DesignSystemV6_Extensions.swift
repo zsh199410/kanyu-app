@@ -411,7 +411,7 @@ struct KyFilterBar: View {
                     let item = options[idx]
                     Button {
                         KyV6.impact(.light)
-                        withAnimation(.easeInOut(duration: 0.16)) {
+                        withAnimation(KyMotion.toggle) {
                             selectedIndex = idx
                         }
                     } label: {

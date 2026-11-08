@@ -159,7 +159,7 @@ HStack {
 Text("📐 户型图透视压盘区（南上北下）".scriptConverted).font(.system(size: 11.5, weight:.bold, design:.serif)).foregroundStyle(Ky.sub)
 Spacer()
 Button {
-withAnimation(.spring()) { centerOffset = .zero; lastOffset = .zero}
+withAnimation(KyMotion.dragSpring) { centerOffset = .zero; lastOffset = .zero}
 } label: {
 HStack(spacing: 3) {
 Image(systemName: "arrow.counterclockwise")
@@ -304,7 +304,7 @@ let b = xuanKongChart.base[palace] ?? 9
 let bz = baZhaiTable[palace] ?? ("平", true, "")
 
 return Button {
-withAnimation(.easeInOut(duration: 0.15)) { selectedPalace = palace}
+withAnimation(KyMotion.toggle) { selectedPalace = palace}
 } label: {
 ZStack {
 RoundedRectangle(cornerRadius: 8, style:.continuous)

@@ -61,6 +61,9 @@ struct ForecastView: View {
     @StateObject private var store = ForecastStore()
     @State private var showingNew = false
     @State private var exportCache: URL?
+    // UI 2.1 第6批：删除前瞻登记须确认（冻结断语原文是唯一输入，引擎无法重算用户原话）
+    @State private var pendingDeleteEntry: ForecastEntry? = nil
+    @State private var showDeleteConfirm = false
     static func writeExport(_ data: Data, _ name: String) -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         try? data.write(to: url, options: .atomic)
@@ -93,8 +96,22 @@ struct ForecastView: View {
                     Text(e.text).font(.callout).foregroundStyle(Ky.ink)
                 }
                 .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) { store.remove(e) } label: { Label("删除".scriptConverted, systemImage: "trash") }
+                    Button(role: .destructive) {
+                        pendingDeleteEntry = e
+                        showDeleteConfirm = true
+                    } label: { Label("删除".scriptConverted, systemImage: "trash") }
                 }
+            }
+        }
+        .confirmationDialog("删除前瞻登记？".scriptConverted, isPresented: $showDeleteConfirm) {
+            Button("删除".scriptConverted, role: .destructive) {
+                if let e = pendingDeleteEntry { store.remove(e) }
+                pendingDeleteEntry = nil
+            }
+            Button("取消".scriptConverted, role: .cancel) { pendingDeleteEntry = nil }
+        } message: {
+            if let e = pendingDeleteEntry {
+                Text("将删除「\(e.personName)」\(e.targetYear) 年的冻结断语，原文删后无法从引擎重算。".scriptConverted)
             }
         }
         .navigationTitle("前瞻登记".scriptConverted)

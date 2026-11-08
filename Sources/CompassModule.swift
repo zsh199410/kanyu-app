@@ -700,6 +700,7 @@ struct CompassStandaloneView: View {
             spread: r)
         lockStore.setLock(lock)
         justLocked = true
+        KyV6.impact(.light)
         collectHint = lowAccuracy
             ? "已锁定（低精度备选样本 \(trueSamples.count) 次平均，精度 ±\(Int(location.headingAccuracy))°，已标注；能重测尽量重测）"
             : "已锁定：\(trueSamples.count) 次采样平均，集中度 \(String(format: "%.2f", r))（越接近 1 越稳）"

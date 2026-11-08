@@ -105,8 +105,9 @@ LibraryEntry(id: 99, cat: "论命", title: "宽断降权（回测纪律）", bod
 ] }
 // MARK: - 断语库（可搜索的研习条文库：类象/长生/排盘/论命/五典/健康/合婚/紫微/实务/破局）
 struct LibraryView: View {
-    @State private var query = ""
-    @State private var catIndex = 0
+    // UI 2.1 第6批：搜索与分类跨启动保留（SceneStorage）
+    @SceneStorage("library.query") private var query = ""
+    @SceneStorage("library.catIndex") private var catIndex = 0
     private var cats: [String] { ["全部"] + Array(Set(LibraryData.entries.map { $0.cat })).sorted() }
     private var cat: String { cats[catIndex] }
     private var filterOptions: [(title: String, count: Int?)] {

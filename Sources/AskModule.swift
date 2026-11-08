@@ -109,6 +109,8 @@ struct AskView: View {
     @State private var busy = false
     @State private var errorText = ""
     @State private var history: [AskHistoryItem] = AskView.loadHistory()
+    // UI 2.1 第6批：清空全部问答记录须确认（无导出／恢复入口）
+    @State private var showClearConfirm = false
 
     private static let historyKey = "kanyu.ask.history.v1"
 
@@ -158,10 +160,18 @@ struct AskView: View {
                                 .font(.headline)
                             Spacer()
                             Button("清空".scriptConverted) {
-                                history = []
-                                AskView.saveHistory([])
+                                showClearConfirm = true
                             }
                             .font(.callout)
+                            .confirmationDialog("清空问答记录？".scriptConverted, isPresented: $showClearConfirm) {
+                                Button("全部清空".scriptConverted, role: .destructive) {
+                                    history = []
+                                    AskView.saveHistory([])
+                                }
+                                Button("取消".scriptConverted, role: .cancel) {}
+                            } message: {
+                                Text("将一键清空全部本地问答记录，无导出与恢复入口；问题可重问再生。".scriptConverted)
+                            }
                         }
                         ForEach(history.prefix(10)) { item in
                             VStack(alignment: .leading, spacing: 2) {

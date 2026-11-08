@@ -1093,14 +1093,23 @@ struct QimenHomeView: View {
     @State private var showRijia = false
     @State private var rijiaChart: QimenEngine.RijiaChart? = nil
     // P2：九宫盘宫位点击详情弹层
-    @State private var selectedPalace: Int? = nil
+    // UI 2.1 第6批：选中宫位跨启动保留（SceneStorage；-1＝未选）
+    @SceneStorage("qimen.selectedPalace") private var selectedPalaceStored: Int = -1
+    private var selectedPalace: Int? {
+        get { selectedPalaceStored >= 0 ? selectedPalaceStored : nil }
+        set { selectedPalaceStored = newValue ?? -1 }
+    }
     @State private var showPalaceSheet = false
     // UI 2.1 第3批：九宫盘图层开关（默认全开；只影响显示，不改变计算结果）
-    @State private var showTianPan = true
-    @State private var showDiPan = true
-    @State private var showStar = true
-    @State private var showDoor = true
-    @State private var showGod = true
+    // UI 2.1 第6批：图层开关跨启动保留（SceneStorage）
+    @SceneStorage("qimen.showTianPan") private var showTianPan = true
+    @SceneStorage("qimen.showDiPan") private var showDiPan = true
+    @SceneStorage("qimen.showStar") private var showStar = true
+    @SceneStorage("qimen.showDoor") private var showDoor = true
+    @SceneStorage("qimen.showGod") private var showGod = true
+    // UI 2.1 第6批：九宫盘独立放大（缩放变换，不进布局；按钮 1.0↔1.6，双指捏合 1.0–1.8）
+    @State private var boardScale: CGFloat = 1.0
+    @State private var pinchScale: CGFloat = 1.0
     // UI 2.1 第3批：参数变更后「正在重新起局」轻量提示
     @State private var showRecomputeHint = false
     // 起局只在时间变时算一次：排盘是纯计算但不便宜，body 每求值一次就重算会拖滑动；
@@ -1272,7 +1281,15 @@ struct QimenHomeView: View {
 
     private func boardCard(_ ch: QimenEngine.Chart) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("九宫盘面（后天八卦方位）".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+            HStack {
+                Text("九宫盘面（后天八卦方位）".scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+                Spacer(minLength: 0)
+                Button(boardScale > 1.0 ? "复位".scriptConverted : "放大".scriptConverted) {
+                    withAnimation(KyMotion.toggle) { boardScale = boardScale > 1.0 ? 1.0 : 1.6 }
+                }
+                .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                .accessibilityLabel(boardScale > 1.0 ? "复位九宫盘" : "放大九宫盘")
+            }
             Text("大字为天盘干，小字为地盘干；金框为值符星宫，红框为值使门宫。".scriptConverted)
                 .font(.caption2).foregroundStyle(Ky.sub)
             HStack(spacing: 10) {
@@ -1289,6 +1306,7 @@ struct QimenHomeView: View {
                 HStack(spacing: 8) {
                     ForEach(rows[r], id: \.self) { p in
                         Button {
+                            KyV6.impact(.light)
                             selectedPalace = p
                             showPalaceSheet = true
                         } label: {
@@ -1299,11 +1317,21 @@ struct QimenHomeView: View {
                 }
             }
         }.kyCard()
+        .scaleEffect(boardScale * pinchScale)
+        .gesture(
+            MagnificationGesture()
+                .onChanged { pinchScale = $0 }
+                .onEnded { v in
+                    boardScale = min(max(boardScale * v, 1.0), 1.8)
+                    pinchScale = 1.0
+                }
+        )
     }
 
     // UI 2.1 第3批：九宫盘图层开关小芯片（开为实心勾，关为空心圈）
     private func layerChip(_ title: String, _ isOn: Binding<Bool>) -> some View {
         Button {
+            KyV6.impact(.light)
             isOn.wrappedValue.toggle()
         } label: {
             HStack(spacing: 3) {

@@ -183,8 +183,9 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
 struct AllToolsView: View {
     @EnvironmentObject var peopleStore: PeopleStore
     @Binding var selectedTab: Int
-    @State private var query = ""
-    @State private var selectedGroup = 0
+    // UI 2.1 第6批：搜索与分组跨启动保留（SceneStorage）
+    @SceneStorage("allTools.query") private var query = ""
+    @SceneStorage("allTools.selectedGroup") private var selectedGroup = 0
 
     private var groups: [ToolGroup] { [.all, .paipan, .calendar, .knowledge, .tools] }
 

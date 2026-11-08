@@ -526,8 +526,9 @@ struct InterpretView: View {
     let chart: BaziChart
     let name: String
     @StateObject private var speaker = Speaker()
-    @State private var selectedCategory = 0
-    @State private var searchQuery = ""
+    // UI 2.1 第6批：解盘分类与搜索跨启动保留（SceneStorage；展开集仍会话内）
+    @SceneStorage("interpret.selectedCategory") private var selectedCategory = 0
+    @SceneStorage("interpret.searchQuery") private var searchQuery = ""
     @State private var showGlossary = false
     @State private var verifyTick = 0
     @State private var expandedItems: Set<Int> = [0, 1, 2, 3, 4]  // 详批折叠：interpret() 前 5 条恒为总纲，默认展开；25 维默认折叠，点标题展开
@@ -611,7 +612,8 @@ struct InterpretView: View {
                                 let active = selectedCategory == cIdx
                                 let count = cIdx == 0 ? allItems.count : Self.categories[cIdx].1.count
                                 Button {
-                                    withAnimation(.easeInOut(duration: 0.16)) { selectedCategory = cIdx }
+                                    KyV6.impact(.light)
+                                    withAnimation(KyMotion.toggle) { selectedCategory = cIdx }
                                 } label: {
                                     Text("\(Self.categories[cIdx].0) \(count)".scriptConverted)
                                         .font(.caption).fontWeight(active ? .bold : .medium)

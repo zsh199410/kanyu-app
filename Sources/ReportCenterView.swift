@@ -88,7 +88,8 @@ enum ReportHistory {
 struct ReportCenterView: View {
     var person: Person? = nil
     @State private var entries: [ReportHistoryEntry] = []
-    @State private var scope = 0   // 0：仅看此人（有指定人物时默认） 1：全部
+    // UI 2.1 第6批：筛选范围跨启动保留（SceneStorage）
+    @SceneStorage("reportCenter.scope") private var scope = 0   // 0：仅看此人（有指定人物时默认） 1：全部
 
     private var shown: [ReportHistoryEntry] {
         if person == nil || scope == 1 { return entries }

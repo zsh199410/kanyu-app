@@ -1302,6 +1302,16 @@ enum Ky {
     static let instInk = Color(rgb: 0xEDE8DC)
 }
 
+/// 动效标准（UI 2.1 第6批立规）：全仓显式动效只此四种，新增动效一律引用此处，不得另起时长。
+/// 标准取现行已收敛值（状态切换以 0.2s 居多），不采纳第四篇的 0.25s／0.3s spring——改慢无收益；
+/// 飞线 0.75s 与呼吸高光 1.1s 是第2批／P0 定好的行为，冻结不动。
+enum KyMotion {
+    static let toggle = Animation.easeInOut(duration: 0.2)      // 状态切换（折叠／选中／筛选）
+    static let flyline = Animation.linear(duration: 0.75)       // 紫微飞线三段渐进
+    static let breathing = Animation.easeInOut(duration: 1.1).repeatForever(autoreverses: true) // 呼吸高光循环
+    static let dragSpring = Animation.spring()                   // 拖拽回弹（户型中宫复位）
+}
+
 struct KyPrimaryButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -1979,7 +1989,11 @@ struct HomePageView: View {
 struct KanyuWorkbenchTabView: View {
     @EnvironmentObject var store: SurveyStore
     @State private var showingNew = false
-    @State private var query = ""
+    // UI 2.1 第6批：案件搜索跨启动保留（SceneStorage）
+    @SceneStorage("cases.query") private var query = ""
+    // UI 2.1 第6批：删除勘察案件须确认（整案目录含照片／视频，备份包不含照片原件）
+    @State private var pendingDeleteCase: CaseData? = nil
+    @State private var showDeleteCaseConfirm = false
 
     private var filtered: [CaseData] {
         if query.isEmpty { return store.cases }
@@ -2217,10 +2231,20 @@ struct KanyuWorkbenchTabView: View {
                     .buttonStyle(.plain)
                     .contextMenu {
                         Button(role: .destructive) {
-                            if let idx = store.cases.firstIndex(where: { $0.id == cd.id }) {
+                            pendingDeleteCase = cd
+                            showDeleteCaseConfirm = true
+                        } label: { Label { Text("删除案件".scriptConverted) } icon: { Image(systemName: "trash") } }
+                    }
+                    .confirmationDialog("删除勘察案件？".scriptConverted, isPresented: $showDeleteCaseConfirm) {
+                        Button("删除".scriptConverted, role: .destructive) {
+                            if let cd = pendingDeleteCase, let idx = store.cases.firstIndex(where: { $0.id == cd.id }) {
                                 store.deleteCase(at: IndexSet(integer: idx))
                             }
-                        } label: { Label { Text("删除案件".scriptConverted) } icon: { Image(systemName: "trash") } }
+                            pendingDeleteCase = nil
+                        }
+                        Button("取消".scriptConverted, role: .cancel) { pendingDeleteCase = nil }
+                    } message: {
+                        Text("将删除该勘察案件的整案目录，照片／视频／扫描随目录一并删除；备份包只含案件索引，照片原件不在包内。".scriptConverted)
                     }
                 }
             }
@@ -2373,6 +2397,9 @@ struct CaseDetailView: View {
     let caseId: UUID
     @State private var draft: CaseData?
     @State private var exportURL: URL?
+    // UI 2.1 第6批：删除罗盘读数须确认（现场实测读数，删后须重返现场重测）
+    @State private var pendingDeleteHeadings: IndexSet? = nil
+    @State private var showDeleteHeadingsConfirm = false
 
     var body: some View {
         Group {
@@ -2409,7 +2436,8 @@ struct CaseDetailView: View {
                             }
                         }
                         .onDelete { idx in
-                            draft?.headings.remove(atOffsets: idx); commit()
+                            pendingDeleteHeadings = idx
+                            showDeleteHeadingsConfirm = true
                         }
                         crossCheckNote(d)
                     }
@@ -2462,6 +2490,18 @@ struct CaseDetailView: View {
                 .background(Ky.bg)
                 .navigationTitle(d.surveyCase.name)
                 .navigationBarTitleDisplayMode(.inline)
+                .confirmationDialog("删除罗盘读数？".scriptConverted, isPresented: $showDeleteHeadingsConfirm) {
+                    Button("删除".scriptConverted, role: .destructive) {
+                        if let idx = pendingDeleteHeadings {
+                            draft?.headings.remove(atOffsets: idx)
+                            commit()
+                        }
+                        pendingDeleteHeadings = nil
+                    }
+                    Button("取消".scriptConverted, role: .cancel) { pendingDeleteHeadings = nil }
+                } message: {
+                    Text("将删除选中的罗盘读数，现场实测读数删后须重返现场重测，无备份。".scriptConverted)
+                }
             } else {
                 Text("案件不存在").foregroundStyle(.secondary)
             }

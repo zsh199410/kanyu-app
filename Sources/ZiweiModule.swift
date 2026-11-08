@@ -302,7 +302,7 @@ struct ZiweiHomeView: View {
             }
             Spacer()
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = false }
+                withAnimation(KyMotion.toggle) { inputCollapsed = false }
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "slider.horizontal.below.rectangle")
@@ -324,7 +324,7 @@ struct ZiweiHomeView: View {
                 KySectionTitle(title: "紫微安星录入", trailing: "天纪三合派")
                 if chart != nil {
                     Button("收起".scriptConverted) {
-                        withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
+                        withAnimation(KyMotion.toggle) { inputCollapsed = true }
                     }
                     .font(.caption).foregroundStyle(Ky.qingdai)
                 }
@@ -382,7 +382,7 @@ struct ZiweiHomeView: View {
                 chart = ZiweiEngine.chart(clock: birth, gender: gender,
                                           longitude: useLongitude ? Double(longitudeText) : nil)
                 chartSnapshot = inputSnapshot; savedTip = false
-                withAnimation(.easeInOut(duration: 0.2)) { inputCollapsed = true }
+                withAnimation(KyMotion.toggle) { inputCollapsed = true }
             }.buttonStyle(KyPrimaryButton())
             if isStale {
                 HStack(spacing: 5) {
@@ -415,9 +415,17 @@ struct ZiweiHomeView: View {
 struct ZiweiBoardView: View {
     let chart: ZiweiChart
     let name: String
-    @State private var selected: Int? = nil
+    // UI 2.1 第6批：选中宫位跨启动保留（SceneStorage；-1＝未选）
+    @SceneStorage("ziwei.selectedBranch") private var selectedStored: Int = -1
+    private var selected: Int? {
+        get { selectedStored >= 0 ? selectedStored : nil }
+        set { selectedStored = newValue ?? -1 }
+    }
     @State private var showPalaceSheet = false
     @State private var flyProgress: Double = 0
+    // UI 2.1 第6批：紫微方盘独立放大（缩放变换，不进布局；按钮 1.0↔1.6，双指捏合 1.0–1.8）
+    @State private var boardScale: CGFloat = 1.0
+    @State private var pinchScale: CGFloat = 1.0
     @Environment(\.dynamicTypeSize) private var typeSize
 
     // 传统十二宫外框方位坐标（归一化到 4×4 网格的各宫中心点，供中宫三方四正连线指示）
@@ -472,7 +480,7 @@ struct ZiweiBoardView: View {
     // P1 续：飞线分段淡入——对宫先亮（0–0.25 秒），三合两宫随后（各 0.25 秒）；几何与虚线样式不动
     private func replayFlyLines() {
         flyProgress = 0
-        withAnimation(.linear(duration: 0.75)) {
+        withAnimation(KyMotion.flyline) {
             flyProgress = 3
         }
     }
@@ -538,6 +546,11 @@ struct ZiweiBoardView: View {
                     Button("回命宫".scriptConverted) { selected = nil }
                         .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                 }
+                Button(boardScale > 1.0 ? "复位".scriptConverted : "放大".scriptConverted) {
+                    withAnimation(KyMotion.toggle) { boardScale = boardScale > 1.0 ? 1.0 : 1.6 }
+                }
+                .font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                .accessibilityLabel(boardScale > 1.0 ? "复位紫微方盘" : "放大紫微方盘")
             }
 
             VStack(spacing: gap) {
@@ -579,6 +592,15 @@ struct ZiweiBoardView: View {
             .overlay { flyLinesOverlay }
             .onChange(of: activeBranch) { _, _ in replayFlyLines() }
             .onAppear { replayFlyLines() }
+            .scaleEffect(boardScale * pinchScale)
+            .gesture(
+                MagnificationGesture()
+                    .onChanged { pinchScale = $0 }
+                    .onEnded { v in
+                        boardScale = min(max(boardScale * v, 1.0), 1.8)
+                        pinchScale = 1.0
+                    }
+            )
 
             // 选中宫位的三方四正与飞化详单
             selectedPalaceDetailBar
@@ -711,7 +733,7 @@ struct ZiweiBoardView: View {
         let isMing = p.branch == chart.mingGong
         return Button {
             KyV6.impact(.light)
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(KyMotion.toggle) {
                 selected = p.branch
             }
             showPalaceSheet = true
@@ -1043,7 +1065,7 @@ struct ZiweiReadingView: View {
                     get: { expandedCards.contains(c.title) },
                     set: { if $0 { expandedCards.insert(c.title) } else { expandedCards.remove(c.title) } }
                 )) {
-                    EvidenceChainView(conclusion: c.conclusion, links: [("盘面", c.facts), ("天纪赋文", c.source)])
+                    EvidenceChainView(conclusion: c.conclusion, links: [("盘面", c.facts), ("天纪出处", c.source)])
                         .padding(.top, 6)
                 } label: {
                     VStack(alignment: .leading, spacing: 6) {

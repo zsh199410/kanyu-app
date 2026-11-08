@@ -156,7 +156,7 @@ struct TimeCapsuleBar: View {
                 let isSelected = selection == i
                 Button {
                     if isEnabled {
-                        withAnimation(.easeInOut(duration: 0.18)) { selection = i }
+                        withAnimation(KyMotion.toggle) { selection = i }
                     }
                 } label: {
                     HStack(spacing: 3) {
@@ -184,6 +184,17 @@ struct TimeCapsuleBar: View {
 }
 
 // 依据链组件 v5（白话结论高可读行距 ＋ 浅染底色盒装「盘面事实 / 典籍根据」三段式）
+/// 依据链文本繁体转换：典籍原文照录句不转（P5 口径），其余走 .scriptConverted。
+/// 黑名单只收已逐条核实的原文照录句——InterpretModule dimensions() 内两处
+/// （《滴天髓》何知章「何知其人贵，官星有理会」、《素问》「肝开窍于目」）
+/// ＋一处存疑按保守口径不接（财富量级蓄水池「财有库，发则能存」未在《三命通会》查到原文照录）。
+/// 其余 86 条 links 均为生成式盘面事实／现代规则转述／通说，全可接。
+private func evidenceLinkText(_ text: String) -> String {
+    let verbatim = ["何知其人贵，官星有理会", "肝开窍于目", "财有库，发则能存"]
+    if verbatim.contains(where: { text.contains($0) }) { return text }
+    return text.scriptConverted
+}
+
 struct EvidenceChainView: View {
     let conclusion: String
     let links: [(label: String, text: String)]  // 自上而下：盘面/法则/根据
@@ -204,7 +215,7 @@ struct EvidenceChainView: View {
                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background((links[i].label == "盘面" ? Ky.qingdai : Ky.gold).opacity(0.13))
                                 .clipShape(RoundedRectangle(cornerRadius: 4))
-                            Text(links[i].text)
+                            Text(evidenceLinkText(links[i].text))
                                 .font(.caption)
                                 .foregroundStyle(Ky.sub)
                                 .lineSpacing(2.5)
