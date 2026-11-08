@@ -670,6 +670,15 @@ struct BaziHomeView: View {
     }
 }
 
+/// 大运喜忌 → KyTimeline 三态（P1：只读调用 InterpretEngine.dayunMark，口径不动；喜 true、忌 false、中性 nil）
+func dayunFavorable(chart: BaziChart, index i: Int) -> Bool? {
+    switch InterpretEngine.dayunMark(chart: chart, index: i) {
+    case "喜": return true
+    case "忌": return false
+    default: return nil
+    }
+}
+
 // 盘面结果（录入页与人物详情共用同一块）
 struct BaziResultView: View {
     let chart: BaziChart
@@ -889,15 +898,6 @@ HStack(alignment:.top, spacing: 6) {
 Text(label).font(.caption).fontWeight(.bold).foregroundStyle(Ky.qingdai).frame(width: 52, alignment:.leading)
 Text(text).font(.caption).foregroundStyle(Ky.ink).fixedSize(horizontal: false, vertical: true)
 }
-}
-
-/// 大运喜忌 → KyTimeline 三态（P1：只读调用 InterpretEngine.dayunMark，口径不动；喜 true、忌 false、中性 nil）
-func dayunFavorable(chart: BaziChart, index i: Int) -> Bool? {
-    switch InterpretEngine.dayunMark(chart: chart, index: i) {
-    case "喜": return true
-    case "忌": return false
-    default: return nil
-    }
 }
 
     // MARK: - 核心四柱命盘卡（消除旧版重复四柱按钮行，直接在四柱列点击查看详情，干支按五行分色）
