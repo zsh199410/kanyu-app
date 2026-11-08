@@ -779,7 +779,7 @@ struct BaziResultView: View {
                         Image(systemName: "link").font(.caption2).foregroundStyle(Ky.qingdai)
                         Text(relationTitle.scriptConverted).font(.caption).fontWeight(.bold).foregroundStyle(Ky.ink)
                         Spacer()
-                        Button("清除".scriptConverted) { selectedPillar = nil; yunSource = nil }
+                        Button("清除".scriptConverted) { selectedPillarStored = -1; yunSource = nil }
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }
                     ForEach(currentRelations, id: \.self) { r in
@@ -1024,6 +1024,33 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
         }
     }
 
+    // 星运（长生十二宫）＋纳音：从 plateGrid 柱卡抽出，避免单表达式过大导致类型检查超时（#148 实证）
+    @ViewBuilder
+    private func proModeSection(ch: BaziChart, i: Int, shaList: [[String]]) -> some View {
+        Divider().opacity(0.4)
+        VStack(spacing: 2) {
+            HStack(spacing: 0) {
+                Text("长生 · ".scriptConverted)
+                TermButton(term: ch.diShi[i], display: ch.diShi[i])
+            }
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(Ky.ink)
+            Text(ch.naYin[i].scriptConverted)
+                .font(.system(size: 9.5))
+                .foregroundStyle(Ky.sub)
+            if !shaList[i].isEmpty {
+                Text(shaList[i].prefix(2).joined(separator: " ").scriptConverted)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(Ky.gold)
+                    .lineLimit(1)
+            } else {
+                Text("—")
+                    .font(.system(size: 9))
+                    .foregroundStyle(Ky.sub.opacity(0.4))
+            }
+        }
+    }
+
     // 四柱并排交互卡片：每一柱是一列独立可点击的宋纸柱卡，干支自带五行色＋五行小字双编码
     // enlarged＝true 时干支放大（UI 2.1 第2批放大四柱 sheet 用），布局与手势口径不变
     private func plateGrid(_ ch: BaziChart, enlarged: Bool = false) -> some View {
@@ -1118,29 +1145,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                         .frame(minHeight: 46, alignment: .top)
 
                         if proMode {
-                            Divider().opacity(0.4)
-                            // 星运（长生十二宫）＋纳音
-                            VStack(spacing: 2) {
-                                HStack(spacing: 0) {
-                                    Text("长生 · ".scriptConverted)
-                                    TermButton(term: ch.diShi[i], display: ch.diShi[i])
-                                }
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(Ky.ink)
-                                Text(ch.naYin[i].scriptConverted)
-                                    .font(.system(size: 9.5))
-                                    .foregroundStyle(Ky.sub)
-                                if !shaList[i].isEmpty {
-                                    Text(shaList[i].prefix(2).joined(separator: " ").scriptConverted)
-                                        .font(.system(size: 9, weight: .medium))
-                                        .foregroundStyle(Ky.gold)
-                                        .lineLimit(1)
-                                } else {
-                                    Text("—")
-                                        .font(.system(size: 9))
-                                        .foregroundStyle(Ky.sub.opacity(0.4))
-                                }
-                            }
+                            proModeSection(ch: ch, i: i, shaList: shaList)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -1159,7 +1164,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                     )
                     .onTapGesture {
                         tapHaptic()
-                        if selectedPillar == i { selectedPillar = nil } else { selectedPillar = i }
+                        if selectedPillar == i { selectedPillarStored = -1 } else { selectedPillarStored = i }
                         yunSource = nil
                     }
                     .onLongPressGesture {
@@ -1436,12 +1441,12 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
             let y = cur + d
             if y < start && old > 0 {
                 selectedDayun = old - 1
-                selectedYear = chart.dayunStartYear(old - 1) + 9
+                selectedYearStored = chart.dayunStartYear(old - 1) + 9
             } else if y > start + 9 && old < chart.dayunGanZhi.count - 1 {
                 selectedDayun = old + 1
-                selectedYear = chart.dayunStartYear(old + 1)
+                selectedYearStored = chart.dayunStartYear(old + 1)
             } else {
-                selectedYear = min(max(y, start), start + 9)
+                selectedYearStored = min(max(y, start), start + 9)
             }
         }
         tapHaptic()
@@ -1457,7 +1462,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
         var di = 0
         for i in chart.dayunGanZhi.indices where chart.dayunStartYear(i) <= target { di = i }
         selectedDayun = di
-        selectedYear = target
+        selectedYearStored = target
         timeLevel = 1
         tapHaptic()
         refreshYunSource()
@@ -1487,9 +1492,9 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                     guard let i = Int(item.id), chart.dayunGanZhi.indices.contains(i) else { return }
                     let gz = chart.dayunGanZhi[i]
                     selectedDayun = i
-                    selectedYear = chart.dayunStartYear(i)
+                    selectedYearStored = chart.dayunStartYear(i)
                     timeLevel = 1
-                    selectedPillar = nil
+                    selectedPillarStored = -1
                     yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(gz)运")
                 }
             )
@@ -1510,8 +1515,8 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                     let isSel = (selectedYear == y)
                     Button {
                         tapHaptic()
-                        selectedYear = y; timeLevel = 2
-                        selectedPillar = nil
+                        selectedYearStored = y; timeLevel = 2
+                        selectedPillarStored = -1
                         yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(y) \(gz)年")
                     } label: {
                         VStack(spacing: 3) {
