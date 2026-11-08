@@ -416,6 +416,8 @@ struct ZiweiBoardView: View {
     let chart: ZiweiChart
     let name: String
     @State private var selected: Int? = nil
+    @State private var showPalaceSheet = false
+    @State private var flyProgress: Double = 0
     @Environment(\.dynamicTypeSize) private var typeSize
 
     // 传统十二宫外框方位坐标（归一化到 4×4 网格的各宫中心点，供中宫三方四正连线指示）
@@ -455,19 +457,34 @@ struct ZiweiBoardView: View {
                 ((s + 4) % 12, Ky.gold, [4, 3]),
                 ((s + 8) % 12, Ky.gold, [4, 3])
             ]
-            for (target, color, dash) in targets {
-                let to = palaceCenter(branch: target, size: size)
+            for (idx, target) in targets.enumerated() {
+                let to = palaceCenter(branch: target.0, size: size)
                 var path = Path()
                 path.move(to: from)
                 path.addLine(to: to)
-                ctx.stroke(path, with: .color(color.opacity(0.65)), style: StrokeStyle(lineWidth: 1.1, dash: dash))
+                let lineOpacity = min(max(flyProgress - Double(idx), 0), 1) * 0.65
+                ctx.stroke(path, with: .color(target.1.opacity(lineOpacity)), style: StrokeStyle(lineWidth: 1.1, dash: target.2))
             }
         }
         .allowsHitTesting(false)
     }
 
+    // P1 续：飞线分段淡入——对宫先亮（0–0.25 秒），三合两宫随后（各 0.25 秒）；几何与虚线样式不动
+    private func replayFlyLines() {
+        flyProgress = 0
+        withAnimation(.linear(duration: 0.75)) {
+            flyProgress = 3
+        }
+    }
+
     var body: some View {
-        if typeSize.isAccessibilitySize { textBoard } else { gridBoard }
+        Group {
+            if typeSize.isAccessibilitySize { textBoard } else { gridBoard }
+        }
+        .sheet(isPresented: $showPalaceSheet) {
+            KyBottomSheet(title: palaceSheetTitle) { palaceSheetContent }
+                .presentationBackgroundInteraction(.enabled)
+        }
     }
 
     // 大字号合规形态：方盘自动切换为高可读列表盘
@@ -493,9 +510,18 @@ struct ZiweiBoardView: View {
                     }
                 }
                 .kyCard()
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(p.branch == activeBranch ? Ky.cinnabar.opacity(0.05) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(p.branch == activeBranch ? Ky.cinnabar : Color.clear, lineWidth: 2.0)
+                )
                 .onTapGesture {
                     KyV6.impact(.light)
                     selected = p.branch
+                    showPalaceSheet = true
                 }
             }
         }
@@ -551,6 +577,8 @@ struct ZiweiBoardView: View {
                 }
             }
             .overlay { flyLinesOverlay }
+            .onChange(of: activeBranch) { _, _ in replayFlyLines() }
+            .onAppear { replayFlyLines() }
 
             // 选中宫位的三方四正与飞化详单
             selectedPalaceDetailBar
@@ -558,70 +586,55 @@ struct ZiweiBoardView: View {
         .kyCard()
     }
 
-    // 中央 2×2 合并天心宫（展示命主信息、五行局、命身主星及当前选中宫位的三方四正罗盘指示）
+    // 中央 2×2 合并天心宫：只展示当前选中宫位的核心摘要（宫名＋主星＋一句话定型）；旧示意三角已移除，盘面飞线不受影响
     private func centerPalaceView(height: CGFloat) -> some View {
         let p = chart.palaces[activeBranch]
-        let opp = chart.palaces[(activeBranch + 6) % 12]
-        let tri1 = chart.palaces[(activeBranch + 4) % 12]
-        let tri2 = chart.palaces[(activeBranch + 8) % 12]
-        return ZStack {
-            // 淡淡的传统罗经三方四正示意底纹
-            Canvas { ctx, size in
-                let c = CGPoint(x: size.width / 2, y: size.height / 2)
-                let r = min(size.width, size.height) * 0.42
-                ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
-                           with: .color(Ky.gold.opacity(0.22)), lineWidth: 0.9)
-                func dirPoint(_ branch: Int) -> CGPoint {
-                    guard let rc = Self.cellPos[branch] else { return c }
-                    let nx = (CGFloat(rc.1) - 1.5) / 1.5
-                    let ny = (CGFloat(rc.0) - 1.5) / 1.5
-                    return CGPoint(x: c.x + nx * (size.width * 0.46), y: c.y + ny * (size.height * 0.46))
-                }
-                let p0 = dirPoint(activeBranch)
-                let pOpp = dirPoint((activeBranch + 6) % 12)
-                let pT1 = dirPoint((activeBranch + 4) % 12)
-                let pT2 = dirPoint((activeBranch + 8) % 12)
-
-                var triPath = Path()
-                triPath.move(to: p0); triPath.addLine(to: pT1); triPath.addLine(to: pT2); triPath.closeSubpath()
-                ctx.stroke(triPath, with: .color(Ky.qingdai.opacity(0.32)),
-                           style: StrokeStyle(lineWidth: 1.1, dash: [4, 3]))
-
-                var oppPath = Path()
-                oppPath.move(to: p0); oppPath.addLine(to: pOpp)
-                ctx.stroke(oppPath, with: .color(Ky.cinnabar.opacity(0.38)),
-                           style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
-            }
-
-            VStack(spacing: 5) {
-                Text(name.isEmpty ? "紫微命盘".scriptConverted : name)
-                    .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
-                HStack(spacing: 5) {
-                    KyBadge(text: chart.juName, color: Ky.qingdai)
-                    KyBadge(text: "命宫·\(ZiweiCore.DZ[chart.mingGong])", color: Ky.cinnabar)
-                    KyBadge(text: "身·\(chart.palaces[chart.shenGong].name)", color: Ky.gold)
-                }
-                Text(chart.lunarText)
+        let opp = chart.palaces[(p.branch + 6) % 12]
+        let majorText: String = p.majors.isEmpty
+            ? "无主星 · 借对宫\(opp.name)\(opp.majors.map { $0.star }.joined(separator: "、"))"
+            : p.majors.map { $0.star + ZiweiBrightness.of($0.star, branch: p.branch) + ($0.mutagen.map { "化\($0)" } ?? "") }.joined(separator: "、")
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(p.name.scriptConverted)
+                    .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.cinnabar)
+                Text("\(p.stem)\(ZiweiCore.DZ[p.branch]) · 大限 \(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁".scriptConverted)
                     .font(.system(size: 10)).foregroundStyle(Ky.sub)
-                    .multilineTextAlignment(.center).lineLimit(2)
-                    .padding(.horizontal, 6)
-
-                Divider().padding(.horizontal, 12).opacity(0.5)
-
-                VStack(spacing: 2) {
-                    Text("当前聚焦：\(p.name)（\(p.stem)\(ZiweiCore.DZ[p.branch])）".scriptConverted)
-                        .font(.system(size: 11, weight: .bold)).foregroundStyle(Ky.qingdai)
-                    Text("对宫 \(opp.name) · 三合 \(tri1.name) / \(tri2.name)".scriptConverted)
-                        .font(.system(size: 10)).foregroundStyle(Ky.sub)
-                }
+                Spacer(minLength: 0)
+                if p.isBody { KyBadge(text: "身宫", color: Ky.gold) }
             }
-            .padding(8)
+            Text("主星：\(majorText)".scriptConverted)
+                .font(.system(size: 12)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text(palaceDigest(p).scriptConverted)
+                .font(.system(size: 11)).foregroundStyle(Ky.sub)
+                .lineLimit(4)
+            Spacer(minLength: 0)
+            Text("点任意宫位切换 · 三方四正飞线见盘面".scriptConverted)
+                .font(.system(size: 9)).foregroundStyle(Ky.sub.opacity(0.8))
         }
+        .padding(10)
         .frame(minWidth: 168, maxWidth: .infinity)
         .frame(height: height)
         .background(Ky.elevated.opacity(0.55))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Ky.line, lineWidth: 0.8))
+    }
+
+    /// 中央摘要与抽屉共用的一句话定型：优先本宫星曜角色注，否则主星性情；无主星借对宫
+    private func palaceDigest(_ p: ZiweiPalace) -> String {
+        if p.majors.isEmpty {
+            let opp = chart.palaces[(p.branch + 6) % 12]
+            let stars = opp.majors.map { $0.star }.joined(separator: "、")
+            return "无主星，借对宫\(opp.name)\(stars)参，定型随环境与际遇塑形更明显。"
+        }
+        for m in p.majors {
+            if let note = ZiweiReading.palaceRoles[p.name]?[m.star] {
+                return note + "。"
+            }
+            if let n = ZiweiReading.starNature[m.star] {
+                return m.star + "：" + n + "。"
+            }
+        }
+        return "主星" + p.majors.map { $0.star }.joined(separator: "、") + "坐守。"
     }
 
     private var selectedPalaceDetailBar: some View {
@@ -646,6 +659,52 @@ struct ZiweiBoardView: View {
         .kySubCard()
     }
 
+    // P1 续：宫位详情底部抽屉（复用奇门 P2 宫位弹层模式；内容随 activeBranch 实时切换）。
+    // 抽屉以 .presentationBackgroundInteraction(.enabled) 弹出，打开时点盘面另一宫直接切过去，不用先关抽屉
+    private var palaceSheetTitle: String {
+        let p = chart.palaces[activeBranch]
+        return "\(p.name) · \(p.stem)\(ZiweiCore.DZ[p.branch])"
+    }
+
+    private var palaceSheetContent: some View {
+        let p = chart.palaces[activeBranch]
+        let opp = chart.palaces[(activeBranch + 6) % 12]
+        let tri1 = chart.palaces[(activeBranch + 4) % 12]
+        let tri2 = chart.palaces[(activeBranch + 8) % 12]
+        let fly = ZiweiCore.flyFrom(chart, branch: activeBranch)
+        let selfT = ZiweiCore.selfTransforms(chart)[activeBranch]
+        let majorText: String = p.majors.isEmpty
+            ? "无主星 · 借对宫\(opp.name)\(opp.majors.map { $0.star }.joined(separator: "、"))"
+            : p.majors.map { $0.star + ZiweiBrightness.of($0.star, branch: p.branch) + ($0.mutagen.map { "化\($0)" } ?? "") }.joined(separator: "、")
+        let minorText: String = p.minors.map { $0.star + ($0.mutagen.map { "(化\($0))" } ?? "") }.joined(separator: " ")
+        let flyText: String = fly.map { "\($0.star)化\($0.kind)入\($0.target)" }.joined(separator: " · ")
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(palaceDigest(p).scriptConverted)
+                .font(.callout).foregroundStyle(Ky.ink)
+            HStack(spacing: 6) {
+                KyBadge(text: "大限 \(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁", color: Ky.qingdai)
+                if p.branch == chart.mingGong { KyBadge(text: "命宫", color: Ky.cinnabar) }
+                if p.isBody { KyBadge(text: "身宫", color: Ky.gold) }
+            }
+            Text("主星：\(majorText)".scriptConverted)
+                .font(.callout).foregroundStyle(Ky.ink)
+            if !p.minors.isEmpty {
+                Text("辅星：\(minorText)".scriptConverted)
+                    .font(.callout).foregroundStyle(Ky.sub)
+            }
+            Text("三方四正：对宫\(opp.name) · 三合\(tri1.name) / \(tri2.name)".scriptConverted)
+                .font(.callout).foregroundStyle(Ky.ink)
+            Text("宫干四化飞星：\(flyText)".scriptConverted)
+                .font(.callout).foregroundStyle(Ky.ink)
+            if let st = selfT {
+                Text("本宫自化：\(st.joined(separator: "、"))".scriptConverted)
+                    .font(.callout).fontWeight(.medium).foregroundStyle(Ky.cinnabar)
+            }
+            Text("完整解读见下方「天纪三合解读」；抽屉打开时点盘面其他宫位可直接切换。".scriptConverted)
+                .font(.caption2).foregroundStyle(Ky.sub)
+        }
+    }
+
     private func cell(_ p: ZiweiPalace, height: CGFloat) -> some View {
         let isSel = activeBranch == p.branch
         let isHL = highlighted.contains(p.branch)
@@ -655,13 +714,14 @@ struct ZiweiBoardView: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 selected = p.branch
             }
+            showPalaceSheet = true
         } label: {
             VStack(alignment: .leading, spacing: 2.5) {
                 // 顶部：宫名＋命/身标记＋宫干支
                 HStack(spacing: 2) {
                     Text(p.name.scriptConverted)
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(isMing ? Ky.cinnabar : (isSel ? Ky.qingdai : Ky.ink))
+                        .foregroundStyle((isMing || isSel) ? Ky.cinnabar : Ky.ink)
                     if p.isBody {
                         Text("身")
                             .font(.system(size: 8, weight: .bold))
@@ -733,12 +793,12 @@ struct ZiweiBoardView: View {
             .padding(5.5)
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height, alignment: .topLeading)
             .opacity(isHL ? 1.0 : 0.58)
-            .background(isSel ? Ky.qingdai.opacity(0.11) : (isHL ? Ky.gold.opacity(0.08) : Ky.card))
+            .background(isSel ? Ky.cinnabar.opacity(0.10) : (isHL ? Ky.gold.opacity(0.08) : Ky.card))
             .clipShape(RoundedRectangle(cornerRadius: 9))
             .overlay(
                 RoundedRectangle(cornerRadius: 9)
-                    .stroke(isSel ? Ky.qingdai : (isMing ? Ky.cinnabar.opacity(0.6) : (isHL ? Ky.gold.opacity(0.65) : Ky.line)),
-                            lineWidth: isSel ? 1.5 : (isMing || isHL ? 1.0 : 0.6))
+                    .stroke(isSel ? Ky.cinnabar : (isMing ? Ky.cinnabar.opacity(0.6) : (isHL ? Ky.gold.opacity(0.65) : Ky.line)),
+                            lineWidth: isSel ? 2.0 : (isMing || isHL ? 1.0 : 0.6))
             )
         }
         .buttonStyle(.plain)

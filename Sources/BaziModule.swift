@@ -695,6 +695,7 @@ struct BaziResultView: View {
     @State private var showXunKongTerm = false
     @State private var detailPillar = 0
     @State private var showDetail = false
+    @State private var showEnlargedPlate = false  // UI 2.1 第2批：放大四柱用 .sheet 弹出
     @State private var showShichen = false  // 十二时辰对照默认折叠，不喧宾夺主
     @State private var selectedPillar: Int? = nil  // 点柱牵动源（nil＝未选）
     @State private var yunSource: YunSource? = nil  // 下钻大运／流年牵动源（与点柱互斥）
@@ -712,6 +713,7 @@ struct BaziResultView: View {
             infoCard
         }
         .sheet(isPresented: $showDetail) { pillarDetailView(detailPillar) }
+        .sheet(isPresented: $showEnlargedPlate) { enlargedPlateView }
         .onAppear { pulse = true }
     }
 
@@ -940,6 +942,16 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                         .font(.caption2).foregroundStyle(Ky.sub)
                 }
                 Spacer()
+                Button { showEnlargedPlate = true } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.caption).fontWeight(.semibold)
+                        .foregroundStyle(Ky.qingdai)
+                        .padding(7)
+                        .background(Ky.elevated)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("放大四柱")
                 Picker("密度".scriptConverted, selection: $proMode) {
                     Text("简盘".scriptConverted).tag(false)
                     Text("细盘".scriptConverted).tag(true)
@@ -953,7 +965,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
             relationHintView
 
             HStack {
-                Text("点一柱看生克牵动 · 长按看柱位详情 · 点十神／星运看释义".scriptConverted)
+                Text("点一柱看生克牵动，选中柱干支朱砂高亮 · 长按看柱位详情 · 点十神／星运看释义".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
                 Spacer()
                 Button {
@@ -973,8 +985,39 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
         .kyCard()
     }
 
+    // 放大四柱视图（UI 2.1 第2批）：.sheet 弹出，干支 44pt，横屏旋转可用；复用 plateGrid，选中态与主盘面共享
+    private var enlargedPlateView: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("四柱命盘 · 放大".scriptConverted)
+                        .font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    plateGrid(chart, enlarged: true)
+                    relationHintView
+                    Text("点一柱看生克牵动，选中柱干支朱砂高亮；横屏查看更宽敞。".scriptConverted)
+                        .font(.caption2).foregroundStyle(Ky.sub)
+                    Button("完成".scriptConverted) { showEnlargedPlate = false }
+                        .font(.callout).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 10)
+                        .background(Ky.elevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .padding(16)
+            }
+            .background(Ky.bg)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("关闭".scriptConverted) { showEnlargedPlate = false }
+                }
+            }
+        }
+    }
+
     // 四柱并排交互卡片：每一柱是一列独立可点击的宋纸柱卡，干支自带五行色＋五行小字双编码
-    private func plateGrid(_ ch: BaziChart) -> some View {
+    // enlarged＝true 时干支放大（UI 2.1 第2批放大四柱 sheet 用），布局与手势口径不变
+    private func plateGrid(_ ch: BaziChart, enlarged: Bool = false) -> some View {
         let cols = ["年柱", "月柱", "日柱", "时柱"]
         let palaces = ["祖上/根基", "父母/月令", "自身/配偶", "子女/晚景"]
         let shaList = BaziTables.shenSha(ch)
@@ -1006,25 +1049,41 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                             .foregroundStyle(isDay ? Ky.cinnabar : Ky.qingdai)
                             .clipShape(Capsule())
 
-                        // 天干大字（五行分色＋五行小标）
+                        // 天干大字（五行分色＋五行小标；选中柱的干加朱砂描边／底色）
                         HStack(alignment: .firstTextBaseline, spacing: 2) {
                             Text(String(stem))
-                                .font(.system(size: 28, weight: .bold, design: .serif))
+                                .font(.system(size: enlarged ? 44 : 28, weight: .bold, design: .serif))
                                 .foregroundStyle(KyV2.color(forChar: stem))
                             Text(stemEl)
-                                .font(.system(size: 9, weight: .semibold))
+                                .font(.system(size: enlarged ? 11 : 9, weight: .semibold))
                                 .foregroundStyle(KyV2.color(forChar: stem).opacity(0.85))
                         }
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(selectedPillar == i ? Ky.cinnabar.opacity(0.12) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(selectedPillar == i ? Ky.cinnabar : Color.clear, lineWidth: 1.2)
+                        )
 
-                        // 地支大字（五行分色＋五行小标）
+                        // 地支大字（五行分色＋五行小标；选中柱的支加朱砂描边／底色）
                         HStack(alignment: .firstTextBaseline, spacing: 2) {
                             Text(String(branch))
-                                .font(.system(size: 28, weight: .bold, design: .serif))
+                                .font(.system(size: enlarged ? 44 : 28, weight: .bold, design: .serif))
                                 .foregroundStyle(KyV2.color(forChar: branch))
                             Text(branchEl)
-                                .font(.system(size: 9, weight: .semibold))
+                                .font(.system(size: enlarged ? 11 : 9, weight: .semibold))
                                 .foregroundStyle(KyV2.color(forChar: branch).opacity(0.85))
                         }
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(selectedPillar == i ? Ky.cinnabar.opacity(0.12) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(selectedPillar == i ? Ky.cinnabar : Color.clear, lineWidth: 1.2)
+                        )
 
                         Divider().opacity(0.5)
 
@@ -1095,6 +1154,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                         yunSource = nil
                     }
                     .onLongPressGesture {
+                        guard !enlarged else { return }  // 放大 sheet 内长按不弹第二层 sheet，防嵌套弹层冲突
                         detailPillar = i
                         showDetail = true
                     }
