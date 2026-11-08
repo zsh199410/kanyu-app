@@ -1,6 +1,13 @@
 import SwiftUI
 // 断语库数据：由八字线知识库（~/workspace/bazi/knowledge）离线生成，内容为工作室自有研习文本与典籍纲要。
-struct LibraryEntry: Identifiable { let id: Int; let cat: String; let title: String; let body: String; let source: String = "" }
+struct LibraryEntry: Identifiable { let id: Int; let cat: String; let title: String; let body: String; let source: String
+    init(id: Int, cat: String, title: String, body: String, source: String = "") {
+        self.id = id
+        self.cat = cat
+        self.title = title
+        self.body = body
+        self.source = source
+    } }
 enum LibraryData { static let entries: [LibraryEntry] = [
 LibraryEntry(id: 0, cat: "类象", title: "类象表（查用，2026-10-29 建）", body: "来源：九思知白堂《易经命理学入门知识》图（用户提供），与本系统 `健康与寿元.md`（《三命通会》为本）互校后收编。定位：断语取象时的查用表——**先定五行力量与受克程度，再按问题领域选类象**（纪律 13、19 的配套工具）；两表冲突时以健康库为先，本表作互校。"),
 LibraryEntry(id: 1, cat: "类象", title: "一、五行类象", body: "| 五行 | 季节 | 方位 | 气候 | 颜色 | 味道 | 五常 | 情绪 | 五官 | 五脏 |\n|---|---|---|---|---|---|---|---|---|---|\n| 木 | 春 | 东 | 风 | 青、绿 | 酸 | 仁 | 怒 | 目 | 肝 |\n| 火 | 夏 | 南 | 热 | 红、紫 | 苦 | 礼 | 喜 | 舌 | 心 |\n| 土 | 四季末 | 中央 | 湿 | 黄、棕 | 甘 | 信 | 思 | 口 | 脾 |\n| 金 | 秋 | 西 | 燥 | 白、金 | 辛 | 义 | 悲 | 鼻 | 肺 |\n| 水 | 冬 | 北 | 寒 | 黑、蓝 | 咸 | 智 | 恐 | 耳 | 肾 |"),
