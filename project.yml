@@ -45,6 +45,7 @@ targets:
         NSCameraUsageDescription: 勘察拍照与录像需要使用相机，照片会烙印当时的罗盘方位。
         NSMicrophoneUsageDescription: 勘察录像需要录制环境声音。
         NSLocationWhenInUseUsageDescription: 罗盘定向与照片定位需要位置与方向信息，用于计算真北方位与磁偏角。
+        NSPhotoLibraryAddUsageDescription: 保存海报到相册需要访问照片图库，仅用于保存你导出的海报。
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
 
