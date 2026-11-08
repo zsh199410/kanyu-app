@@ -418,7 +418,7 @@ struct PosterView: View {
 
     var body: some View {
         if style == .yuceDan {
-            YucedanPosterLayout(chart: chart, name: name, pal: pal)
+            YucedanPosterLayout(chart: chart, name: displayName, pal: pal)
         } else {
             standardPosterView
         }
@@ -878,7 +878,7 @@ HStack(spacing: 0) {
 Text("农历：\(chart.lunarText.isEmpty ? "—": chart.lunarText)")
 Text("　上一节 \(chart.prevJieQiText.isEmpty ? "—": chart.prevJieQiText)　下一节 \(chart.nextJieQiText.isEmpty ? "—": chart.nextJieQiText)")
 Spacer()
-Text("\(chart.gender == "M" ? "男（乾造）": "女（坤造）")　\(displayName.isEmpty ? "命主" : displayName)　\(chart.naYin.first ?? "")命")
+Text("\(chart.gender == "M" ? "男（乾造）": "女（坤造）")　\(name.isEmpty ? "命主" : name)　\(chart.naYin.first ?? "")命")
 }
 HStack(spacing: 0) {
 Text("真太阳时校正：\(correctionText)")
