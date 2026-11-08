@@ -7,9 +7,17 @@ import LunarSwift
 
 struct RootTabView: View {
     @AppStorage("onboardingDone") private var onboardingDone = false
+    @AppStorage("uiStyle") private var appearanceRaw = "system"
     @ObservedObject private var errorCenter = AppErrorCenter.shared
     @State private var showingOnboarding = false
     @State private var tab = 0  // 默认落在「合参」主工作台
+
+    /// 显示设置（MyView (6) 深色三档）：跟随系统时返回 nil；浅色／深色强制对应外观
+    private var appearanceScheme: ColorScheme? {
+        if appearanceRaw == "dark" { return .dark }
+        if appearanceRaw == "light" { return .light }
+        return nil
+    }
     var body: some View {
         TabView(selection: $tab) {
             NavigationStack { HomePageView(selectedTab: $tab) }
@@ -26,6 +34,7 @@ struct RootTabView: View {
         .toolbarBackground(Ky.bg, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .tint(Ky.qingdai)
+        .preferredColorScheme(appearanceScheme)
         .sheet(isPresented: $showingOnboarding) {
             OnboardingView(onDone: { onboardingDone = true; showingOnboarding = false })
         }
@@ -511,6 +520,7 @@ struct MyView: View {
     @AppStorage("todayNotify.enabled") private var notifyEnabled = false
     @AppStorage("todayNotify.hour") private var notifyHour = 7
     @AppStorage("todayNotify.minute") private var notifyMinute = 30
+    @AppStorage("uiStyle") private var appearanceRaw = "system"
 
     private var notifyTimeBinding: Binding<Date> {
         Binding(
@@ -539,6 +549,74 @@ struct MyView: View {
         TodayNotificationManager.scheduleDaily(person: p)
     }
 
+    /// (1) 个人资料：全局当前命主卡片 → PersonDetailView；无档案时进 PeopleView 建档
+    @ViewBuilder
+    private var personalProfileSection: some View {
+        if let p = PeopleStore.shared.currentPerson {
+            NavigationLink { PersonDetailView(person: p, store: PeopleStore.shared) } label: {
+                HStack(spacing: 12) {
+                    Text(currentPersonAvatarText)
+                        .font(.system(size: 16, weight: .bold, design: .serif))
+                        .foregroundStyle(Ky.qingdai)
+                        .frame(width: 44, height: 44)
+                        .background(Ky.qingdai.opacity(0.14))
+                        .clipShape(Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(currentPersonDisplayName)
+                            .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text(currentPersonSubtitle)
+                            .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
+                }
+                .kyCard()
+            }.buttonStyle(.plain)
+        } else {
+            NavigationLink { PeopleView() } label: {
+                HStack(spacing: 12) {
+                    Text("命")
+                        .font(.system(size: 16, weight: .bold, design: .serif))
+                        .foregroundStyle(Ky.qingdai)
+                        .frame(width: 44, height: 44)
+                        .background(Ky.qingdai.opacity(0.14))
+                        .clipShape(Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("尚未建档")
+                            .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text("去添加第一位命主档案，建档一次三术通用")
+                            .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Ky.sub)
+                }
+                .kyCard()
+            }.buttonStyle(.plain)
+        }
+    }
+
+    private var currentPersonAvatarText: String {
+        if let p = PeopleStore.shared.currentPerson, !p.name.isEmpty { return String(p.name.prefix(1)) }
+        return "命"
+    }
+
+    private var currentPersonDisplayName: String {
+        if let p = PeopleStore.shared.currentPerson, !p.name.isEmpty { return p.name }
+        return "未命名"
+    }
+
+    private var currentPersonSubtitle: String {
+        if let p = PeopleStore.shared.currentPerson {
+            var lon: Double? = nil
+            if p.useLongitude { lon = p.longitude }
+            let chart = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: lon)
+            var sub = chart.pillars.joined(separator: " ") + " · 日主" + chart.rizhu
+            if !p.relation.isEmpty { sub = p.relation + " · " + sub }
+            return sub
+        }
+        return ""
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
@@ -554,13 +632,39 @@ struct MyView: View {
                     Spacer()
                 }.kyCard()
 
-                KySectionTitle(title: "档案账本", trailing: "本机持久化存储")
+                // (1) 个人资料：全局当前命主的 PersonDetailView（不新建「我的资料」页）
+                KySectionTitle(title: "个人资料", trailing: "当前命主")
+                personalProfileSection
+
+                // (2) 人物档案
+                KySectionTitle(title: "人物档案", trailing: "本机持久化存储")
                 VStack(spacing: 10) {
                     myLink("person.2.fill", "人物档案管理", "家人与命例建档 · 支持数据导入导出备份", Ky.qingdai) { PeopleView() }
+                }
+
+                // (3) 我的记录：前瞻登记簿＋手相面相记录（原散落在「档案账本」组内，现立分组标题）
+                KySectionTitle(title: "我的记录", trailing: "封存与回验")
+                VStack(spacing: 10) {
                     myLink("checkmark.seal.fill", "前瞻断语登记簿", "事前封存断语 · 到期核验命中率", Ky.jade) { ForecastView() }
                     myLink("hand.raised.fill", "手相面相与测量记录", "21点几何掌型 · 三线手描 · 三停校准归档", Ky.gold) { PalmHomeView() }
                 }
 
+                // (4) 我的命书／报告中心：报告中心（命书档案馆）随 P3 新建；P0 先接现有一次性生成入口
+                KySectionTitle(title: "我的命书／报告中心", trailing: "报告中心随 P3 上线")
+                VStack(alignment: .leading, spacing: 8) {
+                    myLink("doc.text.fill", "生成我的命书（PDF）", "当前命主的命书文件 · 在详情页生成后分享", Ky.qingdai) {
+                        if let p = PeopleStore.shared.currentPerson {
+                            PersonDetailView(person: p, store: PeopleStore.shared)
+                        } else {
+                            PeopleView()
+                        }
+                    }
+                    Text("命书档案馆（已生成命书的历史列表与归档）随 P3 报告中心上线；现版本每次在命主详情页即时生成，不留历史记录。")
+                        .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
+                        .padding(.horizontal, 2)
+                }
+
+                // (5) 智库设置
                 KySectionTitle(title: "智库设置", trailing: "口径与条文")
                 VStack(spacing: 10) {
                     myLink("slider.horizontal.3", "排盘口径与签名证书设置", "晚子时归日 · 紫微闰月 · 侧载证书到期提醒", Ky.qingdai) { CaliberSettingsView() }
@@ -568,10 +672,24 @@ struct MyView: View {
                     myLink("books.vertical.fill", "风水知识与解煞手册", "玄空八宅测法 · 17类形煞L1-L3分层化解", Ky.cinnabar) { ShaHandbookView() }
                 }
 
-                KySectionTitle(title: "语言", trailing: "简／繁切换")
-                ScriptSettingsView().kyCard()
+                // (6) 显示设置：深色手动切换（跟随系统／浅色／深色三档）＋语言（简／繁）
+                KySectionTitle(title: "显示设置", trailing: "深色 · 语言")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("深色模式")
+                        .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                    Picker("深色模式", selection: $appearanceRaw) {
+                        Text("跟随系统").tag("system")
+                        Text("浅色").tag("light")
+                        Text("深色").tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+                    Text("跟随系统时随 iOS 外观自动切换；浅色为宋纸暖白，深色为暗夜玄金。字号走系统动态字体，不另设。")
+                        .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
+                    ScriptSettingsView()
+                }.kyCard()
 
-                KySectionTitle(title: "每日运势", trailing: "本机本地通知")
+                // (7) 通知设置（原「每日运势」组，内容不动）
+                KySectionTitle(title: "通知设置", trailing: "本机本地通知")
                 VStack(alignment: .leading, spacing: 8) {
                     Toggle("每日推送今日运势", isOn: $notifyEnabled)
                         .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
@@ -595,6 +713,20 @@ struct MyView: View {
                     }
                     Text("默认关闭；开启后每天一条（当日干支＋三行首句），iOS 本地通知，不走服务端、不收集数据；未建档时不排期。")
                         .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
+                }.kyCard()
+
+                // (8) 数据管理：备份恢复入口原只挂堪舆工作台，现并入个人中心
+                KySectionTitle(title: "数据管理", trailing: "备份与恢复")
+                VStack(spacing: 10) {
+                    myLink("archivebox.fill", "数据备份与恢复", "人物 · 前瞻 · 手相记录 · 堪舆案件打包 ZIP · 支持 iCloud", Ky.qingdai) { BackupView() }
+                }
+
+                // (9) 关于
+                KySectionTitle(title: "关于", trailing: "版本与隐私")
+                VStack(spacing: 10) {
+                    myLink("info.circle.fill", "关于三术合参", "版本号 · 构建号 · 致谢 · 隐私说明", Ky.qingdai) { AboutView() }
+                }
+
                 }.kyCard()
 
             }
@@ -621,5 +753,54 @@ struct MyView: View {
             }
             .kyCard()
         }.buttonStyle(.plain)
+    }
+}
+
+}
+
+// MARK: - 关于页（UI 2.0 P0 新建，轻量）：版本号／构建号／致谢／隐私说明
+struct AboutView: View {
+    private var appVersion: String {
+        if let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String { return v }
+        return "4.6"
+    }
+
+    private var buildNumber: String {
+        if let v = Bundle.main.infoDictionary?["CFBundleVersion"] as? String { return v }
+        return ""
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    AppLogoView(size: 56)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("三术合参").font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text("版本 " + appVersion + "（构建 " + buildNumber + "）")
+                            .font(.caption).foregroundStyle(Ky.qingdai)
+                        Text("子平八字 · 天纪斗数 · 统宗奇门 · 实景堪舆")
+                            .font(.caption2).foregroundStyle(Ky.sub)
+                    }
+                    Spacer()
+                }.kyCard()
+
+                KySectionTitle(title: "隐私说明", trailing: "本机优先")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("三术合参不设账号、不上传生辰：人物档案、前瞻登记与手相测量记录只存在本机 Documents 目录；排盘与解盘全部本机演算；每日运势通知为 iOS 本地通知，不走服务端；AI 问答只把当前命盘的引擎事实发往你自有的免费模型池，问题原文不写库、不记日志。")
+                        .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
+                }.kyCard()
+
+                KySectionTitle(title: "致谢", trailing: "五典正法")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("断语口径以《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》五典为准；紫微亮度表采中州派口径；奇门拆补法定局依《奇门遁甲统宗》。金标准对拍与依据链见学堂页「依据与金标准」。")
+                        .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
+                }.kyCard()
+            }
+            .padding(16)
+            .padding(.bottom, 100)
+        }
+        .background(Ky.bg)
+        .navigationTitle("关于").navigationBarTitleDisplayMode(.inline)
     }
 }

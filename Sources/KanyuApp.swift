@@ -1384,6 +1384,9 @@ struct HomePageView: View {
     @StateObject private var forecastStore = ForecastStore()
     @EnvironmentObject var peopleStore: PeopleStore
     @State private var showingNewPerson = false
+    @State private var showingMyView = false
+    @State private var showingPersonDetail = false
+    @State private var showingPersonPicker = false
 
     init(selectedTab: Binding<Int> = .constant(0)) {
         self._selectedTab = selectedTab
@@ -1393,15 +1396,21 @@ struct HomePageView: View {
         ScrollView {
             // 120Hz：外层改回 LazyVStack，只渲染可见区段（纠正 build-72 的说法——VStack 全量预布局抬高首帧挂载成本，长页正确做法是可见区渲染）
             LazyVStack(alignment: .leading, spacing: 16) {
-                topBrandHero
+                // 01 品牌导航区
+                brandHeader
                 signBanner
+                // 02 当前命主中枢卡
+                personSwitcherCard
+                // 03 今日天地卡
                 todayAlmanacCard
+                // 04 今日运势卡
                 todayFortuneCard
-                dueCard
+                // 05 核心排盘 2×2 矩阵
                 primaryBentoGrid
-                recentPeopleSection
-                specialToolsBento
-                archiveAndClassicsSection
+                // 06 最近使用与专项工具（dueCard 置顶常驻）
+                dueCard
+                recentToolsSection
+                allToolsLink
             }
             .padding(.horizontal, 16)
             .padding(.top, 6)
@@ -1437,27 +1446,29 @@ struct HomePageView: View {
         .sheet(isPresented: $showingNewPerson) {
             PersonFormView(store: peopleStore, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970), onSaved: { showingNewPerson = false })
         }
+        .navigationDestination(isPresented: $showingMyView) { MyView() }
+        .sheet(isPresented: $showingPersonPicker) {
+            personPickerSheet
+        }
+        .sheet(isPresented: $showingPersonDetail) {
+            if let p = peopleStore.currentPerson {
+                NavigationStack { PersonDetailView(person: p, store: peopleStore) }
+            }
+        }
     }
 
-    // 顶部品牌视觉卡（消除原版两个「三术合参」大字上下重复问题）
-    private var topBrandHero: some View {
-        HStack(spacing: 13) {
-            AppLogoView(size: 52)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text("浑天定盘 · 三术合参")
-                        .font(.system(size: 18, weight: .bold, design: .serif))
-                        .foregroundStyle(Ky.ink)
-                    KyBadge(text: "五典正法", color: Ky.qingdai)
-                }
-                Text("子平八字 · 天纪斗数 · 统宗奇门 · 实景堪舆")
-                    .font(.caption)
-                    .foregroundStyle(Ky.sub)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 2)
+    // 01 品牌导航区（KyProfileHeader：右上角头像 44×44 → MyView）
+    private var brandHeader: some View {
+        KyProfileHeader(
+            subtitle: "子平八字 · 天纪斗数 · 统宗奇门 · 实景堪舆",
+            activePersonName: currentPersonNameForHeader,
+            onTapProfile: { showingMyView = true }
+        )
+    }
+
+    private var currentPersonNameForHeader: String {
+        if let p = peopleStore.currentPerson { return p.name }
+        return ""
     }
 
     @ViewBuilder private var signBanner: some View {
@@ -1474,7 +1485,7 @@ struct HomePageView: View {
         }
     }
 
-    // 今日干支黄历与择吉一体的高颜值顶卡（读取内存缓存 AlmanacLunarCache，0ms 零延迟）
+    // 03 今日天地卡（干支黄历与择吉一体；读取内存缓存 AlmanacLunarCache，0ms 零延迟；点卡进 AlmanacView、点胶囊进 ZejiView）
     private var todayAlmanacCard: some View {
         let info = AlmanacLunarCache.dayInfo(for: Date())
         return VStack(alignment: .leading, spacing: 10) {
@@ -1541,9 +1552,9 @@ struct HomePageView: View {
         .kyCard()
     }
 
-    // G1 每日运势「今日」卡：与 Web /api/today 同款三行（命主＝relation 本人，否则首位档案）
+    // 04 今日运势卡（G1 每日运势「今日」卡：与 Web /api/today 同款三行；命主取全局 currentPersonId，同义回落）
     private var todayFortuneCard: some View {
-        let person = peopleStore.people.first(where: { $0.relation == "本人" }) ?? peopleStore.people.first
+        let person = peopleStore.currentPerson
         if let p = person {
             let chart = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
             return AnyView(
@@ -1579,7 +1590,7 @@ struct HomePageView: View {
         }
     }
 
-    // 核心四术 2×2 Bento 矩阵（标题严格 4 字「核心排盘」，绝不断行！）
+    // 05 核心排盘 2×2 矩阵（标题严格 4 字「核心排盘」，绝不断行！）
     private var primaryBentoGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
             KySectionTitle(title: "核心排盘", trailing: "四柱 · 斗数 · 奇门 · 相法")
@@ -1668,154 +1679,202 @@ struct HomePageView: View {
         )
     }
 
-    // 命主档案横栏
-    private var recentPeopleSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                KySectionTitle(title: "命主档案", trailing: "三术一档通用")
-                NavigationLink { PeopleView() } label: {
-                    Text("全部(\(peopleStore.people.count)) ›")
-                        .font(.caption).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+    // 02 当前命主中枢卡（接全局 currentPersonId；切换／新建／点头像进 PersonDetailView）
+    @ViewBuilder private var personSwitcherCard: some View {
+        if let p = peopleStore.currentPerson {
+            KyPersonSwitcher(
+                person: p,
+                baziSummary: baziSummary(for: p),
+                dayMasterElement: dayMasterElement(for: p),
+                onSwitchPerson: { showingPersonPicker = true },
+                onNewPerson: { showingNewPerson = true },
+                onOpenDetail: { showingPersonDetail = true }
+            )
+        } else {
+            Button { showingNewPerson = true } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle().fill(Ky.qingdai.opacity(0.13)).frame(width: 42, height: 42)
+                        Image(systemName: "person.crop.circle.badge.plus")
+                            .font(.title3).foregroundStyle(Ky.qingdai)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("添加第一位家人或命主档案").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                        Text("建档一次，八字、紫微、合盘、论财直接调取，免重复输生辰")
+                            .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+                    }
+                    Spacer()
+                    Image(systemName: "plus.circle.fill").font(.title3).foregroundStyle(Ky.qingdai)
                 }
-            }
-            if peopleStore.people.isEmpty {
-                Button { showingNewPerson = true } label: {
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle().fill(Ky.qingdai.opacity(0.13)).frame(width: 42, height: 42)
-                            Image(systemName: "person.crop.circle.badge.plus")
-                                .font(.title3).foregroundStyle(Ky.qingdai)
-                        }
+                .kyCard()
+            }.buttonStyle(.plain)
+        }
+    }
+
+    /// 02 卡副行：四柱＋日主（与旧版命主横栏同款信息）
+    private func baziSummary(for p: Person) -> String {
+        let chart = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: chartLongitude(for: p))
+        return chart.pillars.joined(separator: " ") + " · 日主" + chart.rizhu
+    }
+
+    private func dayMasterElement(for p: Person) -> String {
+        let chart = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: chartLongitude(for: p))
+        if let c = chart.rizhu.first { return KyV2.element(ofChar: c) }
+        return ""
+    }
+
+    private func chartLongitude(for p: Person) -> Double? {
+        if p.useLongitude { return p.longitude }
+        return nil
+    }
+
+    private func avatarText(for p: Person) -> String {
+        if p.name.isEmpty { return "命" }
+        return String(p.name.prefix(1))
+    }
+
+    private func displayName(for p: Person) -> String {
+        if p.name.isEmpty { return "未命名" }
+        return p.name
+    }
+
+    private func relationHint(for p: Person) -> String {
+        if p.relation.isEmpty { return "点击设为当前命主" }
+        return p.relation
+    }
+
+    private var personPickerSheet: some View {
+        NavigationStack {
+            List(peopleStore.people) { p in
+                Button {
+                    peopleStore.setCurrentPerson(p)
+                    showingPersonPicker = false
+                } label: {
+                    HStack(spacing: 10) {
+                        Text(avatarText(for: p))
+                            .font(.system(size: 15, weight: .bold, design: .serif))
+                            .foregroundStyle(Ky.qingdai)
+                            .frame(width: 36, height: 36)
+                            .background(Ky.qingdai.opacity(0.14))
+                            .clipShape(Circle())
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("添加第一位家人或命主档案").font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                            Text("建档一次，八字、紫微、合盘、论财直接调取，免重复输生辰")
-                                .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+                            Text(displayName(for: p))
+                                .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                            Text(relationHint(for: p))
+                                .font(.caption2).foregroundStyle(Ky.sub)
                         }
                         Spacer()
-                        Image(systemName: "plus.circle.fill").font(.title3).foregroundStyle(Ky.qingdai)
+                        if peopleStore.currentPersonId == p.id {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Ky.qingdai)
+                        }
                     }
-                    .kyCard()
-                }.buttonStyle(.plain)
+                }
+                .buttonStyle(.plain)
+            }
+            .navigationTitle("切换命主")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { showingPersonPicker = false }.foregroundStyle(Ky.qingdai)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    // 06 最近使用与专项工具（最近排盘／最近勘察／最近命书＋常用 4 项；其余全部进「全部工具」）
+    private var recentToolsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            KySectionTitle(title: "最近使用", trailing: "最近打开的人物与工具")
+            let recents = AllToolsData.recentEntries(people: peopleStore.people)
+            if recents.isEmpty {
+                Text("打开任意工具或人物后，这里会显示最近使用，方便一键回到上次的盘。")
+                    .font(.caption).foregroundStyle(Ky.sub)
+                    .padding(.horizontal, 2)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
-                        ForEach(peopleStore.people.prefix(8)) { p in
-                            NavigationLink { PersonDetailView(person: p, store: peopleStore) } label: {
-                                HStack(spacing: 9) {
-                                    Text(String((p.name.isEmpty ? "命" : p.name).prefix(1)))
-                                        .font(.system(.callout, design: .serif)).fontWeight(.bold)
-                                        .frame(width: 38, height: 38)
-                                        .background(Ky.qingdai.opacity(0.14)).clipShape(Circle())
-                                        .foregroundStyle(Ky.qingdai)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        HStack(spacing: 4) {
-                                            Text(p.name.isEmpty ? "未命名" : p.name)
-                                                .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                                            Text(p.gender == "M" ? "乾" : "坤")
-                                                .font(.system(size: 10, weight: .bold))
-                                                .foregroundStyle(p.gender == "M" ? Ky.qingdai : Ky.cinnabar)
-                                        }
-                                        Text(p.relation.isEmpty ? "点击合参" : p.relation)
-                                            .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
-                                    }
-                                }
-                                .padding(.horizontal, 12).padding(.vertical, 10)
-                                .background(Ky.card)
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Ky.line, lineWidth: 0.8))
-                            }.buttonStyle(.plain)
-                        }
-                        Button { showingNewPerson = true } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "plus")
-                                Text("建档")
-                            }
-                            .font(.caption).fontWeight(.bold)
-                            .padding(.horizontal, 14).padding(.vertical, 18)
-                            .background(Ky.elevated)
-                            .foregroundStyle(Ky.qingdai)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        }.buttonStyle(.plain)
+                        ForEach(recents) { entry in homeRecentChip(entry) }
                     }
+                }
+            }
+            KySectionTitle(title: "常用工具", trailing: "星命 · 合婚 · 论财 · 反查")
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    NavigationLink { AstroHomeView(person: currentHomePerson, chart: currentHomeChart) } label: {
+                        compactBentoTile("sparkles", "星命合参", "八字 × 西洋星盘 · 双术印证", Ky.gold)
+                    }.buttonStyle(.plain)
+                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })
+                    NavigationLink { SynastryView() } label: {
+                        compactBentoTile("heart.circle.fill", "合盘合婚", "合婚四看 · 喜用互补", Ky.cinnabar)
+                    }.buttonStyle(.plain)
+                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "synastry") })
+                }
+                HStack(spacing: 10) {
+                    NavigationLink { WealthView() } label: {
+                        compactBentoTile("yensign.circle.fill", "八字论财", "财星 · 财库 · 财运大运", Ky.gold)
+                    }.buttonStyle(.plain)
+                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "wealth") })
+                    NavigationLink { GanZhiLookupView() } label: {
+                        compactBentoTile("magnifyingglass.circle.fill", "干支反查", "由四柱反推公历生辰", Ky.qingdai)
+                    }.buttonStyle(.plain)
+                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "ganzhi") })
                 }
             }
         }
     }
 
-    // 专项推演 2×3 矩阵（新增「干支反查」重磅工具！）
-    private var specialToolsBento: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            KySectionTitle(title: "专项推演", trailing: "星命 · 反查 · 合婚 · 论财 · 对比 · 梅花")
-            HStack(spacing: 10) {
-                NavigationLink {
-                    let p = peopleStore.people.first(where: { $0.relation == "本人" }) ?? peopleStore.people.first ?? Person(name: "命主", relation: "本人", gender: "M", birthEpoch: Date().timeIntervalSince1970)
-                    let ch = BaziEngine.paipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
-                    AstroHomeView(person: p, chart: ch)
-                } label: {
-                    compactBentoTile("sparkles", "星命合参", "八字 × 西洋星盘 · 双术印证", Ky.gold)
-                }.buttonStyle(.plain)
-                NavigationLink { GanZhiLookupView() } label: {
-                    compactBentoTile("magnifyingglass.circle.fill", "干支反查", "由四柱反推公历生辰", Ky.qingdai)
-                }.buttonStyle(.plain)
+    @ViewBuilder
+    private func homeRecentChip(_ entry: RecentEntry) -> some View {
+        switch entry {
+        case .person(let p):
+            NavigationLink { PersonDetailView(person: p, store: peopleStore) } label: {
+                HStack(spacing: 6) {
+                    Text(avatarText(for: p))
+                        .font(.system(size: 13, weight: .bold, design: .serif))
+                        .foregroundStyle(Ky.qingdai)
+                    Text(displayName(for: p)).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 10)
+                .background(Ky.card)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Ky.line, lineWidth: 0.8))
             }
-            HStack(spacing: 10) {
-                NavigationLink { SynastryView() } label: {
-                    compactBentoTile("heart.circle.fill", "合盘合婚", "合婚四看 · 喜用互补", Ky.cinnabar)
-                }.buttonStyle(.plain)
-                NavigationLink { WealthView() } label: {
-                    compactBentoTile("yensign.circle.fill", "八字论财", "财星 · 财库 · 财运大运", Ky.gold)
-                }.buttonStyle(.plain)
-            }
-            HStack(spacing: 10) {
-                NavigationLink { FamilyChartView() } label: {
-                    compactBentoTile("person.3.fill", "全家盘", "三人盘并置 · 合参裁决", Ky.jade)
-                }.buttonStyle(.plain)
-                NavigationLink { SynastryShareCardView() } label: {
-                    compactBentoTile("qrcode", "合盘分享卡", "双盘速览 · 总评一句 · 二维码", Ky.qingdai)
-                }.buttonStyle(.plain)
-            }
-            HStack(spacing: 10) {
-                NavigationLink { CompareView() } label: {
-                    compactBentoTile("person.3.fill", "多盘对比", "2–4 人并排比四柱", Ky.jade)
-                }.buttonStyle(.plain)
-                NavigationLink { YunQiPageView() } label: {
-                    compactBentoTile("aqi.medium", "五运六气", "岁运 · 司天在泉主客气", Ky.qingdai)
-                }.buttonStyle(.plain)
-            }
-            HStack(spacing: 10) {
-                NavigationLink {
-                    let p = peopleStore.people.first(where: { $0.relation == "本人" }) ?? peopleStore.people.first ?? Person(name: "命主", relation: "本人", gender: "M", birthEpoch: Date().timeIntervalSince1970)
-                    let ch = BaziEngine.paipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
-                    ChengguView(person: p, chart: ch)
-                } label: {
-                    compactBentoTile("scalemass.fill", "称骨", "四重称重 · 52 格歌诀", Ky.cinnabar)
-                }.buttonStyle(.plain)
+            .buttonStyle(.plain)
+        case .tool(let item):
+            if item.id == "workbench" {
                 Button { selectedTab = 4 } label: {
-                    compactBentoTile("safari.fill", "风水勘察", "罗盘定盘 · 玄空八宅", Ky.gold)
-                }.buttonStyle(.plain)
-            }
-            HStack(spacing: 10) {
-                NavigationLink { MeihuaView() } label: {
-                    compactBentoTile("yinyang", "六爻梅花", "时间起卦 · 体用六亲", Ky.qingdai)
-                }.buttonStyle(.plain)
-                NavigationLink { ForecastView() } label: {
-                    compactBentoTile("checkmark.seal.fill", "前瞻登记", "起卦断语封存 · 到期回验", Ky.jade)
-                }.buttonStyle(.plain)
-            }
-            HStack(spacing: 10) {
-                NavigationLink { CompassStandaloneView() } label: {
-                    compactBentoTile("safari.fill", "罗盘实测", "磁北／真北 · 锁定带入堪舆", Ky.gold)
-                }.buttonStyle(.plain)
-                NavigationLink { FloorPlanOverlayView() } label: {
-                    compactBentoTile("square.split.diagonal.2x2", "户型压盘", "导入户型图 · 拖拽立极中宫", Ky.qingdai)
-                }.buttonStyle(.plain)
-            }
-            HStack(spacing: 10) {
-                NavigationLink { AskView() } label: {
-                    compactBentoTile("bubble.left.and.text.bubble.right.fill", "AI 问答", "只引引擎事实 · 附依据链", Ky.jade)
-                }.buttonStyle(.plain)
+                    homeChipLabel(item)
+                }
+                .buttonStyle(.plain)
+            } else {
+                NavigationLink { toolDestination(for: item, person: currentHomePerson, chart: currentHomeChart) } label: {
+                    homeChipLabel(item)
+                }
+                .buttonStyle(.plain)
             }
         }
+    }
+
+    private func homeChipLabel(_ item: ToolItem) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: item.icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(item.color)
+            Text(item.title).font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.ink)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(Ky.card)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Ky.line, lineWidth: 0.8))
+    }
+
+    private var currentHomePerson: Person {
+        if let p = peopleStore.currentPerson { return p }
+        return Person(name: "命主", relation: "本人", gender: "M", birthEpoch: Date().timeIntervalSince1970)
+    }
+
+    private var currentHomeChart: BaziChart {
+        let p = currentHomePerson
+        return BaziEngine.paipan(clock: p.birthDate, gender: p.gender, longitude: chartLongitude(for: p))
     }
 
     private func compactBentoTile(_ icon: String, _ title: String, _ desc: String, _ color: Color) -> some View {
@@ -1839,31 +1898,21 @@ struct HomePageView: View {
         .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
     }
 
-    // 典籍智库与前瞻账本
-    private var archiveAndClassicsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            KySectionTitle(title: "典籍账本", trailing: "事前封存 · 古籍条文")
-            VStack(spacing: 10) {
-                wideLink("checkmark.seal.fill", "前瞻断语登记簿", "事前封存断语 · 到期四档回验（共 \(forecastStore.entries.count) 条）", Ky.jade) { ForecastView() }
-                wideLink("text.book.closed.fill", "五典与实务断语库", "100 条已核定类象 · 格局 · 调候 · 回测纪律可检索", Ky.qingdai) { LibraryView() }
-                wideLink("book.fill", "古籍检索", "《滴天髓》64 篇歌诀 · 《子平真诠》一～十篇全文逐句对照", Ky.jade) { ClassicsView() }
-                wideLink("questionmark.circle.fill", "排盘口径自测", "44 题口径自测 · 答案由引擎现算复核", Ky.gold) { QuizView() }
-                wideLink("graduationcap.fill", "学堂", "图书馆 · 古籍 · 题库 · 依据与金标准收拢一页", Ky.qingdai) { AcademyView() }
-                wideLink("person.crop.rectangle.stack.fill", "名人命例库", "公开史料记载生辰 · 八字与紫微双盘即时对参", Ky.gold) { CelebView() }
-            }
-        }
-    }
-
-    private func wideLink<Dest: View>(_ icon: String, _ title: String, _ desc: String, _ color: Color, @ViewBuilder dest: @escaping () -> Dest) -> some View {
-        NavigationLink {
-            dest()
-        } label: {
+    // 06 末：全部工具入口（29 项专项工具 · 搜索与分类）
+    private var allToolsLink: some View {
+        NavigationLink { AllToolsView(selectedTab: $selectedTab) } label: {
             HStack(spacing: 12) {
-                Image(systemName: icon).font(.system(size: 16, weight: .semibold)).foregroundStyle(color)
-                    .frame(width: 36, height: 36).background(color.opacity(0.13)).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                Image(systemName: "square.grid.2x2.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Ky.qingdai)
+                    .frame(width: 36, height: 36)
+                    .background(Ky.qingdai.opacity(0.13))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
-                    Text(desc).font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
+                    Text("全部工具")
+                        .font(.subheadline).fontWeight(.bold).foregroundStyle(Ky.ink)
+                    Text("29 项专项工具 · 搜索与分类")
+                        .font(.caption2).foregroundStyle(Ky.sub).lineLimit(1)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Ky.sub)
@@ -1874,6 +1923,7 @@ struct HomePageView: View {
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
         }.buttonStyle(.plain)
     }
+
 }
 
 // MARK: - Tab 4：「堪舆」独立工作台（风水勘察案件 · 罗盘 · 解煞手册 · 系统口径设置）

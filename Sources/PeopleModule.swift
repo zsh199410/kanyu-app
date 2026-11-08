@@ -45,12 +45,36 @@ final class PeopleStore: ObservableObject {
     // 旧写法每页 @StateObject 新建一个 PeopleStore，各读各的盘、改完还不同步
     static let shared = PeopleStore()
     @Published var people: [Person] = []
+    // UI 2.0 全局当前命主（单点穿透数据源）：显式选择存 UserDefaults 键 "currentPersonId"（UUID 字符串）；
+    // @AppStorage 不能与 @Published 叠加，故用 didSet 同键持久化。PersonDetailView 内的局部 currentPerson 只是详情页 @State，不可复用。
+    @Published var currentPersonId: Person.ID? {
+        didSet {
+            if let id = currentPersonId {
+                UserDefaults.standard.set(id.uuidString, forKey: "currentPersonId")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "currentPersonId")
+            }
+        }
+    }
+    /// 全局当前命主：显式选择 → relation 本人 → 首位 → nil（沿用各页既有回落约定）
+    var currentPerson: Person? {
+        if let id = currentPersonId, let p = people.first(where: { $0.id == id }) { return p }
+        return people.first(where: { $0.relation == "本人" }) ?? people.first
+    }
+    func setCurrentPerson(_ p: Person?) { currentPersonId = p?.id }
     private(set) var loadedSchemaVersion = 0   // 读档时 meta 的版本（无 meta 的旧档为 0）；将来改形状时按此分支迁移
     private var fileURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("people.json")
     }
-    init() { load() }
+    init() {
+        load()
+        if let s = UserDefaults.standard.string(forKey: "currentPersonId"),
+           let id = UUID(uuidString: s),
+           people.contains(where: { $0.id == id }) {
+            currentPersonId = id
+        }
+    }
     func load() {
         loadedSchemaVersion = StoreSchema.readVersion(for: fileURL)
         guard let data = try? Data(contentsOf: fileURL) else { return }
@@ -72,7 +96,11 @@ final class PeopleStore: ObservableObject {
         if let i = people.firstIndex(where: { $0.id == p.id }) { people[i] = p } else { people.append(p) }
         save()
     }
-    func remove(_ p: Person) { people.removeAll { $0.id == p.id }; save() }
+    func remove(_ p: Person) {
+        people.removeAll { $0.id == p.id }
+        if currentPersonId == p.id { currentPersonId = nil }
+        save()
+    }
     func exportData() -> Data {
         (try? JSONEncoder().encode(PeopleExport(schemaVersion: StoreSchema.current, people: people))) ?? Data()
     }
