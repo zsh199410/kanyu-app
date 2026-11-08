@@ -12,10 +12,19 @@ struct InterpretItem {
     // mechanism 取 links 中首个「根据」／「法则」文本；timeRange 取引擎已算出的
     // 时间窗口（大运／流年／运段）；advice 取三段式【现实避坑指南】（guideHint）；
     // confidence 由 G5 填（InterpretEngine.confidenceLabel：VerifyStore 打标＋机制文本层级）。
-    let mechanism: String? = nil
-    let confidence: String? = nil
-    let timeRange: String? = nil
-    let advice: String? = nil
+    let mechanism: String?
+    let confidence: String?
+    let timeRange: String?
+    let advice: String?
+    init(title: String, conclusion: String, links: [(label: String, text: String)], mechanism: String? = nil, confidence: String? = nil, timeRange: String? = nil, advice: String? = nil) {
+        self.title = title
+        self.conclusion = conclusion
+        self.links = links
+        self.mechanism = mechanism
+        self.confidence = confidence
+        self.timeRange = timeRange
+        self.advice = advice
+    }
 }
 
 /// 解盘验真打标：每条断语一键标「已应验／待回验」，沉淀个人准确率；随备份导出。

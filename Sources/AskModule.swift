@@ -66,8 +66,16 @@ struct AskHistoryItem: Codable, Identifiable {
     let degraded: Bool
     let at: String
     // G5：提问当时服务端给的可信度标签＋定档依据（旧记录无此二键，解码为 nil，显示“未标注”）
-    let confidence: String? = nil
-    let confidenceDetail: String? = nil
+    let confidence: String?
+    let confidenceDetail: String?
+    init(question: String, answer: String, degraded: Bool, at: String, confidence: String? = nil, confidenceDetail: String? = nil) {
+        self.question = question
+        self.answer = answer
+        self.degraded = degraded
+        self.at = at
+        self.confidence = confidence
+        self.confidenceDetail = confidenceDetail
+    }
 }
 
 enum AskClient {
