@@ -720,11 +720,22 @@ struct TermButton: View {
     }
 }
 
+// MARK: - 解盘展开集编解码（纯函数，可单元测试）
+/// 解盘展开集编码：Set<Int> -> 逗号串（排序后拼接，空集 -> ""）
+func encodeExpandedItems(_ s: Set<Int>) -> String {
+    s.sorted().map { String($0) }.joined(separator: ",")
+}
+
+/// 解盘展开集解码：逗号串 -> Set<Int>（空串 -> 空集；非法段跳过）
+func decodeExpandedItems(_ s: String) -> Set<Int> {
+    Set(s.split(separator: ",").compactMap { Int(String($0)) })
+}
+
 struct InterpretView: View {
     let chart: BaziChart
     let name: String
     @StateObject private var speaker = Speaker()
-    // UI 2.1 第6批：解盘分类与搜索跨启动保留（SceneStorage；展开集仍会话内）
+    // UI 2.1 第6批：解盘分类、搜索与展开集跨启动保留（SceneStorage）
     @SceneStorage("interpret.selectedCategory") private var selectedCategory = 0
     @SceneStorage("interpret.searchQuery") private var searchQuery = ""
     @State private var showGlossary = false
@@ -733,7 +744,9 @@ struct InterpretView: View {
     @SceneStorage("bazi.selectedPillar") private var locatePillarStored: Int = -1
     @SceneStorage("bazi.scrollToPlateRequest") private var scrollRequestStored: Int = 0
     @Environment(\.dismiss) private var dismiss
-    @State private var expandedItems: Set<Int> = [0, 1, 2, 3, 4]  // 详批折叠：interpret() 前 5 条恒为总纲，默认展开；25 维默认折叠，点标题展开
+    // 展开集跨启动保留：SceneStorage 存逗号串（读走计算属性，写走存储变量；SceneStorage 包装不可在界面代码里赋值）
+    @SceneStorage("interpret.expandedItems") private var expandedItemsStored: String = "0,1,2,3,4"
+    private var expandedItems: Set<Int> { decodeExpandedItems(expandedItemsStored) }  // 详批折叠：interpret() 前 5 条恒为总纲，默认展开；25 维默认折叠，点标题展开
 
     private static let categories: [(String, Set<String>)] = [
         ("全部", []),
@@ -870,7 +883,11 @@ struct InterpretView: View {
                         let target = InterpretEngine.locateTarget(for: allItems[i], chart: chart)
                         DisclosureGroup(isExpanded: Binding(
                             get: { expandedItems.contains(i) },
-                            set: { if $0 { expandedItems.insert(i) } else { expandedItems.remove(i) } }
+                            set: {
+                                var s = expandedItems
+                                if $0 { s.insert(i) } else { s.remove(i) }
+                                expandedItemsStored = encodeExpandedItems(s)
+                            }
                         )) {
                             VStack(alignment: .leading, spacing: 10) {
                                 if !isCore {

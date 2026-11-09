@@ -1055,16 +1055,33 @@ enum ZiweiReading {
     }
 }
 
+// MARK: - 紫微展开集编解码（纯函数，可单元测试）
+/// 紫微 11 卡展开集编码：Set<String> -> 逗号串（排序后拼接，空集 -> ""）
+func encodeExpandedCards(_ s: Set<String>) -> String {
+    s.sorted().joined(separator: ",")
+}
+
+/// 紫微 11 卡展开集解码：逗号串 -> Set<String>（空串 -> 空集）
+func decodeExpandedCards(_ s: String) -> Set<String> {
+    Set(s.split(separator: ",").map { String($0) })
+}
+
 struct ZiweiReadingView: View {
     let chart: ZiweiChart
-    @State private var expandedCards: Set<String> = ["命宫定型"]  // P1：11 卡抽屉化，默认只展开首卡「命宫定型」
+    // 展开集跨启动保留：SceneStorage 存逗号串（读走计算属性，写走存储变量；11 卡标题均不含逗号）
+    @SceneStorage("ziwei.expandedCards") private var expandedCardsStored: String = "命宫定型"
+    private var expandedCards: Set<String> { decodeExpandedCards(expandedCardsStored) }  // P1：11 卡抽屉化，默认只展开首卡「命宫定型」
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             KySectionTitle(title: "天纪三合解读", trailing: "命身 · 十二宫 · 三方 · 四化 · 大限")
             ForEach(ZiweiReading.cards(chart: chart), id: \.title) { c in
                 DisclosureGroup(isExpanded: Binding(
                     get: { expandedCards.contains(c.title) },
-                    set: { if $0 { expandedCards.insert(c.title) } else { expandedCards.remove(c.title) } }
+                    set: {
+                        var s = expandedCards
+                        if $0 { s.insert(c.title) } else { s.remove(c.title) }
+                        expandedCardsStored = encodeExpandedCards(s)
+                    }
                 )) {
                     EvidenceChainView(conclusion: c.conclusion, links: [("盘面", c.facts), ("天纪出处", c.source)])
                         .padding(.top, 6)
