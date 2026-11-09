@@ -12,7 +12,7 @@ packages:
     from: "1.1.8"
   mediapipe:
     url: https://github.com/google-ai-edge/mediapipe
-    from: "0.10.32"
+    from: "1.2.2"
 settings:
   base:
     CODE_SIGN_STYLE: Manual
