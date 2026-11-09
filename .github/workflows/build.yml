@@ -11,9 +11,15 @@ on:
 permissions:
   contents: write
 
+# Prevent overlapping scheduled and push builds from publishing competing releases.
+concurrency:
+  group: unsigned-ipa-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: macos-26
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -57,11 +63,13 @@ jobs:
         with:
           name: Kanyu-unsigned-ipa
           path: Kanyu-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: 堪舆勘察 未签名 IPA（第 ${{ github.run_number }} 次构建）
+          name: 三术合参 未签名 IPA（第 ${{ github.run_number }} 次构建）
           body: 未签名 IPA：用开发者证书签名后安装（全能签 / ESign / Feather 等）。数据包格式见仓库 README。
           files: Kanyu-unsigned.ipa
