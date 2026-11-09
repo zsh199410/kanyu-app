@@ -70,4 +70,17 @@ final class PalmAnchorTests: XCTestCase {
         XCTAssertNil(anchoredPalmLines(joints: ["wrist": CGPoint(x: 0.5, y: 0.1)]))
         XCTAssertNil(palmFrame(joints: [:]))
     }
+
+    func testSmoothLinePoints() {
+        let anchors = [CGPoint(x: 0, y: 0), CGPoint(x: 0.3, y: 0.4), CGPoint(x: 0.6, y: 0.3), CGPoint(x: 1, y: 0.8)]
+        let pts = smoothLinePoints(anchors)
+        XCTAssertEqual(pts.first, anchors.first, "采样起点应为首个锚点")
+        XCTAssertEqual(pts.last, anchors.last, "采样终点应为末个锚点")
+        XCTAssertEqual(pts.count, 1 + 3 * 16, "每段 16 段采样")
+        for pt in pts {
+            XCTAssertTrue(pt.x >= -0.05 && pt.x <= 1.05 && pt.y >= -0.05 && pt.y <= 1.05, "采样点不应大幅越界：\(pt)")
+        }
+        // 锚点少于 3 个时原样返回（直线即可）
+        XCTAssertEqual(smoothLinePoints([CGPoint(x: 0, y: 0), CGPoint(x: 1, y: 1)]).count, 2)
+    }
 }
