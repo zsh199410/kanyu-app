@@ -130,19 +130,26 @@ final class ZuogongTests: XCTestCase {
         XCTAssertEqual(Zuogong.j3Classify([po("财党杀", "用神"), po("劫争财", "用神")]), "破耗")
     }
 
-    // v1.1 修正③：J2 门槛 helper（合成主功链）
+    // v1.2 修正⑤⑥⑦：J2 门槛 helper（合成主功链；修正③作废）
     func testGateHelpers() {
-        let chain = ZuogongChain(kind: "化用", gongShen: "正印", yongShen: "七杀",
+        let chain = ZuogongChain(kind: "化用", gongShen: "正官", yongShen: "七杀",
                                  gongStem: "甲", yongStem: "癸", gongPos: 1, yongPos: 0, weak: false)
-        XCTAssertTrue(Zuogong.stemRelatedToChain("甲", chain: chain))  // 同字
-        XCTAssertTrue(Zuogong.stemRelatedToChain("己", chain: chain))  // 甲己合
-        XCTAssertTrue(Zuogong.stemRelatedToChain("丙", chain: chain))  // 甲生丙
-        let sameElement = ZuogongChain(kind: "合用", gongShen: "正印", yongShen: "正印",
-                                       gongStem: "甲", yongStem: "甲", gongPos: 1, yongPos: 1, weak: false)
-        XCTAssertFalse(Zuogong.stemRelatedToChain("乙", chain: sameElement))  // 同五行第三干
-        let pillars = ["甲子", "乙子", "丙子", "丁子"]  // 关键字支全为子（合成）
-        XCTAssertTrue(Zuogong.branchRelatedToChain("午", chain: chain, pillars: pillars))  // 午冲子
-        XCTAssertFalse(Zuogong.branchRelatedToChain("辰", chain: chain, pillars: pillars))  // 辰与子无关系
+        XCTAssertTrue(Zuogong.j2GateA("庚", starSS: "正官", chain: chain))  // 流年干十神==功神十神
+        XCTAssertTrue(Zuogong.j2GateA("壬", starSS: "正财", chain: chain))  // 壬水生甲木功神干
+        XCTAssertTrue(Zuogong.j2GateA("戊", starSS: "正财", chain: chain))  // 戊土克癸水用神干
+        XCTAssertFalse(Zuogong.j2GateA("乙", starSS: "比肩", chain: chain))  // 无匹配
+        let pillars = ["甲子", "乙子", "丙子", "丁子"]  // 日支/时支全为子（合成）
+        XCTAssertEqual(Zuogong.j2GateB("午", pillars: pillars).map { "\($0.role)\($0.rel)" },
+                       ["日支冲", "时支冲"])  // 午冲子
+        XCTAssertTrue(Zuogong.j2GateB("辰", pillars: pillars).isEmpty)  // 辰与子无合/冲/刑/穿
+        XCTAssertEqual(Zuogong.palaceEvent("食神", fromLiunianStem: true, gateBHits: [("时支", "冲")]),
+                       ("子女", "子女"))
+        XCTAssertEqual(Zuogong.palaceEvent("正官", fromLiunianStem: true, gateBHits: [("日支", "冲")]),
+                       ("婚", "配偶"))
+        XCTAssertEqual(Zuogong.palaceEvent("正财", fromLiunianStem: true, gateBHits: [("日支", "穿")]),
+                       ("婚", "配偶"))
+        XCTAssertNil(Zuogong.palaceEvent("食神", fromLiunianStem: false, gateBHits: [("时支", "冲")]))
+        XCTAssertNil(Zuogong.palaceEvent("正印", fromLiunianStem: true, gateBHits: [("时支", "穿")]))
     }
 
     // 童限（未起运）不崩：G14-12 目标年 2026 在起运 2029 之前，大运为空
