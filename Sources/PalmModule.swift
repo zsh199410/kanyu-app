@@ -1,10 +1,13 @@
-// 手相面相模块（P4 提前量，2026-10-30）：
-// 手相＝Vision 21 点几何测量（掌型/指长比可复核）＋可编辑标注层——掌纹是皮肤纹理，
-// 任何检测框架都提不出掌线（调研定版），故三线走「预置线形＋逐点可拖修正」，修正值即资产。
-// 面相＝三停标线手动校准（发际线必须人工，调研定版）。全程娱乐定性，不做疾病灾祸预测。
+// 手相面相模块（P4 提前量，2026-10-30；2026-11-09 重新设计 P0＋P1）：
+// 手相＝Vision 21 点几何测量（掌型/指长比可复核）＋掌纹三线关节点锚定（掌心坐标系，
+// 腕→中指根为纵轴，线按关节点落位，不再用写死全图坐标）＋逐点可拖修正；另有掌纹参考
+// 描边（CIEdges 掌区增强，仅作参考，不自动定线）。面相＝Vision Rev 3 自动标眉/鼻底/
+// 下颌线（发际线仍手动）＋MediaPipe 478 点补五眼与面宽。全程娱乐定性，不做疾病灾祸预测。
 import SwiftUI
 import PhotosUI
 import Vision
+import CoreImage
+import MediaPipeTasksVision
 
 struct PalmHomeView: View {
     @State private var quickPerson: Person?
@@ -64,8 +67,94 @@ final class PhotoBox: ObservableObject {
     @Published var image: UIImage?
     func load(_ item: PhotosPickerItem?) async {
         if let data = try? await item?.loadTransferable(type: Data.self),
-           let ui = UIImage(data: data) { image = ui }
+           let ui = UIImage(data: data) { image = ui.normalizedOrientation() }
     }
+}
+
+// MARK: - 方向归一化（UIImage(data:) 保留 EXIF 方向，cgImage 是未旋转像素；
+// Vision 用 cgImage 算点、显示用 UIImage，两边对不上会让关节点错位，故先转正）
+extension UIImage {
+    func normalizedOrientation() -> UIImage {
+        guard imageOrientation != .up else { return self }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        return renderer.image { _ in draw(in: CGRect(origin: .zero, size: size)) }
+    }
+}
+
+// MARK: - 手相三线关节点锚定（纯函数，可单元测试）
+// 掌心坐标系：原点＝腕点，纵轴 U＝腕→中指根（指向手指），横轴 V＝U 的垂线，
+// 朝拇指侧为正（用 thumbCMC 定向，不依赖左右手）；纵向单位 L＝|腕→中指根|，
+// 横向单位 W＝|食指根→小指根|。线用 (a, b) 表示：a＝腕 0 → 中指根 1，b＝拇指侧为正。
+// 解剖依据：感情线＝远侧掌横纹，智慧线＝近侧掌横纹，生命线＝大鱼际纹。
+// 输入 joints 为 Vision 归一化坐标（左下原点）；输出为画布相对坐标（左上原点 0-1）。
+func palmFrame(joints: [String: CGPoint]) -> (origin: CGPoint, u: CGVector, v: CGVector, length: CGFloat, width: CGFloat)? {
+    guard let wrist = joints["wrist"], let mm = joints["middleMCP"],
+          let im = joints["indexMCP"], let lm = joints["littleMCP"],
+          let tc = joints["thumbCMC"] else { return nil }
+    let ux = mm.x - wrist.x; let uy = mm.y - wrist.y
+    let len = (ux * ux + uy * uy).squareRoot()
+    guard len > 0.05 else { return nil }
+    let u = CGVector(dx: ux / len, dy: uy / len)
+    var v = CGVector(dx: -u.dy, dy: u.dx)
+    let toThumb = CGVector(dx: tc.x - wrist.x, dy: tc.y - wrist.y)
+    if v.dx * toThumb.dx + v.dy * toThumb.dy < 0 { v = CGVector(dx: -v.dx, dy: -v.dy) }
+    let wx = im.x - lm.x; let wy = im.y - lm.y
+    let wid = (wx * wx + wy * wy).squareRoot()
+    guard wid > 0.05 else { return nil }
+    return (wrist, u, v, len, wid)
+}
+
+func anchoredPalmLines(joints: [String: CGPoint]) -> [[CGPoint]]? {
+    guard let f = palmFrame(joints: joints) else { return nil }
+    func p(_ a: CGFloat, _ b: CGFloat) -> CGPoint {
+        let vx = f.origin.x + f.u.dx * a * f.length + f.v.dx * b * f.width
+        let vy = f.origin.y + f.u.dy * a * f.length + f.v.dy * b * f.width
+        return CGPoint(x: min(max(vx, 0), 1), y: min(max(1 - vy, 0), 1))
+    }
+    let heart = [p(0.80, -0.45), p(0.84, -0.15), p(0.85, 0.12), p(0.84, 0.33)]
+    let head = [p(0.60, 0.42), p(0.60, 0.15), p(0.58, -0.15), p(0.58, -0.45)]
+    let life = [p(0.62, 0.40), p(0.40, 0.10), p(0.22, 0.22), p(0.12, 0.35)]
+    return [heart, head, life]
+}
+
+// MARK: - 掌纹参考描边（仅作视觉参考，不自动定线）
+// 取掌区 ROI → CIEdges 提边缘 → 转透明底贴回全图同尺寸；界面以低透明度叠加，可开关。
+func palmEdgeReferenceImage(from image: UIImage, joints: [String: CGPoint]) -> UIImage? {
+    guard let cg = image.cgImage, !joints.isEmpty else { return nil }
+    let xs = joints.values.map { $0.x }; let ys = joints.values.map { $0.y }
+    guard let minX = xs.min(), let maxX = xs.max(), let minY = ys.min(), let maxY = ys.max() else { return nil }
+    let pad: CGFloat = 0.08
+    let rx = max(minX - pad, 0); let ry = max(minY - pad, 0)
+    let rw = min(maxX - minX + pad * 2, 1 - rx); let rh = min(maxY - minY + pad * 2, 1 - ry)
+    let w = CGFloat(cg.width); let h = CGFloat(cg.height)
+    let roi = CGRect(x: rx * w, y: ry * h, width: rw * w, height: rh * h)
+    let ci = CIImage(cgImage: cg).cropped(to: roi)
+    let edges = ci.applyingFilter("CIEdges", parameters: [kCIInputIntensityKey: 1.0])
+        .applyingFilter("CIMaskToAlpha")
+    let full = CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 0))
+        .cropped(to: CGRect(x: 0, y: 0, width: w, height: h))
+    let composed = edges.composited(over: full)
+    let ctx = CIContext(options: nil)
+    guard let out = ctx.createCGImage(composed, from: CGRect(x: 0, y: 0, width: w, height: h)) else { return nil }
+    return UIImage(cgImage: out, scale: image.scale, orientation: .up)
+}
+
+// MARK: - 面相五眼比例（纯函数，可单元测试）
+// MediaPipe 478 点（左上原点 0-1）：左眼外角 33、内角 133；右眼内角 362、外角 263；
+// 颧 234↔454。眼宽单位＝双眼眼宽均值；眼间距＝133↔362；面宽＝234↔454。
+struct FiveEyesResult { var gapRatio: CGFloat; var faceRatio: CGFloat }
+
+func fiveEyesRatios(points: [CGPoint]) -> FiveEyesResult? {
+    guard points.count >= 478 else { return nil }
+    func d(_ a: Int, _ b: Int) -> CGFloat {
+        let dx = points[a].x - points[b].x; let dy = points[a].y - points[b].y
+        return (dx * dx + dy * dy).squareRoot()
+    }
+    let eyeUnit = (d(33, 133) + d(263, 362)) / 2
+    guard eyeUnit > 0.01 else { return nil }
+    return FiveEyesResult(gapRatio: d(133, 362) / eyeUnit, faceRatio: d(234, 454) / eyeUnit)
 }
 
 // MARK: - 手相测量
@@ -79,8 +168,13 @@ struct HandMeasureView: View {
     @StateObject private var box = PhotoBox()
     @State private var item: PhotosPickerItem?
     @State private var joints: [String: CGPoint] = [:]   // Vision 归一化（左下原点）
+    @State private var jointConf: [String: Float] = [:]
     @State private var measure: HandMeasure?
     @State private var note = ""
+    @State private var tiltNote = ""
+    @State private var lineAuto: [Bool] = [true, true, true]  // 该线仍为自动落位（未拖过）
+    @State private var showEdgeRef = false
+    @State private var edgeImage: UIImage?
     // 可编辑三线（画布相对坐标，左上原点 0-1）：感情/智慧/生命各 4 控制点
     @State private var lines: [[CGPoint]] = [
         [CGPoint(x: 0.16, y: 0.30), CGPoint(x: 0.38, y: 0.27), CGPoint(x: 0.62, y: 0.27), CGPoint(x: 0.84, y: 0.30)],
@@ -100,6 +194,7 @@ struct HandMeasureView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                if box.image == nil { palmGuideCard }
                 PhotosPicker(selection: $item, matching: .images) {
                     Label(box.image == nil ? "选一张手掌照片" : "换一张照片", systemImage: "photo")
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -108,6 +203,11 @@ struct HandMeasureView: View {
                 if let img = box.image {
                     FittedImage(image: img) { rect in
                         ZStack(alignment: .topLeading) {
+                            if showEdgeRef, let edge = edgeImage {
+                                Image(uiImage: edge).resizable()
+                                    .frame(width: rect.width, height: rect.height)
+                                    .position(x: rect.midX, y: rect.midY).opacity(0.55)
+                            }
                             skeleton(rect)
                             editableLines(rect)
                         }
@@ -119,6 +219,7 @@ struct HandMeasureView: View {
                     }
                 }
                 if !note.isEmpty { Text(note.scriptConverted).font(.caption).foregroundStyle(Ky.cinnabar) }
+                if !tiltNote.isEmpty { Text(tiltNote.scriptConverted).font(.caption).foregroundStyle(Ky.cinnabar) }
                 if let m = measure { measureCard(m) }
                 if box.image != nil && measure != nil {
                     VStack(alignment: .leading, spacing: 8) {
@@ -147,10 +248,27 @@ struct HandMeasureView: View {
         .onChange(of: item) { _, new in Task { @MainActor in await box.load(new); detect() } }
     }
 
+    private var palmGuideCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("拍之前先对一下".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text("掌心正对镜头 · 五指自然张开 · 手放画面中央 · 背景干净".scriptConverted).font(.caption).foregroundStyle(Ky.ink)
+            Text("选图后三条线会按识别到的手自动落到掌心上，再拖动圆点对准真实掌纹；手太斜或识别不稳时会提示重拍。".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading).padding(12)
+        .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.gold.opacity(0.6), style: StrokeStyle(lineWidth: 1.2, dash: [6, 4])))
+    }
+
     private var lineChips: some View {
-        HStack(spacing: 8) {
-            KyFilterBar(options: [(title: "感情线", count: nil), (title: "智慧线", count: nil), (title: "生命线", count: nil)], selectedIndex: $selectedLine)
-            Text("拖动圆点修正".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                KyFilterBar(options: [(title: "感情线", count: nil), (title: "智慧线", count: nil), (title: "生命线", count: nil)], selectedIndex: $selectedLine)
+                Button((showEdgeRef ? "参考纹路：开" : "参考纹路：关").scriptConverted) { showEdgeRef.toggle() }
+                    .font(.caption2).padding(.horizontal, 8).padding(.vertical, 5)
+                    .background(Ky.card).clipShape(Capsule())
+            }
+            Text(lineAuto[selectedLine] ? "示意线（已按手自动落位）· 拖动圆点修正".scriptConverted : "已修正 · 拖动圆点可继续调整".scriptConverted)
+                .font(.caption2).foregroundStyle(Ky.sub)
         }
     }
 
@@ -205,6 +323,7 @@ struct HandMeasureView: View {
                         let nx = min(max((v.location.x - rect.minX) / rect.width, 0), 1)
                         let ny = min(max((v.location.y - rect.minY) / rect.height, 0), 1)
                         lines[selectedLine][pi] = CGPoint(x: nx, y: ny)
+                        lineAuto[selectedLine] = false
                     })
             }
         }
@@ -224,7 +343,8 @@ struct HandMeasureView: View {
     }
 
     private func detect() {
-        joints = [:]; measure = nil; note = ""
+        joints = [:]; jointConf = [:]; measure = nil; note = ""; tiltNote = ""; edgeImage = nil
+        lineAuto = [true, true, true]
         guard let cg = box.image?.cgImage else { return }
         let req = VNDetectHumanHandPoseRequest()
         req.maximumHandCount = 1
@@ -239,10 +359,30 @@ struct HandMeasureView: View {
                 ("littleMCP", .littleMCP), ("littlePIP", .littlePIP), ("littleDIP", .littleDIP), ("littleTip", .littleTip),
             ]
             var found: [String: CGPoint] = [:]
+            var conf: [String: Float] = [:]
             for (key, joint) in names {
-                if let p = try? obs.recognizedPoint(joint), p.confidence > 0.3 { found[key] = p.location }
+                if let p = try? obs.recognizedPoint(joint), p.confidence > 0.3 { found[key] = p.location; conf[key] = p.confidence }
             }
-            joints = found
+            joints = found; jointConf = conf
+            let required = ["wrist", "middleMCP", "indexMCP", "littleMCP", "thumbCMC"]
+            let haveAll = required.allSatisfy { found[$0] != nil }
+            let meanConf = required.compactMap { conf[$0] }.reduce(Float(0), +) / Float(required.count)
+            if haveAll, meanConf >= 0.6, let anchored = anchoredPalmLines(joints: found) {
+                lines = anchored
+                lineAuto = [true, true, true]
+            } else {
+                note = "关节点不全或识别不稳：三线用了缺省位置，请拖动圆点对准真实掌纹，或换一张更清晰的照片重试。".scriptConverted
+            }
+            if let f = palmFrame(joints: found) {
+                let deg = atan2(f.u.dx, f.u.dy) * 180 / .pi
+                if abs(deg) > 25 { tiltNote = "手有点斜（约 \(Int(abs(deg)))°），线已按手的方向落位；想更准可以重拍一张摆正的。".scriptConverted }
+            }
+            if let img = box.image, !found.isEmpty {
+                Task.detached {
+                    let edge = palmEdgeReferenceImage(from: img, joints: found)
+                    await MainActor.run { edgeImage = edge }
+                }
+            }
             guard let w = found["wrist"], let mm = found["middleMCP"], let mt = found["middleTip"],
                   let im = found["indexMCP"], let it = found["indexTip"],
                   let rm = found["ringMCP"], let rt = found["ringTip"], let lm = found["littleMCP"] else {
@@ -273,6 +413,10 @@ struct FaceMeasureView: View {
     init(personName: String = "") { _personName = State(initialValue: personName) }
     @State private var savedTip = false
     @State private var marks: [Double] = [0.14, 0.40, 0.63, 0.93]  // 发际/眉/鼻底/下颌（相对图高）
+    @State private var markAuto: [Bool] = [false, false, false, false]
+    @State private var hairEstimated = false
+    @State private var faceNote = ""
+    @State private var fiveEyes: FiveEyesResult?
     private let labels = ["发际线", "眉线", "鼻底", "下颌"]
 
     var body: some View {
@@ -290,17 +434,21 @@ struct FaceMeasureView: View {
                                 let y = rect.minY + marks[i] * rect.height
                                 Rectangle().fill(i == 0 || i == 3 ? Ky.cinnabar : Ky.gold)
                                     .frame(width: rect.width, height: 1.6).position(x: rect.midX, y: y)
-                                Text(labels[i].scriptConverted).font(.caption2).foregroundStyle(Ky.ink)
+                                Text((labels[i] + markSuffix(i)).scriptConverted).font(.caption2).foregroundStyle(Ky.ink)
                                     .padding(.horizontal, 6).padding(.vertical, 2)
                                     .background(Ky.card.opacity(0.85)).clipShape(Capsule())
                                     .position(x: rect.minX + 30, y: y - 9)
                                     .gesture(DragGesture(coordinateSpace: .named("fittedCanvas")).onChanged { v in
                                         marks[i] = min(max((v.location.y - rect.minY) / rect.height, 0.02), 0.98)
+                                        markAuto[i] = false
+                                        if i == 0 { hairEstimated = false }
                                     })
                             }
                         }
                     }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                     resultCard
+                    if let fe = fiveEyes { fiveEyesCard(fe) }
+                    if !faceNote.isEmpty { Text(faceNote.scriptConverted).font(.caption).foregroundStyle(Ky.cinnabar) }
                     VStack(alignment: .leading, spacing: 8) {
                         TextField("姓名（按人归档）", text: $personName)
                             .textFieldStyle(.roundedBorder)
@@ -318,14 +466,92 @@ struct FaceMeasureView: View {
                     }
                     .kyCard()
                 }
-                Text("校准口径：发际线以实际发际为准手动拖准（儿童发际未定型更要人工校正）；三停比例为几何事实，判读按相书通说、娱乐参考，不套成人断语于儿童。".scriptConverted)
+                Text("校准口径：眉/鼻底/下颌由识别自动标线，发际线为模型估计或手动拖准（儿童发际未定型更要人工校正）；三停比例为几何事实，判读按相书通说、娱乐参考，不套成人断语于儿童。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
         .background(Ky.bg)
         .navigationTitle("面相 · 三停校准".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: item) { _, new in Task { @MainActor in await box.load(new) } }
+        .onChange(of: item) { _, new in Task { @MainActor in await box.load(new); detectFace() } }
+    }
+
+    private func markSuffix(_ i: Int) -> String {
+        if i == 0 && hairEstimated && markAuto[0] { return "·估计" }
+        return markAuto[i] ? "·自动" : "·手动"
+    }
+
+    // 面相自动标线：Vision Rev 3（76 点）算眉/鼻底/下颌，发际线 Vision 没有，仍手动；
+    // 再用 MediaPipe 478 点补五眼，并以 10 号点作发际线估计（标“估计”）。
+    private func detectFace() {
+        faceNote = ""; markAuto = [false, false, false, false]; hairEstimated = false; fiveEyes = nil
+        guard let cg = box.image?.cgImage else { return }
+        let req = VNDetectFaceLandmarksRequest()
+        req.constellation = .constellation76Points
+        let qReq = VNDetectFaceCaptureQualityRequest()
+        do {
+            try VNImageRequestHandler(cgImage: cg, options: [:]).perform([req, qReq])
+            if let q = qReq.results?.first, let quality = q.faceCaptureQuality?.doubleValue, quality < 0.5 {
+                faceNote = "照片质量偏低（光线/模糊），建议补光重拍；已尽量自动标线，请拖动核对。".scriptConverted
+            }
+            guard let obs = req.results?.first, let lm = obs.landmarks else {
+                faceNote = "没识别到人脸：请用正面、五官完整、无遮挡的照片重试。".scriptConverted
+                return
+            }
+            if let roll = obs.roll?.doubleValue, abs(roll) > 0.26 {
+                faceNote = "头有点歪，自动标线可能不准；建议摆正重拍，或手动拖动核对。".scriptConverted
+                return
+            }
+            func lowestY(_ region: VNFaceLandmarkRegion2D?) -> CGFloat? {
+                guard let pts = region?.normalizedPoints, !pts.isEmpty else { return nil }
+                return pts.map { $0.y }.min()
+            }
+            if let lb = lowestY(lm.leftEyebrow), let rb = lowestY(lm.rightEyebrow) {
+                marks[1] = Double(1 - (lb + rb) / 2); markAuto[1] = true
+            }
+            if let n = lowestY(lm.nose) { marks[2] = Double(1 - n); markAuto[2] = true }
+            if let c = lowestY(lm.faceContour) { marks[3] = Double(1 - c); markAuto[3] = true }
+            runMediaPipeFace()
+        } catch {
+            faceNote = "人脸识别失败：换一张照片重试。".scriptConverted
+        }
+    }
+
+    private func runMediaPipeFace() {
+        guard let img = box.image else { return }
+        Task.detached {
+            guard let modelPath = Bundle.main.path(forResource: "face_landmarker", ofType: "task") else { return }
+            do {
+                let options = FaceLandmarkerOptions()
+                options.baseOptions.modelAssetPath = modelPath
+                options.runningMode = .image
+                options.numFaces = 1
+                let landmarker = try FaceLandmarker(options: options)
+                let mpImage = try MPImage(uiImage: img)
+                let result = try landmarker.detect(image: mpImage)
+                guard let points = result.faceLandmarks.first, points.count >= 478 else { return }
+                let pts = points.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) }
+                let ratios = fiveEyesRatios(points: pts)
+                let hairY = pts[10].y
+                await MainActor.run {
+                    if let r = ratios { fiveEyes = r }
+                    marks[0] = Double(hairY); markAuto[0] = true; hairEstimated = true
+                }
+            } catch {
+                // 静默回退：Vision 标线已在位，发际线保持手动
+            }
+        }
+    }
+
+    private func fiveEyesCard(_ fe: FiveEyesResult) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("五眼比例".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
+            Text(String(format: "眼间距 %.1f 眼宽 · 面宽 %.1f 眼宽", fe.gapRatio, fe.faceRatio))
+                .font(KyV2.tabular(15)).foregroundStyle(Ky.ink)
+            Text("五眼口径：眼间距约 1 眼宽、面宽约 5 眼宽为传统参照；只报比值，不作美丑评判，须结合五官逐项看。".scriptConverted)
+                .font(.caption).foregroundStyle(Ky.sub)
+        }
+        .kyCard()
     }
 
     private var resultCard: some View {
