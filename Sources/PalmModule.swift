@@ -115,8 +115,31 @@ func anchoredPalmLines(joints: [String: CGPoint]) -> [[CGPoint]]? {
     }
     let heart = [p(0.80, -0.45), p(0.84, -0.15), p(0.85, 0.12), p(0.84, 0.33)]
     let head = [p(0.60, 0.42), p(0.60, 0.15), p(0.58, -0.15), p(0.58, -0.45)]
-    let life = [p(0.62, 0.40), p(0.40, 0.10), p(0.22, 0.22), p(0.12, 0.35)]
+    let life = [p(0.62, 0.40), p(0.40, 0.24), p(0.22, 0.22), p(0.12, 0.35)]
     return [heart, head, life]
+}
+
+// MARK: - 平滑曲线（Catmull-Rom 采样，纯函数，可单元测试）
+// 把锚点连成平滑曲线再画线：锚点仍是拖动控制点，采样点只用于画线，
+// 避免 4 个锚点用直线段直接相连时出现折角。首尾段端点复用以固定切线。
+func smoothLinePoints(_ anchors: [CGPoint], segmentsPerSpan: Int = 16) -> [CGPoint] {
+    guard anchors.count >= 3 else { return anchors }
+    var out: [CGPoint] = [anchors[0]]
+    for i in 0..<(anchors.count - 1) {
+        let p0 = anchors[max(i - 1, 0)]
+        let p1 = anchors[i]
+        let p2 = anchors[i + 1]
+        let p3 = anchors[min(i + 2, anchors.count - 1)]
+        for s in 1...segmentsPerSpan {
+            let t = CGFloat(s) / CGFloat(segmentsPerSpan)
+            let t2 = t * t
+            let t3 = t2 * t
+            let x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3)
+            let y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+            out.append(CGPoint(x: x, y: y))
+        }
+    }
+    return out
 }
 
 // MARK: - 掌纹参考描边（仅作视觉参考，不自动定线）
@@ -208,7 +231,6 @@ struct HandMeasureView: View {
                                     .frame(width: rect.width, height: rect.height)
                                     .position(x: rect.midX, y: rect.midY).opacity(0.55)
                             }
-                            skeleton(rect)
                             editableLines(rect)
                         }
                     }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
@@ -272,42 +294,13 @@ struct HandMeasureView: View {
         }
     }
 
-    private func skeleton(_ rect: CGRect) -> some View {
-        Canvas { ctx, _ in
-            func p(_ name: String) -> CGPoint? {
-                guard let v = joints[name] else { return nil }
-                return CGPoint(x: rect.minX + v.x * rect.width, y: rect.minY + (1 - v.y) * rect.height)
-            }
-            let chains: [[String]] = [
-                ["wrist", "thumbCMC", "thumbMP", "thumbIP", "thumbTip"],
-                ["wrist", "indexMCP", "indexPIP", "indexDIP", "indexTip"],
-                ["wrist", "middleMCP", "middlePIP", "middleDIP", "middleTip"],
-                ["wrist", "ringMCP", "ringPIP", "ringDIP", "ringTip"],
-                ["wrist", "littleMCP", "littlePIP", "littleDIP", "littleTip"],
-                ["indexMCP", "middleMCP", "ringMCP", "littleMCP"],
-            ]
-            for chain in chains {
-                var path = Path()
-                for (k, name) in chain.enumerated() {
-                    guard let pt = p(name) else { continue }
-                    if k == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
-                }
-                ctx.stroke(path, with: .color(Ky.jade.opacity(0.75)), lineWidth: 1.6)
-            }
-            for (_, v) in joints {
-                let pt = CGPoint(x: rect.minX + v.x * rect.width, y: rect.minY + (1 - v.y) * rect.height)
-                ctx.fill(Path(ellipseIn: CGRect(x: pt.x - 2.6, y: pt.y - 2.6, width: 5.2, height: 5.2)),
-                         with: .color(Ky.cinnabar))
-            }
-        }
-    }
-
     private func editableLines(_ rect: CGRect) -> some View {
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
                 for (li, line) in lines.enumerated() {
                     var path = Path()
-                    for (k, pt) in line.enumerated() {
+                    let sampled = smoothLinePoints(line)
+                    for (k, pt) in sampled.enumerated() {
                         let v = CGPoint(x: rect.minX + pt.x * rect.width, y: rect.minY + pt.y * rect.height)
                         if k == 0 { path.move(to: v) } else { path.addLine(to: v) }
                     }
@@ -317,7 +310,8 @@ struct HandMeasureView: View {
             }
             ForEach(lines[selectedLine].indices, id: \.self) { pi in
                 let pt = lines[selectedLine][pi]
-                Circle().fill(Ky.cinnabar).frame(width: 18, height: 18)
+                Circle().fill(Ky.cinnabar).frame(width: 14, height: 14)
+                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
                     .position(x: rect.minX + pt.x * rect.width, y: rect.minY + pt.y * rect.height)
                     .gesture(DragGesture(coordinateSpace: .named("fittedCanvas")).onChanged { v in
                         let nx = min(max((v.location.x - rect.minX) / rect.width, 0), 1)
