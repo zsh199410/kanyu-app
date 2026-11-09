@@ -1,10 +1,11 @@
-// G14 多流派对照 · 做功层确定性实现（预注册协议 v1.1）— App 侧
+// G14 多流派对照 · 做功层确定性实现（预注册协议 v1.2）— App 侧
 // 与 app/zuogong.py 同规则（R1–R7）：宾主/体用/功链判定/穿破检测/应事映射/
 // 应期节点/六步对照组。BaziChart＋BaziTables 口径。
 // 不读答案键，不做网络请求，不碰凭据。只新增文件，不改现有文件。
 // 对照展示（并列对照 UI）待后续接线，本文件只做规则＋判断生成。
-// v1.1 修正：①穿破信号按（来源，目标，关系）去重；②J3 按穿破强度分级；
-// ③J2 要求流年干与主功链关键字有实质关系；④R9(b) 分母分子排除守年/平年（打分在 Web 测试）。
+// v1.2 修正：⑤J2 门槛改口径（十神角色匹配或宫位引动，修正③作废）；
+// ⑥J1 落实度按信号强度加权（直冲 2 分、其他 1 分，≥3 不落实）；
+// ⑦R5.2 补充表（宫位引动映射）。v1.1 修正①②④保留。
 import Foundation
 
 struct ZuogongChain {
@@ -37,8 +38,8 @@ struct ZuogongJudgment {
 }
 
 enum Zuogong {
-    // 规则版本（与 app/zuogong.py RULES_VERSION 同步；协议 v1.1）
-    static let rulesVersion = "1.1"
+    // 规则版本（与 app/zuogong.py RULES_VERSION 同步；协议 v1.2）
+    static let rulesVersion = "1.2"
     // R2 体用
     static let tiShishen: Set<String> = ["比肩", "劫财", "正印", "偏印", "食神"]
     static let yongShishen: Set<String> = ["正财", "偏财", "正官", "七杀", "伤官"]
@@ -247,22 +248,46 @@ enum Zuogong {
         return "破耗"
     }
 
-    static func stemRelatedToChain(_ stem: Character, chain: ZuogongChain) -> Bool {
-        // v1.1 修正③：某干与主功链关键字（功神干/用神干）有实质关系：同字、五合、生、克。
-        // 注：任意两不同五行之间必有生或克关系，故本门槛只在两关键字同五行
-        // 且该干为同五行第三干时才不通过；见协议 v1.1 附录「已知局限」。
+    static func j2GateA(_ gateStem: Character, starSS: String, chain: ZuogongChain) -> Bool {
+        // v1.2 修正⑤(a)：十神角色匹配。所选引动之星的十神 == 功神/用神十神，
+        // 或所选之干生/克功神/用神之干（十神链指向功神/用神）。只算单向生克。
+        if starSS == chain.gongShen || starSS == chain.yongShen { return true }
         for kw in [chain.gongStem, chain.yongStem] {
-            if stem == kw || hePartner(stem) == kw { return true }
-            if sheng(stem, kw) || sheng(kw, stem) || ke(stem, kw) || ke(kw, stem) { return true }
+            if sheng(gateStem, kw) || ke(gateStem, kw) { return true }
         }
         return false
     }
 
-    static func branchRelatedToChain(_ branch: Character, chain: ZuogongChain, pillars: [String]) -> Bool {
-        // v1.1 修正③：某支与主功链关键字支（功神坐支/用神坐支/日支/月令）有关系。
-        let branches = pillars.map { $0.last! }
-        let kws = [branches[chain.gongPos], branches[chain.yongPos], branches[2], branches[1]]
-        return kws.contains { BaziTables.relationFull(branch, $0) != nil }
+    static func j2GateB(_ lz: Character, pillars: [String]) -> [(role: String, rel: String)] {
+        // v1.2 修正⑤(b)：宫位引动。流年支与日支/时支有合/冲/刑/穿关系。
+        // 返回 [(宫位, 关系名)]，无则 []。
+        var hits: [(role: String, rel: String)] = []
+        for (role, branch) in [("日支", pillars[2].last!), ("时支", pillars[3].last!)] {
+            if let r = BaziTables.relationFull(lz, branch), ["合", "冲", "刑", "穿"].contains(r.0) {
+                hits.append((role: role, rel: r.0))
+            }
+        }
+        return hits
+    }
+
+    static func palaceEvent(_ starSS: String, fromLiunianStem: Bool,
+                            gateBHits: [(role: String, rel: String)]) -> (String, String)? {
+        // v1.2 修正⑦ R5.2 补充表：宫位引动映射。不适用时返回 nil，回落到 liunianStarEvent。
+        // 流年干食伤透干且流年支引动时柱 → 子女类
+        if fromLiunianStem && ["食神", "伤官"].contains(starSS)
+            && gateBHits.contains(where: { $0.role == "时支" }) {
+            return ("子女", "子女")
+        }
+        // 流年支合/冲日支 → 婚/配偶类
+        if gateBHits.contains(where: { $0.role == "日支" && ["合", "冲"].contains($0.rel) }) {
+            return ("婚", "配偶")
+        }
+        // 流年干财透干且流年支引动日支 → 婚/财类
+        if fromLiunianStem && ["正财", "偏财"].contains(starSS)
+            && gateBHits.contains(where: { $0.role == "日支" }) {
+            return ("婚", "配偶")
+        }
+        return nil
     }
 
     // MARK: - R4 结构性穿破
@@ -315,6 +340,7 @@ enum Zuogong {
         let triggers: [String]
         let po: [ZuogongPoSignal]
         let luoshi: String
+        let poScore: Int
     }
 
     static func yearScan(_ ch: BaziChart, year: Int, chain: ZuogongChain?) -> YearScan {
@@ -396,8 +422,12 @@ enum Zuogong {
                 }
             }
         }
-        let luoshi = po.isEmpty ? "落实" : (po.count == 1 ? "半落实" : "不落实")
-        return YearScan(gz: gz, dayun: dgz, isTurn: isTurn, triggers: triggers, po: po, luoshi: luoshi)
+        // v1.2 修正⑥：落实度按信号强度加权——直冲日支/功神的穿/冲/刑计 2 分，
+        // 其他穿破信号计 1 分；0 落实，1–2 半落实，≥3 不落实。直冲口径与修正②一致。
+        let hard = po.filter { ["穿", "冲", "刑"].contains($0.kind) && ["日支", "功神"].contains($0.target) }
+        let poScore = 2 * hard.count + (po.count - hard.count)
+        let luoshi = poScore == 0 ? "落实" : (poScore <= 2 ? "半落实" : "不落实")
+        return YearScan(gz: gz, dayun: dgz, isTurn: isTurn, triggers: triggers, po: po, luoshi: luoshi, poScore: poScore)
     }
 
     // MARK: - R6：逐年 3 条过程判断（做功组）
@@ -415,7 +445,7 @@ enum Zuogong {
             let scan = yearScan(ch, year: year, chain: main)
             if scan.luoshi == "不落实" {
                 out.append(ZuogongJudgment(eventClass: "守年/平年", person: "本人", year: year,
-                    basis: "主功链\(main.kind)穿破 ≥2（\(scan.po.map { $0.description }.joined(separator: "；"))），不落实",
+                    basis: "主功链\(main.kind)穿破加权 \(scan.poScore) 分（\(scan.po.map { $0.description }.joined(separator: "；"))），不落实",
                     luoshi: "不落实", source: "zuogong"))
             } else if !scan.triggers.isEmpty {
                 let ec = chainEventClass(main)
@@ -445,7 +475,8 @@ enum Zuogong {
         }
         if j2 == nil {
             // 流年最强引动之星：流年干十神 → 流年支本气十神 → 大运干十神。
-            // v1.1 修正③：所用之干/支须与主功链关键字有实质关系，否则不引动。
+            // v1.2 修正⑤：兜底须满足门槛二选一——(a) 十神角色匹配或 (b) 宫位引动；
+            // 修正③作废。主功链不存在时门槛不适用（保持 v1.0 行为）。
             var starSS = BaziTables.shiShen(day: dayStem, stem: lg)
             var starSrc = "流年干\(lg)"
             var gateStem: Character? = lg
@@ -454,7 +485,7 @@ enum Zuogong {
                 let benqi = BaziTables.cangGan[lz]![0]
                 starSS = BaziTables.shiShen(day: dayStem, stem: benqi)
                 starSrc = "流年支\(lz)本气\(benqi)"
-                gateStem = nil
+                gateStem = benqi
                 gateIsBranch = true
             }
             if starSS == "日主", let dgz {
@@ -463,17 +494,23 @@ enum Zuogong {
                 gateStem = dgz.first!
                 gateIsBranch = false
             }
-            var related = true
             if let main {
-                if gateIsBranch {
-                    related = branchRelatedToChain(lz, chain: main, pillars: ch.pillars)
-                } else if let gateStem {
-                    related = stemRelatedToChain(gateStem, chain: main)
+                let gateA = gateStem.map { j2GateA($0, starSS: starSS, chain: main) } ?? false
+                let gateBHits = j2GateB(lz, pillars: ch.pillars)
+                if !gateA && gateBHits.isEmpty {
+                    j2 = ZuogongJudgment(eventClass: "守年/平年", person: "本人", year: year,
+                        basis: "\(starSrc)与主功链关键字无十神角色匹配、无宫位引动（v1.2 门槛），不引动", luoshi: "落实", source: "zuogong")
+                } else if let palace = palaceEvent(starSS, fromLiunianStem: !gateIsBranch && gateStem == lg, gateBHits: gateBHits) {
+                    // v1.2 修正⑦：R5.2 补充表优先
+                    j2 = ZuogongJudgment(eventClass: palace.0, person: palace.1, year: year,
+                        basis: "\(starSrc)为\(starSS)，宫位引动\(gateBHits.map { "\(lz)\($0.rel)\($0.role)" }.joined(separator: "、"))，引动\(palace.0)", luoshi: "落实", source: "zuogong")
+                } else if let mapped = liunianStarEvent[starSS] {
+                    j2 = ZuogongJudgment(eventClass: mapped.0, person: mapped.1, year: year,
+                        basis: "\(starSrc)为\(starSS)，引动\(mapped.0)", luoshi: "落实", source: "zuogong")
+                } else {
+                    j2 = ZuogongJudgment(eventClass: "守年/平年", person: "本人", year: year,
+                        basis: "\(starSrc)为\(starSS)，无明确引动之星", luoshi: "落实", source: "zuogong")
                 }
-            }
-            if !related {
-                j2 = ZuogongJudgment(eventClass: "守年/平年", person: "本人", year: year,
-                    basis: "\(starSrc)与主功链关键字无实质关系（不同字/五合/生克），不引动", luoshi: "落实", source: "zuogong")
             } else if let mapped = liunianStarEvent[starSS] {
                 j2 = ZuogongJudgment(eventClass: mapped.0, person: mapped.1, year: year,
                     basis: "\(starSrc)为\(starSS)，引动\(mapped.0)", luoshi: "落实", source: "zuogong")
