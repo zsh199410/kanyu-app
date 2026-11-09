@@ -4,7 +4,7 @@
 // 条件 3 无强逆之星（逆星只取克星官杀；强逆＝透干且本气根／有效库根；
 // 弱逆＝透干无根／藏而有根／仅余气弱根；无逆＝全无；局支化掉）。
 // 财星、食伤不入判定（财星只作喜忌备注；食伤泄秀为喜）。
-// 隔离新模块，不接线，不改现有文件。
+// 升格断语 2026-11-09 主代理批准接线（C10 §七）：`verdictLine` 供 InterpretModule 调用。
 import Foundation
 
 struct ZhuanwangResult {
@@ -21,6 +21,10 @@ struct ZhuanwangResult {
     let cond3BenRoot: Bool
     let cond3WeakRoot: Bool
     let cond3KuRoot: Bool
+    let cond3TouStem: Character?
+    let cond3TouPos: String?
+    let cond3KuBranch: Character?
+    let juName: String
     let verdict: String
     let reasons: [String]
     let notes: [String]
@@ -39,6 +43,9 @@ enum Zhuanwang {
     // 克行：克旺行之行（官杀行）
     static let keWang: [String: String] = [
         "木": "金", "火": "水", "土": "木", "金": "火", "水": "土"]
+    // 印行：生旺行之行（sheng 的逆映射）
+    static let yinOf: [String: String] = [
+        "木": "水", "火": "木", "土": "火", "金": "土", "水": "金"]
 
     static func wx(_ s: Character) -> String { BaziTables.wx[s]!.0 }
 
@@ -63,21 +70,36 @@ enum Zhuanwang {
     }
 
     static func niGrade(pillars: [String], niWx: String, juSet: Set<Character>)
-        -> (grade: String, tou: Bool, benRoot: Bool, weakRoot: Bool, kuRoot: Bool) {
+        -> (grade: String, tou: Bool, benRoot: Bool, weakRoot: Bool, kuRoot: Bool,
+            touStem: Character?, touPos: String?, kuBranch: Character?) {
         let niStems = stemsOfWx(niWx)
         let stems = pillars.map { $0.first! }
         let branches = pillars.map { $0.last! }
         let tou = stems.contains { niStems.contains($0) }
+        var touStem: Character? = nil
+        var touPos: String? = nil
+        let posNames = ["年干", "月干", "日干", "时干"]
+        for (i, s) in stems.enumerated() where niStems.contains(s) {
+            touStem = s
+            touPos = posNames[i]
+            break
+        }
         var benRoot = false
         var weakRoot = false
         var kuRoot = false
+        var kuBranch: Character? = nil
         for b in branches where !juSet.contains(b) {
             let cg = BaziTables.cangGan[b]!
             if niStems.contains(cg[0]) {
                 benRoot = true
             } else if cg.dropFirst().contains(where: { niStems.contains($0) }) {
                 weakRoot = true
-                if (ku[niWx] ?? []).contains(b) { kuRoot = true }
+                if (ku[niWx] ?? []).contains(b) {
+                    kuRoot = true
+                    if kuBranch == nil {
+                        kuBranch = b
+                    }
+                }
             }
         }
         let grade: String
@@ -88,7 +110,23 @@ enum Zhuanwang {
         } else {
             grade = "无逆"
         }
-        return (grade, tou, benRoot, weakRoot, kuRoot)
+        return (grade, tou, benRoot, weakRoot, kuRoot, touStem, touPos, kuBranch)
+    }
+
+    // 成局名：三会取「支串＋方位」（巳午未南方），三合取「支串＋行局」（寅午戌火局）；无局返回 ""。
+    static func juName(_ branches: [Character], wangWx: String) -> String {
+        if let hui = sanHui[wangWx], hui.allSatisfy({ branches.contains($0) }) {
+            if wangWx == "土" {
+                return "辰戌丑未"
+            }
+            let dir = ["木": "东方", "火": "南方", "金": "西方", "水": "北方"][wangWx]!
+            return hui.map { String($0) }.joined() + dir
+        }
+        for g in BaziTables.sanHeGroups where g.wx == wangWx
+            && g.members.allSatisfy({ branches.contains($0) }) {
+            return g.display + wangWx + "局"
+        }
+        return ""
     }
 
     static func check(pillars: [String], dayStem: Character) -> ZhuanwangResult {
@@ -100,6 +138,7 @@ enum Zhuanwang {
         let dayWx = wx(dayStem)
         let branches = pillars.map { $0.last! }
         let juSet = juBranches(branches, wangWx: wangWx)
+        let ju = juName(branches, wangWx: wangWx)
 
         let cond1a = !juSet.isEmpty
         let cond1b = wangPct >= 55.0
@@ -120,6 +159,8 @@ enum Zhuanwang {
                 cond1: cond1, cond1Via: cond1Via, cond2: cond2, cond2DeLing: cond2a,
                 cond2Roots: roots, cond3: nil, cond3Tou: false, cond3BenRoot: false,
                 cond3WeakRoot: false, cond3KuRoot: false,
+                cond3TouStem: nil, cond3TouPos: nil, cond3KuBranch: nil,
+                juName: ju,
                 verdict: "非专旺（从势候选）",
                 reasons: ["旺行\(wangWx)≠日主行\(dayWx)，从势分型另立项"], notes: [])
         }
@@ -170,6 +211,57 @@ enum Zhuanwang {
             cond1: cond1, cond1Via: cond1Via, cond2: cond2, cond2DeLing: cond2a,
             cond2Roots: roots, cond3: ni.grade, cond3Tou: ni.tou,
             cond3BenRoot: ni.benRoot, cond3WeakRoot: ni.weakRoot, cond3KuRoot: ni.kuRoot,
+            cond3TouStem: ni.touStem, cond3TouPos: ni.touPos, cond3KuBranch: ni.kuBranch,
+            juName: ju,
             verdict: verdict, reasons: reasons, notes: notes)
+    }
+
+    // 升格断语行（C10 §七，2026-11-09 主代理批准接线）。
+    // verdict 为真成／假成／不成时返回断语句；其余返回 ""（不写行）。
+    // 真成行后附引擎的逢财备注（若有）；食伤泄秀已在模板内，不重复。
+    static func verdictLine(pillars: [String], dayStem: Character) -> String {
+        let r = check(pillars: pillars, dayStem: dayStem)
+        switch r.verdict {
+        case "真成":
+            let ju = r.juName.isEmpty ? "占比\(Int(r.wangPct + 0.5))%" : r.juName
+            let yin = yinOf[r.wangWx] ?? ""
+            let ke = keWang[r.wangWx]!
+            var s = "专旺格真成：\(r.wangWx)独旺成势（\(ju)），不见克星。用神取\(r.wangWx)，喜\(yin)相助、食伤泄秀，忌\(ke)克伐。"
+            if let cai = r.notes.first(where: { $0.hasPrefix("逢财") }) {
+                s += cai + "。"
+            }
+            return s
+        case "假成":
+            let ke = keWang[r.wangWx]!
+            let touStem = r.cond3TouStem.map { String($0) } ?? ""
+            let ni: String
+            if r.cond3Tou {
+                ni = "\(r.cond3TouPos ?? "")\(touStem)\(ke)虚浮无根"
+            } else if r.cond3BenRoot {
+                ni = "克星藏而有根"
+            } else {
+                ni = "克星仅余气弱根"
+            }
+            return "专旺格假成：\(r.wangWx)虽独旺成势，但\(ni)，格不纯粹。用神仍取\(r.wangWx)，须防\(ke)介入。"
+        case "不成":
+            let ke = keWang[r.wangWx]!
+            let touStem = r.cond3TouStem.map { String($0) } ?? ""
+            let ni: String
+            if r.cond3Tou {
+                if r.cond3KuRoot {
+                    let kuBranch = r.cond3KuBranch.map { String($0) } ?? ""
+                    ni = "\(r.cond3TouPos ?? "")\(touStem)\(ke)通根坐\(kuBranch)库"
+                } else {
+                    ni = "\(r.cond3TouPos ?? "")\(touStem)\(ke)透干有本气根"
+                }
+            } else if r.cond3BenRoot {
+                ni = "克星藏干有本气根"
+            } else {
+                ni = "克星有根"
+            }
+            return "专旺格不成：\(r.wangWx)虽成势，\(ni)，克伐旺神，专旺破格。改按身旺论，不取专旺用神。"
+        default:
+            return ""
+        }
     }
 }

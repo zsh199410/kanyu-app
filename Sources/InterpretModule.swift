@@ -534,9 +534,11 @@ enum InterpretEngine {
         if let m = pct.max(), m >= 55 {
             special = " 注意：\(wxNames[pct.firstIndex(of: m)!])一行独旺（\(Int(m.rounded()))%），疑似专旺／从势候选盘——这类盘的喜忌要顺气势另断，上面的扶抑口径只作参考，不要照单全收。"
         }
+        // C10 专旺格升格断语（2026-11-09 主代理批准接线）：真成／假成／不成时追加一行，其余不写行。
+        let zwLine = Zhuanwang.verdictLine(pillars: ch.pillars, dayStem: dayStem)
         items.append(InterpretItem(
             title: "喜忌（扶抑初判）",
-            conclusion: "日主\(level)：同党（\(wxNames[dayWx])＋印\(wxNames[shengWo])）约占 \(Int(tongDang.rounded()))%。\(xiText)\(tiaoHou)\(special)",
+            conclusion: "日主\(level)：同党（\(wxNames[dayWx])＋印\(wxNames[shengWo])）约占 \(Int(tongDang.rounded()))%。\(xiText)\(tiaoHou)\(special)\(zwLine.isEmpty ? "" : " " + zwLine)",
             links: [("盘面", "日主 \(ch.rizhu)（\(wxNames[dayWx])），月令 \(monthBranch)"),
                     ("法则", "扶抑取用为初判框架（出徐乐吾演绎，只作参照）；强弱分档线（同党 ≥55% 偏强、≤40% 偏弱）为本应用计法，非典籍原有分界；调候优先于扶抑，冲突时以调候为先"),
                     ("调候", tiaoHouLevel)]))
