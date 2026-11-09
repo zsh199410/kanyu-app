@@ -142,12 +142,15 @@ final class ZuogongTests: XCTestCase {
         XCTAssertEqual(Zuogong.j2GateB("午", pillars: pillars).map { "\($0.role)\($0.rel)" },
                        ["日支冲", "时支冲"])  // 午冲子
         XCTAssertTrue(Zuogong.j2GateB("辰", pillars: pillars).isEmpty)  // 辰与子无合/冲/刑/穿
-        XCTAssertEqual(Zuogong.palaceEvent("食神", fromLiunianStem: true, gateBHits: [("时支", "冲")]),
-                       ("子女", "子女"))
-        XCTAssertEqual(Zuogong.palaceEvent("正官", fromLiunianStem: true, gateBHits: [("日支", "冲")]),
-                       ("婚", "配偶"))
-        XCTAssertEqual(Zuogong.palaceEvent("正财", fromLiunianStem: true, gateBHits: [("日支", "穿")]),
-                       ("婚", "配偶"))
+        let ev1 = Zuogong.palaceEvent("食神", fromLiunianStem: true, gateBHits: [("时支", "冲")])
+        XCTAssertEqual(ev1?.0, "子女")
+        XCTAssertEqual(ev1?.1, "子女")
+        let ev2 = Zuogong.palaceEvent("正官", fromLiunianStem: true, gateBHits: [("日支", "冲")])
+        XCTAssertEqual(ev2?.0, "婚")
+        XCTAssertEqual(ev2?.1, "配偶")
+        let ev3 = Zuogong.palaceEvent("正财", fromLiunianStem: true, gateBHits: [("日支", "穿")])
+        XCTAssertEqual(ev3?.0, "婚")
+        XCTAssertEqual(ev3?.1, "配偶")
         XCTAssertNil(Zuogong.palaceEvent("食神", fromLiunianStem: false, gateBHits: [("时支", "冲")]))
         XCTAssertNil(Zuogong.palaceEvent("正印", fromLiunianStem: true, gateBHits: [("时支", "穿")]))
     }
