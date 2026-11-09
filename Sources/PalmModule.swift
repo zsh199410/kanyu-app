@@ -139,6 +139,9 @@ func smoothLinePoints(_ anchors: [CGPoint], segmentsPerSpan: Int = 16) -> [CGPoi
             out.append(CGPoint(x: x, y: y))
         }
     }
+    // 末点直接取末锚点：t = 1 的公式值受浮点累计误差影响，末点会偏离锚点约 1e-16，
+    // 线尾须与拖动圆点精确重合，故以锚点为准。
+    out[out.count - 1] = anchors[anchors.count - 1]
     return out
 }
 
