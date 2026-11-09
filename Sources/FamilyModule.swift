@@ -226,7 +226,7 @@ struct FamilyChartView: View {
             }
             .buttonStyle(KyPrimaryButton())
             if posterURL != nil, let img = posterImage {
-                ShareLink(item: Image(uiImage: img), preview: SharePreview("全家盘海报", image: img)) {
+                ShareLink(item: Image(uiImage: img), preview: SharePreview("全家盘海报", image: Image(uiImage: img))) {
                     Label("保存 / 分享全家盘海报".scriptConverted, systemImage: "square.and.arrow.up")
                         .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                 }
