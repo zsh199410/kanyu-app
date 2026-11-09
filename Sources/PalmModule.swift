@@ -489,7 +489,7 @@ struct HandMeasureView: View {
             if let img = box.image, !found.isEmpty {
                 Task.detached {
                     let edge = palmEdgeReferenceImage(from: img, joints: found)
-                    let map = edge.flatMap { edgeMap(from: $0) }
+                    let map = edge.flatMap { Kanyu.edgeMap(from: $0) }
                     await MainActor.run {
                         edgeImage = edge
                         edgeMap = map
