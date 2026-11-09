@@ -102,7 +102,7 @@ final class ZuogongTests: XCTestCase {
 
     // 规则版本 v1.1（与 app/zuogong.py RULES_VERSION 同步）
     func testRulesVersion() {
-        XCTAssertEqual(Zuogong.rulesVersion, "1.1")
+        XCTAssertEqual(Zuogong.rulesVersion, "1.2")
     }
 
     // v1.1 修正①：12 例逐年扫描的穿破信号无重复（关系，来源，目标）键
