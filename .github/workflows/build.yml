@@ -3,6 +3,8 @@ name: Build unsigned IPA
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   schedule:
     # 每日 06:00 北京时间自动发包（UTC 22:00）：静态审查＋GoldenCharts 金标准门禁＋发布 IPA
@@ -38,38 +40,61 @@ jobs:
 
       - name: Golden charts test (golden-chart gate)
         run: |
+          set -o pipefail
+          mkdir -p build
           DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; u=[x['udid'] for v in d.values() for x in v if 'iPhone' in x.get('name','') and x.get('isAvailable', True)]; print(u[0] if u else '')")
           echo "simulator UDID: $DEST"
           test -n "$DEST"
-          xcodebuild test -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+          xcodebuild test -resultBundlePath build/TestResults.xcresult -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/tests.log
 
       - name: Build (unsigned)
         run: |
+          set -o pipefail
           xcodebuild -project Kanyu.xcodeproj -scheme Kanyu \
             -sdk iphoneos -configuration Release \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
-            -derivedDataPath build/DD build
+            -derivedDataPath build/DD build 2>&1 | tee build/device-build.log
 
       - name: Package IPA
         run: |
           mkdir -p Payload
           cp -R "build/DD/Build/Products/Release-iphoneos/Kanyu.app" Payload/
           zip -qry Kanyu-unsigned.ipa Payload
+          unzip -tq Kanyu-unsigned.ipa
+          shasum -a 256 Kanyu-unsigned.ipa > Kanyu-unsigned.ipa.sha256
+          git rev-parse HEAD > build/commit.txt
           ls -lh Kanyu-unsigned.ipa
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Kanyu-unsigned-ipa
-          path: Kanyu-unsigned.ipa
+          path: |
+            Kanyu-unsigned.ipa
+            Kanyu-unsigned.ipa.sha256
           if-no-files-found: error
           retention-days: 14
 
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-${{ github.sha }}
+          path: |
+            build/*.log
+            build/commit.txt
+            build/TestResults.xcresult
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Publish release
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: 三术合参 未签名 IPA（第 ${{ github.run_number }} 次构建）
           body: 未签名 IPA：用开发者证书签名后安装（全能签 / ESign / Feather 等）。数据包格式见仓库 README。
-          files: Kanyu-unsigned.ipa
+          files: |
+            Kanyu-unsigned.ipa
+            Kanyu-unsigned.ipa.sha256
