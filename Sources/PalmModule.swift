@@ -278,6 +278,98 @@ func fiveEyesRatios(points: [CGPoint]) -> FiveEyesResult? {
     return FiveEyesResult(gapRatio: d(133, 362) / eyeUnit, faceRatio: d(234, 454) / eyeUnit)
 }
 
+// MARK: - 面相头姿矩阵（纯函数，可单元测试）
+// 来源：MediaPipe FaceLandmarker 的 facialTransformationMatrixes（4x4，需
+// options.outputFacialTransformationMatrixes = true 才输出）。矩阵把静态标准
+// 脸模型映到当前脸（均匀缩放＋旋转＋平移，最后一行恒为 0 0 0 1）。
+// 度量空间约定（官方 3D Face Transform 文档）：右手系，相机在原点朝 -Z，
+// +X 朝画面右、+Y 朝上、+Z 朝向观者。旋转部分记 R = Rz(roll)·Ry(yaw)·Rx(pitch)，
+// 则 roll = atan2(R[1][0], R[0][0])、yaw = atan2(-R[2][0], hypot(R[2][1], R[2][2]))、
+// pitch = atan2(R[2][1], R[2][2])（0 起下标）。roll 为正＝头顶向画面左偏。
+// 校验：图上眼线角 θ（33→263，左上原点 y 朝下，顺时针为正）应满足 roll ≈ -θ；
+// 运行时两者差 > 0.35 rad 即以眼线为准（点位是图上几何真值，矩阵只是模型拟合）。
+struct HeadPose { var roll: Double; var pitch: Double; var yaw: Double }
+
+/// 从 3x3 旋转行（R[row][col]）分解头姿角；含均匀缩放时先按列归一化。零矩阵或形状不对返回 nil。
+func headPoseAngles(rotationRows: [[Double]]) -> HeadPose? {
+    guard rotationRows.count == 3, rotationRows.allSatisfy({ $0.count == 3 }) else { return nil }
+    var r = rotationRows
+    for c in 0..<3 {
+        let len = (r[0][c] * r[0][c] + r[1][c] * r[1][c] + r[2][c] * r[2][c]).squareRoot()
+        guard len > 1e-6 else { return nil }
+        for row in 0..<3 { r[row][c] /= len }
+    }
+    let roll = atan2(r[1][0], r[0][0])
+    let yaw = atan2(-r[2][0], (r[2][1] * r[2][1] + r[2][2] * r[2][2]).squareRoot())
+    let pitch = atan2(r[2][1], r[2][2])
+    return HeadPose(roll: roll, pitch: pitch, yaw: yaw)
+}
+
+/// 从 MediaPipe 变换矩阵取左上 3x3 旋转行；非 4x4 返回 nil。
+func rotationRows(of matrix: TransformMatrix) -> [[Double]]? {
+    guard matrix.rows == 4, matrix.columns == 4 else { return nil }
+    var rows: [[Double]] = []
+    for row in 0..<3 {
+        var line: [Double] = []
+        for col in 0..<3 { line.append(Double(matrix.value(atRow: UInt(row), column: UInt(col)))) }
+        rows.append(line)
+    }
+    return rows
+}
+
+/// 眼线 roll（与矩阵同一约定）：33→263 眼线角 θ 的负值。点数不足或眼距过小返回 nil。
+func eyeLineRoll(points: [CGPoint]) -> Double? {
+    guard points.count >= 478 else { return nil }
+    let dx = points[263].x - points[33].x
+    let dy = points[263].y - points[33].y
+    guard (dx * dx + dy * dy).squareRoot() > 0.01 else { return nil }
+    return -atan2(dy, dx)
+}
+
+/// 把点绕 center 旋转 angle（左上原点 y 朝下；angle 为正＝画面上顺时针）。
+/// 头姿校正时传矩阵 roll：roll 为正＝头顶向画面左偏，正好把脸转回正。
+func derotatePoints(_ points: [CGPoint], angle: Double, center: CGPoint) -> [CGPoint] {
+    let c = cos(angle); let s = sin(angle)
+    return points.map { p in
+        let dx = p.x - center.x; let dy = p.y - center.y
+        return CGPoint(x: center.x + dx * c - dy * s, y: center.y + dx * s + dy * c)
+    }
+}
+
+/// Vision 76 点四区（Vision 归一化坐标，左下原点），供头姿校正第二遍使用。
+struct VisionFaceRegions {
+    var leftEyebrow: [CGPoint]; var rightEyebrow: [CGPoint]
+    var nose: [CGPoint]; var faceContour: [CGPoint]
+}
+
+/// 按头姿 roll 校正眉/鼻底/下颌三线：先把 Vision 点换到左上原点、绕鼻区中心
+/// 转回正，再取各区底边（与原口径一致：原 lowestY 取 Vision 坐标最小 y，
+/// 即图上最下一点，换到左上原点就是最大 y）。返回三线相对图高的分数。
+func poseCorrectedFaceMarks(regions: VisionFaceRegions, roll: Double) -> (brow: Double, nose: Double, chin: Double)? {
+    guard !regions.leftEyebrow.isEmpty, !regions.rightEyebrow.isEmpty,
+          !regions.nose.isEmpty, !regions.faceContour.isEmpty else { return nil }
+    func flip(_ pts: [CGPoint]) -> [CGPoint] { pts.map { CGPoint(x: $0.x, y: 1 - $0.y) } }
+    let nosePts = flip(regions.nose)
+    let cx = nosePts.map { $0.x }.reduce(CGFloat(0), +) / CGFloat(nosePts.count)
+    let cy = nosePts.map { $0.y }.reduce(CGFloat(0), +) / CGFloat(nosePts.count)
+    let center = CGPoint(x: cx, y: cy)
+    func bottomY(_ pts: [CGPoint]) -> CGFloat? {
+        derotatePoints(flip(pts), angle: roll, center: center).map { $0.y }.max()
+    }
+    guard let lb = bottomY(regions.leftEyebrow), let rb = bottomY(regions.rightEyebrow),
+          let n = bottomY(regions.nose), let c = bottomY(regions.faceContour) else { return nil }
+    return (brow: Double((lb + rb) / 2), nose: Double(n), chin: Double(c))
+}
+
+/// 头姿提示行（度数取整）：侧倾已按矩阵/眼线校正；yaw/pitch 只按幅值提示，不改判定。
+func poseSummaryText(pose: HeadPose, appliedRoll: Double, rollSource: String) -> String {
+    func deg(_ r: Double) -> Int { Int((r * 180 / Double.pi).rounded()) }
+    var text = "头姿：侧倾 \(deg(appliedRoll))°（\(rollSource)校正）· 转头 \(deg(pose.yaw))° · 俯仰 \(deg(pose.pitch))°"
+    if abs(pose.yaw) > 0.26 { text += "；侧转较大，五眼比值仅供参考，请转正脸重拍" }
+    if abs(pose.pitch) > 0.35 { text += "；低头/抬头较大，三停比例可能失真" }
+    return text
+}
+
 // MARK: - 手相测量
 struct HandMeasure {
     var palmLen: Double; var palmWidth: Double
@@ -536,6 +628,10 @@ struct FaceMeasureView: View {
     @State private var hairEstimated = false
     @State private var faceNote = ""
     @State private var fiveEyes: FiveEyesResult?
+    @State private var visionRegions: VisionFaceRegions?
+    @State private var visionRollGated = false
+    @State private var headPose: HeadPose?
+    @State private var poseNote = ""
     private let labels = ["发际线", "眉线", "鼻底", "下颌"]
 
     var body: some View {
@@ -567,6 +663,7 @@ struct FaceMeasureView: View {
                     }.frame(height: 380).background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                     resultCard
                     if let fe = fiveEyes { fiveEyesCard(fe) }
+                    if !poseNote.isEmpty { Text(poseNote.scriptConverted).font(.caption).foregroundStyle(Ky.sub) }
                     if !faceNote.isEmpty { Text(faceNote.scriptConverted).font(.caption).foregroundStyle(Ky.cinnabar) }
                     VStack(alignment: .leading, spacing: 8) {
                         TextField("姓名（按人归档）", text: $personName)
@@ -602,8 +699,11 @@ struct FaceMeasureView: View {
 
     // 面相自动标线：Vision Rev 3（76 点）算眉/鼻底/下颌，发际线 Vision 没有，仍手动；
     // 再用 MediaPipe 478 点补五眼，并以 10 号点作发际线估计（标“估计”）。
+    // 第二遍（runMediaPipeFace）：取 MediaPipe 头姿矩阵 roll，把 Vision 四区与 478 点
+    // 转回正后再算三线与五眼；头太歪时第一遍不标线，等矩阵来救，矩阵也拿不到才提示重拍。
     private func detectFace() {
         faceNote = ""; markAuto = [false, false, false, false]; hairEstimated = false; fiveEyes = nil
+        headPose = nil; poseNote = ""; visionRegions = nil; visionRollGated = false
         guard let cg = box.image?.cgImage else { return }
         let req = VNDetectFaceLandmarksRequest()
         req.constellation = .constellation76Points
@@ -617,19 +717,23 @@ struct FaceMeasureView: View {
                 faceNote = "没识别到人脸：请用正面、五官完整、无遮挡的照片重试。".scriptConverted
                 return
             }
-            if let roll = obs.roll?.doubleValue, abs(roll) > 0.26 {
-                faceNote = "头有点歪，自动标线可能不准；建议摆正重拍，或手动拖动核对。".scriptConverted
-                return
+            visionRegions = VisionFaceRegions(
+                leftEyebrow: lm.leftEyebrow?.normalizedPoints ?? [],
+                rightEyebrow: lm.rightEyebrow?.normalizedPoints ?? [],
+                nose: lm.nose?.normalizedPoints ?? [],
+                faceContour: lm.faceContour?.normalizedPoints ?? [])
+            if let roll = obs.roll?.doubleValue, abs(roll) > 0.26 { visionRollGated = true }
+            if !visionRollGated {
+                func lowestY(_ region: VNFaceLandmarkRegion2D?) -> CGFloat? {
+                    guard let pts = region?.normalizedPoints, !pts.isEmpty else { return nil }
+                    return pts.map { $0.y }.min()
+                }
+                if let lb = lowestY(lm.leftEyebrow), let rb = lowestY(lm.rightEyebrow) {
+                    marks[1] = Double(1 - (lb + rb) / 2); markAuto[1] = true
+                }
+                if let n = lowestY(lm.nose) { marks[2] = Double(1 - n); markAuto[2] = true }
+                if let c = lowestY(lm.faceContour) { marks[3] = Double(1 - c); markAuto[3] = true }
             }
-            func lowestY(_ region: VNFaceLandmarkRegion2D?) -> CGFloat? {
-                guard let pts = region?.normalizedPoints, !pts.isEmpty else { return nil }
-                return pts.map { $0.y }.min()
-            }
-            if let lb = lowestY(lm.leftEyebrow), let rb = lowestY(lm.rightEyebrow) {
-                marks[1] = Double(1 - (lb + rb) / 2); markAuto[1] = true
-            }
-            if let n = lowestY(lm.nose) { marks[2] = Double(1 - n); markAuto[2] = true }
-            if let c = lowestY(lm.faceContour) { marks[3] = Double(1 - c); markAuto[3] = true }
             runMediaPipeFace()
         } catch {
             faceNote = "人脸识别失败：换一张照片重试。".scriptConverted
@@ -638,26 +742,73 @@ struct FaceMeasureView: View {
 
     private func runMediaPipeFace() {
         guard let img = box.image else { return }
+        let regions = visionRegions
+        let gated = visionRollGated
         Task.detached {
-            guard let modelPath = Bundle.main.path(forResource: "face_landmarker", ofType: "task") else { return }
+            guard let modelPath = Bundle.main.path(forResource: "face_landmarker", ofType: "task") else {
+                await MainActor.run { if gated { faceNote = "头有点歪，自动标线可能不准；建议摆正重拍，或手动拖动核对。".scriptConverted } }
+                return
+            }
             do {
                 let options = FaceLandmarkerOptions()
                 options.baseOptions.modelAssetPath = modelPath
                 options.runningMode = .image
                 options.numFaces = 1
+                options.outputFacialTransformationMatrixes = true
                 let landmarker = try FaceLandmarker(options: options)
                 let mpImage = try MPImage(uiImage: img)
                 let result = try landmarker.detect(image: mpImage)
-                guard let points = result.faceLandmarks.first, points.count >= 478 else { return }
+                guard let points = result.faceLandmarks.first, points.count >= 478 else {
+                    await MainActor.run { if gated { faceNote = "头有点歪，自动标线可能不准；建议摆正重拍，或手动拖动核对。".scriptConverted } }
+                    return
+                }
                 let pts = points.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) }
-                let ratios = fiveEyesRatios(points: pts)
-                let hairY = pts[10].y
+                // 头姿：矩阵为主，眼线交叉核对；矩阵缺失时退到眼线，仍可校正 roll。
+                var pose: HeadPose?
+                if let m = result.facialTransformationMatrixes.first, let rows = rotationRows(of: m) {
+                    pose = headPoseAngles(rotationRows: rows)
+                }
+                let eyeRoll = eyeLineRoll(points: pts)
+                var appliedRoll: Double?
+                var rollSource = ""
+                if let pr = pose?.roll, let er = eyeRoll, abs(pr - er) > 0.35 {
+                    appliedRoll = er; rollSource = "眼线"
+                } else if let pr = pose?.roll {
+                    appliedRoll = pr; rollSource = "矩阵"
+                } else {
+                    appliedRoll = eyeRoll; rollSource = "眼线"
+                }
+                let fixed = appliedRoll.map { derotatePoints(pts, angle: $0, center: pts[1]) } ?? pts
+                let ratios = fiveEyesRatios(points: fixed)
+                let hairY = fixed[10].y
+                let corrected = appliedRoll.flatMap { r in regions.flatMap { poseCorrectedFaceMarks(regions: $0, roll: r) } }
                 await MainActor.run {
                     if let r = ratios { fiveEyes = r }
                     marks[0] = Double(hairY); markAuto[0] = true; hairEstimated = true
+                    if let c = corrected {
+                        if markAuto[1] || gated {
+                            marks[1] = c.brow
+                            markAuto[1] = true
+                        }
+                        if markAuto[2] || gated {
+                            marks[2] = c.nose
+                            markAuto[2] = true
+                        }
+                        if markAuto[3] || gated {
+                            marks[3] = c.chin
+                            markAuto[3] = true
+                        }
+                    }
+                    if let p = pose, let ar = appliedRoll {
+                        headPose = p
+                        poseNote = poseSummaryText(pose: p, appliedRoll: ar, rollSource: rollSource)
+                    } else if let ar = appliedRoll {
+                        poseNote = "头姿矩阵未输出，已按眼线校正侧倾 \(Int((ar * 180 / Double.pi).rounded()))°"
+                    }
                 }
             } catch {
-                // 静默回退：Vision 标线已在位，发际线保持手动
+                // 静默回退：Vision 标线已在位，发际线保持手动；头歪被门控时才提示重拍
+                await MainActor.run { if gated { faceNote = "头有点歪，自动标线可能不准；建议摆正重拍，或手动拖动核对。".scriptConverted } }
             }
         }
     }
