@@ -49,6 +49,19 @@ enum ReportBuilder {
         return out
     }
 
+    /// Keep user names inside one bounded filesystem component (UTF-8 filenames have byte limits).
+    static func exportName(_ name: String) -> String {
+        let forbidden = CharacterSet.controlCharacters.union(CharacterSet(charactersIn: "/\\:"))
+        let clean = name.components(separatedBy: forbidden).joined(separator: "_")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        var result = ""
+        for character in clean {
+            guard result.utf8.count + String(character).utf8.count <= 80 else { break }
+            result.append(character)
+        }
+        return result.isEmpty ? "未命名" : result
+    }
+
     static func lines(for person: Person, tier: ReportTier = .professional) -> [String] {
         let ch = BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,
                                    longitude: person.useLongitude ? person.longitude : nil)
@@ -195,8 +208,8 @@ enum ReportBuilder {
         stampFormatter.timeZone = TimeZone(secondsFromGMT: 8 * 3600)
         let stamp = stampFormatter.string(from: Date())
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("命书-\(person.name)-\(tier.displayName)-\(stamp)-\(hashShort).pdf")
-        do { try data.write(to: url); return url } catch { return nil }
+            .appendingPathComponent("命书-\(exportName(person.name))-\(tier.displayName)-\(stamp)-\(hashShort).pdf")
+        do { try data.write(to: url, options: .atomic); return url } catch { return nil }
     }
 
     /// 一行已排版的正文行（绘制时直接取 y 与 height，不再重算断页）

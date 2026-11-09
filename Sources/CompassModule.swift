@@ -64,6 +64,9 @@ enum CompassDeclination {
     /// WMM2025 地磁场分量（大地系 X 北向、Y 东向、Z 向下，单位 nT）。
     /// 与 Python _field 同式；极点附近 cosφ′≈0 时返回 nil（罗盘不在极点用，不编造）。
     static func field(latitude: Double, longitude: Double, year: Double, height: Double = 0) -> (x: Double, y: Double, z: Double)? {
+        guard latitude.isFinite, longitude.isFinite, year.isFinite, height.isFinite,
+              (-90...90).contains(latitude), (-180...180).contains(longitude),
+              height > -wgs84A else { return nil }
         let phi = latitude * Double.pi / 180
         let lam = longitude * Double.pi / 180
         let dt = year - CompassWMMTable.epoch
