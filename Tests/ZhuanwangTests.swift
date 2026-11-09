@@ -63,12 +63,13 @@ final class ZhuanwangTests: XCTestCase {
         XCTAssertFalse(r.cond3KuRoot)
     }
 
-    // 合成例 7：炎上格（合成，非公开例）— 火 53.2% 未达 55%，条件 1 用 (a)
-    func testYanshangSynthetic() {
-        let r = Zhuanwang.check(pillars: pillars("丙寅丁巳丙午戊戌"), dayStem: "丙")
+    // 公开例 7：炎上格真成（千里命稿·外格篇）— 丁巳 丙午 丙寅 乙未，巳午未三会火局；克星水全无
+    func testYanshangPublic() {
+        let r = Zhuanwang.check(pillars: pillars("丁巳丙午丙寅乙未"), dayStem: "丙")
         XCTAssertEqual(r.verdict, "真成")
-        XCTAssertEqual(r.wangPct, 53.2, accuracy: 0.15)
+        XCTAssertEqual(r.wangPct, 55.0, accuracy: 0.15)
         XCTAssertEqual(r.cond1Via, "三会/三合")
+        XCTAssertEqual(r.cond3, "无逆")
     }
 
     // 合成例 8：条件 1 不成立（日主丙火，火 37.6% 无局；月令午得令、通根 1 处）
@@ -98,5 +99,25 @@ final class ZhuanwangTests: XCTestCase {
     func testShishangNotPo() {
         let r = Zhuanwang.check(pillars: pillars("壬寅癸卯甲辰甲子"), dayStem: "甲")
         XCTAssertTrue(r.notes.contains { $0.contains("食伤泄秀为喜") })
+    }
+
+    // 升格断语行（C10 §七，2026-11-09 主代理批准接线）：7 则公开例逐字断言＋2 则空行
+    func testVerdictLines() {
+        XCTAssertEqual(Zhuanwang.verdictLine(pillars: pillars("壬寅癸卯甲辰甲子"), dayStem: "甲"),
+            "专旺格真成：木独旺成势（寅卯辰东方），不见克星。用神取木，喜水相助、食伤泄秀，忌金克伐。逢财藏干须有食伤通关。")
+        XCTAssertEqual(Zhuanwang.verdictLine(pillars: pillars("戊戌己未戊辰癸丑"), dayStem: "戊"),
+            "专旺格真成：土独旺成势（辰戌丑未），不见克星。用神取土，喜火相助、食伤泄秀，忌木克伐。逢财透干须有食伤通关。")
+        XCTAssertEqual(Zhuanwang.verdictLine(pillars: pillars("戊申辛酉庚戌乙酉"), dayStem: "庚"),
+            "专旺格真成：金独旺成势（申酉戌西方），不见克星。用神取金，喜土相助、食伤泄秀，忌火克伐。逢财透干须有食伤通关。")
+        XCTAssertEqual(Zhuanwang.verdictLine(pillars: pillars("壬申壬子壬辰庚子"), dayStem: "壬"),
+            "专旺格真成：水独旺成势（申子辰水局），不见克星。用神取水，喜金相助、食伤泄秀，忌土克伐。")
+        XCTAssertEqual(Zhuanwang.verdictLine(pillars: pillars("丁巳丙午丙寅乙未"), dayStem: "丙"),
+            "专旺格真成：火独旺成势（巳午未南方），不见克星。用神取火，喜木相助、食伤泄秀，忌水克伐。逢财藏干须有食伤通关。")
+        XCTAssertEqual(Zhuanwang.verdictLine(pillars: pillars("甲戌丙寅丙午壬辰"), dayStem: "丙"),
+            "专旺格不成：火虽成势，时干壬水通根坐辰库，克伐旺神，专旺破格。改按身旺论，不取专旺用神。")
+        XCTAssertEqual(Zhuanwang.verdictLine(pillars: pillars("戊申辛酉庚戌丁丑"), dayStem: "庚"),
+            "专旺格假成：金虽独旺成势，但时干丁火虚浮无根，格不纯粹。用神仍取金，须防火介入。")
+        XCTAssertEqual(Zhuanwang.verdictLine(pillars: pillars("戊子丁午丙寅乙卯"), dayStem: "丙"), "")
+        XCTAssertEqual(Zhuanwang.verdictLine(pillars: pillars("壬寅癸卯戊辰甲子"), dayStem: "戊"), "")
     }
 }
