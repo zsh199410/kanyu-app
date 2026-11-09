@@ -10,6 +10,9 @@ packages:
   LunarSwift:
     url: https://github.com/6tail/lunar-swift
     from: "1.1.8"
+  mediapipe:
+    url: https://github.com/google-ai-edge/mediapipe
+    from: "0.10.32"
 settings:
   base:
     CODE_SIGN_STYLE: Manual
@@ -20,9 +23,12 @@ targets:
     platform: iOS
     sources:
       - Sources
+      - Resources
     dependencies:
       - package: ZIPFoundation
       - package: LunarSwift
+      - package: mediapipe
+        product: MediaPipeTasksVision
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kanyu.survey
