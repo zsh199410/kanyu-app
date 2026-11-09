@@ -83,4 +83,44 @@ final class PalmAnchorTests: XCTestCase {
         // 锚点少于 3 个时原样返回（直线即可）
         XCTAssertEqual(smoothLinePoints([CGPoint(x: 0, y: 0), CGPoint(x: 1, y: 1)]).count, 2)
     }
+
+    // MARK: - 边缘贴合
+    func testEdgeMapSampling() {
+        // 5x5，中心列亮带
+        var values = [Float](repeating: 0, count: 25)
+        for y in 0..<5 { values[y * 5 + 2] = 1 }
+        let map = EdgeMap(width: 5, height: 5, values: values)
+        XCTAssertEqual(map.strength(at: CGPoint(x: 0.5, y: 0.5)), 1, accuracy: 0.01)
+        XCTAssertEqual(map.strength(at: CGPoint(x: 0, y: 0)), 0, accuracy: 0.01)
+        XCTAssertEqual(map.strength(at: CGPoint(x: 1.2, y: 0.5)), 0, accuracy: 0.01)
+        // 双线性：亮带与暗列之间应为中间值
+        let mid = map.strength(at: CGPoint(x: 0.375, y: 0.5))
+        XCTAssertTrue(mid > 0.2 && mid < 0.8, "亮带边缘应为中间值，实测 \(mid)")
+    }
+
+    func testSnapLineToEdges() {
+        // 亮带竖在 x=0.5；一条竖线锚点在 x≈0.46 附近，应被吸到 0.5 上
+        let w = 101, h = 101
+        var values = [Float](repeating: 0, count: w * h)
+        for y in 0..<h { values[y * w + 50] = 1 }
+        let map = EdgeMap(width: w, height: h, values: values)
+        let line = [CGPoint(x: 0.46, y: 0.3), CGPoint(x: 0.46, y: 0.5), CGPoint(x: 0.46, y: 0.7)]
+        let r = snapLineToEdges(line, edge: map)
+        for pt in r.line {
+            XCTAssertEqual(pt.x, 0.5, accuracy: 0.01, "锚点应吸到亮带 x=0.5 上")
+        }
+        XCTAssertEqual(r.moved, 3)
+        // 全黑图：无边缘，锚点不动
+        let empty = EdgeMap(width: w, height: h, values: [Float](repeating: 0, count: w * h))
+        let r2 = snapLineToEdges(line, edge: empty)
+        XCTAssertEqual(r2.line, line)
+        XCTAssertEqual(r2.moved, 0)
+        // 弱边缘（0.1，低于阈值 0.30）：不动
+        var weak = [Float](repeating: 0, count: w * h)
+        for y in 0..<h { weak[y * w + 50] = 0.1 }
+        let weakMap = EdgeMap(width: w, height: h, values: weak)
+        let r3 = snapLineToEdges(line, edge: weakMap)
+        XCTAssertEqual(r3.line, line)
+        XCTAssertEqual(r3.moved, 0)
+    }
 }
