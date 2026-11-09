@@ -145,6 +145,101 @@ func smoothLinePoints(_ anchors: [CGPoint], segmentsPerSpan: Int = 16) -> [CGPoi
     return out
 }
 
+// MARK: - 掌纹边缘贴合（把模板锚点吸到真实掌纹上）
+// 原理：Vision/MediaPipe 只给关节点、没有掌纹输出；但掌纹是掌区最强的边缘。
+// 复用掌纹参考描边的 CIEdges 结果做成 EdgeMap，锚点沿局部法线在小半径内
+// 搜最强边缘并吸过去。吸不到（边缘太弱）就留在模板位置，不硬拽；
+// 拖动圆点永远可以修正，贴合只是初始落位更准。控制点仍是每线 4 个，
+// 记录与海报的“每线 4 点”格式不动。
+struct EdgeMap {
+    let width: Int
+    let height: Int
+    let values: [Float]  // 行主序，0-1，行 0 ＝图顶
+    init(width: Int, height: Int, values: [Float]) {
+        self.width = max(width, 1); self.height = max(height, 1)
+        self.values = values
+    }
+    func strength(at p: CGPoint) -> CGFloat {
+        guard p.x >= 0, p.x <= 1, p.y >= 0, p.y <= 1 else { return 0 }
+        let fx = p.x * CGFloat(width - 1)
+        let fy = p.y * CGFloat(height - 1)
+        let x0 = Int(fx); let y0 = Int(fy)
+        let x1 = min(x0 + 1, width - 1); let y1 = min(y0 + 1, height - 1)
+        let tx = fx - CGFloat(x0); let ty = fy - CGFloat(y0)
+        func v(_ x: Int, _ y: Int) -> CGFloat { CGFloat(values[y * width + x]) }
+        let top = v(x0, y0) * (1 - tx) + v(x1, y0) * tx
+        let bot = v(x0, y1) * (1 - tx) + v(x1, y1) * tx
+        return top * (1 - ty) + bot * ty
+    }
+}
+
+// 从边缘参考图（CIEdges＋透明底，全图同尺寸）取 alpha 做 EdgeMap；
+// 下采样到最长边 512 以内，采样与计算都轻。坐标与画布一致（左上原点 0-1）。
+func edgeMap(from image: UIImage, maxSide: Int = 512) -> EdgeMap? {
+    guard let cg = image.cgImage, cg.width > 0, cg.height > 0 else { return nil }
+    let scale = min(1, CGFloat(maxSide) / CGFloat(max(cg.width, cg.height)))
+    let w = max(1, Int(CGFloat(cg.width) * scale))
+    let h = max(1, Int(CGFloat(cg.height) * scale))
+    guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                              space: CGColorSpaceCreateDeviceRGB(),
+                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+    ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+    guard let data = ctx.data else { return nil }
+    let bytes = data.bindMemory(to: UInt8.self, capacity: w * h * 4)
+    var values: [Float] = []
+    values.reserveCapacity(w * h)
+    for i in 0..<(w * h) {
+        values.append(Float(bytes[i * 4 + 3]) / 255)
+    }
+    return EdgeMap(width: w, height: h, values: values)
+}
+
+// 单线贴合：每个锚点沿局部法线 ±radius 搜最强边缘，强度 ≥ threshold 才吸过去；
+// 返回贴合后的线与吸动点数（吸动 < 0.002 视为未动）。
+func snapLineToEdges(_ line: [CGPoint], edge: EdgeMap,
+                     radius: CGFloat = 0.05, step: CGFloat = 0.004,
+                     threshold: CGFloat = 0.30) -> (line: [CGPoint], moved: Int) {
+    guard line.count >= 2 else { return (line, 0) }
+    var out = line
+    var moved = 0
+    for i in line.indices {
+        let prev = line[max(i - 1, 0)]
+        let next = line[min(i + 1, line.count - 1)]
+        var dx = next.x - prev.x; var dy = next.y - prev.y
+        let len = (dx * dx + dy * dy).squareRoot()
+        guard len > 0.001 else { continue }
+        dx /= len; dy /= len
+        let nx = -dy; let ny = dx
+        let base = edge.strength(at: line[i])
+        var bestT: CGFloat = 0
+        var bestS = base
+        var t = -radius
+        while t <= radius + 0.0001 {
+            let s = edge.strength(at: CGPoint(x: line[i].x + nx * t, y: line[i].y + ny * t))
+            if s > bestS {
+                bestS = s
+                bestT = t
+            }
+            t += step
+        }
+        if bestS >= threshold, abs(bestT) > 0.002 {
+            out[i] = CGPoint(x: line[i].x + nx * bestT, y: line[i].y + ny * bestT)
+            moved += 1
+        }
+    }
+    return (out, moved)
+}
+
+func snapPalmLines(_ lines: [[CGPoint]], edge: EdgeMap) -> (lines: [[CGPoint]], moved: [Int]) {
+    var out: [[CGPoint]] = []
+    var moved: [Int] = []
+    for line in lines {
+        let r = snapLineToEdges(line, edge: edge)
+        out.append(r.line); moved.append(r.moved)
+    }
+    return (out, moved)
+}
+
 // MARK: - 掌纹参考描边（仅作视觉参考，不自动定线）
 // 取掌区 ROI → CIEdges 提边缘 → 转透明底贴回全图同尺寸；界面以低透明度叠加，可开关。
 func palmEdgeReferenceImage(from image: UIImage, joints: [String: CGPoint]) -> UIImage? {
@@ -201,6 +296,8 @@ struct HandMeasureView: View {
     @State private var lineAuto: [Bool] = [true, true, true]  // 该线仍为自动落位（未拖过）
     @State private var showEdgeRef = false
     @State private var edgeImage: UIImage?
+    @State private var edgeMap: EdgeMap?
+    @State private var lineSnapped: [Bool] = [false, false, false]
     // 可编辑三线（画布相对坐标，左上原点 0-1）：感情/智慧/生命各 4 控制点
     @State private var lines: [[CGPoint]] = [
         [CGPoint(x: 0.16, y: 0.30), CGPoint(x: 0.38, y: 0.27), CGPoint(x: 0.62, y: 0.27), CGPoint(x: 0.84, y: 0.30)],
@@ -263,7 +360,7 @@ struct HandMeasureView: View {
                     }
                     .kyCard()
                 }
-                Text("测量口径：视觉识别 21 点关节点几何（学术同款管线在本工作室已实测）；三线为手描修正层——把每个圆点拖到你真实掌纹上，描准了判读才有意义。娱乐参考。".scriptConverted)
+                Text("测量口径：视觉识别 21 点关节点几何（学术同款管线在本工作室已实测）；三线先按手自动落位、再沿掌纹边缘贴合，贴合不上的请拖动圆点对准真实掌纹，描准了判读才有意义。娱乐参考。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }.padding(16).padding(.bottom, 100)
         }
@@ -277,7 +374,7 @@ struct HandMeasureView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("拍之前先对一下".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
             Text("掌心正对镜头 · 五指自然张开 · 手放画面中央 · 背景干净".scriptConverted).font(.caption).foregroundStyle(Ky.ink)
-            Text("选图后三条线会按识别到的手自动落到掌心上，再拖动圆点对准真实掌纹；手太斜或识别不稳时会提示重拍。".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+            Text("选图后三条线会按识别到的手自动落到掌心上、再贴合真实掌纹，贴不上的拖动圆点对准；手太斜或识别不稳时会提示重拍。".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(12)
         .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
@@ -291,8 +388,13 @@ struct HandMeasureView: View {
                 Button((showEdgeRef ? "参考纹路：开" : "参考纹路：关").scriptConverted) { showEdgeRef.toggle() }
                     .font(.caption2).padding(.horizontal, 8).padding(.vertical, 5)
                     .background(Ky.card).clipShape(Capsule())
+                if edgeMap != nil {
+                    Button("重新贴合".scriptConverted) { resnap() }
+                        .font(.caption2).padding(.horizontal, 8).padding(.vertical, 5)
+                        .background(Ky.card).clipShape(Capsule())
+                }
             }
-            Text(lineAuto[selectedLine] ? "示意线（已按手自动落位）· 拖动圆点修正".scriptConverted : "已修正 · 拖动圆点可继续调整".scriptConverted)
+            Text(lineSnapped[selectedLine] ? "已贴合真实掌纹 · 拖动圆点可修正".scriptConverted : (lineAuto[selectedLine] ? "示意线（已按手自动落位）· 拖动圆点修正".scriptConverted : "已修正 · 拖动圆点可继续调整".scriptConverted))
                 .font(.caption2).foregroundStyle(Ky.sub)
         }
     }
@@ -326,6 +428,15 @@ struct HandMeasureView: View {
         }
     }
 
+    // 手动重新贴合：以当前线位为起点再吸一次真实掌纹（会覆盖拖动，需用户主动点）
+    private func resnap() {
+        guard let map = edgeMap else { return }
+        let r = snapPalmLines(lines, edge: map)
+        lines = r.lines
+        lineSnapped = r.moved.map { $0 > 0 }
+        lineAuto = [true, true, true]
+    }
+
     private func measureCard(_ m: HandMeasure) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("测量结果".scriptConverted).font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
@@ -341,6 +452,7 @@ struct HandMeasureView: View {
 
     private func detect() {
         joints = [:]; jointConf = [:]; measure = nil; note = ""; tiltNote = ""; edgeImage = nil
+        edgeMap = nil; lineSnapped = [false, false, false]
         lineAuto = [true, true, true]
         guard let cg = box.image?.cgImage else { return }
         let req = VNDetectHumanHandPoseRequest()
@@ -377,7 +489,17 @@ struct HandMeasureView: View {
             if let img = box.image, !found.isEmpty {
                 Task.detached {
                     let edge = palmEdgeReferenceImage(from: img, joints: found)
-                    await MainActor.run { edgeImage = edge }
+                    let map = edge.flatMap { edgeMap(from: $0) }
+                    await MainActor.run {
+                        edgeImage = edge
+                        edgeMap = map
+                        // 识别刚落位、用户还没拖动时，把模板锚点贴合到真实掌纹上
+                        if let map, lineAuto == [true, true, true] {
+                            let r = snapPalmLines(lines, edge: map)
+                            lines = r.lines
+                            lineSnapped = r.moved.map { $0 > 0 }
+                        }
+                    }
                 }
             }
             guard let w = found["wrist"], let mm = found["middleMCP"], let mt = found["middleTip"],
