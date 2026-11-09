@@ -2,6 +2,7 @@
 // 与 tools/tests/test_c10_zhuanwang.py 同集：6 则公开命例（千里命稿 4 则＋朱祖夏 2 则）
 // ＋边界合成例（已标注合成）。只用四柱干支串，不含任何真实人物出生信息。
 import XCTest
+@testable import Kanyu
 
 final class ZhuanwangTests: XCTestCase {
     func pillars(_ s: String) -> [String] {
