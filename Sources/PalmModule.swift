@@ -491,7 +491,7 @@ struct FaceMeasureView: View {
         let qReq = VNDetectFaceCaptureQualityRequest()
         do {
             try VNImageRequestHandler(cgImage: cg, options: [:]).perform([req, qReq])
-            if let q = qReq.results?.first, let quality = q.faceCaptureQuality?.doubleValue, quality < 0.5 {
+            if let q = qReq.results?.first, let quality = q.faceCaptureQuality, quality < 0.5 {
                 faceNote = "照片质量偏低（光线/模糊），建议补光重拍；已尽量自动标线，请拖动核对。".scriptConverted
             }
             guard let obs = req.results?.first, let lm = obs.landmarks else {
