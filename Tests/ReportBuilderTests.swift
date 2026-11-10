@@ -59,21 +59,21 @@ final class ReportBuilderTests: XCTestCase {
     func testLinesProfessionalSections() {
         let lines = ReportBuilder.lines(for: person())
         XCTAssertEqual(lines.first, "命书 · 测试甲")
-        XCTAssertTrue(lines.contains(""))
-        XCTAssertTrue(lines.contains(where: { $0.hasPrefix("")}))
-        XCTAssertTrue(lines.contains(""))
+        XCTAssertTrue(lines.contains("【四柱细盘】"))
+        XCTAssertTrue(lines.contains(where: { $0.hasPrefix("【大运】")}))
+        XCTAssertTrue(lines.contains("【双术合参 · 交叉印证】"))
         XCTAssertTrue(lines.contains(where: { $0.hasPrefix("【逐项解盘详解")}))
-        XCTAssertTrue(lines.contains(""))
-        XCTAssertTrue(lines.contains(""))
+        XCTAssertTrue(lines.contains("【紫微摘要】"))
+        XCTAssertTrue(lines.contains("【逐年直断（当前大运十年）】"))
         XCTAssertTrue(lines.last?.hasPrefix("口径：") == true)
     }
 
     func testLinesConciseOmitsSections() {
         let concise = ReportBuilder.lines(for: person(), tier: .concise)
         let professional = ReportBuilder.lines(for: person(), tier: .professional)
-        XCTAssertFalse(concise.contains(where: { $0.hasPrefix("")}), "简洁档不含大运")
-        XCTAssertFalse(concise.contains(""), "简洁档不含合参")
-        XCTAssertFalse(concise.contains(""), "简洁档不含紫微摘要")
+        XCTAssertFalse(concise.contains(where: { $0.hasPrefix("【大运】")}), "简洁档不含大运")
+        XCTAssertFalse(concise.contains("【双术合参 · 交叉印证】"), "简洁档不含合参")
+        XCTAssertFalse(concise.contains("【紫微摘要】"), "简洁档不含紫微摘要")
         XCTAssertTrue(concise.contains(where: { $0.hasPrefix("【解盘维度摘要")}), "简洁档只列总纲摘要")
         XCTAssertLessThan(concise.count, professional.count)
     }
@@ -81,9 +81,9 @@ final class ReportBuilderTests: XCTestCase {
     func testLinesCompleteAddsAppendix() {
         let complete = ReportBuilder.lines(for: person(), tier: .complete)
         let professional = ReportBuilder.lines(for: person(), tier: .professional)
-        XCTAssertTrue(complete.contains(""))
-        XCTAssertTrue(complete.contains(""))
-        XCTAssertTrue(complete.contains(""))
+        XCTAssertTrue(complete.contains("【白话阅读指南】"))
+        XCTAssertTrue(complete.contains("【逐项依据（附录）】"))
+        XCTAssertTrue(complete.contains("【附录 · 版本与口径】"))
         XCTAssertTrue(complete.contains("报告档位：完整"))
         XCTAssertTrue(complete.contains("引擎口径版本：\(ReportBuilder.engineVersion)"))
         XCTAssertGreaterThan(complete.count, professional.count)
