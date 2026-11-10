@@ -42,3 +42,15 @@
 - PR #28：严格拒绝重复清单条目、不支持的清单版本及符号链接；本节提交后的精确 head 必须重新取得 CI 证据。
 - PR #29 head `4c21a315b03f4956962542314f3cb22fbc94f55b`：Actions Run #222 执行 92 XCTest、1 XCUITest，0 失败；设备 Release 和未签名 IPA 打包通过。
 - 未验证：真机人物切换/重启/删除重建、磁盘耗尽或中断恢复、iCloud 真机恢复、签名与安装。任何未签名 IPA 均不得称为可直接安装版本。
+
+## 2026-11-10 集成后验收状态（main 2812afb）
+
+> 本节更新当前集成状态；上方 87a551a、27b1478 与各堆叠 PR 的测试数字均为历史记录，不得当作最新 main 的独立验收。
+
+- 当前 main：`2812afb0de41c2db55d1f630ecfe2ea44c6ef948`，由 PR #30 合并。集成测试对象为 PR #30 head `8fdab61af2a20937577bc3d8523a325136b4a413`，不是合并提交本身。
+- 集成 CI：https://github.com/zsh199410/kanyu-app/actions/runs/42845467650 。GitHub job 步骤确认单元/UI 测试、设备 Release 编译、IPA 打包、验证证据上传均为 success；PR 记录称 94 XCTest＋1 XCUITest，零失败。测试数量尚需以原始 tests.log 复核。
+- 本次读取到的 artifact：`verification-8fdab61af2a20937577bc3d8523a325136b4a413`（ID 13779097315）和 `Kanyu-unsigned-ipa`（ID 13778663015），均未过期；artifact 存在不等于本次已独立下载核对其内部 IPA 的 SHA256，也不等于已签名安装。
+- PR #18 已合并；PR #28/#29 关闭未直接合并，变更由 PR #30 整合，不再重复合并。Issue #10/#11 已关闭，但真机人物切换、iCloud、磁盘耗尽、恢复中断和回滚失败仍需故障注入。
+- PR #31 head `be65a9893593e6e17ee152e010e9287ef2d1209f` 仍开放；本次查询该 head 的 PR 触发 workflow runs 返回空列表。合并前必须取得该精确 SHA 的 XCTest、XCUITest、设备 Release 与产物证据；不得用 #30 的 CI 代替。
+- PR #9 已合并，PR #8 被替代且关闭未合并，照片修复不重复整合。
+- 本节仅更新可追溯验收状态，不修改算法、业务代码、用户数据或 CI 门禁。后续每次集成须追加新 SHA 与日志证据，不覆盖历史。
