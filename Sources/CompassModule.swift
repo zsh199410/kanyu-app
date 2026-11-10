@@ -152,6 +152,31 @@ enum CompassDeclination {
     }
 }
 
+/// One result drives both the displayed bearing and its correction receipt.
+enum CompassBearingResolver {
+    struct Result {
+        let trueNorth: Double
+        let correction: Double
+        let source: String
+    }
+
+    static func resolve(manual: Double?, magnetic: Double, deviceTrue: Double,
+                        latitude: Double?, longitude: Double?, year: Double) -> Result? {
+        guard magnetic.isFinite, (0..<360).contains(magnetic) else { return nil }
+        if let manual, manual.isFinite, (-180...180).contains(manual) {
+            return Result(trueNorth: CompassMath.normalize(magnetic + manual), correction: manual, source: "manual")
+        }
+        if deviceTrue.isFinite, (0..<360).contains(deviceTrue) {
+            return Result(trueNorth: deviceTrue,
+                          correction: CompassMath.shortestDiff(from: magnetic, to: deviceTrue), source: "device")
+        }
+        guard let latitude, let longitude,
+              let correction = CompassDeclination.declination(latitude: latitude, longitude: longitude, year: year),
+              correction.isFinite else { return nil }
+        return Result(trueNorth: CompassMath.normalize(magnetic + correction), correction: correction, source: "wmm2025")
+    }
+}
+
 // MARK: - 罗盘锁定（Codable，UserDefaults 持久化）
 
 /// 一次罗盘锁定的全部信息。锁定只输出一个真北坐山度数：sitDegree = trueNorth（入盘只用真北）。
@@ -212,7 +237,10 @@ struct CompassLock: Codable, Equatable {
         if declinationSource == "manual" {
             return "手动填入"
         }
-        return "WMM2025 现算"
+        if declinationSource == "wmm2025" {
+            return "WMM2025 现算"
+        }
+        return "磁偏角来源未知"
     }
 }
 
@@ -279,24 +307,17 @@ struct CompassStandaloneView: View {
     @State private var showCalibrationGuide = false
     @State private var calibrationStep = 0
 
-    // 磁偏角解析（优先级：手动填入 ＞ 设备真北实测 ＞ 按定位经纬度 WMM2025 现算 ＞ 梁平默认坐标现算）。
+    private var resolvedBearing: CompassBearingResolver.Result? {
+        CompassBearingResolver.resolve(
+            manual: Double(manualDeclination), magnetic: location.magneticHeading,
+            deviceTrue: location.trueHeading,
+            latitude: location.currentLocation?.coordinate.latitude,
+            longitude: location.currentLocation?.coordinate.longitude, year: currentYearDecimal())
+    }
+
     private var declinationInfo: (value: Double, source: String) {
-        if let manual = Double(manualDeclination) {
-            return (manual, "manual")
-        }
-        if let d = location.declination {
-            return (d, "device")
-        }
-        let year = currentYearDecimal()
-        if let loc = location.currentLocation {
-            if let d = CompassDeclination.declination(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, year: year) {
-                return (d, "wmm2025")
-            }
-        }
-        if let d = CompassDeclination.liangpingDeclination(year: year) {
-            return (d, "wmm2025")
-        }
-        return (0, "none")
+        guard let result = resolvedBearing else { return (0, "none") }
+        return (result.correction, result.source)
     }
 
     private func currentYearDecimal() -> Double {
@@ -307,16 +328,7 @@ struct CompassStandaloneView: View {
         return Double(y) + Double(day - 1) / 365.25
     }
 
-    // 真北读数：有系统真北直接用；无真北时磁北＋磁偏角推算（与 Web 同口径）。
-    private var trueDisplay: Double {
-        if location.trueHeading >= 0 {
-            return location.trueHeading
-        }
-        if location.magneticHeading >= 0 {
-            return CompassMath.normalize(location.magneticHeading + declinationInfo.value)
-        }
-        return -1
-    }
+    private var trueDisplay: Double { resolvedBearing?.trueNorth ?? -1 }
 
     private var displayHeading: Double {
         if northMode == 0 {
@@ -686,7 +698,11 @@ struct CompassStandaloneView: View {
             collectHint = "读数无效，请重试"
             return
         }
-        let info = declinationInfo
+        guard let current = resolvedBearing else {
+            collectHint = "真北校正已不可用，本次未锁定；请重新定位或填写有效磁偏角后重测。"
+            return
+        }
+        let info = (value: current.correction, source: current.source)
         let lock = CompassLock(
             magnetic: meanM,
             trueNorth: meanT,
