@@ -49,7 +49,7 @@ struct BackupView: View {
                     HStack(spacing: 10) {
                         Button {
                             if let u = makeBackup() { exportURL = u; note = "备份包已生成，可分享保存。" }
-                            else { note = "备份失败：本地没有可打包的数据文件。" }
+                            else { note = "备份失败：没有可备份的数据，或文件复制/打包失败。请检查存储空间。" }
                         } label: {
                             Label("导出备份（ZIP）".scriptConverted, systemImage: "square.and.arrow.up")
                                 .font(.subheadline).fontWeight(.semibold)
@@ -101,23 +101,37 @@ struct BackupView: View {
         let fm = FileManager.default
         let tmp = fm.temporaryDirectory.appendingPathComponent("Kanyu-Backup-\(dateStr)", isDirectory: true)
         try? fm.removeItem(at: tmp)
-        try? fm.createDirectory(at: tmp, withIntermediateDirectories: true)
-        var count = 0
-        for f in sourceFiles where fm.fileExists(atPath: f.url.path) {
-            try? fm.copyItem(at: f.url, to: tmp.appendingPathComponent(f.name))
-            count += 1
-        }
-        if let marks = UserDefaults.standard.dictionary(forKey: "kanyu.verifyMarks.v1"),
-           let data = try? JSONSerialization.data(withJSONObject: marks) {
-            try? data.write(to: tmp.appendingPathComponent("verify-marks.json"))
-        }
-        guard count > 0 else { return nil }
-        let zipURL = fm.temporaryDirectory.appendingPathComponent("Kanyu-Backup-\(dateStr).zip")
-        try? fm.removeItem(at: zipURL)
         do {
+            try fm.createDirectory(at: tmp, withIntermediateDirectories: true)
+            var count = 0
+            for f in sourceFiles where fm.fileExists(atPath: f.url.path) {
+                try fm.copyItem(at: f.url, to: tmp.appendingPathComponent(f.name))
+                count += 1
+            }
+            if let marks = UserDefaults.standard.dictionary(forKey: "kanyu.verifyMarks.v1") {
+                let data = try JSONSerialization.data(withJSONObject: marks)
+                try data.write(to: tmp.appendingPathComponent("verify-marks.json"), options: .atomic)
+                count += 1
+            }
+            guard count > 0 else {
+                try? fm.removeItem(at: tmp)
+                return nil
+            }
+        } catch {
+            try? fm.removeItem(at: tmp)
+            return nil
+        }
+        let zipURL = fm.temporaryDirectory.appendingPathComponent("Kanyu-Backup-\(dateStr).zip")
+        do {
+            if fm.fileExists(atPath: zipURL.path) { try fm.removeItem(at: zipURL) }
             try fm.zipItem(at: tmp, to: zipURL)
+            try fm.removeItem(at: tmp)
             return zipURL
-        } catch { return nil }
+        } catch {
+            try? fm.removeItem(at: tmp)
+            try? fm.removeItem(at: zipURL)
+            return nil
+        }
     }
 
     private func restore(from zipURL: URL) -> String {
@@ -159,9 +173,13 @@ struct BackupView: View {
         }
         if let d = try? Data(contentsOf: dir.appendingPathComponent("index.json")) {
             let dest = docs.appendingPathComponent("AppData/index.json")
-            try? fm.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try? d.write(to: dest, options: .atomic)
-            parts.append("勘察案件已恢复（重启 App 后生效）")
+            do {
+                try fm.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try d.write(to: dest, options: .atomic)
+                parts.append("勘察案件已恢复（重启 App 后生效）")
+            } catch {
+                parts.append("勘察案件恢复失败：\(error.localizedDescription)")
+            }
         }
         if let d = try? Data(contentsOf: dir.appendingPathComponent("verify-marks.json")),
            let marks = try? JSONSerialization.jsonObject(with: d) as? [String: Bool] {
@@ -179,17 +197,29 @@ struct BackupView: View {
     private func backupToICloud() -> String {
         guard let dir = icloudDir() else { return "未登录 iCloud 或容器不可用。" }
         let fm = FileManager.default
-        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
-        var n = 0
-        for f in sourceFiles where fm.fileExists(atPath: f.url.path) {
-            try? fm.removeItem(at: dir.appendingPathComponent(f.name))
-            try? fm.copyItem(at: f.url, to: dir.appendingPathComponent(f.name))
-            n += 1
+        do {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            var n = 0
+            for f in sourceFiles where fm.fileExists(atPath: f.url.path) {
+                let target = dir.appendingPathComponent(f.name)
+                let staging = dir.appendingPathComponent(f.name + ".pending")
+                if fm.fileExists(atPath: staging.path) { try fm.removeItem(at: staging) }
+                try fm.copyItem(at: f.url, to: staging)
+                if fm.fileExists(atPath: target.path) {
+                    _ = try fm.replaceItemAt(target, withItemAt: staging)
+                } else {
+                    try fm.moveItem(at: staging, to: target)
+                }
+                n += 1
+            }
+            guard n > 0 else { return "本地没有可备份的数据文件。" }
+            NSUbiquitousKeyValueStore.default.set(Date().timeIntervalSince1970, forKey: "kanyu.lastBackup")
+            NSUbiquitousKeyValueStore.default.synchronize()
+            return "已备份 \(n) 个数据文件到 iCloud。"
+        } catch {
+            return "iCloud 备份未完成：\(error.localizedDescription)"
         }
-        NSUbiquitousKeyValueStore.default.set(Date().timeIntervalSince1970, forKey: "kanyu.lastBackup")
-        NSUbiquitousKeyValueStore.default.synchronize()
-        return n == 0 ? "本地没有可备份的数据文件。" : "已备份 \(n) 个数据文件到 iCloud。"
-    }
+     }
 
     private func restoreFromICloud() -> String {
         guard let dir = icloudDir() else { return "未登录 iCloud 或容器不可用。" }
