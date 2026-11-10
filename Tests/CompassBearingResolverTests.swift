@@ -100,7 +100,7 @@ final class CompassBearingResolverTests: XCTestCase {
         XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: nil))
     }
 
-    func testReceiptRejectsManualCorrectionChangeButAllowsSmallDrift() throws {
+    func testReceiptRejectsEvenSmallManualCorrectionChanges() throws {
         let initial = try XCTUnwrap(CompassBearingResolver.resolve(
             manual: 5, magnetic: 90, deviceTrue: -1,
             latitude: nil, longitude: nil, year: 2026))
@@ -111,7 +111,7 @@ final class CompassBearingResolverTests: XCTestCase {
             manual: 6, magnetic: 90, deviceTrue: -1,
             latitude: nil, longitude: nil, year: 2026))
         let receipt = (source: initial.source, correction: initial.correction)
-        XCTAssertTrue(CompassSampleReceipt.matches(receipt, current: within))
+        XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: within))
         XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: changed))
     }
 

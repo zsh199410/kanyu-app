@@ -203,6 +203,7 @@ enum CompassSampleReceipt {
               current.trueNorth.isFinite else { return false }
         // Device heading correction varies naturally with sensor noise; source is the stable contract.
         if receipt.source == "device" { return true }
+        if receipt.source == "manual" { return current.correction == receipt.correction }
         return abs(current.correction - receipt.correction) <= 0.25
     }
 }
