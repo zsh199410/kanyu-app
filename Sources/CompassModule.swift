@@ -325,8 +325,16 @@ struct CompassStandaloneView: View {
     @State private var showCalibrationGuide = false
     @State private var calibrationStep = 0
 
+    private var manualDeclinationInvalid: Bool {
+        let text = manualDeclination.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return false }
+        guard let value = Double(text) else { return true }
+        return !value.isFinite || !(-180.0...180.0).contains(value)
+    }
+
     private var resolvedBearing: CompassBearingResolver.Result? {
-        CompassBearingResolver.resolve(
+        guard !manualDeclinationInvalid else { return nil }
+        return CompassBearingResolver.resolve(
             manual: Double(manualDeclination), magnetic: location.magneticHeading,
             deviceTrue: location.trueHeading,
             latitude: location.currentLocation?.coordinate.latitude,
@@ -517,6 +525,12 @@ struct CompassStandaloneView: View {
                     .keyboardType(.decimalPad)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 110)
+            }
+            if manualDeclinationInvalid {
+                Text("手动磁偏角无效：请输入 −180° 至 180° 的数字，或清空以使用自动校正。".scriptConverted)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("compassManualDeclinationError")
             }
             Text("真北＝磁北＋磁偏角（东偏为正，西偏为负）；梁平 2026 年约 −3.3°（西偏）。".scriptConverted)
                 .font(.caption).foregroundStyle(.secondary)
