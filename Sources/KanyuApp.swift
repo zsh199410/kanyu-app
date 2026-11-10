@@ -1883,7 +1883,7 @@ struct HomePageView: View {
             KySectionTitle(title: "常用工具", trailing: "星命 · 合婚 · 论财 · 反查")
             VStack(spacing: 10) {
                 HStack(spacing: 10) {
-                    NavigationLink { AstroHomeView(person: currentHomePerson, chart: currentHomeChart) } label: {
+                    NavigationLink { if let item = AllToolsData.item(for: "astro") { ContextualToolDestination(item: item) } } label: {
                         compactBentoTile("sparkles", "星命合参", "八字 × 西洋星盘 · 双术印证", Ky.gold)
                     }.buttonStyle(.plain)
                         .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })
@@ -1930,7 +1930,7 @@ struct HomePageView: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                NavigationLink { toolDestination(for: item, person: currentHomePerson, chart: currentHomeChart) } label: {
+                NavigationLink { ContextualToolDestination(item: item) } label: {
                     homeChipLabel(item)
                 }
                 .buttonStyle(.plain)
@@ -1947,16 +1947,6 @@ struct HomePageView: View {
         .background(Ky.card)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Ky.line, lineWidth: 0.8))
-    }
-
-    private var currentHomePerson: Person {
-        if let p = peopleStore.currentPerson { return p }
-        return Person(name: "命主", relation: "本人", gender: "M", birthEpoch: Date().timeIntervalSince1970)
-    }
-
-    private var currentHomeChart: BaziChart {
-        let p = currentHomePerson
-        return BaziEngine.paipan(clock: p.birthDate, gender: p.gender, longitude: chartLongitude(for: p))
     }
 
     private func compactBentoTile(_ icon: String, _ title: String, _ desc: String, _ color: Color) -> some View {
