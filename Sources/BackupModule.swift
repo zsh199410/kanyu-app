@@ -203,17 +203,22 @@ struct BackupView: View {
         }
         if let d = try? Data(contentsOf: dir.appendingPathComponent("verify-marks-v2.json")),
            let marks = try? JSONSerialization.jsonObject(with: d) as? [String: Bool] {
-            UserDefaults.standard.set(marks, forKey: VerifyStore.key)
-            parts.append("人物隔离回验标记已恢复")
+            mergeMarks(marks, key: VerifyStore.key)
+            parts.append("人物回验标记已合并，保留本机已有标记")
         }
         let legacyURLs = ["verify-marks-v1-unassigned.json", "verify-marks.json"]
         if let legacyURL = legacyURLs.map({ dir.appendingPathComponent($0) }).first(where: { fm.fileExists(atPath: $0.path) }),
            let d = try? Data(contentsOf: legacyURL),
            let marks = try? JSONSerialization.jsonObject(with: d) as? [String: Bool] {
-            UserDefaults.standard.set(marks, forKey: VerifyStore.legacyKey)
+            mergeMarks(marks, key: VerifyStore.legacyKey)
             parts.append("旧回验标记已保留为待归属（未自动套用）")
         }
         return parts.isEmpty ? "包里没有可识别的数据文件。" : "恢复结果：" + parts.joined(separator: " · ")
+    }
+
+    private func mergeMarks(_ imported: [String: Bool], key: String) {
+        let local = UserDefaults.standard.dictionary(forKey: key) as? [String: Bool] ?? [:]
+        UserDefaults.standard.set(local.merging(imported) { existing, _ in existing }, forKey: key)
     }
 
     // MARK: - iCloud
