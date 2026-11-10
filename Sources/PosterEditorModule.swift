@@ -146,7 +146,7 @@ struct PosterEditorView: View {
         renderKey = "\(style.rawValue)-\(accent.rawValue)-\(appliedTitle)-\(appliedSubtitle)"
     }
 
-    // 与 PosterSheetView.render 同款渲染路径（后台线程 ImageRenderer，前台只展示缓存图）
+    // 与 PosterSheetView.render 同款渲染路径（ImageRenderer 在主线程渲染，完成后展示缓存图）
     private func render() {
         let chart = chart
         let name = name
@@ -155,20 +155,22 @@ struct PosterEditorView: View {
         let appliedTitle = appliedTitle
         let appliedSubtitle = appliedSubtitle
         let expectedKey = renderKey
-        Task.detached(priority: .userInitiated) {
+        Task { @MainActor in
             let titleValue: String? = appliedTitle.isEmpty ? nil : appliedTitle
             let subtitleValue: String? = appliedSubtitle.isEmpty ? nil : appliedSubtitle
             let view = PosterView(chart: chart, name: name, style: style, titleOverride: titleValue, subtitleOverride: subtitleValue, accentOverride: accent.color)
             let renderer = ImageRenderer(content: view.environment(\.colorScheme, .light))
             renderer.scale = 2.0
             guard let img = renderer.uiImage, let data = img.pngData() else { return }
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("poster-\((name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
-            try? data.write(to: url, options: .atomic)
-            await MainActor.run {
-                guard self.renderKey == expectedKey else { return }
-                previewImage = img
-                fileURL = url
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
+            do { try data.write(to: url, options: .atomic) }
+            catch {
+                saveMessage = "海报保存失败，请检查剩余空间后重试。"
+                return
             }
+            guard self.renderKey == expectedKey else { return }
+            previewImage = img
+            fileURL = url
         }
     }
 }

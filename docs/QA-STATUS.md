@@ -28,3 +28,7 @@
 每次改动执行 git diff --check；Actions 必须先通过全部 XCTest 才执行设备构建及发布。
 失败时下载 verification-<SHA>，查看 tests.log、device-build.log 和 TestResults.xcresult。
 下载 IPA 后先核验同版本 .sha256；自行签名安装后记录设备型号/iOS 版本/操作与结果。
+
+## 2026-11-10 下一轮：可读性与完整性
+
+详见 UPGRADE-RESEARCH-2026-11-10.md。新增 37 项工具说明、七主题指南、完整专业报告、搜索与分类恢复边界、照片故障处理与连拍唯一文件名、海报 MainActor 修复，以及单元/原生导航 UI 回归。提交时新增测试均待 macOS CI；不提前标记通过。UI 颜色及排版为源码修改，未完成视觉截图验收。

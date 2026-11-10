@@ -788,7 +788,7 @@ struct InterpretView: View {
         let allItems = InterpretEngine.interpret(chart: chart)
         let filteredIndices = allItems.indices.filter { idx in
             let item = allItems[idx]
-            let matchCat = selectedCategory == 0 || Self.categories[selectedCategory].1.contains(item.title)
+            let matchCat = !Self.categories.indices.contains(selectedCategory) || selectedCategory == 0 || Self.categories[selectedCategory].1.contains(item.title)
             let matchQuery = searchQuery.isEmpty
                 || item.title.localizedCaseInsensitiveContains(searchQuery)
                 || item.conclusion.localizedCaseInsensitiveContains(searchQuery)
@@ -797,11 +797,20 @@ struct InterpretView: View {
 
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                NavigationLink { LearningCenterView() } label: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("先看结论，再展开依据", systemImage: "book.closed")
+                            .font(.headline)
+                        Text(LearningContent.readingOrder.scriptConverted)
+                            .font(.body).lineSpacing(4)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
+                        .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 16))
+                }.buttonStyle(.plain)
                 // 顶部总控栏：分类胶囊＋全文听书＋搜索
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text((name.isEmpty ? "本盘" : name) + " · 30 条五典详批 · ".scriptConverted + accuracyLine(titles: allItems.map { $0.title }).scriptConverted)
+                            Text((name.isEmpty ? "本盘" : name) + " · \(allItems.count) 项解读 · ".scriptConverted + accuracyLine(titles: allItems.map { $0.title }).scriptConverted)
                                 .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             Text("日主 \(chart.rizhu) · 四柱 \(chart.pillars.joined(separator: " ")) · 每条附盘面与典籍依据".scriptConverted)
                                 .font(.caption2).foregroundStyle(Ky.sub)
@@ -858,7 +867,7 @@ struct InterpretView: View {
                     // 页内快速检索
                     HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass").font(.caption).foregroundStyle(Ky.sub)
-                        TextField("搜维度或关键词（如：调候、财库、婚姻、甲减、守年）", text: $searchQuery)
+                        TextField("搜解读主题或关键词，如：事业、婚姻、调候", text: $searchQuery)
                             .font(.caption)
                         if !searchQuery.isEmpty {
                             Button { searchQuery = "" } label: {
@@ -894,6 +903,7 @@ struct InterpretView: View {
                                     Text("【原局底牌】".scriptConverted).font(.caption2).fontWeight(.bold).foregroundStyle(Ky.qingdai)
                                 }
                                 EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links, mechanism: allItems[i].mechanism, confidence: allItems[i].confidence, timeRange: allItems[i].timeRange, advice: allItems[i].advice)
+                                ReadingHelpView(text: allItems[i].conclusion + " " + allItems[i].links.map { $0.text }.joined(separator: " "))
                                 Button {
                                     locate(target)
                                 } label: {
@@ -980,10 +990,7 @@ struct InterpretView: View {
     private func accuracyLine(titles: [String]) -> String {
         let v = VerifyStore.verifiedCount(titles: titles)
         let p = VerifyStore.pendingCount(titles: titles)
-        if let a = VerifyStore.accuracy(titles: titles) {
-            return "已应验 \(v) 条 · 待回验 \(p) 条 · 命中率 \(Int((a * 100).rounded()))%"
-        }
-        return "已应验 \(v) 条 · 待回验 \(p) 条"
+        return "个人标记：已应验 \(v) 条 · 待回验 \(p) 条"
     }
     /// 验真依据链（实算值：前后交节时刻＋真太阳时校正量＋经度；节气据天文历算）
     private var verifyChain: String {
