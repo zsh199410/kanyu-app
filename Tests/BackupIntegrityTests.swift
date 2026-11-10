@@ -75,7 +75,7 @@ final class BackupIntegrityTests: XCTestCase {
     }
 
     func testManifestSymlinkIsNotAccepted() throws {
-        let outside = FileManager.default.temporaryDirectory.appendingPathComponent("BackupOutside-\\(UUID().uuidString)")
+        let outside = FileManager.default.temporaryDirectory.appendingPathComponent("BackupOutside-\(UUID().uuidString)")
         try Data("outside".utf8).write(to: outside)
         defer { try? FileManager.default.removeItem(at: outside) }
         let file = directory.appendingPathComponent("people.json")
