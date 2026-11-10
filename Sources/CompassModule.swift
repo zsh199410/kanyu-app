@@ -163,7 +163,9 @@ enum CompassBearingResolver {
     static func resolve(manual: Double?, magnetic: Double, deviceTrue: Double,
                         latitude: Double?, longitude: Double?, year: Double) -> Result? {
         guard magnetic.isFinite, (0..<360).contains(magnetic) else { return nil }
-        if let manual, manual.isFinite, (-180...180).contains(manual) {
+        if let manual {
+            // Explicit invalid input must not silently fall back to device/WMM correction.
+            guard manual.isFinite, (-180...180).contains(manual) else { return nil }
             return Result(trueNorth: CompassMath.normalize(magnetic + manual), correction: manual, source: "manual")
         }
         if deviceTrue.isFinite, (0..<360).contains(deviceTrue) {
