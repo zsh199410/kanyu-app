@@ -541,13 +541,14 @@ struct PosterView: View {
                         Text("前六维详批")
                             .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                             .padding(.top, 4)
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 10) {
                             ForEach(firstSixDims, id: \.title) { d in
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(d.title).font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                                    Text(d.conclusion).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
+                                    Text(d.conclusion).font(.system(size: 13)).foregroundStyle(pal.main).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                                 }
-                                .padding(8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
                                 .background(pal.card)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
@@ -1309,7 +1310,7 @@ return out.font(.system(size: 10.5)).foregroundStyle(pal.main)
 }
 
 private func yuceSection(num: String, title: String, rows: [(String, String)], note: String? = nil, goldKeys: [String] = []) -> some View {
-VStack(alignment:.leading, spacing: 3) {
+VStack(alignment:.leading, spacing: 10) {
 HStack(spacing: 6) {
 Text(num)
 .font(.system(size: 11, weight:.bold, design:.serif))
@@ -1326,7 +1327,7 @@ Text(note).font(.system(size: 9)).foregroundStyle(pal.sub)
 }
 }
 ForEach(rows.indices, id: \.self) { j in
-HStack(alignment: .top, spacing: 6) {
+VStack(alignment: .leading, spacing: 5) {
 Text(rows[j].0)
 .font(.system(size: 10.5, weight:.bold, design:.serif))
 .foregroundStyle(Ky.cinnabar)
@@ -1334,7 +1335,7 @@ Text(rows[j].0)
 .background(Ky.cinnabar.opacity(0.12))
 .clipShape(Capsule())
 richBody(rows[j].1, goldKeys: goldKeys)
-.lineSpacing(2.0)
+.lineSpacing(4)
 .fixedSize(horizontal: false, vertical: true)
 .frame(maxWidth: .infinity, alignment: .leading)
 .lineLimit(nil)
@@ -1733,12 +1734,12 @@ struct ZiweiPosterView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("十二宫逐宫详批")
                         .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 4), spacing: 5) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                         ForEach(chart.palaces, id: \.branch) { p in
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.name).font(.system(size: 9.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                                 Text(p.majors.map { $0.star }.joined(separator: "·").isEmpty ? "—" : p.majors.map { $0.star }.joined(separator: "·"))
-                                    .font(.system(size: 9)).foregroundStyle(pal.main).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                                    .font(.system(size: 11)).foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)
                                 Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.system(size: 8.5)).foregroundStyle(pal.sub)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1988,8 +1989,8 @@ struct HeCanPosterView: View {
                     }
                 }
 
-                // 八字四柱 ⟷ 紫微方盘 左右并列
-                HStack(alignment: .top, spacing: 10) {
+                // 每术独占一行，长解读可以自然换行。
+                VStack(alignment: .leading, spacing: 10) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("八字总断").font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                         if !headline.isEmpty {
@@ -2000,7 +2001,7 @@ struct HeCanPosterView: View {
                         }
                     }
                     .padding(12)
-                    .frame(width: 217, alignment: .leading)
+                    .frame(width: 444, alignment: .leading)
                     .background(pal.card)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(pal.cardStroke, lineWidth: 0.8))
@@ -2014,7 +2015,7 @@ struct HeCanPosterView: View {
                         }
                     }
                     .padding(12)
-                    .frame(width: 217, alignment: .leading)
+                    .frame(width: 444, alignment: .leading)
                     .background(pal.card)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(pal.cardStroke, lineWidth: 0.8))
@@ -2025,7 +2026,7 @@ struct HeCanPosterView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("双术交叉印证")
                         .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         ForEach(crossCards, id: \.dim) { c in
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(c.dim).font(.system(size: 11.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
@@ -2033,7 +2034,8 @@ struct HeCanPosterView: View {
                                 Text("紫微：" + c.ziwei).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
                                 Text(c.verdict).font(.system(size: 10.5, weight: .bold)).foregroundStyle(Ky.gold).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
                             }
-                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
                             .background(pal.card)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(pal.cardStroke, lineWidth: 0.7))
