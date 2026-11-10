@@ -145,5 +145,16 @@ final class BackupIntegrityTests: XCTestCase {
         }
     }
 
+    func testUnlistedFileIsRejectedEvenWhenManifestEntriesAreValid() throws {
+        let listed = directory.appendingPathComponent("people.json")
+        try Data("people".utf8).write(to: listed)
+        try BackupIntegrity.writeManifest(in: directory)
+        try Data("unexpected".utf8).write(to: directory.appendingPathComponent("forecasts.json"))
+
+        XCTAssertThrowsError(try BackupIntegrity.validate(in: directory)) { error in
+            XCTAssertEqual(error as? BackupIntegrityError, .unexpectedFile("forecasts.json"))
+        }
+    }
+
 }
 

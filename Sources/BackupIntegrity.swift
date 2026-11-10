@@ -62,6 +62,13 @@ enum BackupIntegrity {
                 throw BackupIntegrityError.checksumMismatch(entry.name)
             }
         }
+        let actualNames = Set(try fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ).map(\.lastPathComponent).filter { $0 != manifestName })
+        if let unexpected = actualNames.subtracting(seenNames).sorted().first {
+            throw BackupIntegrityError.unexpectedFile(unexpected)
+        }
         return manifest
     }
 }
@@ -71,6 +78,7 @@ enum BackupIntegrityError: LocalizedError, Equatable {
     case emptyManifest
     case unsafeName(String)
     case duplicateName(String)
+    case unexpectedFile(String)
     case missingFile(String)
     case checksumMismatch(String)
 
@@ -80,6 +88,7 @@ enum BackupIntegrityError: LocalizedError, Equatable {
         case .emptyManifest: return "备份清单为空"
         case .unsafeName(let name): return "备份清单包含不安全文件名：\(name)"
         case .duplicateName(let name): return "备份清单重复列出文件：\(name)"
+        case .unexpectedFile(let name): return "备份包含清单外文件：\(name)"
         case .missingFile(let name): return "备份缺少清单文件：\(name)"
         case .checksumMismatch(let name): return "备份文件校验失败：\(name)"
         }
