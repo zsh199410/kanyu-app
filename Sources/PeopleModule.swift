@@ -358,7 +358,7 @@ struct PersonDetailView: View {
 
                 switch sectionTab {
                 case 0:
-                    BaziResultView(chart: ch, name: p.name)
+                    BaziResultView(chart: ch, name: p.name, verificationOwnerID: "person:\(p.id.uuidString)")
                 case 1:
                     ZiweiBoardView(chart: zw, name: p.name)
                     ZiweiYearView(chart: zw)
@@ -550,3 +550,4 @@ extension PersonDetailView {
         """
     }
 }
+

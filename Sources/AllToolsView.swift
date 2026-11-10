@@ -153,11 +153,11 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
     case "yearly":
         YearByYearView(chart: chart, name: person.name)
     case "interpret":
-        InterpretView(chart: chart, name: person.name)
+        InterpretView(chart: chart, name: person.name, verificationOwnerID: "person:\(person.id.uuidString)")
     case "chartdepth":
         ChartDepthView(person: person, chart: chart)
     case "poster":
-        BaziResultView(chart: chart, name: person.name)
+        BaziResultView(chart: chart, name: person.name, verificationOwnerID: "person:\(person.id.uuidString)")
     case "reportcenter":
         ReportCenterView()
     case "almanac":
@@ -394,3 +394,4 @@ struct AllToolsView: View {
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
     }
 }
+

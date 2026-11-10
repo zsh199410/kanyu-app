@@ -27,29 +27,41 @@ struct InterpretItem {
     }
 }
 
-/// 解盘验真打标：每条断语一键标「已应验／待回验」，沉淀个人准确率；随备份导出。
+/// 解盘回验打标：v2 以稳定人物/盘面上下文和条目 ID 隔离。
+/// v1 的按标题全局标记只保留给备份/人工迁移，绝不静默归到当前人物。
 enum VerifyStore {
-    private static let key = "kanyu.verifyMarks.v1"
-    static func mark(for title: String) -> Bool? {
-        (UserDefaults.standard.dictionary(forKey: key) as? [String: Bool])?[title]
+    static let legacyKey = "kanyu.verifyMarks.v1"
+    static let key = "kanyu.verifyMarks.v2"
+
+    private static func itemKey(ownerID: String, itemID: String) -> String {
+        ownerID + "|" + itemID
     }
-    static func set(_ title: String, _ value: Bool) {
-        var d = (UserDefaults.standard.dictionary(forKey: key) as? [String: Bool]) ?? [:]
-        d[title] = value
-        UserDefaults.standard.set(d, forKey: key)
+
+    static func mark(for itemID: String, ownerID: String?, defaults: UserDefaults = .standard) -> Bool? {
+        guard let ownerID, !ownerID.isEmpty else { return nil }
+        return (defaults.dictionary(forKey: key) as? [String: Bool])?[itemKey(ownerID: ownerID, itemID: itemID)]
     }
-    static func verifiedCount(titles: [String]) -> Int {
-        titles.filter { mark(for: $0) == true }.count
+    static func set(_ itemID: String, ownerID: String?, _ value: Bool, defaults: UserDefaults = .standard) {
+        guard let ownerID, !ownerID.isEmpty else { return }
+        var d = (defaults.dictionary(forKey: key) as? [String: Bool]) ?? [:]
+        d[itemKey(ownerID: ownerID, itemID: itemID)] = value
+        defaults.set(d, forKey: key)
     }
-    static func pendingCount(titles: [String]) -> Int {
-        titles.filter { mark(for: $0) == false }.count
+    static func verifiedCount(itemIDs: [String], ownerID: String?, defaults: UserDefaults = .standard) -> Int {
+        itemIDs.filter { mark(for: $0, ownerID: ownerID, defaults: defaults) == true }.count
     }
-    /// 个人准确率：已应验 /（已应验＋待回验）；未打标时为 nil
-    static func accuracy(titles: [String]) -> Double? {
-        let v = verifiedCount(titles: titles)
-        let p = pendingCount(titles: titles)
+    static func pendingCount(itemIDs: [String], ownerID: String?, defaults: UserDefaults = .standard) -> Int {
+        itemIDs.filter { mark(for: $0, ownerID: ownerID, defaults: defaults) == false }.count
+    }
+    static func accuracy(itemIDs: [String], ownerID: String?, defaults: UserDefaults = .standard) -> Double? {
+        let v = verifiedCount(itemIDs: itemIDs, ownerID: ownerID, defaults: defaults)
+        let p = pendingCount(itemIDs: itemIDs, ownerID: ownerID, defaults: defaults)
         guard v + p > 0 else { return nil }
         return Double(v) / Double(v + p)
+    }
+
+    static func legacyMarkCount(defaults: UserDefaults = .standard) -> Int {
+        (defaults.dictionary(forKey: legacyKey) as? [String: Bool])?.count ?? 0
     }
 }
 
@@ -141,9 +153,9 @@ enum InterpretEngine {
     ///     其余无引文的方法陈述（如“应期看引动…”）只作流派应用，绝不升格为五典原文；
     ///     mechanism 为空（命局风景／十神看点只有「盘面」＋「口径」链）→ 盘面事实。
     /// 标签是展示层收口：未打标绝不写成已验证；30 条逐条有值，无留空。
-    static func confidenceLabel(title: String, mechanism: String?) -> String {
+    static func confidenceLabel(title: String, mechanism: String?, ownerID: String? = nil) -> String {
         let state: String
-        switch VerifyStore.mark(for: title) {
+        switch VerifyStore.mark(for: title, ownerID: ownerID) {
         case true: state = "已验真"
         case false: state = "待回验"
         case nil: state = "未打标"
@@ -484,7 +496,7 @@ enum InterpretEngine {
         return "有败有救：忌字\(describe(jiFound))在局，救字\(describe(jiuFound))在局。"
     }
 
-    static func interpret(chart ch: BaziChart) -> [InterpretItem] {
+    static func interpret(chart ch: BaziChart, verificationOwnerID: String? = nil) -> [InterpretItem] {
         var items: [InterpretItem] = []
         let pct = ch.wuxingPercents
         let dayStem = ch.rizhu.first!
@@ -640,7 +652,7 @@ enum InterpretEngine {
                 let guide = guideHint(items: all, title: item.title)
                 advice = guide.isEmpty ? nil : guide
             }
-            return InterpretItem(title: item.title, conclusion: item.conclusion, links: item.links, mechanism: mechanism, confidence: confidenceLabel(title: item.title, mechanism: mechanism), timeRange: item.timeRange, advice: advice)
+            return InterpretItem(title: item.title, conclusion: item.conclusion, links: item.links, mechanism: mechanism, confidence: confidenceLabel(title: item.title, mechanism: mechanism, ownerID: verificationOwnerID), timeRange: item.timeRange, advice: advice)
         }
     }
 }
@@ -734,6 +746,7 @@ func decodeExpandedItems(_ s: String) -> Set<Int> {
 struct InterpretView: View {
     let chart: BaziChart
     let name: String
+    var verificationOwnerID: String? = nil
     @StateObject private var speaker = Speaker()
     // UI 2.1 第6批：解盘分类、搜索与展开集跨启动保留（SceneStorage）
     @SceneStorage("interpret.selectedCategory") private var selectedCategory = 0
@@ -785,7 +798,7 @@ struct InterpretView: View {
     }
 
     var body: some View {
-        let allItems = InterpretEngine.interpret(chart: chart)
+        let allItems = InterpretEngine.interpret(chart: chart, verificationOwnerID: verificationOwnerID)
         let filteredIndices = allItems.indices.filter { idx in
             let item = allItems[idx]
             let matchCat = !Self.categories.indices.contains(selectedCategory) || selectedCategory == 0 || Self.categories[selectedCategory].1.contains(item.title)
@@ -841,6 +854,11 @@ struct InterpretView: View {
                             .foregroundStyle(.white)
                             .clipShape(Capsule())
                         }.buttonStyle(.plain)
+                    }
+                    if VerifyStore.legacyMarkCount() > 0 {
+                        Label("检测到 \(VerifyStore.legacyMarkCount()) 条旧版全局标记：已保留为待归属，不会自动套用到任何人物。".scriptConverted,
+                              systemImage: "exclamationmark.shield")
+                            .font(.caption2).foregroundStyle(Ky.gold)
                     }
 
                     // 分类速选胶囊条（解决 28 张卡片一字长蛇阵盲滑痛点）
@@ -986,10 +1004,10 @@ struct InterpretView: View {
         .sheet(isPresented: $showGlossary) { glossarySheet.presentationDetents([.medium, .large]).presentationDragIndicator(.visible) }
     }
 
-    /// 个人准确率行（已应验／待回验／命中率；未打标时不显示命中率）
+    /// 当前人物的主观回验标记统计；不表示算法准确率。
     private func accuracyLine(titles: [String]) -> String {
-        let v = VerifyStore.verifiedCount(titles: titles)
-        let p = VerifyStore.pendingCount(titles: titles)
+        let v = VerifyStore.verifiedCount(itemIDs: titles, ownerID: verificationOwnerID)
+        let p = VerifyStore.pendingCount(itemIDs: titles, ownerID: verificationOwnerID)
         return "个人标记：已应验 \(v) 条 · 待回验 \(p) 条"
     }
     /// 验真依据链（实算值：前后交节时刻＋真太阳时校正量＋经度；节气据天文历算）
@@ -1017,25 +1035,28 @@ struct InterpretView: View {
                 .font(.caption2).foregroundStyle(Ky.sub).lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                Button("已应验".scriptConverted) { VerifyStore.set(item.title, true); verifyTick += 1 }
+                Button("已应验".scriptConverted) { VerifyStore.set(item.title, ownerID: verificationOwnerID, true); verifyTick += 1 }
                     .font(.caption2).fontWeight(.bold)
                     .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(VerifyStore.mark(for: item.title) == true ? Ky.jade : Ky.elevated)
-                    .foregroundStyle(VerifyStore.mark(for: item.title) == true ? Color.white : Ky.ink)
+                    .background(VerifyStore.mark(for: item.title, ownerID: verificationOwnerID) == true ? Ky.jade : Ky.elevated)
+                    .foregroundStyle(VerifyStore.mark(for: item.title, ownerID: verificationOwnerID) == true ? Color.white : Ky.ink)
                     .clipShape(Capsule())
                     .buttonStyle(.plain)
-                Button("待回验".scriptConverted) { VerifyStore.set(item.title, false); verifyTick += 1 }
+                    .disabled(verificationOwnerID == nil)
+                Button("待回验".scriptConverted) { VerifyStore.set(item.title, ownerID: verificationOwnerID, false); verifyTick += 1 }
                     .font(.caption2).fontWeight(.bold)
                     .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(VerifyStore.mark(for: item.title) == false ? Ky.cinnabar : Ky.elevated)
-                    .foregroundStyle(VerifyStore.mark(for: item.title) == false ? Color.white : Ky.ink)
+                    .background(VerifyStore.mark(for: item.title, ownerID: verificationOwnerID) == false ? Ky.cinnabar : Ky.elevated)
+                    .foregroundStyle(VerifyStore.mark(for: item.title, ownerID: verificationOwnerID) == false ? Color.white : Ky.ink)
                     .clipShape(Capsule())
                     .buttonStyle(.plain)
-                if let m = VerifyStore.mark(for: item.title) {
+                    .disabled(verificationOwnerID == nil)
+                if let m = VerifyStore.mark(for: item.title, ownerID: verificationOwnerID) {
                     Text(m ? "已标：应验 ✓".scriptConverted : "已标：待回验".scriptConverted).font(.caption2).foregroundStyle(m ? Ky.jade : Ky.cinnabar)
                 }
                 Spacer()
-                Text("打标计入个人准确率".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+                Text(verificationOwnerID == nil ? "未绑定人物，回验不可保存".scriptConverted : "标记仅归属当前人物".scriptConverted)
+                    .font(.caption2).foregroundStyle(Ky.sub)
             }
         }
         .padding(.top, 2)
@@ -1726,3 +1747,4 @@ extension InterpretEngine {
         return out
     }
 }
+

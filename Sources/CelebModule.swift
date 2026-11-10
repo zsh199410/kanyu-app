@@ -118,7 +118,7 @@ struct CelebDetailView: View {
                         .font(.caption).foregroundStyle(Ky.sub)
                     Text("来源：\(celeb.source)".scriptConverted).font(.caption).foregroundStyle(Ky.sub)
                 }.kyCard()
-                BaziResultView(chart: ch, name: celeb.name)
+                BaziResultView(chart: ch, name: celeb.name, verificationOwnerID: "celebrity:\(celeb.name)")
                 ZiweiBoardView(chart: zw, name: celeb.name)
             }.padding(16).padding(.bottom, 100)
         }
@@ -127,3 +127,4 @@ struct CelebDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+

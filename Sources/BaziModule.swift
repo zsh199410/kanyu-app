@@ -690,6 +690,7 @@ func dayunFavorable(chart: BaziChart, index i: Int) -> Bool? {
 struct BaziResultView: View {
     let chart: BaziChart
     let name: String
+    var verificationOwnerID: String? = nil
     @State private var proMode = true       // 默认开启专业细盘，干支藏干十神星运一次看全
     @State private var timeLevel = 0        // 0 大运 1 流年 2 流月 3 流日
     // UI 2.1 第6批：大运／流年／点柱选中跨启动保留（SceneStorage；Int? 用 -1＝未选）
@@ -1188,7 +1189,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
     // MARK: - 四大深度模块 2×2 导航矩阵（解盘30条 / 逐年四查 / 1-88岁规划 / 命盘海报）
     private var deepDiveGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-            NavigationLink { InterpretView(chart: chart, name: name) } label: {
+            NavigationLink { InterpretView(chart: chart, name: name, verificationOwnerID: verificationOwnerID) } label: {
                 hubCard(icon: "text.book.closed.fill", title: "解盘 · 30 条详批",
                         subtitle: "格局喜忌 · 六亲事业 · 依据链", color: Ky.qingdai)
             }.buttonStyle(.plain)
@@ -1894,3 +1895,4 @@ struct GanZhiLookupView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
+
