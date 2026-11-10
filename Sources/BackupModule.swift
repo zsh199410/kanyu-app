@@ -186,7 +186,7 @@ struct BackupView: View {
             UserDefaults.standard.set(marks, forKey: "kanyu.verifyMarks.v1")
             parts.append("验真打标已恢复")
         }
-        return parts.isEmpty ? "包里没有可识别的数据文件。" : "已恢复：" + parts.joined(separator: " · ")
+        return parts.isEmpty ? "包里没有可识别的数据文件。" : "恢复结果：" + parts.joined(separator: " · ")
     }
 
     // MARK: - iCloud
