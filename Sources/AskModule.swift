@@ -5,8 +5,8 @@
 // App 端只调 Web 接口，不在本机调模型；离线／模型不可用时同款降级提示
 // （后端返回 degraded=true＋事实包原文）。问答记录只存本机 UserDefaults，
 // 使用问答时会发送问题原文和所选人物字段；服务端留存/日志策略需单独核验。
-// 命主用 App 本地人物（PeopleStore）：传出生时间／性别／经度给 Web 端临时现算，
-// 不在 Web 端建档、不落库。
+// 命主字段来自 PeopleStore，连同问题原文发往服务端。
+// 本仓库不含该后端，无法从客户端确认是否建档、落库或记录日志。
 import SwiftUI
 
 struct AskFact: Decodable, Identifiable {

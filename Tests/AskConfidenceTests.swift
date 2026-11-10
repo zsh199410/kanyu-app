@@ -10,7 +10,8 @@ final class AskConfidenceTests: XCTestCase {
     }
 
     func testMissingOrUnknownConfidenceIsNotInventedAsHigh() throws {
-        for value: String? in [nil, "", "百分之百"] {
+        let values: [String?] = [nil, "", "百分之百"]
+        for value in values {
             let result = try response(confidence: value)
             XCTAssertEqual(result.confidenceLabel, "未标注")
             XCTAssertFalse(result.confidenceDetail.contains("后校验通过"))
