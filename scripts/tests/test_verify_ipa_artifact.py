@@ -51,6 +51,30 @@ class ArtifactIntegrityTests(unittest.TestCase):
         outer = self.make_zip("artifact.zip", {"inner.ipa": ipa.read_bytes()})
         self.assertEqual(inspect(outer)["kind"], "artifact-zip")
 
+    def test_artifact_rejects_inner_missing_app(self):
+        ipa = self.make_zip("missing.ipa", {"README": b"not an app"})
+        outer = self.make_zip("missing-artifact.zip", {"missing.ipa": ipa.read_bytes()})
+        with self.assertRaisesRegex(ValueError, "Payload"):
+            inspect(outer)
+
+    def test_artifact_rejects_inner_two_apps(self):
+        ipa = self.make_zip("two.ipa", {"Payload/A.app/Info.plist": b"a", "Payload/B.app/Info.plist": b"b"})
+        outer = self.make_zip("two-artifact.zip", {"two.ipa": ipa.read_bytes()})
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            inspect(outer)
+
+    def test_artifact_rejects_inner_duplicate_entries(self):
+        import warnings
+        path = self.root / "duplicate.ipa"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            with zipfile.ZipFile(path, "w") as archive:
+                archive.writestr("Payload/A.app/Info.plist", b"a")
+                archive.writestr("Payload/A.app/Info.plist", b"b")
+        outer = self.make_zip("duplicate-artifact.zip", {"duplicate.ipa": path.read_bytes()})
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            inspect(outer)
+
     def test_reject_non_zip(self):
         path = self.root / "bad.ipa"
         path.write_bytes(b"not zip")
