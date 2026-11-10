@@ -2,6 +2,18 @@ import XCTest
 @testable import Kanyu
 
 final class CompassBearingResolverTests: XCTestCase {
+    func testManualTextValidationDistinguishesEmptyInvalidAndValid() {
+        for text in ["", "  ", "\n"] {
+            XCTAssertFalse(CompassManualDeclinationInput.isInvalid(text))
+        }
+        for text in ["abc", "12abc", "NaN", "inf", "181", "-181", "1,5"] {
+            XCTAssertTrue(CompassManualDeclinationInput.isInvalid(text), "Expected invalid: \(text)")
+        }
+        for text in ["0", "-3.3", " 180 ", "-180", "+5"] {
+            XCTAssertFalse(CompassManualDeclinationInput.isInvalid(text), "Expected valid: \(text)")
+        }
+    }
+
     func testMagneticAloneDoesNotInventTrueNorth() {
         XCTAssertNil(CompassBearingResolver.resolve(manual: nil, magnetic: 90, deviceTrue: -1,
                                                    latitude: nil, longitude: nil, year: 2026))
