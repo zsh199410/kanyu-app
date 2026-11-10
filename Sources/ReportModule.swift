@@ -105,10 +105,15 @@ enum ReportBuilder {
         // 有则 30 条、无则 29 条，按实际报数不凑数）；简洁档只列 5 总纲首行。
         let dims = InterpretEngine.interpret(chart: ch)
         let shownDims = tier == .concise ? dims.filter { InterpretEngine.coreTitles.contains($0.title) } : dims
-        L.append("【解盘维度摘要（\(shownDims.count)维）】")
+        L.append(tier == .concise ? "【解盘维度摘要（\(shownDims.count)维）】" : "【逐项解盘详解（\(shownDims.count)维）】")
         for (i, it) in shownDims.enumerated() {
             let first = it.conclusion.split(separator: "。", maxSplits: 1, omittingEmptySubsequences: true).first.map { String($0) + "。" } ?? it.conclusion
-            L.append("\(i + 1). \(it.title)：\(first)")
+            L.append("\(i + 1). \(it.title)：\(tier == .concise ? first : it.conclusion)")
+            if tier != .concise {
+                if let mechanism = it.mechanism { L.append("作用机制：\(mechanism)") }
+                if let advice = it.advice { L.append("现实建议：\(advice)") }
+                if let timeRange = it.timeRange { L.append("时间范围：\(timeRange)") }
+            }
         }
         L.append("")
         if tier != .concise {
@@ -130,6 +135,13 @@ enum ReportBuilder {
             // 完整档附录：逐项依据只收拢引擎已有内容（全文结论＋依据链＋G2 六段字段），不新编文案；
             // 附录行首用「附录 N · 标题」格式，不与摘要条目的「N. 标题」格式重合，故目录条目级
             // 检测只会命中摘要区，不会把附录重复计入目录。
+            L.append("【白话阅读指南】")
+            L.append(LearningContent.readingOrder)
+            let readingText = dims.map { $0.conclusion + $0.links.map { $0.text }.joined() }.joined()
+            for term in LearningContent.terms(in: readingText) {
+                L.append("\(term.name)：\(term.meaning)")
+            }
+            L.append("")
             L.append("【逐项依据（附录）】")
             for (i, it) in dims.enumerated() {
                 L.append("附录 \(i + 1) · \(it.title)")
@@ -240,12 +252,13 @@ enum ReportBuilder {
         var inSummary = false
         var y: CGFloat = 48
         for (i, line) in lines.enumerated() {
-            if line.hasPrefix("【解盘维度摘要") {
+            let isInterpretationSection = line.hasPrefix("【解盘维度摘要") || line.hasPrefix("【逐项解盘详解")
+            if isInterpretationSection {
                 pages.append(ContentPage())
                 y = 48
             }
             if line.hasPrefix("【") {
-                inSummary = line.hasPrefix("【解盘维度摘要")
+                inSummary = isInterpretationSection
             }
             let font = i == 0 ? titleFont : (line.hasPrefix("【") ? headFont : bodyFont)
             let gap: CGFloat = i == 0 ? 10 : (line.hasPrefix("【") ? 6 : 5)

@@ -41,6 +41,7 @@ struct AllToolsData {
     static let recentLimit = 6
 
     static let allItems: [ToolItem] = [
+        ToolItem(id: "learning", title: "白话使用指南", desc: "七大主题 · 操作步骤 · 术语解释", icon: "book.closed.fill", color: Ky.qingdai, group: .knowledge),
         ToolItem(id: "astro", title: "星命合参", desc: "八字 × 西洋星盘 · 双术印证", icon: "sparkles", color: Ky.gold, group: .paipan),
         ToolItem(id: "synastry", title: "合盘合婚", desc: "合婚四看 · 喜用互补", icon: "heart.circle.fill", color: Ky.cinnabar, group: .paipan),
         ToolItem(id: "wealth", title: "八字论财", desc: "财星 · 财库 · 财运大运", icon: "yensign.circle.fill", color: Ky.gold, group: .paipan),
@@ -78,6 +79,18 @@ struct AllToolsData {
         ToolItem(id: "caliber", title: "排盘口径设置", desc: "晚子时 · 紫微闰月 · 签名证书", icon: "slider.horizontal.3", color: Ky.qingdai, group: .tools),
         ToolItem(id: "workbench", title: "风水勘察", desc: "罗盘定盘 · 玄空八宅 · 案件", icon: "safari.fill", color: Ky.gold, group: .tools),
     ]
+
+    static func filteredItems(query: String, groupIndex: Int) -> [ToolItem] {
+        let groups: [ToolGroup] = [.all, .paipan, .calendar, .knowledge, .tools]
+        let group = groups.indices.contains(groupIndex) ? groups[groupIndex] : .all
+        let aliases = ["compass": "指南针 羅盤 luopan compass", "interpret": "八字 解盘 解讀 bazi",
+                       "reportcenter": "PDF 报告 导出 分享", "learning": "帮助 入门 教程 说明 术语",
+                       "floorplan": "立极 图纸 户型 fengshui", "workbench": "风水 堪舆 fengshui"]
+        return allItems.filter { item in
+            (group == .all || item.group == group) && SearchText.matches(query,
+                in: item.title + " " + item.desc + " " + (aliases[item.id] ?? ""))
+        }
+    }
 
     static func item(for id: String) -> ToolItem? {
         allItems.first(where: { $0.id == id })
@@ -121,6 +134,8 @@ struct AllToolsData {
 @ViewBuilder
 func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> some View {
     switch item.id {
+    case "learning":
+        LearningCenterView()
     case "astro":
         AstroHomeView(person: person, chart: chart)
     case "synastry":
@@ -227,15 +242,7 @@ struct AllToolsView: View {
     }
 
     private var filtered: [ToolItem] {
-        var list = AllToolsData.allItems
-        if selectedGroup > 0 {
-            let g = groups[selectedGroup]
-            list = list.filter { $0.group == g }
-        }
-        if !query.isEmpty {
-            list = list.filter { $0.title.contains(query) || $0.desc.contains(query) }
-        }
-        return list
+        AllToolsData.filteredItems(query: query, groupIndex: selectedGroup)
     }
 
     private var grouped: [(ToolGroup, [ToolItem])] {
@@ -251,7 +258,7 @@ struct AllToolsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                KySearchBar(text: $query, placeholder: "搜索专项工具…")
+                KySearchBar(text: $query, placeholder: "搜索功能或用途，如：PDF、指南针、入门")
                 KyFilterBar(options: filterOptions, selectedIndex: $selectedGroup)
                 recentSection
                 ForEach(grouped, id: \.0) { g in
@@ -371,9 +378,9 @@ struct AllToolsView: View {
                     .fontWeight(.bold)
                     .foregroundStyle(Ky.ink)
                 Text(item.desc.scriptConverted)
-                    .font(.caption2)
+                    .font(.subheadline)
                     .foregroundStyle(Ky.sub)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
             Image(systemName: "chevron.right")

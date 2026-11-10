@@ -38,7 +38,7 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Golden charts test (golden-chart gate)
+      - name: Unit and UI regression tests
         run: |
           set -o pipefail
           mkdir -p build

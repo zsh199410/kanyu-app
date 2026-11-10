@@ -4,9 +4,9 @@
 // 事实包里没有的明说“盘上无据”，不许编造、不许落病名、不许做寿数断语。
 // App 端只调 Web 接口，不在本机调模型；离线／模型不可用时同款降级提示
 // （后端返回 degraded=true＋事实包原文）。问答记录只存本机 UserDefaults，
-// 问题原文不出设备、不写服务端。
-// 命主用 App 本地人物（PeopleStore）：传出生时间／性别／经度给 Web 端临时现算，
-// 不在 Web 端建档、不落库。
+// 使用问答时会发送问题原文和所选人物字段；服务端留存/日志策略需单独核验。
+// 命主字段来自 PeopleStore，连同问题原文发往服务端。
+// 本仓库不含该后端，无法从客户端确认是否建档、落库或记录日志。
 import SwiftUI
 
 struct AskFact: Decodable, Identifiable {
@@ -43,19 +43,17 @@ struct AskResponse: Decodable {
     }
 
     var confidenceLabel: String {
-        if let c = confidence, !c.isEmpty { return c }
         if refused { return "拒绝" }
         if degraded { return "降级" }
-        if answer.contains("盘上无据") { return "中" }
-        return "高"
+        if let c = confidence, ["高", "中", "降级", "拒绝"].contains(c) { return c }
+        return "未标注"
     }
 
     var confidenceDetail: String {
         if let r = confidenceReason, !r.isEmpty { return r }
         if refused { return "健康落病名／寿数断语类问题，调模型前直接拒绝，不作答。" }
         if degraded { return "降级原因：" + (degradedReason ?? "未注明") + "；答案为事实包原文或提示语，非模型组织结论。" }
-        if answer.contains("盘上无据") { return "后校验通过，但答案含明说无据的句子，部分结论无事实支撑。" }
-        return "后校验通过：逐句均有事实包原文片段支撑。"
+        return "服务端未提供逐句校验说明；请核对下方盘面事实。可信度标签不代表现实事件发生概率。"
     }
 }
 
@@ -80,6 +78,7 @@ struct AskHistoryItem: Codable, Identifiable {
 
 enum AskClient {
     static let endpoint = "https://bazi.vip668.xin/api/ask"
+    static let transmissionNotice = "点击发送会通过 HTTPS 将问题原文发送到 bazi.vip668.xin；选中人物时，还会发送姓名、出生日期时间、性别、经度和真太阳时选项。服务端的保存期限、日志与模型转发策略无法由此客户端核实。"
 
     static func ask(question: String, person: Person?) async throws -> AskResponse {
         guard let url = URL(string: endpoint) else {
@@ -164,17 +163,19 @@ struct AskView: View {
                     }
                 }
                 .pickerStyle(.menu)
+                Text(AskClient.transmissionNotice.scriptConverted)
+                    .font(.callout).foregroundStyle(Ky.sub).lineSpacing(4)
                 TextField("例如：今年换工作合适吗", text: $question)
                     .textFieldStyle(.roundedBorder)
                 Button {
                     Task { await submit() }
                 } label: {
-                    Label(busy ? "问答中…" : "提问", systemImage: "bubble.left.and.text.bubble.right.fill")
+                    Label(busy ? "问答中…" : "发送问题", systemImage: "bubble.left.and.text.bubble.right.fill")
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(busy || question.trimmingCharacters(in: .whitespaces).count < 2)
                 if busy {
-                    KyLoadingState(title: "本机引擎现算事实，再请模型组织回答…")
+                    KyLoadingState(title: "正在请求问答服务，等待盘面事实与解释…")
                 }
                 if errorText.isEmpty == false {
                     Text(errorText.scriptConverted)
@@ -217,7 +218,7 @@ struct AskView: View {
                                     .foregroundStyle(Ky.sub)
                                     .lineLimit(3)
                                 // G5：历史每条展示提问当时的可信度标签（旧记录显示“未标注”）
-                                Text(("可信度：" + (item.confidence ?? "未标注")).scriptConverted)
+                                Text(("服务端可信度标记：" + (item.confidence ?? "未标注")).scriptConverted)
                                     .font(.caption2)
                                     .foregroundStyle(Ky.sub)
                             }
@@ -226,7 +227,7 @@ struct AskView: View {
                         }
                     }
                 }
-                Text("依据与金标准：系统提示词硬约束＋逐句后校验（未通过则降级返回事实包原文）；模型不可用时同样降级。问题原文不写入服务端。奇门值使／天盘星／天德口径待裁决，现行引擎按旧口径输出，问答中如实标注。金标准见 Web test_ask.py。".scriptConverted)
+                Text("回答、事实包和校验标签由服务端返回。请对照实际盘面核查；本客户端不能仅凭一段回答确认后端已完成校验，也不能核实服务端是否记录请求。离线或请求失败时会明确提示，不生成虚假回答。".scriptConverted)
                     .font(.caption)
                     .foregroundStyle(Ky.sub)
             }
@@ -281,7 +282,8 @@ struct AskResultCard: View {
         case "高": return Ky.jade
         case "中": return Ky.gold
         case "降级": return .orange
-        default: return Ky.cinnabar
+        case "拒绝": return Ky.cinnabar
+        default: return Ky.sub
         }
     }
 
@@ -289,7 +291,7 @@ struct AskResultCard: View {
         VStack(alignment: .leading, spacing: 10) {
             // G5 可信度标签：标签值＋定档依据同行可见，来源可追溯（定档依据见下方文字与事实包）
             HStack(alignment: .top, spacing: 6) {
-                Text(("可信度：" + result.confidenceLabel).scriptConverted)
+                Text(("服务端可信度标记：" + result.confidenceLabel).scriptConverted)
                     .font(.caption)
                     .fontWeight(.bold)
                     .padding(.horizontal, 8)

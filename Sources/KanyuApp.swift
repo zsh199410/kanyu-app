@@ -421,9 +421,9 @@ final class SurveyStore: ObservableObject {
     private let baseDir: URL
     private var indexURL: URL { baseDir.appendingPathComponent("index.json") }
 
-    init() {
+    init(baseDirectory: URL? = nil) {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        baseDir = docs.appendingPathComponent("AppData", isDirectory: true)
+        baseDir = baseDirectory ?? docs.appendingPathComponent("AppData", isDirectory: true)
         try? FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
         load()
     }
@@ -490,16 +490,15 @@ final class SurveyStore: ObservableObject {
         guard let image = UIImage(data: imageData) else { return nil }
         let dir = caseDir(caseId)
         let stamp = Date()
-        let base = "\(task.id)_\(Int(stamp.timeIntervalSince1970))"
+        let base = "\(task.id)_\(UUID().uuidString)"
         let origName = "\(base).jpg"
         let stampedName = "\(base)_stamp.jpg"
         let trueH = loc.displayTrueHeading
         let magH = loc.displayMagneticHeading
         let mountain = trueH >= 0 ? CompassMath.mountain(for: trueH) : ""
-        // 原图
-        if let jpg = image.jpegData(compressionQuality: 0.9) {
-            try? jpg.write(to: dir.appendingPathComponent(origName))
-        }
+        // Both files must exist before a media record can be returned.
+        let originalURL = dir.appendingPathComponent(origName)
+        let stampedURL = dir.appendingPathComponent(stampedName)
         // 烙印图
         let lines = [
             "\(Self.timeFormatter.string(from: stamp))",
@@ -508,8 +507,21 @@ final class SurveyStore: ObservableObject {
             task.title
         ]
         let stamped = StampDrawer.stamped(image: image, lines: lines)
-        if let jpg = stamped.jpegData(compressionQuality: 0.9) {
-            try? jpg.write(to: dir.appendingPathComponent(stampedName))
+        guard let originalData = image.jpegData(compressionQuality: 0.9),
+              let stampedData = stamped.jpegData(compressionQuality: 0.9) else {
+            AppErrorCenter.shared.report("照片处理失败，尚未保存；请重新拍摄。")
+            return nil
+        }
+        do {
+            try originalData.write(to: originalURL, options: .atomic)
+            try stampedData.write(to: stampedURL, options: .atomic)
+            DataProtection.applyComplete(to: originalURL)
+            DataProtection.applyComplete(to: stampedURL)
+        } catch {
+            try? FileManager.default.removeItem(at: originalURL)
+            try? FileManager.default.removeItem(at: stampedURL)
+            AppErrorCenter.shared.report("照片保存失败，尚未记录为完成；请检查剩余空间后重试。")
+            return nil
         }
         return MediaItem(taskId: task.id, taskTitle: task.title, kind: "photo",
                          fileName: origName, stampedFileName: stampedName,
@@ -1285,11 +1297,11 @@ extension Color {
 }
 
 enum Ky {
-    static var bg: Color { .kyDyn(0xF6F1E6, 0x111317) }        // 宋纸暖白 / 玄夜底
-    static var card: Color { .kyDyn(0xFCFBF7, 0x1A1D23) }      // 宣纸卡面 / 墨玉卡
-    static var elevated: Color { .kyDyn(0xEFE9DA, 0x242830) }  // 浅染内嵌层
-    static var ink: Color { .kyDyn(0x2B2723, 0xEDE8DC) }       // 徽墨主字 / 宣白字
-    static var sub: Color { .kyDyn(0x787066, 0x9A958A) }       // 次级暖灰
+    static var bg: Color { Color(uiColor: .systemGroupedBackground) }
+    static var card: Color { Color(uiColor: .secondarySystemGroupedBackground) }
+    static var elevated: Color { Color(uiColor: .tertiarySystemGroupedBackground) }
+    static var ink: Color { Color.primary }
+    static var sub: Color { Color.secondary }
     static var gold: Color { .kyDyn(0x9E782F, 0xD1AC53) }      // 宋式雅金
     static var cinnabar: Color { .kyDyn(0x9A2A22, 0xE05A47) }  // 故宫朱砂红
     static var jade: Color { .kyDyn(0x367552, 0x52B788) }      // 松石玉绿
@@ -1445,10 +1457,17 @@ struct HomePageView: View {
                 signBanner
                 // 02 当前命主中枢卡
                 personSwitcherCard
-                // 03 今日天地（黄历＋运势同一区域）
-                todaySection
-                // 04 核心排盘 2×2 矩阵
+                // Start with the user's main task, then supporting calendar information.
                 primaryBentoGrid
+                NavigationLink { LearningCenterView() } label: {
+                    Label("看不懂命盘？从白话指南开始", systemImage: "book.closed")
+                        .font(.body.weight(.medium))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16).background(Ky.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .accessibilityIdentifier("home.learning")
+                todaySection
                 // 05 最近使用与专项工具（dueCard 置顶常驻）
                 dueCard
                 recentToolsSection

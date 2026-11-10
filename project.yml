@@ -62,12 +62,24 @@ targets:
       - Tests
     dependencies:
       - target: Kanyu
+  KanyuUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: Kanyu
+    settings:
+      base:
+        TEST_TARGET_NAME: Kanyu
 schemes:
   Kanyu:
     build:
       targets:
         Kanyu: all
         KanyuTests: [test]
+        KanyuUITests: [test]
     test:
       targets:
         - KanyuTests
+        - KanyuUITests
