@@ -16,11 +16,16 @@ import UIKit
 
 enum CompassManualDeclinationInput {
     /// nil 表示留空自动；invalid 表示已填写但不可用于校正。
+    static func value(_ input: String) -> Double? {
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, let value = Double(text), value.isFinite,
+              (-180.0...180.0).contains(value) else { return nil }
+        return value
+    }
+
     static func isInvalid(_ input: String) -> Bool {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return false }
-        guard let value = Double(text) else { return true }
-        return !value.isFinite || !(-180.0...180.0).contains(value)
+        return !text.isEmpty && value(text) == nil
     }
 }
 
@@ -342,7 +347,7 @@ struct CompassStandaloneView: View {
     private var resolvedBearing: CompassBearingResolver.Result? {
         guard !manualDeclinationInvalid else { return nil }
         return CompassBearingResolver.resolve(
-            manual: Double(manualDeclination), magnetic: location.magneticHeading,
+            manual: CompassManualDeclinationInput.value(manualDeclination), magnetic: location.magneticHeading,
             deviceTrue: location.trueHeading,
             latitude: location.currentLocation?.coordinate.latitude,
             longitude: location.currentLocation?.coordinate.longitude, year: currentYearDecimal())
