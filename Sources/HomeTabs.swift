@@ -780,7 +780,7 @@ struct AboutView: View {
 
                 KySectionTitle(title: "隐私说明", trailing: "本机优先")
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("三术合参不设账号、不上传生辰：人物档案、前瞻登记与手相测量记录只存在本机 Documents 目录；排盘与解盘全部本机演算；每日运势通知为 iOS 本地通知，不走服务端；AI 问答只把当前命盘的引擎事实发往你自有的免费模型池，问题原文不写库、不记日志。".scriptConverted)
+                    Text("核心排盘可在本机运行，人物档案、前瞻与测量记录默认保存在本机；每日通知为本地通知。AI 问答会发送问题原文及所选人物的姓名、出生日期时间、性别、经度和时间校正选项到 bazi.vip668.xin。盲测、回测与远程服务也需要联网；勘察包上传由你主动操作。客户端不能核实服务端的留存、日志和模型转发策略。重要数据请独立备份。".scriptConverted)
                         .font(.callout).foregroundStyle(Ky.ink).lineSpacing(3)
                 }.kyCard()
 

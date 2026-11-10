@@ -68,3 +68,11 @@
 ## 本轮的现实限制
 
 Linux 环境没有 Xcode/iOS Simulator，不能在本地截图原生 App；因此没有完成截图驱动的视觉审计，也没有宣称布局已验收。CI 的 UI 冒烟只证明被测导航和界面元素，不代表所有交互、动态字体或硬件流程通过。竞品资料用于形成需求，不保证已“超过所有竞品”。以实际版本、测试日志和可下载产物记录进度。
+
+## 补充核查：真实数据去向与标签可信性
+
+AskClient 的实际请求包含 question；选中人物时还包含姓名、生辰、性别、经度和时间校正选项。关于页和 README 原先“无上传”的表述与源码不符，本轮已纠正，并在发送按钮附近明确列出字段。不改变接口字段或声称已审计服务端留存策略。
+
+AskResponse 原先在服务端未提供 confidence 时默认显示“高”，并编造“逐句校验通过”的说明。本轮改为“未标注”，拒绝/降级标志优先，未知标签不当作可信；新增缺失、未知和矛盾标签的回归测试。
+
+额外验收依据：[Apple 可访问性](https://developer.apple.com/design/human-interface-guidelines/accessibility)、[系统颜色](https://developer.apple.com/design/human-interface-guidelines/color)、[NOAA WMM 误差与适用范围](https://www.ncei.noaa.gov/products/world-magnetic-model/accuracy-limitations-error-model)、[iztro 官方开源库](https://github.com/SylarLong/iztro)。后者仅作为后续对照候选，尚未引入或用它验证本项目。
