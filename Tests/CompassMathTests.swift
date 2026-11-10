@@ -49,7 +49,7 @@ final class CompassMathTests: XCTestCase {
 
     func testCircularMeanWrapsAroundNorth() {
         let result = CompassMath.circularMean([359, 1])
-        XCTAssertEqual(result.mean, 0, accuracy: 0.5, "359° 与 1° 的圆周均值应为 0° 而非 180°")
+        XCTAssertEqual(CompassMath.shortestDiff(from: result.mean, to: 0), 0, accuracy: 0.5, "359° 与 1° 的圆周均值方向应接近正北，0° 与 360° 等价")
         XCTAssertGreaterThan(result.r, 0.99)
     }
 
