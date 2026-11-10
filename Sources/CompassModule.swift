@@ -279,23 +279,23 @@ struct CompassStandaloneView: View {
     @State private var showCalibrationGuide = false
     @State private var calibrationStep = 0
 
-    // 磁偏角解析（优先级：手动填入 ＞ 设备真北实测 ＞ 按定位经纬度 WMM2025 现算 ＞ 梁平默认坐标现算）。
+    // 磁偏角解析（优先级：有效手动输入 ＞ 设备真北实测 ＞ 当前定位 WMM2025；无定位不伪造现场偏角）。
     private var declinationInfo: (value: Double, source: String) {
-        if let manual = Double(manualDeclination) {
+        // A manual correction must be finite and within the physical declination range.
+        if let manual = Double(manualDeclination), manual.isFinite, (-180...180).contains(manual) {
             return (manual, "manual")
         }
-        if let d = location.declination {
+        if let d = location.declination, d.isFinite, (-180...180).contains(d) {
             return (d, "device")
         }
         let year = currentYearDecimal()
-        if let loc = location.currentLocation {
-            if let d = CompassDeclination.declination(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, year: year) {
-                return (d, "wmm2025")
-            }
-        }
-        if let d = CompassDeclination.liangpingDeclination(year: year) {
+        if let loc = location.currentLocation,
+           let d = CompassDeclination.declination(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, year: year),
+           d.isFinite {
             return (d, "wmm2025")
         }
+        // Never substitute Liangping coordinates for an unknown or invalid device location:
+        // the resulting bearing would appear to be a correction for the user's actual site.
         return (0, "none")
     }
 
@@ -312,9 +312,11 @@ struct CompassStandaloneView: View {
         if location.trueHeading >= 0 {
             return location.trueHeading
         }
-        if location.magneticHeading >= 0 {
-            return CompassMath.normalize(location.magneticHeading + declinationInfo.value)
+        let correction = declinationInfo
+        if location.magneticHeading >= 0 && correction.source != "none" {
+            return CompassMath.normalize(location.magneticHeading + correction.value)
         }
+        // Magnetic north alone is not a true-north reading.
         return -1
     }
 
