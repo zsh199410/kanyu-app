@@ -236,12 +236,14 @@ struct ZiweiHomeView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                KyWorkspaceHeading(title: "十二宫与四化", detail: "核对生辰与排盘口径，从命宫读起，再看大限和流年。", icon: "moon.stars")
+                    .accessibilityIdentifier("workspace.ziwei")
                 if chart != nil && inputCollapsed && !isStale {
                     collapsedInputBar
                 } else {
                     inputCard
                 }
-                if let ch = chart {
+                if let ch = chart, !isStale {
                     ZiweiBoardView(chart: ch, name: name)
                     ZiweiYearView(chart: ch)
                     ZiweiReadingView(chart: ch)

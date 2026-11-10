@@ -153,11 +153,11 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
     case "yearly":
         YearByYearView(chart: chart, name: person.name)
     case "interpret":
-        InterpretView(chart: chart, name: person.name)
+        InterpretView(chart: chart, name: person.name, verificationOwnerID: "person:\(person.id.uuidString)")
     case "chartdepth":
         ChartDepthView(person: person, chart: chart)
     case "poster":
-        BaziResultView(chart: chart, name: person.name)
+        BaziResultView(chart: chart, name: person.name, verificationOwnerID: "person:\(person.id.uuidString)")
     case "reportcenter":
         ReportCenterView()
     case "almanac":
@@ -222,14 +222,35 @@ struct AllToolsView: View {
 
     private var groups: [ToolGroup] { [.all, .paipan, .calendar, .knowledge, .tools] }
 
-    private var currentPerson: Person {
-        if let p = peopleStore.currentPerson { return p }
-        return Person(name: "命主", relation: "本人", gender: "M", birthEpoch: Date().timeIntervalSince1970)
-    }
+    // Only these destinations consume a personal chart directly. Never invent a
+    // birth timestamp when no person is selected (Issue #14).
+    private static let chartRequiredIDs: Set<String> = [
+        "astro", "yearly", "interpret", "chartdepth", "poster", "chenggu", "lucky", "annual"
+    ]
 
-    private var currentChart: BaziChart {
-        let p = currentPerson
-        return BaziEngine.paipan(clock: p.birthDate, gender: p.gender, longitude: p.useLongitude ? p.longitude : nil)
+    @ViewBuilder
+    private func destination(for item: ToolItem) -> some View {
+        if Self.chartRequiredIDs.contains(item.id), peopleStore.currentPerson == nil {
+            ContentUnavailableView(
+                "请先选择人物档案",
+                systemImage: "person.crop.circle.badge.questionmark",
+                description: Text("此工具需要真实出生资料。请先在人物档案中创建或选择人物，不会使用当前时间冒充出生时间。")
+            )
+        } else if let person = peopleStore.currentPerson {
+            toolDestination(
+                for: item,
+                person: person,
+                chart: BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,
+                                         longitude: person.useLongitude ? person.longitude : nil)
+            )
+        } else {
+            // Independent tools ignore the chart argument. A placeholder is never
+            // presented as a person's chart; chart-dependent routes are blocked above.
+            let placeholder = Person(name: "工具上下文", relation: "工具", gender: "M", birthEpoch: 0)
+            toolDestination(for: item, person: placeholder,
+                            chart: BaziEngine.paipan(clock: placeholder.birthDate,
+                                                      gender: placeholder.gender, longitude: nil))
+        }
     }
 
     private var filterOptions: [(title: String, count: Int?)] {
@@ -318,7 +339,7 @@ struct AllToolsView: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                NavigationLink { toolDestination(for: item, person: currentPerson, chart: currentChart) } label: {
+                NavigationLink { destination(for: item) } label: {
                     chipLabel(item)
                 }
                 .buttonStyle(.plain)
@@ -355,7 +376,7 @@ struct AllToolsView: View {
             .buttonStyle(.plain)
         } else {
             NavigationLink {
-                toolDestination(for: item, person: currentPerson, chart: currentChart)
+                destination(for: item)
             } label: {
                 rowLabel(item)
             }

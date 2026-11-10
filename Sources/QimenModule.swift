@@ -1146,6 +1146,8 @@ struct QimenHomeView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                KyWorkspaceHeading(title: "时间与九宫", detail: "确认起局时间和定局法，再点选宫位查看详情。", icon: "circle.grid.3x3")
+                    .accessibilityIdentifier("workspace.qimen")
                 PersonQuickBar(store: PeopleStore.shared) { p in
                     date = p.birthDate
                     qmPersonName = p.name
@@ -1156,18 +1158,22 @@ struct QimenHomeView: View {
                     if !qmPersonName.isEmpty {
                         Text("起局命主：".scriptConverted + qmPersonName + "（已按其生辰起局）".scriptConverted).font(.caption).foregroundStyle(Ky.qingdai)
                     }
-                    HStack {
-                        DatePicker("起局时间".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])
-                            .labelsHidden()
-                            .datePickerStyle(.compact)
-                            .environment(\.locale, Locale(identifier: "zh_CN")) // 锁死中文
-                        Spacer()
+                    DatePicker("起局时间".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])
+                        .labelsHidden()
+                        .accessibilityLabel("起局时间".scriptConverted)
+                        .datePickerStyle(.compact)
+                        .environment(\.locale, Locale(identifier: "zh_CN"))
+                    ScrollView(.horizontal) {
+                      HStack(spacing: 8) {
                         Button("上一时辰".scriptConverted) { date = date.addingTimeInterval(-7200) }
                             .font(.subheadline).foregroundStyle(Ky.qingdai)
                         Button("下一时辰".scriptConverted) { date = date.addingTimeInterval(7200) }
                             .font(.subheadline).foregroundStyle(Ky.qingdai)
                         Button("此刻".scriptConverted) { date = Date() }
                             .font(.subheadline).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
+                      }
+                      .buttonStyle(.bordered)
+                      .controlSize(.large)
                     }
                     Text("默认此刻；改时间即重起局。时辰按北京时间取，晚子时口径与八字排盘一致。".scriptConverted)
                         .font(.caption2).foregroundStyle(Ky.sub)

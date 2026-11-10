@@ -157,16 +157,21 @@ private struct PosterBrandFooter: View {
     let pal: PosterPalette
     let subtitle: String
     var body: some View {
-        HStack(alignment: .bottom) {
+        VStack(spacing: 14) {
+            Rectangle().fill(pal.accent.opacity(0.45)).frame(height: 1)
+            HStack(alignment: .center, spacing: 16) {
             PosterSealView()
             Spacer()
-            VStack(alignment: .trailing, spacing: 3) {
+            VStack(alignment: .trailing, spacing: 5) {
                 Text("三术合参 · 堪舆命理院 谨制")
                     .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                 Text(subtitle)
                     .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
                 Text(Date.now.formatted(date: .abbreviated, time: .omitted))
-                    .font(.system(size: 10)).foregroundStyle(pal.sub.opacity(0.8))
+                    .font(.system(size: 10).monospacedDigit()).foregroundStyle(pal.sub)
+            }
+            .multilineTextAlignment(.trailing)
+            .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.horizontal, 48).padding(.bottom, 42)
@@ -536,13 +541,14 @@ struct PosterView: View {
                         Text("前六维详批")
                             .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                             .padding(.top, 4)
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 10) {
                             ForEach(firstSixDims, id: \.title) { d in
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(d.title).font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                                    Text(d.conclusion).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
+                                    Text(d.conclusion).font(.system(size: 13)).foregroundStyle(pal.main).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                                 }
-                                .padding(8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
                                 .background(pal.card)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
@@ -1304,7 +1310,7 @@ return out.font(.system(size: 10.5)).foregroundStyle(pal.main)
 }
 
 private func yuceSection(num: String, title: String, rows: [(String, String)], note: String? = nil, goldKeys: [String] = []) -> some View {
-VStack(alignment:.leading, spacing: 3) {
+VStack(alignment:.leading, spacing: 10) {
 HStack(spacing: 6) {
 Text(num)
 .font(.system(size: 11, weight:.bold, design:.serif))
@@ -1321,7 +1327,7 @@ Text(note).font(.system(size: 9)).foregroundStyle(pal.sub)
 }
 }
 ForEach(rows.indices, id: \.self) { j in
-HStack(alignment: .top, spacing: 6) {
+VStack(alignment: .leading, spacing: 5) {
 Text(rows[j].0)
 .font(.system(size: 10.5, weight:.bold, design:.serif))
 .foregroundStyle(Ky.cinnabar)
@@ -1329,7 +1335,7 @@ Text(rows[j].0)
 .background(Ky.cinnabar.opacity(0.12))
 .clipShape(Capsule())
 richBody(rows[j].1, goldKeys: goldKeys)
-.lineSpacing(2.0)
+.lineSpacing(4)
 .fixedSize(horizontal: false, vertical: true)
 .frame(maxWidth: .infinity, alignment: .leading)
 .lineLimit(nil)
@@ -1386,22 +1392,22 @@ struct PosterSheetView: View {
 
                 if fileURL != nil, let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? "尊享预测单长图海报" : "命盘海报", image: Image(uiImage: img))) {
-                        Label(style == .yuceDan ? "保存 / 分享高清长图海报（1080宽 · 自适应长图）" : "保存 / 分享高清命盘海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                        Label("分享海报", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
                         PosterPhotoSaver.save(img) { saveMessage = $0 }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(KyPrimaryButton())
+                    .buttonStyle(.bordered)
+                    .tint(Ky.qingdai)
                     if let saveMessage {
                         Text(saveMessage)
                             .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                     }
-                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
+                    Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 }
             }
@@ -1728,12 +1734,12 @@ struct ZiweiPosterView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("十二宫逐宫详批")
                         .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 4), spacing: 5) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                         ForEach(chart.palaces, id: \.branch) { p in
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.name).font(.system(size: 9.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                                 Text(p.majors.map { $0.star }.joined(separator: "·").isEmpty ? "—" : p.majors.map { $0.star }.joined(separator: "·"))
-                                    .font(.system(size: 9)).foregroundStyle(pal.main).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                                    .font(.system(size: 11)).foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)
                                 Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.system(size: 8.5)).foregroundStyle(pal.sub)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1764,7 +1770,7 @@ struct ZiweiPosterView: View {
 struct ZiweiPosterSheetView: View {
     let chart: ZiweiChart
     let name: String
-    @State private var fileURL: URL?
+    @State private var renderFailed = false
     @State private var style: PosterStyle = .songQingdai
     @State private var previewImage: UIImage?
     @State private var saveMessage: String?
@@ -1786,31 +1792,36 @@ struct ZiweiPosterSheetView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
-                    ProgressView("正在渲染 1080宽长图海报…")
-                        .frame(maxWidth: .infinity)
+                    Group {
+                        if renderFailed {
+                            Button("海报生成失败，点此重试") { render() }
+                                .buttonStyle(.bordered)
+                        } else {
+                            ProgressView("正在生成海报…")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
 
-                if fileURL != nil, let img = previewImage {
+                if let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview("紫微命盘海报", image: Image(uiImage: img))) {
-                        Label("保存 / 分享高清紫微命盘海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                        Label("分享海报", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
                         PosterPhotoSaver.save(img) { saveMessage = $0 }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(KyPrimaryButton())
+                    .buttonStyle(.bordered)
+                    .tint(Ky.qingdai)
                     if let saveMessage {
                         Text(saveMessage)
                             .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                     }
-                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
+                    Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
-                } else {
-                    ProgressView("正在渲染 1080宽长图海报…")
                 }
             }
             .padding(20)
@@ -1821,16 +1832,12 @@ struct ZiweiPosterSheetView: View {
         .task { render() }
     }
 
-    private func render() {
+    @MainActor private func render() {
+        renderFailed = false
         let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style))
         renderer.scale = 2.0
-        if let img = renderer.uiImage, let data = img.pngData() {
-            let suffix = style.fileSuffix
-            previewImage = img
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("ziwei-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(suffix).png")
-            try? data.write(to: url, options: .atomic)
-            fileURL = url
-        }
+        previewImage = renderer.uiImage
+        renderFailed = previewImage == nil
     }
 }
 
@@ -1984,8 +1991,8 @@ struct HeCanPosterView: View {
                     }
                 }
 
-                // 八字四柱 ⟷ 紫微方盘 左右并列
-                HStack(alignment: .top, spacing: 10) {
+                // 每术独占一行，长解读可以自然换行。
+                VStack(alignment: .leading, spacing: 10) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("八字总断").font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                         if !headline.isEmpty {
@@ -1996,7 +2003,7 @@ struct HeCanPosterView: View {
                         }
                     }
                     .padding(12)
-                    .frame(width: 217, alignment: .leading)
+                    .frame(width: 444, alignment: .leading)
                     .background(pal.card)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(pal.cardStroke, lineWidth: 0.8))
@@ -2010,7 +2017,7 @@ struct HeCanPosterView: View {
                         }
                     }
                     .padding(12)
-                    .frame(width: 217, alignment: .leading)
+                    .frame(width: 444, alignment: .leading)
                     .background(pal.card)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(pal.cardStroke, lineWidth: 0.8))
@@ -2021,7 +2028,7 @@ struct HeCanPosterView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("双术交叉印证")
                         .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         ForEach(crossCards, id: \.dim) { c in
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(c.dim).font(.system(size: 11.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
@@ -2029,7 +2036,8 @@ struct HeCanPosterView: View {
                                 Text("紫微：" + c.ziwei).font(.system(size: 10.5)).foregroundStyle(pal.main).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
                                 Text(c.verdict).font(.system(size: 10.5, weight: .bold)).foregroundStyle(Ky.gold).lineSpacing(2.5).fixedSize(horizontal: false, vertical: true)
                             }
-                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
                             .background(pal.card)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(pal.cardStroke, lineWidth: 0.7))
@@ -2074,7 +2082,7 @@ struct HeCanPosterSheetView: View {
     let ziwei: ZiweiChart
     let name: String
     var palmLines: [String] = []
-    @State private var fileURL: URL?
+    @State private var renderFailed = false
     @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
     @State private var saveMessage: String?
@@ -2097,31 +2105,36 @@ struct HeCanPosterSheetView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
-                    ProgressView("正在渲染 1080宽长图海报…")
-                        .frame(maxWidth: .infinity)
+                    Group {
+                        if renderFailed {
+                            Button("海报生成失败，点此重试") { render() }
+                                .buttonStyle(.bordered)
+                        } else {
+                            ProgressView("正在生成海报…")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
 
-                if fileURL != nil, let img = previewImage {
+                if let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview("合参海报", image: Image(uiImage: img))) {
-                        Label("保存 / 分享高清合参海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                        Label("分享海报", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
                         PosterPhotoSaver.save(img) { saveMessage = $0 }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(KyPrimaryButton())
+                    .buttonStyle(.bordered)
+                    .tint(Ky.qingdai)
                     if let saveMessage {
                         Text(saveMessage)
                             .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                     }
-                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
+                    Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
-                } else {
-                    ProgressView("正在渲染 1080宽长图海报…")
                 }
             }
             .padding(20)
@@ -2132,15 +2145,11 @@ struct HeCanPosterSheetView: View {
         .task { render() }
     }
 
-    private func render() {
+    @MainActor private func render() {
+        renderFailed = false
         let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style))
         renderer.scale = 2.0
-        if let img = renderer.uiImage, let data = img.pngData() {
-            let suffix = style.fileSuffix
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("hecan-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(suffix).png")
-            try? data.write(to: url, options: .atomic)
-            previewImage = img
-            fileURL = url
-        }
+        previewImage = renderer.uiImage
+        renderFailed = previewImage == nil
     }
 }

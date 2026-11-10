@@ -1325,16 +1325,21 @@ enum KyMotion {
 }
 
 struct KyPrimaryButton: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(.headline, design: .serif))
             .fontWeight(.semibold)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13.5)
-            .background(Ky.qingdai)
-            .foregroundStyle(Color.white)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(isEnabled ? Ky.qingdai : Ky.elevated)
+            .foregroundStyle(isEnabled ? Color.white : Ky.sub)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1.0)
             .opacity(configuration.isPressed ? 0.86 : 1)
     }
 }
@@ -1452,12 +1457,10 @@ struct HomePageView: View {
         ScrollView {
             // 120Hz：外层改回 LazyVStack，只渲染可见区段（纠正 build-72 的说法——VStack 全量预布局抬高首帧挂载成本，长页正确做法是可见区渲染）
             LazyVStack(alignment: .leading, spacing: 16) {
-                // 01 品牌导航区
-                brandHeader
+                KyWorkspaceHeading(title: "选择人物，开始合参", detail: "从命盘进入解读、回验和报告。", icon: "person.crop.circle")
+                    .accessibilityIdentifier("workspace.workbench")
                 signBanner
-                // 02 当前命主中枢卡
                 personSwitcherCard
-                // Start with the user's main task, then supporting calendar information.
                 primaryBentoGrid
                 NavigationLink { LearningCenterView() } label: {
                     Label("看不懂命盘？从白话指南开始", systemImage: "book.closed")
@@ -1472,6 +1475,7 @@ struct HomePageView: View {
                 dueCard
                 recentToolsSection
                 allToolsLink
+                brandHeader
             }
             .padding(.horizontal, 16)
             .padding(.top, 6)
@@ -2045,7 +2049,13 @@ struct KanyuWorkbenchTabView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
+                KyWorkspaceHeading(title: "罗盘与现场勘察", detail: "从坐向测量或户型分析开始，在案件中整理现场记录。", icon: "safari")
+                    .accessibilityIdentifier("workspace.survey")
                 heroCard
+                VStack(alignment: .leading, spacing: 10) {
+                    KySectionTitle(title: "勘察案件", trailing: "现场记录")
+                    casesSection
+                }
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "罗盘工作区", trailing: "二十四山")
                     compassToolCard
@@ -2055,8 +2065,7 @@ struct KanyuWorkbenchTabView: View {
                     floorPlanToolCard
                 }
                 VStack(alignment: .leading, spacing: 10) {
-                    KySectionTitle(title: "勘察工作区", trailing: "案件 · 手册 · 要诀")
-                    casesSection
+                    KySectionTitle(title: "勘察指南", trailing: "手册 · 要诀")
                     surveyKnowledgeSection
                     tipCard
                 }
