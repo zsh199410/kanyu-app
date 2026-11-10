@@ -177,6 +177,17 @@ enum CompassBearingResolver {
     }
 }
 
+// Keep the correction receipt tied to the entire sample batch.
+enum CompassSampleReceipt {
+    static func matches(_ receipt: (source: String, correction: Double),
+                        current: CompassBearingResolver.Result?) -> Bool {
+        guard let current, current.source == receipt.source else { return false }
+        // Device heading correction varies naturally with sensor noise; source is the stable contract.
+        if receipt.source == "device" { return true }
+        return abs(current.correction - receipt.correction) <= 0.25
+    }
+}
+
 // MARK: - 罗盘锁定（Codable，UserDefaults 持久化）
 
 /// 一次罗盘锁定的全部信息。锁定只输出一个真北坐山度数：sitDegree = trueNorth（入盘只用真北）。
@@ -292,6 +303,9 @@ struct CompassStandaloneView: View {
     @State private var weakTrue: [Double] = []
     @State private var weakMag: [Double] = []
     @State private var collectTicks = 0
+    @State private var sampleReceipt: (source: String, correction: Double)? = nil
+    @State private var sampleLatitude: Double? = nil
+    @State private var sampleLongitude: Double? = nil
     @State private var collectHint = ""
     @State private var collectTask: Task<Void, Never>? = nil
     @State private var justLocked = false
@@ -636,11 +650,21 @@ struct CompassStandaloneView: View {
         weakTrue = []
         weakMag = []
         collectTicks = 0
+        sampleReceipt = nil
+        sampleLatitude = nil
+        sampleLongitude = nil
         collectHint = "采样中：把气泡稳在绿圈里…"
         collectTask?.cancel()
         collectTask = Task { @MainActor in
             while collecting && trueSamples.count < 8 && collectTicks < 90 {
                 let acc = location.headingAccuracy
+                // A lock must not combine bearings measured under different correction rules.
+                if let receipt = sampleReceipt,
+                   !CompassSampleReceipt.matches(receipt, current: resolvedBearing) {
+                    collecting = false
+                    collectHint = "采样期间磁偏角来源或校正值变化，已取消锁定；请重新采样。"
+                    return
+                }
                 if motion.fieldAbnormal {
                     collectHint = "磁场异常（\(String(format: "%.0f", motion.fieldMicroTesla)) 微特）：附近有磁干扰，换个位置再测"
                 } else if !motion.isLevelForCompass {
@@ -680,13 +704,19 @@ struct CompassStandaloneView: View {
 
     // 尖峰剔除：与已采样本圆周均值偏差 >15° 的读数丢弃（防干扰毛刺污染平均）。
     private func appendSample(_ t: inout [Double], _ m: inout [Double]) {
+        guard let bearing = resolvedBearing else { return }
         if t.count >= 3 {
             let (mean, _) = CompassMath.circularMean(t)
             if abs(CompassMath.shortestDiff(from: mean, to: trueDisplay)) > 15 {
                 return
             }
         }
-        t.append(trueDisplay)
+        if sampleReceipt == nil {
+            sampleReceipt = (bearing.source, bearing.correction)
+            sampleLatitude = location.currentLocation?.coordinate.latitude
+            sampleLongitude = location.currentLocation?.coordinate.longitude
+        }
+        t.append(bearing.trueNorth)
         m.append(location.displayMagneticHeading)
     }
 
@@ -698,11 +728,13 @@ struct CompassStandaloneView: View {
             collectHint = "读数无效，请重试"
             return
         }
-        guard let current = resolvedBearing else {
-            collectHint = "真北校正已不可用，本次未锁定；请重新定位或填写有效磁偏角后重测。"
+        guard let receipt = sampleReceipt,
+              CompassSampleReceipt.matches(receipt, current: resolvedBearing), meanM >= 0 else {
+            collectHint = "采样校正条件已变化，本次未锁定；请重新采样。"
             return
         }
-        let info = (value: current.correction, source: current.source)
+        // Store the effective correction of the averaged bearings, not the final live reading.
+        let info = (value: CompassMath.shortestDiff(from: meanM, to: meanT), source: receipt.source)
         let lock = CompassLock(
             magnetic: meanM,
             trueNorth: meanT,
@@ -712,8 +744,8 @@ struct CompassStandaloneView: View {
             palace: CompassMath.palace(for: meanT),
             accuracy: location.headingAccuracy,
             tilt: motion.flatTilt,
-            latitude: location.currentLocation?.coordinate.latitude,
-            longitude: location.currentLocation?.coordinate.longitude,
+            latitude: sampleLatitude,
+            longitude: sampleLongitude,
             timestamp: Date(),
             samples: trueSamples.count,
             spread: r)
