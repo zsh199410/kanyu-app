@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import PDFKit
 @testable import Kanyu
 
 final class ReadableExperienceTests: XCTestCase {
@@ -30,6 +31,22 @@ final class ReadableExperienceTests: XCTestCase {
         for item in items { XCTAssertTrue(report.contains(item.conclusion), item.title) }
         let complete = ReportBuilder.lines(for: person, tier: .complete)
         XCTAssertTrue(complete.contains("【白话阅读指南】"))
+    }
+
+    func testDetailedReportKeepsInterpretationItemsInPDFContents() throws {
+        let person = Person(name: "目录回归", birthEpoch: 946684800)
+        let chart = BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,
+                                           longitude: person.useLongitude ? person.longitude : nil)
+        let firstTitle = try XCTUnwrap(InterpretEngine.interpret(chart: chart).first?.title)
+        for tier in [ReportTier.professional, .complete] {
+            let url = try XCTUnwrap(ReportBuilder.makePDF(for: person, tier: tier))
+            defer { try? FileManager.default.removeItem(at: url) }
+            let pdf = try XCTUnwrap(PDFDocument(url: url))
+            let contents = try XCTUnwrap(pdf.page(at: 1)?.string)
+                .components(separatedBy: .whitespacesAndNewlines).joined()
+            XCTAssertTrue(contents.contains("详批条目"), tier.rawValue)
+            XCTAssertTrue(contents.contains(firstTitle), tier.rawValue)
+        }
     }
 
     @MainActor

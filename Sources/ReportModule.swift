@@ -252,12 +252,13 @@ enum ReportBuilder {
         var inSummary = false
         var y: CGFloat = 48
         for (i, line) in lines.enumerated() {
-            if line.hasPrefix("【解盘维度摘要") {
+            let isInterpretationSection = line.hasPrefix("【解盘维度摘要") || line.hasPrefix("【逐项解盘详解")
+            if isInterpretationSection {
                 pages.append(ContentPage())
                 y = 48
             }
             if line.hasPrefix("【") {
-                inSummary = line.hasPrefix("【解盘维度摘要")
+                inSummary = isInterpretationSection
             }
             let font = i == 0 ? titleFont : (line.hasPrefix("【") ? headFont : bodyFont)
             let gap: CGFloat = i == 0 ? 10 : (line.hasPrefix("【") ? 6 : 5)
