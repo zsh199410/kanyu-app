@@ -2153,4 +2153,3 @@ struct HeCanPosterSheetView: View {
         renderFailed = previewImage == nil
     }
 }
-

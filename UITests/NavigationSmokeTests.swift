@@ -41,4 +41,3 @@ final class NavigationSmokeTests: XCTestCase {
         add(shot)
     }
 }
-

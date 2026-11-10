@@ -127,4 +127,3 @@ struct CelebDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-

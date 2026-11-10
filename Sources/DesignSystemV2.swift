@@ -443,4 +443,3 @@ struct CaliberSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-

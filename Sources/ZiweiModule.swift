@@ -1186,4 +1186,3 @@ struct ZiweiYearView: View {
         }.kyCard()
     }
 }
-

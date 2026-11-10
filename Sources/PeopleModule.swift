@@ -550,4 +550,3 @@ extension PersonDetailView {
         """
     }
 }
-

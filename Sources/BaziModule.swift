@@ -1897,4 +1897,3 @@ struct GanZhiLookupView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
-

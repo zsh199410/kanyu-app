@@ -3798,4 +3798,3 @@ struct CaptureView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { tiltWarn = "" }
     }
 }
-

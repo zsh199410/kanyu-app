@@ -203,7 +203,8 @@ struct BackupView: View {
     }
 
     private var restoreFileNames: [String] {
-        ["people.json", "forecasts.json", "palm_records.json", "AppData/index.json"]
+        ["people.json", "forecasts.json", "palm_records.json", "AppData/index.json",
+         "people.meta.json", "forecasts.meta.json", "palm_records.meta.json", "AppData/index.meta.json"]
     }
 
     private func captureRestoreSnapshot(fileManager fm: FileManager) throws -> RestoreSnapshot {
@@ -310,6 +311,7 @@ struct BackupView: View {
         let indexURL = dir.appendingPathComponent("index.json")
         if fm.fileExists(atPath: indexURL.path) {
             let data = try Data(contentsOf: indexURL)
+            _ = try SurveyStore.decoder.decode([CaseData].self, from: data)
             let destination = docs.appendingPathComponent("AppData/index.json")
             try fm.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: destination, options: .atomic)
@@ -337,6 +339,19 @@ struct BackupView: View {
             parts.append("旧回验标记已保留为待归属（未自动套用）")
         }
 
+        // Store import methods report errors through a banner and do not throw.
+        // Commit authoritative in-memory values using throwing writes so the
+        // surrounding transaction can detect persistence failures and roll back.
+        let encoder = JSONEncoder()
+        if fm.fileExists(atPath: peopleURL.path) {
+            try encoder.encode(peopleStore.people).write(to: docs.appendingPathComponent("people.json"), options: .atomic)
+        }
+        if fm.fileExists(atPath: forecastsURL.path) {
+            try encoder.encode(forecastStore.entries).write(to: docs.appendingPathComponent("forecasts.json"), options: .atomic)
+        }
+        if fm.fileExists(atPath: palmsURL.path) {
+            try encoder.encode(palmStore.records).write(to: docs.appendingPathComponent("palm_records.json"), options: .atomic)
+        }
         return parts.isEmpty ? "包里没有可识别的数据文件。" : "恢复结果：" + parts.joined(separator: " · ")
     }
 
@@ -394,4 +409,3 @@ struct BackupView: View {
         }
     }
 }
-

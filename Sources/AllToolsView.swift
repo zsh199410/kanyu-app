@@ -240,7 +240,7 @@ struct AllToolsView: View {
             toolDestination(
                 for: item,
                 person: person,
-                chart: BaziEngine.paipan(clock: person.birthDate, gender: person.gender,
+                chart: BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,
                                          longitude: person.useLongitude ? person.longitude : nil)
             )
         } else {
@@ -415,4 +415,3 @@ struct AllToolsView: View {
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
     }
 }
-

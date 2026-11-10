@@ -41,4 +41,3 @@ final class VerificationIsolationTests: XCTestCase {
         XCTAssertNil(defaults.dictionary(forKey: VerifyStore.key))
     }
 }
-

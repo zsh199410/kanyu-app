@@ -1669,4 +1669,3 @@ struct QimenHomeView: View {
         }.kyCard()
     }
 }
-
