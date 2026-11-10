@@ -11,6 +11,8 @@ struct BackupView: View {
     @StateObject private var palmStore = PalmRecordStore()
     @State private var exportURL: URL?
     @State private var importing = false
+    @State private var pendingRestoreURL: URL?
+    @State private var confirmingRestore = false
     @State private var note = ""
     @State private var icloudNote = ""
 
@@ -89,10 +91,25 @@ struct BackupView: View {
         .background(Ky.bg)
         .navigationTitle("数据备份与恢复".scriptConverted).navigationBarTitleDisplayMode(.inline)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { r in
-            if case .success(let url) = r, url.startAccessingSecurityScopedResource() {
-                note = restore(from: url)
-                url.stopAccessingSecurityScopedResource()
+            switch r {
+            case .success(let url):
+                pendingRestoreURL = url
+                confirmingRestore = true
+            case .failure(let error):
+                note = "无法打开备份：\(error.localizedDescription)"
             }
+        }
+        .confirmationDialog("确认导入备份", isPresented: $confirmingRestore, titleVisibility: .visible) {
+            Button("导入备份", role: .destructive) {
+                guard let url = pendingRestoreURL else { return }
+                pendingRestoreURL = nil
+                let hasScope = url.startAccessingSecurityScopedResource()
+                defer { if hasScope { url.stopAccessingSecurityScopedResource() } }
+                note = restore(from: url)
+            }
+            Button("取消", role: .cancel) { pendingRestoreURL = nil }
+        } message: {
+            Text("\(pendingRestoreURL?.lastPathComponent ?? "")\n导入会合并人物和回验标记，并可能替换勘察案件索引。建议先导出当前备份。".scriptConverted)
         }
     }
 
