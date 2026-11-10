@@ -33,7 +33,8 @@ def validate_ipa(z: zipfile.ZipFile) -> None:
 def inspect(path: Path, expected: str | None = None) -> dict:
     if not path.is_file():
         raise ValueError("file not found")
-    digest = hashlib.file_digest(path.open("rb"), "sha256").hexdigest()
+    with path.open("rb") as source:
+        digest = hashlib.file_digest(source, "sha256").hexdigest()
     if expected is not None:
         if len(expected) != 64 or any(c not in "0123456789abcdefABCDEF" for c in expected):
             raise ValueError("expected SHA-256 must be 64 hexadecimal characters")
