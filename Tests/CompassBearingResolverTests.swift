@@ -79,6 +79,16 @@ final class CompassBearingResolverTests: XCTestCase {
         XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: changed))
     }
 
+    func testReceiptRejectsNonFiniteValuesIncludingDeviceSource() {
+        let valid = CompassBearingResolver.Result(trueNorth: 95, correction: 5, source: "device")
+        let invalidCorrection = CompassBearingResolver.Result(trueNorth: 95, correction: .nan, source: "device")
+        let invalidBearing = CompassBearingResolver.Result(trueNorth: .infinity, correction: 5, source: "device")
+        XCTAssertFalse(CompassSampleReceipt.matches((source: "device", correction: .nan), current: valid))
+        XCTAssertFalse(CompassSampleReceipt.matches((source: "device", correction: 5), current: invalidCorrection))
+        XCTAssertFalse(CompassSampleReceipt.matches((source: "device", correction: 5), current: invalidBearing))
+        XCTAssertTrue(CompassSampleReceipt.matches((source: "device", correction: 5), current: valid))
+    }
+
     func testDeviceReceiptAllowsHeadingNoiseWithoutChangingSource() throws {
         let initial = try XCTUnwrap(CompassBearingResolver.resolve(
             manual: nil, magnetic: 90, deviceTrue: 95,
