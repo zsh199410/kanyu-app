@@ -308,6 +308,28 @@ struct KySeal: View {
     }
 }
 
+struct KyWorkspaceHeading: View {
+    let title: String
+    let detail: String
+    let icon: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title.scriptConverted, systemImage: icon)
+                .font(.system(.title2, design: .serif).weight(.bold))
+                .foregroundStyle(Ky.ink)
+            Text(detail.scriptConverted)
+                .font(.subheadline)
+                .foregroundStyle(Ky.sub)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
 extension View {
     /// iOS 27 120Hz 零掉帧卡片：采用 continuous 连续曲率圆角（18pt）＋精细发丝描边，
     /// 剔除昂贵的动态离屏高斯阴影（.shadow），确保 ProMotion 滚动满帧丝滑。
@@ -317,7 +339,8 @@ extension View {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Ky.line.opacity(0.9), lineWidth: 0.8)
+                    .strokeBorder(Ky.line, lineWidth: 1)
+                    .allowsHitTesting(false)
             )
     }
 
@@ -420,3 +443,4 @@ struct CaliberSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+

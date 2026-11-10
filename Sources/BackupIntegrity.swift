@@ -76,6 +76,7 @@ enum BackupIntegrity {
 enum BackupIntegrityError: LocalizedError, Equatable {
     case unsupportedVersion(Int)
     case emptyManifest
+    case fileListMismatch
     case unsafeName(String)
     case duplicateName(String)
     case unexpectedFile(String)
@@ -84,8 +85,9 @@ enum BackupIntegrityError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .unsupportedVersion(let version): return "备份版本 \(version) 高于当前 App 支持范围"
+        case .unsupportedVersion(let version): return "备份版本 \(version) 不在当前 App 支持范围"
         case .emptyManifest: return "备份清单为空"
+        case .fileListMismatch: return "备份内容与清单不一致"
         case .unsafeName(let name): return "备份清单包含不安全文件名：\(name)"
         case .duplicateName(let name): return "备份清单重复列出文件：\(name)"
         case .unexpectedFile(let name): return "备份包含清单外文件：\(name)"

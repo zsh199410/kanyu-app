@@ -12,12 +12,16 @@ final class NavigationSmokeTests: XCTestCase {
             return false
         }
         app.launch()
-        for title in ["合参", "八字", "紫微", "奇门", "堪舆", "合参"] {
+        let workspaces = [("合参", "workbench"), ("八字", "bazi"), ("紫微", "ziwei"),
+                          ("奇门", "qimen"), ("堪舆", "survey"), ("合参", "workbench")]
+        for (title, workspace) in workspaces {
             let tab = app.tabBars.buttons[title]
             XCTAssertTrue(tab.waitForExistence(timeout: 30), title)
             tab.tap()
             if !tab.isSelected { tab.tap() }
             XCTAssertTrue(tab.isSelected, title)
+            let heading = app.descendants(matching: .any).matching(identifier: "workspace." + workspace).firstMatch
+            XCTAssertTrue(heading.waitForExistence(timeout: 10), title)
             let shot = XCTAttachment(screenshot: app.screenshot())
             shot.name = "tab-" + title
             shot.lifetime = .keepAlways
@@ -37,3 +41,4 @@ final class NavigationSmokeTests: XCTestCase {
         add(shot)
     }
 }
+

@@ -481,12 +481,14 @@ struct BaziHomeView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
+                    KyWorkspaceHeading(title: "四柱与岁运", detail: "选用人物档案或录入生辰，再查看四柱、十神和大运。", icon: "tablecells")
+                        .accessibilityIdentifier("workspace.bazi")
                     if chart != nil && inputCollapsed && !isStale {
                     collapsedInputBar
                 } else {
                     inputCard
                 }
-                if let ch = chart {
+                if let ch = chart, !isStale {
                     BaziResultView(chart: ch, name: name)
                     NavigationLink {
                         HeCanPosterSheetView(
