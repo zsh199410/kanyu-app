@@ -1769,7 +1769,7 @@ struct ZiweiPosterView: View {
 struct ZiweiPosterSheetView: View {
     let chart: ZiweiChart
     let name: String
-    @State private var fileURL: URL?
+    @State private var renderFailed = false
     @State private var style: PosterStyle = .songQingdai
     @State private var previewImage: UIImage?
     @State private var saveMessage: String?
@@ -1791,11 +1791,16 @@ struct ZiweiPosterSheetView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
-                    ProgressView("正在渲染 1080宽长图海报…")
+                    if renderFailed {
+                        Button("海报生成失败，点此重试") { render() }
+                            .buttonStyle(.bordered)
+                    } else {
+                        ProgressView("正在生成海报…")
+                    }
                         .frame(maxWidth: .infinity)
                 }
 
-                if fileURL != nil, let img = previewImage {
+                if let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview("紫微命盘海报", image: Image(uiImage: img))) {
                         Label("分享海报", systemImage: "square.and.arrow.up")
                     }
@@ -1814,8 +1819,6 @@ struct ZiweiPosterSheetView: View {
                     }
                     Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
-                } else {
-                    ProgressView("正在渲染 1080宽长图海报…")
                 }
             }
             .padding(20)
@@ -1826,16 +1829,12 @@ struct ZiweiPosterSheetView: View {
         .task { render() }
     }
 
-    private func render() {
+    @MainActor private func render() {
+        renderFailed = false
         let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style))
         renderer.scale = 2.0
-        if let img = renderer.uiImage, let data = img.pngData() {
-            let suffix = style.fileSuffix
-            previewImage = img
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("ziwei-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(suffix).png")
-            try? data.write(to: url, options: .atomic)
-            fileURL = url
-        }
+        previewImage = renderer.uiImage
+        renderFailed = previewImage == nil
     }
 }
 
@@ -2079,7 +2078,7 @@ struct HeCanPosterSheetView: View {
     let ziwei: ZiweiChart
     let name: String
     var palmLines: [String] = []
-    @State private var fileURL: URL?
+    @State private var renderFailed = false
     @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
     @State private var saveMessage: String?
@@ -2102,11 +2101,16 @@ struct HeCanPosterSheetView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
-                    ProgressView("正在渲染 1080宽长图海报…")
+                    if renderFailed {
+                        Button("海报生成失败，点此重试") { render() }
+                            .buttonStyle(.bordered)
+                    } else {
+                        ProgressView("正在生成海报…")
+                    }
                         .frame(maxWidth: .infinity)
                 }
 
-                if fileURL != nil, let img = previewImage {
+                if let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview("合参海报", image: Image(uiImage: img))) {
                         Label("分享海报", systemImage: "square.and.arrow.up")
                     }
@@ -2125,8 +2129,6 @@ struct HeCanPosterSheetView: View {
                     }
                     Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
-                } else {
-                    ProgressView("正在渲染 1080宽长图海报…")
                 }
             }
             .padding(20)
@@ -2137,16 +2139,12 @@ struct HeCanPosterSheetView: View {
         .task { render() }
     }
 
-    private func render() {
+    @MainActor private func render() {
+        renderFailed = false
         let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style))
         renderer.scale = 2.0
-        if let img = renderer.uiImage, let data = img.pngData() {
-            let suffix = style.fileSuffix
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("hecan-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(suffix).png")
-            try? data.write(to: url, options: .atomic)
-            previewImage = img
-            fileURL = url
-        }
+        previewImage = renderer.uiImage
+        renderFailed = previewImage == nil
     }
 }
 
