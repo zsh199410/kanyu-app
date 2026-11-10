@@ -14,6 +14,21 @@ import CoreLocation
 import CoreMotion
 import UIKit
 
+enum CompassManualDeclinationInput {
+    /// nil 表示留空自动；invalid 表示已填写但不可用于校正。
+    static func value(_ input: String) -> Double? {
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, let value = Double(text), value.isFinite,
+              (-180.0...180.0).contains(value) else { return nil }
+        return value
+    }
+
+    static func isInvalid(_ input: String) -> Bool {
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !text.isEmpty && value(text) == nil
+    }
+}
+
 // MARK: - WMM2025 磁偏角现算（Swift 移植，与 Web app/compass.py 同式）
 //
 // 两个 a 不可混用：球谐展开用 WMM 地磁参考半径 a＝6,371,200 m（CompassWMMTable.referenceRadius），
@@ -163,7 +178,9 @@ enum CompassBearingResolver {
     static func resolve(manual: Double?, magnetic: Double, deviceTrue: Double,
                         latitude: Double?, longitude: Double?, year: Double) -> Result? {
         guard magnetic.isFinite, (0..<360).contains(magnetic) else { return nil }
-        if let manual, manual.isFinite, (-180...180).contains(manual) {
+        if let manual {
+            // Explicit invalid input must not silently fall back to device/WMM correction.
+            guard manual.isFinite, (-180...180).contains(manual) else { return nil }
             return Result(trueNorth: CompassMath.normalize(magnetic + manual), correction: manual, source: "manual")
         }
         if deviceTrue.isFinite, (0..<360).contains(deviceTrue) {
@@ -174,6 +191,19 @@ enum CompassBearingResolver {
               let correction = CompassDeclination.declination(latitude: latitude, longitude: longitude, year: year),
               correction.isFinite else { return nil }
         return Result(trueNorth: CompassMath.normalize(magnetic + correction), correction: correction, source: "wmm2025")
+    }
+}
+
+// Keep the correction receipt tied to the entire sample batch.
+enum CompassSampleReceipt {
+    static func matches(_ receipt: (source: String, correction: Double),
+                        current: CompassBearingResolver.Result?) -> Bool {
+        guard let current, current.source == receipt.source,
+              receipt.correction.isFinite, current.correction.isFinite,
+              current.trueNorth.isFinite else { return false }
+        // Device heading correction varies naturally with sensor noise; source is the stable contract.
+        if receipt.source == "device" { return true }
+        return abs(current.correction - receipt.correction) <= 0.25
     }
 }
 
@@ -292,6 +322,9 @@ struct CompassStandaloneView: View {
     @State private var weakTrue: [Double] = []
     @State private var weakMag: [Double] = []
     @State private var collectTicks = 0
+    @State private var sampleReceipt: (source: String, correction: Double)? = nil
+    @State private var sampleLatitude: Double? = nil
+    @State private var sampleLongitude: Double? = nil
     @State private var collectHint = ""
     @State private var collectTask: Task<Void, Never>? = nil
     @State private var justLocked = false
@@ -307,9 +340,14 @@ struct CompassStandaloneView: View {
     @State private var showCalibrationGuide = false
     @State private var calibrationStep = 0
 
+    private var manualDeclinationInvalid: Bool {
+        CompassManualDeclinationInput.isInvalid(manualDeclination)
+    }
+
     private var resolvedBearing: CompassBearingResolver.Result? {
-        CompassBearingResolver.resolve(
-            manual: Double(manualDeclination), magnetic: location.magneticHeading,
+        guard !manualDeclinationInvalid else { return nil }
+        return CompassBearingResolver.resolve(
+            manual: CompassManualDeclinationInput.value(manualDeclination), magnetic: location.magneticHeading,
             deviceTrue: location.trueHeading,
             latitude: location.currentLocation?.coordinate.latitude,
             longitude: location.currentLocation?.coordinate.longitude, year: currentYearDecimal())
@@ -500,6 +538,12 @@ struct CompassStandaloneView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 110)
             }
+            if manualDeclinationInvalid {
+                Text("手动磁偏角无效：请输入 −180° 至 180° 的数字，或清空以使用自动校正。".scriptConverted)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("compassManualDeclinationError")
+            }
             Text("真北＝磁北＋磁偏角（东偏为正，西偏为负）；梁平 2026 年约 −3.3°（西偏）。".scriptConverted)
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -636,11 +680,21 @@ struct CompassStandaloneView: View {
         weakTrue = []
         weakMag = []
         collectTicks = 0
+        sampleReceipt = nil
+        sampleLatitude = nil
+        sampleLongitude = nil
         collectHint = "采样中：把气泡稳在绿圈里…"
         collectTask?.cancel()
         collectTask = Task { @MainActor in
             while collecting && trueSamples.count < 8 && collectTicks < 90 {
                 let acc = location.headingAccuracy
+                // A lock must not combine bearings measured under different correction rules.
+                if let receipt = sampleReceipt,
+                   !CompassSampleReceipt.matches(receipt, current: resolvedBearing) {
+                    collecting = false
+                    collectHint = "采样期间磁偏角来源或校正值变化，已取消锁定；请重新采样。"
+                    return
+                }
                 if motion.fieldAbnormal {
                     collectHint = "磁场异常（\(String(format: "%.0f", motion.fieldMicroTesla)) 微特）：附近有磁干扰，换个位置再测"
                 } else if !motion.isLevelForCompass {
@@ -680,13 +734,19 @@ struct CompassStandaloneView: View {
 
     // 尖峰剔除：与已采样本圆周均值偏差 >15° 的读数丢弃（防干扰毛刺污染平均）。
     private func appendSample(_ t: inout [Double], _ m: inout [Double]) {
+        guard let bearing = resolvedBearing else { return }
         if t.count >= 3 {
             let (mean, _) = CompassMath.circularMean(t)
             if abs(CompassMath.shortestDiff(from: mean, to: trueDisplay)) > 15 {
                 return
             }
         }
-        t.append(trueDisplay)
+        if sampleReceipt == nil {
+            sampleReceipt = (bearing.source, bearing.correction)
+            sampleLatitude = location.currentLocation?.coordinate.latitude
+            sampleLongitude = location.currentLocation?.coordinate.longitude
+        }
+        t.append(bearing.trueNorth)
         m.append(location.displayMagneticHeading)
     }
 
@@ -698,11 +758,13 @@ struct CompassStandaloneView: View {
             collectHint = "读数无效，请重试"
             return
         }
-        guard let current = resolvedBearing else {
-            collectHint = "真北校正已不可用，本次未锁定；请重新定位或填写有效磁偏角后重测。"
+        guard let receipt = sampleReceipt,
+              CompassSampleReceipt.matches(receipt, current: resolvedBearing), meanM >= 0 else {
+            collectHint = "采样校正条件已变化，本次未锁定；请重新采样。"
             return
         }
-        let info = (value: current.correction, source: current.source)
+        // Store the effective correction of the averaged bearings, not the final live reading.
+        let info = (value: CompassMath.shortestDiff(from: meanM, to: meanT), source: receipt.source)
         let lock = CompassLock(
             magnetic: meanM,
             trueNorth: meanT,
@@ -712,8 +774,8 @@ struct CompassStandaloneView: View {
             palace: CompassMath.palace(for: meanT),
             accuracy: location.headingAccuracy,
             tilt: motion.flatTilt,
-            latitude: location.currentLocation?.coordinate.latitude,
-            longitude: location.currentLocation?.coordinate.longitude,
+            latitude: sampleLatitude,
+            longitude: sampleLongitude,
             timestamp: Date(),
             samples: trueSamples.count,
             spread: r)
