@@ -496,10 +496,11 @@ final class SurveyStore: ObservableObject {
         let trueH = loc.displayTrueHeading
         let magH = loc.displayMagneticHeading
         let mountain = trueH >= 0 ? CompassMath.mountain(for: trueH) : ""
-        // 原图
-        if let jpg = image.jpegData(compressionQuality: 0.9) {
-            try? jpg.write(to: dir.appendingPathComponent(origName))
-        }
+        // Only report success when both files are encoded and persisted.
+        // A failed second write must not leave an orphaned original image.
+        guard let originalJPEG = image.jpegData(compressionQuality: 0.9) else { return nil }
+        let originalURL = dir.appendingPathComponent(origName)
+        let stampedURL = dir.appendingPathComponent(stampedName)
         // 烙印图
         let lines = [
             "\(Self.timeFormatter.string(from: stamp))",
@@ -508,8 +509,14 @@ final class SurveyStore: ObservableObject {
             task.title
         ]
         let stamped = StampDrawer.stamped(image: image, lines: lines)
-        if let jpg = stamped.jpegData(compressionQuality: 0.9) {
-            try? jpg.write(to: dir.appendingPathComponent(stampedName))
+        guard let stampedJPEG = stamped.jpegData(compressionQuality: 0.9) else { return nil }
+        do {
+            try originalJPEG.write(to: originalURL, options: .atomic)
+            try stampedJPEG.write(to: stampedURL, options: .atomic)
+        } catch {
+            try? FileManager.default.removeItem(at: originalURL)
+            try? FileManager.default.removeItem(at: stampedURL)
+            return nil
         }
         return MediaItem(taskId: task.id, taskTitle: task.title, kind: "photo",
                          fileName: origName, stampedFileName: stampedName,
