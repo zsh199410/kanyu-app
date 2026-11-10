@@ -1391,22 +1391,22 @@ struct PosterSheetView: View {
 
                 if fileURL != nil, let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? "尊享预测单长图海报" : "命盘海报", image: Image(uiImage: img))) {
-                        Label(style == .yuceDan ? "保存 / 分享高清长图海报（1080宽 · 自适应长图）" : "保存 / 分享高清命盘海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                        Label("分享海报", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
                         PosterPhotoSaver.save(img) { saveMessage = $0 }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(KyPrimaryButton())
+                    .buttonStyle(.bordered)
+                    .tint(Ky.qingdai)
                     if let saveMessage {
                         Text(saveMessage)
                             .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                     }
-                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
+                    Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 }
             }
@@ -1797,22 +1797,22 @@ struct ZiweiPosterSheetView: View {
 
                 if fileURL != nil, let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview("紫微命盘海报", image: Image(uiImage: img))) {
-                        Label("保存 / 分享高清紫微命盘海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                        Label("分享海报", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
                         PosterPhotoSaver.save(img) { saveMessage = $0 }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(KyPrimaryButton())
+                    .buttonStyle(.bordered)
+                    .tint(Ky.qingdai)
                     if let saveMessage {
                         Text(saveMessage)
                             .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                     }
-                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
+                    Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 } else {
                     ProgressView("正在渲染 1080宽长图海报…")
@@ -2108,22 +2108,22 @@ struct HeCanPosterSheetView: View {
 
                 if fileURL != nil, let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview("合参海报", image: Image(uiImage: img))) {
-                        Label("保存 / 分享高清合参海报（1080宽 · 自适应长图）", systemImage: "square.and.arrow.down")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                        Label("分享海报", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
                         PosterPhotoSaver.save(img) { saveMessage = $0 }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(KyPrimaryButton())
+                    .buttonStyle(.bordered)
+                    .tint(Ky.qingdai)
                     if let saveMessage {
                         Text(saveMessage)
                             .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                     }
-                    Text("分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。")
+                    Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 } else {
                     ProgressView("正在渲染 1080宽长图海报…")
