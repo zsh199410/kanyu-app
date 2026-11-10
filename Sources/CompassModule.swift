@@ -14,6 +14,16 @@ import CoreLocation
 import CoreMotion
 import UIKit
 
+enum CompassManualDeclinationInput {
+    /// nil 表示留空自动；invalid 表示已填写但不可用于校正。
+    static func isInvalid(_ input: String) -> Bool {
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return false }
+        guard let value = Double(text) else { return true }
+        return !value.isFinite || !(-180.0...180.0).contains(value)
+    }
+}
+
 // MARK: - WMM2025 磁偏角现算（Swift 移植，与 Web app/compass.py 同式）
 //
 // 两个 a 不可混用：球谐展开用 WMM 地磁参考半径 a＝6,371,200 m（CompassWMMTable.referenceRadius），
@@ -326,10 +336,7 @@ struct CompassStandaloneView: View {
     @State private var calibrationStep = 0
 
     private var manualDeclinationInvalid: Bool {
-        let text = manualDeclination.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return false }
-        guard let value = Double(text) else { return true }
-        return !value.isFinite || !(-180.0...180.0).contains(value)
+        CompassManualDeclinationInput.isInvalid(manualDeclination)
     }
 
     private var resolvedBearing: CompassBearingResolver.Result? {
