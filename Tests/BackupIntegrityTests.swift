@@ -97,7 +97,7 @@ final class BackupIntegrityTests: XCTestCase {
                 snapshot: { state },
                 apply: {
                     state["people"] = "new"
-                    throw CocoaError(.fileWriteNoSpace)
+                    throw CocoaError(.fileWriteOutOfSpace)
                 },
                 rollback: { snapshot in
                     rollbackCount += 1
@@ -135,7 +135,7 @@ final class BackupIntegrityTests: XCTestCase {
         XCTAssertThrowsError(
             try BackupRestoreTransaction.perform(
                 snapshot: { "old" },
-                apply: { throw CocoaError(.fileWriteNoSpace) },
+                apply: { throw CocoaError(.fileWriteOutOfSpace) },
                 rollback: { _ in throw CocoaError(.fileWriteUnknown) }
             )
         ) { error in
