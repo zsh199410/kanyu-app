@@ -212,7 +212,10 @@ struct CompassLock: Codable, Equatable {
         if declinationSource == "manual" {
             return "手动填入"
         }
-        return "WMM2025 现算"
+        if declinationSource == "wmm2025" {
+            return "WMM2025 现算"
+        }
+        return "磁偏角来源未知"
     }
 }
 
