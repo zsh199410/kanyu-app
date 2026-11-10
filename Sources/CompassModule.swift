@@ -181,7 +181,9 @@ enum CompassBearingResolver {
 enum CompassSampleReceipt {
     static func matches(_ receipt: (source: String, correction: Double),
                         current: CompassBearingResolver.Result?) -> Bool {
-        guard let current, current.source == receipt.source else { return false }
+        guard let current, current.source == receipt.source,
+              receipt.correction.isFinite, current.correction.isFinite,
+              current.trueNorth.isFinite else { return false }
         // Device heading correction varies naturally with sensor noise; source is the stable contract.
         if receipt.source == "device" { return true }
         return abs(current.correction - receipt.correction) <= 0.25
