@@ -2,6 +2,31 @@ import XCTest
 @testable import Kanyu
 
 final class CompassBearingResolverTests: XCTestCase {
+    func testManualTextValidationDistinguishesEmptyInvalidAndValid() {
+        for text in ["", "  ", "\n"] {
+            XCTAssertFalse(CompassManualDeclinationInput.isInvalid(text))
+        }
+        for text in ["abc", "12abc", "NaN", "inf", "181", "-181", "1,5"] {
+            XCTAssertTrue(CompassManualDeclinationInput.isInvalid(text), "Expected invalid: \(text)")
+        }
+        for text in ["0", "-3.3", " 180 ", "-180", "+5"] {
+            XCTAssertFalse(CompassManualDeclinationInput.isInvalid(text), "Expected valid: \(text)")
+        }
+    }
+
+    func testManualWhitespaceParsingPreservesExplicitCorrection() {
+        XCTAssertNil(CompassManualDeclinationInput.value(""))
+        XCTAssertNil(CompassManualDeclinationInput.value("   "))
+        XCTAssertEqual(CompassManualDeclinationInput.value("  -3.3  "), -3.3)
+        XCTAssertEqual(CompassManualDeclinationInput.value("\n+5\t"), 5)
+        XCTAssertEqual(CompassManualDeclinationInput.value(" 180 "), 180)
+        XCTAssertNil(CompassManualDeclinationInput.value("abc"))
+        XCTAssertNil(CompassManualDeclinationInput.value("NaN"))
+        XCTAssertNil(CompassManualDeclinationInput.value("181"))
+        XCTAssertTrue(CompassManualDeclinationInput.isInvalid("  181  "))
+        XCTAssertFalse(CompassManualDeclinationInput.isInvalid("  -3.3  "))
+    }
+
     func testMagneticAloneDoesNotInventTrueNorth() {
         XCTAssertNil(CompassBearingResolver.resolve(manual: nil, magnetic: 90, deviceTrue: -1,
                                                    latitude: nil, longitude: nil, year: 2026))
@@ -30,6 +55,17 @@ final class CompassBearingResolverTests: XCTestCase {
         }
     }
 
+    func testInvalidExplicitManualDoesNotSilentlyUseDeviceOrWMM() {
+        for value in [Double.nan, .infinity, -.infinity, 181, -181] {
+            XCTAssertNil(CompassBearingResolver.resolve(manual: value, magnetic: 10, deviceTrue: 15,
+                                                       latitude: 30.654, longitude: 107.77, year: 2026),
+                         "Invalid manual correction must not fall back to a different source")
+        }
+        let automatic = CompassBearingResolver.resolve(manual: nil, magnetic: 10, deviceTrue: 15,
+                                                       latitude: 30.654, longitude: 107.77, year: 2026)
+        XCTAssertEqual(automatic?.source, "device")
+    }
+
     func testModelNeedsValidCoordinatesAndValidEpoch() throws {
         XCTAssertNil(CompassBearingResolver.resolve(manual: nil, magnetic: 10, deviceTrue: -1,
                                                    latitude: 30, longitude: nil, year: 2026))
@@ -49,5 +85,54 @@ final class CompassBearingResolverTests: XCTestCase {
             XCTAssertNil(CompassBearingResolver.resolve(manual: 5, magnetic: magnetic, deviceTrue: 10,
                                                        latitude: nil, longitude: nil, year: 2026))
         }
+    }
+
+    func testReceiptRejectsSourceSwitchDuringSampling() throws {
+        let initial = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: 5, magnetic: 90, deviceTrue: -1,
+            latitude: nil, longitude: nil, year: 2026))
+        let changed = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: nil, magnetic: 90, deviceTrue: 95,
+            latitude: nil, longitude: nil, year: 2026))
+        let receipt = (source: initial.source, correction: initial.correction)
+        XCTAssertTrue(CompassSampleReceipt.matches(receipt, current: initial))
+        XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: changed))
+        XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: nil))
+    }
+
+    func testReceiptRejectsEvenSmallManualCorrectionChanges() throws {
+        let initial = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: 5, magnetic: 90, deviceTrue: -1,
+            latitude: nil, longitude: nil, year: 2026))
+        let within = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: 5.1, magnetic: 90, deviceTrue: -1,
+            latitude: nil, longitude: nil, year: 2026))
+        let changed = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: 6, magnetic: 90, deviceTrue: -1,
+            latitude: nil, longitude: nil, year: 2026))
+        let receipt = (source: initial.source, correction: initial.correction)
+        XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: within))
+        XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: changed))
+    }
+
+    func testReceiptRejectsNonFiniteValuesIncludingDeviceSource() {
+        let valid = CompassBearingResolver.Result(trueNorth: 95, correction: 5, source: "device")
+        let invalidCorrection = CompassBearingResolver.Result(trueNorth: 95, correction: .nan, source: "device")
+        let invalidBearing = CompassBearingResolver.Result(trueNorth: .infinity, correction: 5, source: "device")
+        XCTAssertFalse(CompassSampleReceipt.matches((source: "device", correction: .nan), current: valid))
+        XCTAssertFalse(CompassSampleReceipt.matches((source: "device", correction: 5), current: invalidCorrection))
+        XCTAssertFalse(CompassSampleReceipt.matches((source: "device", correction: 5), current: invalidBearing))
+        XCTAssertTrue(CompassSampleReceipt.matches((source: "device", correction: 5), current: valid))
+    }
+
+    func testDeviceReceiptAllowsHeadingNoiseWithoutChangingSource() throws {
+        let initial = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: nil, magnetic: 90, deviceTrue: 95,
+            latitude: nil, longitude: nil, year: 2026))
+        let next = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: nil, magnetic: 91, deviceTrue: 97,
+            latitude: nil, longitude: nil, year: 2026))
+        XCTAssertTrue(CompassSampleReceipt.matches(
+            (source: initial.source, correction: initial.correction), current: next))
     }
 }
