@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - qa/nested-ipa-ci-20261110
+      - qa/close-ipa-hash-handle-20261110
   pull_request:
     paths:
       - 'scripts/verify_ipa_artifact.py'
@@ -23,7 +24,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run all artifact verifier regression tests
+      - name: Run all artifact verifier regression tests (resource warnings are errors)
+        env:
+          PYTHONWARNINGS: error::ResourceWarning
         run: python -m unittest discover -s scripts/tests -v
       - name: Syntax compile
         run: python -m compileall -q scripts/verify_ipa_artifact.py scripts/tests
