@@ -30,6 +30,17 @@ final class CompassBearingResolverTests: XCTestCase {
         }
     }
 
+    func testInvalidExplicitManualDoesNotSilentlyUseDeviceOrWMM() {
+        for value in [Double.nan, .infinity, -.infinity, 181, -181] {
+            XCTAssertNil(CompassBearingResolver.resolve(manual: value, magnetic: 10, deviceTrue: 15,
+                                                       latitude: 30.654, longitude: 107.77, year: 2026),
+                         "Invalid manual correction must not fall back to a different source")
+        }
+        let automatic = CompassBearingResolver.resolve(manual: nil, magnetic: 10, deviceTrue: 15,
+                                                       latitude: 30.654, longitude: 107.77, year: 2026)
+        XCTAssertEqual(automatic?.source, "device")
+    }
+
     func testModelNeedsValidCoordinatesAndValidEpoch() throws {
         XCTAssertNil(CompassBearingResolver.resolve(manual: nil, magnetic: 10, deviceTrue: -1,
                                                    latitude: 30, longitude: nil, year: 2026))
