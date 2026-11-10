@@ -1,7 +1,50 @@
+import SwiftUI
+
+struct ContextualToolDestination: View {
+    let item: ToolItem
+    @EnvironmentObject var peopleStore: PeopleStore
+    @State private var showingNewPerson = false
+    static let chartRequiredIDs: Set<String> = [
+        "astro", "yearly", "interpret", "chartdepth", "poster", "chenggu", "lucky", "annual"
+    ]
+
+
+    var body: some View {
+        content.sheet(isPresented: $showingNewPerson) {
+            PersonFormView(store: peopleStore, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970),
+                           onSaved: { showingNewPerson = false })
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        if Self.chartRequiredIDs.contains(item.id), peopleStore.currentPerson == nil {
+            VStack(spacing: 16) {
+                ContentUnavailableView("请先选择人物档案", systemImage: "person.crop.circle.badge.questionmark",
+                    description: Text("此工具需要出生资料。请先创建或选择人物。"))
+                Button("新建人物档案") { showingNewPerson = true }
+                    .buttonStyle(.borderedProminent).padding(.bottom, 24)
+            }
+        } else if let person = peopleStore.currentPerson {
+            toolDestination(
+                for: item,
+                person: person,
+                chart: BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,
+                                         longitude: person.useLongitude ? person.longitude : nil)
+            )
+        } else {
+            // Independent tools ignore the chart argument. A placeholder is never
+            // presented as a person's chart; chart-dependent routes are blocked above.
+            let placeholder = Person(name: "工具上下文", relation: "工具", gender: "M", birthEpoch: 0)
+            toolDestination(for: item, person: placeholder,
+                            chart: BaziEngine.paipan(clock: placeholder.birthDate,
+                                                      gender: placeholder.gender, longitude: nil))
+        }
+    }
+}
+
 // 全部工具二级页（UI 2.0 P0 新建，2026-11-08）：收纳审计 §3.2 的全部专项工具，零删除。
 // 分组：排盘／历法择吉／知识库／工具；含搜索（KySearchBar）与分类（KyFilterBar）。
 // 「最近使用」读 UserDefaults 键 "recentTools.v1"（人物／工具 id 列表，见 AllToolsData）。
-import SwiftUI
 
 // MARK: - 工具清单数据（HomePageView 06 层共用）
 
@@ -222,35 +265,8 @@ struct AllToolsView: View {
 
     private var groups: [ToolGroup] { [.all, .paipan, .calendar, .knowledge, .tools] }
 
-    // Only these destinations consume a personal chart directly. Never invent a
-    // birth timestamp when no person is selected (Issue #14).
-    private static let chartRequiredIDs: Set<String> = [
-        "astro", "yearly", "interpret", "chartdepth", "poster", "chenggu", "lucky", "annual"
-    ]
-
-    @ViewBuilder
     private func destination(for item: ToolItem) -> some View {
-        if Self.chartRequiredIDs.contains(item.id), peopleStore.currentPerson == nil {
-            ContentUnavailableView(
-                "请先选择人物档案",
-                systemImage: "person.crop.circle.badge.questionmark",
-                description: Text("此工具需要真实出生资料。请先在人物档案中创建或选择人物，不会使用当前时间冒充出生时间。")
-            )
-        } else if let person = peopleStore.currentPerson {
-            toolDestination(
-                for: item,
-                person: person,
-                chart: BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,
-                                         longitude: person.useLongitude ? person.longitude : nil)
-            )
-        } else {
-            // Independent tools ignore the chart argument. A placeholder is never
-            // presented as a person's chart; chart-dependent routes are blocked above.
-            let placeholder = Person(name: "工具上下文", relation: "工具", gender: "M", birthEpoch: 0)
-            toolDestination(for: item, person: placeholder,
-                            chart: BaziEngine.paipan(clock: placeholder.birthDate,
-                                                      gender: placeholder.gender, longitude: nil))
-        }
+        ContextualToolDestination(item: item)
     }
 
     private var filterOptions: [(title: String, count: Int?)] {
