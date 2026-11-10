@@ -50,4 +50,43 @@ final class CompassBearingResolverTests: XCTestCase {
                                                        latitude: nil, longitude: nil, year: 2026))
         }
     }
+
+    func testReceiptRejectsSourceSwitchDuringSampling() throws {
+        let initial = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: 5, magnetic: 90, deviceTrue: -1,
+            latitude: nil, longitude: nil, year: 2026))
+        let changed = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: nil, magnetic: 90, deviceTrue: 95,
+            latitude: nil, longitude: nil, year: 2026))
+        let receipt = (source: initial.source, correction: initial.correction)
+        XCTAssertTrue(CompassSampleReceipt.matches(receipt, current: initial))
+        XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: changed))
+        XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: nil))
+    }
+
+    func testReceiptRejectsManualCorrectionChangeButAllowsSmallDrift() throws {
+        let initial = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: 5, magnetic: 90, deviceTrue: -1,
+            latitude: nil, longitude: nil, year: 2026))
+        let within = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: 5.1, magnetic: 90, deviceTrue: -1,
+            latitude: nil, longitude: nil, year: 2026))
+        let changed = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: 6, magnetic: 90, deviceTrue: -1,
+            latitude: nil, longitude: nil, year: 2026))
+        let receipt = (source: initial.source, correction: initial.correction)
+        XCTAssertTrue(CompassSampleReceipt.matches(receipt, current: within))
+        XCTAssertFalse(CompassSampleReceipt.matches(receipt, current: changed))
+    }
+
+    func testDeviceReceiptAllowsHeadingNoiseWithoutChangingSource() throws {
+        let initial = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: nil, magnetic: 90, deviceTrue: 95,
+            latitude: nil, longitude: nil, year: 2026))
+        let next = try XCTUnwrap(CompassBearingResolver.resolve(
+            manual: nil, magnetic: 91, deviceTrue: 97,
+            latitude: nil, longitude: nil, year: 2026))
+        XCTAssertTrue(CompassSampleReceipt.matches(
+            (source: initial.source, correction: initial.correction), current: next))
+    }
 }
