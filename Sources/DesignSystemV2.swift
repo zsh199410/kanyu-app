@@ -317,7 +317,8 @@ extension View {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Ky.line.opacity(0.9), lineWidth: 0.8)
+                    .strokeBorder(Ky.line, lineWidth: 1)
+                    .allowsHitTesting(false)
             )
     }
 
@@ -420,3 +421,4 @@ struct CaliberSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+

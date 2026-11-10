@@ -1325,16 +1325,21 @@ enum KyMotion {
 }
 
 struct KyPrimaryButton: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(.headline, design: .serif))
             .fontWeight(.semibold)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13.5)
-            .background(Ky.qingdai)
-            .foregroundStyle(Color.white)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(isEnabled ? Ky.qingdai : Ky.elevated)
+            .foregroundStyle(isEnabled ? Color.white : Ky.sub)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1.0)
             .opacity(configuration.isPressed ? 0.86 : 1)
     }
 }
@@ -3789,3 +3794,4 @@ struct CaptureView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { tiltWarn = "" }
     }
 }
+

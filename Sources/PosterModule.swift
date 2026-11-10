@@ -157,16 +157,21 @@ private struct PosterBrandFooter: View {
     let pal: PosterPalette
     let subtitle: String
     var body: some View {
-        HStack(alignment: .bottom) {
+        VStack(spacing: 14) {
+            Rectangle().fill(pal.accent.opacity(0.45)).frame(height: 1)
+            HStack(alignment: .center, spacing: 16) {
             PosterSealView()
             Spacer()
-            VStack(alignment: .trailing, spacing: 3) {
+            VStack(alignment: .trailing, spacing: 5) {
                 Text("三术合参 · 堪舆命理院 谨制")
                     .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                 Text(subtitle)
                     .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
                 Text(Date.now.formatted(date: .abbreviated, time: .omitted))
-                    .font(.system(size: 10)).foregroundStyle(pal.sub.opacity(0.8))
+                    .font(.system(size: 10).monospacedDigit()).foregroundStyle(pal.sub)
+            }
+            .multilineTextAlignment(.trailing)
+            .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.horizontal, 48).padding(.bottom, 42)
@@ -2144,3 +2149,4 @@ struct HeCanPosterSheetView: View {
         }
     }
 }
+
