@@ -1792,13 +1792,15 @@ struct ZiweiPosterSheetView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
-                    if renderFailed {
-                        Button("海报生成失败，点此重试") { render() }
-                            .buttonStyle(.bordered)
-                    } else {
-                        ProgressView("正在生成海报…")
+                    Group {
+                        if renderFailed {
+                            Button("海报生成失败，点此重试") { render() }
+                                .buttonStyle(.bordered)
+                        } else {
+                            ProgressView("正在生成海报…")
+                        }
                     }
-                        .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity)
                 }
 
                 if let img = previewImage {
@@ -2103,13 +2105,15 @@ struct HeCanPosterSheetView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
-                    if renderFailed {
-                        Button("海报生成失败，点此重试") { render() }
-                            .buttonStyle(.bordered)
-                    } else {
-                        ProgressView("正在生成海报…")
+                    Group {
+                        if renderFailed {
+                            Button("海报生成失败，点此重试") { render() }
+                                .buttonStyle(.bordered)
+                        } else {
+                            ProgressView("正在生成海报…")
+                        }
                     }
-                        .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity)
                 }
 
                 if let img = previewImage {
