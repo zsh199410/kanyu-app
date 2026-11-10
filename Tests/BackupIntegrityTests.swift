@@ -88,5 +88,62 @@ final class BackupIntegrityTests: XCTestCase {
         }
     }
 
+    func testRestoreTransactionRollsBackAllStateWhenLaterWriteFails() throws {
+        var state = ["people": "old", "forecasts": "old"]
+        var rollbackCount = 0
+
+        XCTAssertThrowsError(
+            try BackupRestoreTransaction.perform(
+                snapshot: { state },
+                apply: {
+                    state["people"] = "new"
+                    throw CocoaError(.fileWriteNoSpace)
+                },
+                rollback: { snapshot in
+                    rollbackCount += 1
+                    state = snapshot
+                }
+            )
+        )
+
+        XCTAssertEqual(state, ["people": "old", "forecasts": "old"])
+        XCTAssertEqual(rollbackCount, 1)
+    }
+
+    func testRestoreTransactionDoesNotRollbackAfterSuccessfulCommit() throws {
+        var state = ["people": "old"]
+        var rollbackCount = 0
+
+        let result = try BackupRestoreTransaction.perform(
+            snapshot: { state },
+            apply: {
+                state["people"] = "new"
+                return "committed"
+            },
+            rollback: { snapshot in
+                rollbackCount += 1
+                state = snapshot
+            }
+        )
+
+        XCTAssertEqual(result, "committed")
+        XCTAssertEqual(state, ["people": "new"])
+        XCTAssertEqual(rollbackCount, 0)
+    }
+
+    func testRestoreTransactionReportsRollbackFailure() {
+        XCTAssertThrowsError(
+            try BackupRestoreTransaction.perform(
+                snapshot: { "old" },
+                apply: { throw CocoaError(.fileWriteNoSpace) },
+                rollback: { _ in throw CocoaError(.fileWriteUnknown) }
+            )
+        ) { error in
+            guard case BackupRestoreTransactionError.rollbackFailed = error else {
+                return XCTFail("Expected rollbackFailed, got \(error)")
+            }
+        }
+    }
+
 }
 
