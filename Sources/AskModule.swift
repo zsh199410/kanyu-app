@@ -46,7 +46,6 @@ struct AskResponse: Decodable {
         if refused { return "拒绝" }
         if degraded { return "降级" }
         if let c = confidence, ["高", "中", "降级", "拒绝"].contains(c) { return c }
-        if answer.contains("盘上无据") { return "中" }
         return "未标注"
     }
 
@@ -54,7 +53,6 @@ struct AskResponse: Decodable {
         if let r = confidenceReason, !r.isEmpty { return r }
         if refused { return "健康落病名／寿数断语类问题，调模型前直接拒绝，不作答。" }
         if degraded { return "降级原因：" + (degradedReason ?? "未注明") + "；答案为事实包原文或提示语，非模型组织结论。" }
-        if answer.contains("盘上无据") { return "后校验通过，但答案含明说无据的句子，部分结论无事实支撑。" }
         return "服务端未提供逐句校验说明；请核对下方盘面事实。可信度标签不代表现实事件发生概率。"
     }
 }
