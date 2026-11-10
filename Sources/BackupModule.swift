@@ -168,6 +168,9 @@ struct BackupView: View {
             return validationNote + " " + result
         } catch {
             try? fm.removeItem(at: tmp)
+            if case BackupRestoreTransactionError.rollbackFailed = error {
+                return "恢复失败且回滚未完成：\(error.localizedDescription)。请勿继续修改数据，并从原备份重新恢复。"
+            }
             return "恢复失败：\(error.localizedDescription)。已回滚，本机原数据保持不变。"
         }
     }
@@ -367,6 +370,9 @@ struct BackupView: View {
         do {
             return try importFiles(from: dir)
         } catch {
+            if case BackupRestoreTransactionError.rollbackFailed = error {
+                return "iCloud 恢复失败且回滚未完成：\(error.localizedDescription)。请勿继续修改数据，并从原备份重新恢复。"
+            }
             return "iCloud 恢复失败：\(error.localizedDescription)。已回滚，本机原数据保持不变。"
         }
     }
