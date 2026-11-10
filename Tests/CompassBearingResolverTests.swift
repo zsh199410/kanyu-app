@@ -18,7 +18,7 @@ final class CompassBearingResolverTests: XCTestCase {
         XCTAssertNil(CompassManualDeclinationInput.value(""))
         XCTAssertNil(CompassManualDeclinationInput.value("   "))
         XCTAssertEqual(CompassManualDeclinationInput.value("  -3.3  "), -3.3)
-        XCTAssertEqual(CompassManualDeclinationInput.value("\\n+5\\t"), 5)
+        XCTAssertEqual(CompassManualDeclinationInput.value("\n+5\t"), 5)
         XCTAssertEqual(CompassManualDeclinationInput.value(" 180 "), 180)
         XCTAssertNil(CompassManualDeclinationInput.value("abc"))
         XCTAssertNil(CompassManualDeclinationInput.value("NaN"))
