@@ -698,7 +698,11 @@ struct CompassStandaloneView: View {
             collectHint = "读数无效，请重试"
             return
         }
-        let info = declinationInfo
+        guard let current = resolvedBearing else {
+            collectHint = "真北校正已不可用，本次未锁定；请重新定位或填写有效磁偏角后重测。"
+            return
+        }
+        let info = (value: current.correction, source: current.source)
         let lock = CompassLock(
             magnetic: meanM,
             trueNorth: meanT,
