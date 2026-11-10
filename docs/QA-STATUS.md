@@ -54,3 +54,10 @@
 - PR #31 head `be65a9893593e6e17ee152e010e9287ef2d1209f` 仍开放；本次查询该 head 的 PR 触发 workflow runs 返回空列表。合并前必须取得该精确 SHA 的 XCTest、XCUITest、设备 Release 与产物证据；不得用 #30 的 CI 代替。
 - PR #9 已合并，PR #8 被替代且关闭未合并，照片修复不重复整合。
 - 本节仅更新可追溯验收状态，不修改算法、业务代码、用户数据或 CI 门禁。后续每次集成须追加新 SHA 与日志证据，不覆盖历史。
+
+## 2026-11-11 罗盘集成 PR #31 独立核查
+
+- PR #31 head `be65a9893593e6e17ee152e010e9287ef2d1209f` 对应 [Actions Run #233](https://github.com/zsh199410/kanyu-app/actions/runs/42849773711)，状态 success。job 步骤确认 Unit and UI regression tests、Build (unsigned)、Package IPA、Upload artifact、Preserve verification evidence 均 success；Publish release 为 skipped。之前「未找到此 SHA 工作流」记录已过时。
+- artifact `verification-2b0b758a2c87e7a851e998439179468f37bc8e52`（ID 13782340401）和 `Kanyu-unsigned-ipa`（ID 13781497305）均存在且未过期，工作流记录 head SHA 为 `be65a989...`；验证证据命名为合成 merge SHA `2b0b758...`，两者必须在验收记录中区分。未下载校验 IPA 内部文件、未验证真机安装；不能提供已安装验证的 IPA。
+- 新发现待验风险：`Sources/CompassModule.swift` 的 `finishCollect()` 使用 `trueSamples` / `magSamples` 的圆周均值保存真北与磁北，但 `declination` 和 `declinationSource` 取结束时的 `resolvedBearing`。采样期间手动磁偏角、定位或设备真北来源改变时，保存的校正收据可能与已采样本不一致。应冻结采样期间的校正来源/值，变化时重启采样或拒绝锁定，并增加跨采样状态变化 XCTest、采样 UI 回归。此项为源码审查风险，尚未真机复现，不能直接宣称测量错误。
+- 仍需检查原始 tests.log 数量及失败数、合成 merge SHA 与 head 的代码差异、真机磁场/定位权限、无定位、模式切换、采样中状态变化和锁定记录重启读取。此文档更新不代表上述验证通过，也不批准 PR #31 合并。
