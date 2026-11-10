@@ -312,9 +312,11 @@ struct CompassStandaloneView: View {
         if location.trueHeading >= 0 {
             return location.trueHeading
         }
-        if location.magneticHeading >= 0 {
-            return CompassMath.normalize(location.magneticHeading + declinationInfo.value)
+        let correction = declinationInfo
+        if location.magneticHeading >= 0 && correction.source != "none" {
+            return CompassMath.normalize(location.magneticHeading + correction.value)
         }
+        // Magnetic north alone is not a true-north reading.
         return -1
     }
 
