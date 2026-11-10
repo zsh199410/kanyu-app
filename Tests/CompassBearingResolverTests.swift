@@ -14,6 +14,19 @@ final class CompassBearingResolverTests: XCTestCase {
         }
     }
 
+    func testManualWhitespaceParsingPreservesExplicitCorrection() {
+        XCTAssertNil(CompassManualDeclinationInput.value(""))
+        XCTAssertNil(CompassManualDeclinationInput.value("   "))
+        XCTAssertEqual(CompassManualDeclinationInput.value("  -3.3  "), -3.3)
+        XCTAssertEqual(CompassManualDeclinationInput.value("\\n+5\\t"), 5)
+        XCTAssertEqual(CompassManualDeclinationInput.value(" 180 "), 180)
+        XCTAssertNil(CompassManualDeclinationInput.value("abc"))
+        XCTAssertNil(CompassManualDeclinationInput.value("NaN"))
+        XCTAssertNil(CompassManualDeclinationInput.value("181"))
+        XCTAssertTrue(CompassManualDeclinationInput.isInvalid("  181  "))
+        XCTAssertFalse(CompassManualDeclinationInput.isInvalid("  -3.3  "))
+    }
+
     func testMagneticAloneDoesNotInventTrueNorth() {
         XCTAssertNil(CompassBearingResolver.resolve(manual: nil, magnetic: 90, deviceTrue: -1,
                                                    latitude: nil, longitude: nil, year: 2026))
