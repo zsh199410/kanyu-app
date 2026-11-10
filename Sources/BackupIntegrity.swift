@@ -86,3 +86,38 @@ enum BackupIntegrityError: LocalizedError, Equatable {
     }
 }
 
+
+
+enum BackupRestoreTransactionError: LocalizedError {
+    case rollbackFailed(original: Error, rollback: Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .rollbackFailed(let original, let rollback):
+            return "恢复失败（\(original.localizedDescription)），且回滚失败（\(rollback.localizedDescription)）"
+        }
+    }
+}
+
+/// Runs restore mutations as one logical transaction. A snapshot is captured before
+/// the first mutation and is restored if any later mutation fails.
+enum BackupRestoreTransaction {
+    static func perform<Snapshot, Result>(
+        snapshot: () throws -> Snapshot,
+        apply: () throws -> Result,
+        rollback: (Snapshot) throws -> Void
+    ) throws -> Result {
+        let captured = try snapshot()
+        do {
+            return try apply()
+        } catch {
+            let original = error
+            do {
+                try rollback(captured)
+            } catch {
+                throw BackupRestoreTransactionError.rollbackFailed(original: original, rollback: error)
+            }
+            throw original
+        }
+    }
+}
