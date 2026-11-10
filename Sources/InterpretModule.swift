@@ -1035,7 +1035,7 @@ struct InterpretView: View {
                     Text(m ? "已标：应验 ✓".scriptConverted : "已标：待回验".scriptConverted).font(.caption2).foregroundStyle(m ? Ky.jade : Ky.cinnabar)
                 }
                 Spacer()
-                Text("打标计入个人准确率".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
+                Text("仅为主观回验记录，不代表算法准确率".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
             }
         }
         .padding(.top, 2)
