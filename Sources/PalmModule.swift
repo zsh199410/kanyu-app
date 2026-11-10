@@ -1181,15 +1181,20 @@ struct PalmPosterSheetView: View {
     private func render() {
         let img = store.image(of: record)
         let view = PalmPosterView(record: record, image: img)
-        Task.detached(priority: .userInitiated) {
+        Task { @MainActor in
+            // ImageRenderer and SwiftUI view rendering are MainActor-isolated.
             let renderer = ImageRenderer(content: view)
             renderer.scale = 2.0
             guard let out = renderer.uiImage, let data = out.pngData() else { return }
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("palm-poster-\(record.id.uuidString).png")
-            try? data.write(to: url, options: .atomic)
-            await MainActor.run {
+            do {
+                try data.write(to: url, options: .atomic)
                 previewImage = out
                 fileURL = url
+            } catch {
+                // Do not expose a sharing URL when the poster was not saved.
+                previewImage = out
+                fileURL = nil
             }
         }
     }
