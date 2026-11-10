@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 /// 数据备份与恢复中心：本地 ZIP 导出／导入＋ iCloud 云端同步。
 /// 备份内容：人物档案 people.json、前瞻验真账本 forecasts.json、手相面相记录 palm_records.json、
-/// 勘察案件 AppData/index.json、验真打标 verify-marks.json。照片原件不在包内（体积大，另行导出）。
+/// 勘察案件 AppData/index.json、按人物隔离的回验标记。照片原件不在包内（体积大，另行导出）。
 struct BackupView: View {
     @EnvironmentObject var peopleStore: PeopleStore
     @StateObject private var forecastStore = ForecastStore()
@@ -81,7 +81,7 @@ struct BackupView: View {
                     if !icloudNote.isEmpty { Text(icloudNote.scriptConverted).font(.caption).foregroundStyle(Ky.jade) }
                 }.kyCard()
 
-                Text("口径：备份只含本机 JSON 数据与验真打标，不含照片原件与账号证书；恢复时同 ID 记录自动跳过，不会重复导入。".scriptConverted)
+                Text("口径：新备份带文件清单与 SHA-256 校验，包含本机 JSON 数据及人物隔离回验标记；旧版全局标记只保留为待归属。不含照片原件与账号证书；恢复时同 ID 记录自动跳过。".scriptConverted)
                     .font(.caption2).foregroundStyle(Ky.sub)
             }
             .padding(16).padding(.bottom, 100)
@@ -108,15 +108,22 @@ struct BackupView: View {
                 try fm.copyItem(at: f.url, to: tmp.appendingPathComponent(f.name))
                 count += 1
             }
-            if let marks = UserDefaults.standard.dictionary(forKey: "kanyu.verifyMarks.v1") {
+            if let marks = UserDefaults.standard.dictionary(forKey: VerifyStore.key) {
                 let data = try JSONSerialization.data(withJSONObject: marks)
-                try data.write(to: tmp.appendingPathComponent("verify-marks.json"), options: .atomic)
+                try data.write(to: tmp.appendingPathComponent("verify-marks-v2.json"), options: .atomic)
+                count += 1
+            }
+            // 旧版全局标题标记仅原样保全，不迁入 v2，避免把历史标记错归当前人物。
+            if let legacy = UserDefaults.standard.dictionary(forKey: VerifyStore.legacyKey) {
+                let data = try JSONSerialization.data(withJSONObject: legacy)
+                try data.write(to: tmp.appendingPathComponent("verify-marks-v1-unassigned.json"), options: .atomic)
                 count += 1
             }
             guard count > 0 else {
                 try? fm.removeItem(at: tmp)
                 return nil
             }
+            try BackupIntegrity.writeManifest(in: tmp, fileManager: fm)
         } catch {
             try? fm.removeItem(at: tmp)
             return nil
@@ -142,9 +149,22 @@ struct BackupView: View {
         } catch {
             return "解压失败：不是有效的备份包。"
         }
-        let result = importFiles(from: tmp)
+        let roots = (try? fm.contentsOfDirectory(at: tmp, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
+        let payloadDir = fm.fileExists(atPath: tmp.appendingPathComponent(BackupIntegrity.manifestName).path)
+            ? tmp
+            : (roots.first { fm.fileExists(atPath: $0.appendingPathComponent(BackupIntegrity.manifestName).path) } ?? tmp)
+        let validationNote: String
+        do {
+            validationNote = try BackupIntegrity.validate(in: payloadDir, fileManager: fm) == nil
+                ? "旧版备份未含完整性清单；已按兼容模式恢复。"
+                : "完整性校验通过。"
+        } catch {
+            try? fm.removeItem(at: tmp)
+            return "恢复已停止：\(error.localizedDescription)。本机原数据未改动。"
+        }
+        let result = importFiles(from: payloadDir)
         try? fm.removeItem(at: tmp)
-        return result
+        return validationNote + " " + result
     }
 
     /// 从已解开的目录导入四类数据；供 ZIP 恢复与 iCloud 恢复共用。
@@ -181,10 +201,17 @@ struct BackupView: View {
                 parts.append("勘察案件恢复失败：\(error.localizedDescription)")
             }
         }
-        if let d = try? Data(contentsOf: dir.appendingPathComponent("verify-marks.json")),
+        if let d = try? Data(contentsOf: dir.appendingPathComponent("verify-marks-v2.json")),
            let marks = try? JSONSerialization.jsonObject(with: d) as? [String: Bool] {
-            UserDefaults.standard.set(marks, forKey: "kanyu.verifyMarks.v1")
-            parts.append("验真打标已恢复")
+            UserDefaults.standard.set(marks, forKey: VerifyStore.key)
+            parts.append("人物隔离回验标记已恢复")
+        }
+        let legacyURLs = ["verify-marks-v1-unassigned.json", "verify-marks.json"]
+        if let legacyURL = legacyURLs.map({ dir.appendingPathComponent($0) }).first(where: { fm.fileExists(atPath: $0.path) }),
+           let d = try? Data(contentsOf: legacyURL),
+           let marks = try? JSONSerialization.jsonObject(with: d) as? [String: Bool] {
+            UserDefaults.standard.set(marks, forKey: VerifyStore.legacyKey)
+            parts.append("旧回验标记已保留为待归属（未自动套用）")
         }
         return parts.isEmpty ? "包里没有可识别的数据文件。" : "恢复结果：" + parts.joined(separator: " · ")
     }
@@ -231,3 +258,4 @@ struct BackupView: View {
         return importFiles(from: dir)
     }
 }
+
