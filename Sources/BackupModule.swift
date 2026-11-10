@@ -162,57 +162,161 @@ struct BackupView: View {
             try? fm.removeItem(at: tmp)
             return "恢复已停止：\(error.localizedDescription)。本机原数据未改动。"
         }
-        let result = importFiles(from: payloadDir)
-        try? fm.removeItem(at: tmp)
-        return validationNote + " " + result
+        do {
+            let result = try importFiles(from: payloadDir)
+            try? fm.removeItem(at: tmp)
+            return validationNote + " " + result
+        } catch {
+            try? fm.removeItem(at: tmp)
+            return "恢复失败：\(error.localizedDescription)。已回滚，本机原数据保持不变。"
+        }
     }
 
-    /// 从已解开的目录导入四类数据；供 ZIP 恢复与 iCloud 恢复共用。
-    private func importFiles(from dir: URL) -> String {
+    private struct RestoreSnapshot {
+        let people: [Person]
+        let forecasts: [ForecastEntry]
+        let palms: [PalmRecord]
+        let existingFiles: Set<String>
+        let fileData: [String: Data]
+        let verifyMarks: [String: Bool]?
+        let legacyMarks: [String: Bool]?
+    }
+
+    private var restoreFileNames: [String] {
+        ["people.json", "forecasts.json", "palm_records.json", "AppData/index.json"]
+    }
+
+    private func captureRestoreSnapshot(fileManager fm: FileManager) throws -> RestoreSnapshot {
+        var existing = Set<String>()
+        var data: [String: Data] = [:]
+        for name in restoreFileNames {
+            let url = docs.appendingPathComponent(name)
+            if fm.fileExists(atPath: url.path) {
+                existing.insert(name)
+                data[name] = try Data(contentsOf: url)
+            }
+        }
+        return RestoreSnapshot(
+            people: peopleStore.people,
+            forecasts: forecastStore.entries,
+            palms: palmStore.records,
+            existingFiles: existing,
+            fileData: data,
+            verifyMarks: UserDefaults.standard.dictionary(forKey: VerifyStore.key) as? [String: Bool],
+            legacyMarks: UserDefaults.standard.dictionary(forKey: VerifyStore.legacyKey) as? [String: Bool]
+        )
+    }
+
+    private func rollbackRestore(_ snapshot: RestoreSnapshot, fileManager fm: FileManager) throws {
+        for name in restoreFileNames {
+            let url = docs.appendingPathComponent(name)
+            if snapshot.existingFiles.contains(name) {
+                guard let data = snapshot.fileData[name] else { throw CocoaError(.fileReadCorruptFile) }
+                try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try data.write(to: url, options: .atomic)
+            } else if fm.fileExists(atPath: url.path) {
+                try fm.removeItem(at: url)
+            }
+        }
+        peopleStore.people = snapshot.people
+        forecastStore.entries = snapshot.forecasts
+        palmStore.records = snapshot.palms
+        if let marks = snapshot.verifyMarks {
+            UserDefaults.standard.set(marks, forKey: VerifyStore.key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: VerifyStore.key)
+        }
+        if let marks = snapshot.legacyMarks {
+            UserDefaults.standard.set(marks, forKey: VerifyStore.legacyKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: VerifyStore.legacyKey)
+        }
+    }
+
+    /// 从已解开的目录导入四类数据；任一解析或写入失败时回滚全部内存、文件与回验标记。
+    private func importFiles(from dir: URL) throws -> String {
         let fm = FileManager.default
+        return try BackupRestoreTransaction.perform(
+            snapshot: { try captureRestoreSnapshot(fileManager: fm) },
+            apply: { try applyImportFiles(from: dir, fileManager: fm) },
+            rollback: { try rollbackRestore($0, fileManager: fm) }
+        )
+    }
+
+    private func applyImportFiles(from dir: URL, fileManager fm: FileManager) throws -> String {
         var parts: [String] = []
-        if let d = try? Data(contentsOf: dir.appendingPathComponent("people.json")) {
-            let n = peopleStore.importData(d)
-            parts.append("人物 \(n) 位")
-        }
-        if let d = try? Data(contentsOf: dir.appendingPathComponent("forecasts.json")) {
-            let n = forecastStore.importData(d)
-            parts.append("前瞻 \(n) 条")
-        }
-        if let d = try? Data(contentsOf: dir.appendingPathComponent("palm_records.json")) {
-            var list: [PalmRecord]? = try? JSONDecoder().decode([PalmRecord].self, from: d)
-            if list == nil, let w = try? JSONDecoder().decode(PalmExport.self, from: d) { list = w.records }
-            if let list = list {
-                var n = 0
-                for r in list where !palmStore.records.contains(where: { $0.id == r.id }) {
-                    palmStore.records.append(r); n += 1
-                }
-                if n > 0 { palmStore.save() }
-                parts.append("手相面相 \(n) 条")
+        let decoder = JSONDecoder()
+
+        let peopleURL = dir.appendingPathComponent("people.json")
+        if fm.fileExists(atPath: peopleURL.path) {
+            let data = try Data(contentsOf: peopleURL)
+            guard (try? decoder.decode(PeopleExport.self, from: data)) != nil
+                    || (try? decoder.decode([Person].self, from: data)) != nil else {
+                throw CocoaError(.fileReadCorruptFile, userInfo: [NSFilePathErrorKey: peopleURL.path])
             }
+            parts.append("人物 \(peopleStore.importData(data)) 位")
         }
-        if let d = try? Data(contentsOf: dir.appendingPathComponent("index.json")) {
-            let dest = docs.appendingPathComponent("AppData/index.json")
-            do {
-                try fm.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try d.write(to: dest, options: .atomic)
-                parts.append("勘察案件已恢复（重启 App 后生效）")
-            } catch {
-                parts.append("勘察案件恢复失败：\(error.localizedDescription)")
+
+        let forecastsURL = dir.appendingPathComponent("forecasts.json")
+        if fm.fileExists(atPath: forecastsURL.path) {
+            let data = try Data(contentsOf: forecastsURL)
+            guard (try? decoder.decode(ForecastExport.self, from: data)) != nil
+                    || (try? decoder.decode([ForecastEntry].self, from: data)) != nil else {
+                throw CocoaError(.fileReadCorruptFile, userInfo: [NSFilePathErrorKey: forecastsURL.path])
             }
+            parts.append("前瞻 \(forecastStore.importData(data)) 条")
         }
-        if let d = try? Data(contentsOf: dir.appendingPathComponent("verify-marks-v2.json")),
-           let marks = try? JSONSerialization.jsonObject(with: d) as? [String: Bool] {
+
+        let palmsURL = dir.appendingPathComponent("palm_records.json")
+        if fm.fileExists(atPath: palmsURL.path) {
+            let data = try Data(contentsOf: palmsURL)
+            let list: [PalmRecord]
+            if let decoded = try? decoder.decode([PalmRecord].self, from: data) {
+                list = decoded
+            } else if let wrapped = try? decoder.decode(PalmExport.self, from: data) {
+                list = wrapped.records
+            } else {
+                throw CocoaError(.fileReadCorruptFile, userInfo: [NSFilePathErrorKey: palmsURL.path])
+            }
+            var count = 0
+            for record in list where !palmStore.records.contains(where: { $0.id == record.id }) {
+                palmStore.records.append(record)
+                count += 1
+            }
+            if count > 0 { palmStore.save() }
+            parts.append("手相面相 \(count) 条")
+        }
+
+        let indexURL = dir.appendingPathComponent("index.json")
+        if fm.fileExists(atPath: indexURL.path) {
+            let data = try Data(contentsOf: indexURL)
+            let destination = docs.appendingPathComponent("AppData/index.json")
+            try fm.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: destination, options: .atomic)
+            parts.append("勘察案件已恢复（重启 App 后生效）")
+        }
+
+        let marksURL = dir.appendingPathComponent("verify-marks-v2.json")
+        if fm.fileExists(atPath: marksURL.path) {
+            let data = try Data(contentsOf: marksURL)
+            guard let marks = try JSONSerialization.jsonObject(with: data) as? [String: Bool] else {
+                throw CocoaError(.fileReadCorruptFile, userInfo: [NSFilePathErrorKey: marksURL.path])
+            }
             mergeMarks(marks, key: VerifyStore.key)
             parts.append("人物回验标记已合并，保留本机已有标记")
         }
+
         let legacyURLs = ["verify-marks-v1-unassigned.json", "verify-marks.json"]
-        if let legacyURL = legacyURLs.map({ dir.appendingPathComponent($0) }).first(where: { fm.fileExists(atPath: $0.path) }),
-           let d = try? Data(contentsOf: legacyURL),
-           let marks = try? JSONSerialization.jsonObject(with: d) as? [String: Bool] {
+            .map { dir.appendingPathComponent($0) }
+        if let legacyURL = legacyURLs.first(where: { fm.fileExists(atPath: $0.path) }) {
+            let data = try Data(contentsOf: legacyURL)
+            guard let marks = try JSONSerialization.jsonObject(with: data) as? [String: Bool] else {
+                throw CocoaError(.fileReadCorruptFile, userInfo: [NSFilePathErrorKey: legacyURL.path])
+            }
             mergeMarks(marks, key: VerifyStore.legacyKey)
             parts.append("旧回验标记已保留为待归属（未自动套用）")
         }
+
         return parts.isEmpty ? "包里没有可识别的数据文件。" : "恢复结果：" + parts.joined(separator: " · ")
     }
 
@@ -260,7 +364,11 @@ struct BackupView: View {
             || fm.fileExists(atPath: dir.appendingPathComponent("forecasts.json").path) else {
             return "iCloud 里还没有备份文件。"
         }
-        return importFiles(from: dir)
+        do {
+            return try importFiles(from: dir)
+        } catch {
+            return "iCloud 恢复失败：\(error.localizedDescription)。已回滚，本机原数据保持不变。"
+        }
     }
 }
 
