@@ -1132,6 +1132,13 @@ struct PalmPosterView: View {
     }
 }
 
+enum PalmPosterTemporaryFile {
+    /// A fresh filename per render prevents concurrent sheets and retries from overwriting one another.
+    static func url(for recordID: UUID, directory: URL = FileManager.default.temporaryDirectory) -> URL {
+        directory.appendingPathComponent("palm-poster-\(recordID.uuidString)-\(UUID().uuidString).png")
+    }
+}
+
 struct PalmPosterSheetView: View {
     let record: PalmRecord
     @ObservedObject var store: PalmRecordStore
@@ -1208,7 +1215,7 @@ struct PalmPosterSheetView: View {
                 isRendering = false
                 return
             }
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("palm-poster-\(record.id.uuidString).png")
+            let url = PalmPosterTemporaryFile.url(for: record.id)
             do {
                 try data.write(to: url, options: .atomic)
                 previewImage = out
