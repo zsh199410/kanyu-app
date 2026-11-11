@@ -38,6 +38,15 @@ final class PalmPosterTemporaryFileTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: second), secondPNG)
     }
 
+    func testWriteToMissingDirectoryFailsWithoutCreatingPoster() {
+        let missingDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("palm-poster-missing-\\(UUID().uuidString)", isDirectory: true)
+        let target = PalmPosterTemporaryFile.url(for: UUID(), directory: missingDirectory)
+        XCTAssertThrowsError(try Data([0x01, 0x02]).write(to: target, options: .atomic))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: target.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: missingDirectory.path))
+    }
+
     func testGeneratedNameContainsNoPathSeparatorsFromRecordID() {
         let url = PalmPosterTemporaryFile.url(for: UUID())
         XCTAssertFalse(url.lastPathComponent.contains("/"))
