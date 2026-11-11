@@ -298,7 +298,7 @@ enum ReportBuilder {
         var result: [String] = []
         while remaining.length > 0 {
             let attributed = NSAttributedString(string: remaining as String, attributes: attributes)
-            let setter = CTFramesetterCreateWithAttributedString(attributed)
+            let setter = CTFramesetterCreateWithAttributedString(attributed as CFAttributedString)
             let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: capacity - 8), transform: nil)
             let frame = CTFramesetterCreateFrame(setter, CFRange(location: 0, length: 0), path, nil)
             let count = CTFrameGetVisibleStringRange(frame).length

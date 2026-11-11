@@ -148,5 +148,11 @@
     "before": "    /// 摘要区条目行「N. 标题：首句…」",
     "after": "    // Split only oversized paragraphs; content and hash inputs remain untouched.\n    private static func layoutFragments(_ text: String, attributes: [NSAttributedString.Key: Any], width: CGFloat, capacity: CGFloat) -> [String] {\n        let fullHeight = (text as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),\n            options: [.usesLineFragmentOrigin], attributes: attributes, context: nil).height\n        guard fullHeight > capacity else { return [text] }\n        var remaining = text as NSString\n        var result: [String] = []\n        while remaining.length > 0 {\n            let attributed = NSAttributedString(string: remaining as String, attributes: attributes)\n            let setter = CTFramesetterCreateWithAttributedString(attributed)\n            let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: capacity - 8), transform: nil)\n            let frame = CTFramesetterCreateFrame(setter, CFRange(location: 0, length: 0), path, nil)\n            let count = CTFrameGetVisibleStringRange(frame).length\n            // A composed-character fallback guarantees progress without splitting surrogate pairs.\n            let length = count > 0 ? count : remaining.rangeOfComposedCharacterSequence(at: 0).length\n            result.append(remaining.substring(to: length))\n            remaining = remaining.substring(from: length) as NSString\n        }\n        return result\n    }\n\n    /// 摘要区条目行「N. 标题：首句…」",
     "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "CTFramesetterCreateWithAttributedString(attributed)",
+    "after": "CTFramesetterCreateWithAttributedString(attributed as CFAttributedString)",
+    "count": 1
   }
 ]
