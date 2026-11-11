@@ -22,7 +22,40 @@ def mask_app(text):
     end = text.index('\n}\n', start) + len('\n}\n')
     tail = text.index('extension View {', end)
     return text[:end] + '<BUTTON-STYLE>\n' + text[tail:]
-assert mask_app(original('Sources/KanyuApp.swift')) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
+def home_layout_v6(text):
+    start=text.index('struct HomePageView: View')
+    head, home=text[:start], text[start:]
+    home=home.replace('    @State private var showingNewPerson = false', '    @Environment(\\.dynamicTypeSize) private var homeTypeSize\n    @State private var showingNewPerson = false',1)
+    home=home.replace('''            // 120Hz：外层改回 LazyVStack，只渲染可见区段（纠正 build-72 的说法——VStack 全量预布局抬高首帧挂载成本，长页正确做法是可见区渲染）
+            LazyVStack(alignment: .leading, spacing: 16) {
+                KyWorkspaceHeading(title: "选择人物，开始合参", detail: "从命盘进入解读、回验和报告。", icon: "person.crop.circle")''','''            // Keep the workspace lazy; frame pacing requires device measurement.
+            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
+                brandHeader''',1)
+    home=home.replace('''                personSwitcherCard
+                primaryBentoGrid''','''                personSwitcherCard
+                todaySection
+                primaryBentoGrid''',1)
+    home=home.replace('''                todaySection
+                // 05 最近使用''','''                // 05 最近使用''',1)
+    home=home.replace('''                allToolsLink
+                brandHeader''','''                allToolsLink''',1)
+    home=home.replace('''            .padding(.horizontal, 16)
+            .padding(.top, 6)''','''            .padding(.horizontal, KanyuV6.Metric.pageInset)
+            .padding(.top, 6)''',1)
+    a=home.index('    private var primaryBentoGrid: some View {')
+    b=home.index('    private func bentoCard(',a)
+    grid=home[a:b].replace('spacing: 10','spacing: KanyuV6.Metric.cardGap',1).replace('HStack(spacing: 12) {','coreRowLayout {')
+    helper='''    private var coreRowLayout: AnyLayout {
+        homeTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: KanyuV6.Metric.cardGap))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: KanyuV6.Metric.cardGap))
+    }
+
+'''
+    return head+home[:a]+helper+grid+home[b:]
+
+# P2 permits only these exact UI layout transformations; all other app code stays protected.
+assert mask_app(home_layout_v6(original('Sources/KanyuApp.swift'))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
 # Keep everything outside the first card wrapper unchanged, including the complete settings code.
 def mask_card(text):
     a = text.index('extension View {\n', text.index('struct KyWorkspaceHeading'))

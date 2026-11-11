@@ -1428,6 +1428,7 @@ struct HomePageView: View {
     @AppStorage("signCertDays") private var signCertDays: Int = 365
     @StateObject private var forecastStore = ForecastStore()
     @EnvironmentObject var peopleStore: PeopleStore
+    @Environment(\.dynamicTypeSize) private var homeTypeSize
     @State private var showingNewPerson = false
     @State private var showingMyView = false
     @State private var showingPersonDetail = false
@@ -1440,12 +1441,13 @@ struct HomePageView: View {
 
     var body: some View {
         ScrollView {
-            // 120Hz：外层改回 LazyVStack，只渲染可见区段（纠正 build-72 的说法——VStack 全量预布局抬高首帧挂载成本，长页正确做法是可见区渲染）
-            LazyVStack(alignment: .leading, spacing: 16) {
-                KyWorkspaceHeading(title: "选择人物，开始合参", detail: "从命盘进入解读、回验和报告。", icon: "person.crop.circle")
+            // Keep the workspace lazy; frame pacing requires device measurement.
+            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
+                brandHeader
                     .accessibilityIdentifier("workspace.workbench")
                 signBanner
                 personSwitcherCard
+                todaySection
                 primaryBentoGrid
                 NavigationLink { LearningCenterView() } label: {
                     Label("看不懂命盘？从白话指南开始", systemImage: "book.closed")
@@ -1455,14 +1457,12 @@ struct HomePageView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
                 .accessibilityIdentifier("home.learning")
-                todaySection
                 // 05 最近使用与专项工具（dueCard 置顶常驻）
                 dueCard
                 recentToolsSection
                 allToolsLink
-                brandHeader
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, KanyuV6.Metric.pageInset)
             .padding(.top, 6)
             .padding(.bottom, 38) // 预留充足底部安全距离，避让 iOS 27 Liquid Glass 悬浮胶囊栏
         }
@@ -1658,10 +1658,16 @@ struct HomePageView: View {
     }
 
     // 04 核心排盘 2×2 矩阵（标题严格 4 字「核心排盘」，绝不断行！）
+    private var coreRowLayout: AnyLayout {
+        homeTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: KanyuV6.Metric.cardGap))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: KanyuV6.Metric.cardGap))
+    }
+
     private var primaryBentoGrid: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
             KySectionTitle(title: "核心排盘", trailing: "四柱 · 斗数 · 奇门 · 相法")
-            HStack(spacing: 12) {
+            coreRowLayout {
                 Button { selectedTab = 1 } label: {
                     bentoCard(
                         icon: "tablecells.fill",
@@ -1682,7 +1688,7 @@ struct HomePageView: View {
                     )
                 }.buttonStyle(.plain)
             }
-            HStack(spacing: 12) {
+            coreRowLayout {
                 Button { selectedTab = 3 } label: {
                     bentoCard(
                         icon: "circle.grid.3x3.fill",
