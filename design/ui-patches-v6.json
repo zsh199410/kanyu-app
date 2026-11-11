@@ -862,5 +862,47 @@
     "before": "            let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: capacity - 8), transform: nil)\n",
     "after": "            let fragmentCapacity = result.isEmpty ? firstCapacity : capacity\n            let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: max(1, fragmentCapacity - 8)), transform: nil)\n",
     "count": 1
+  },
+  {
+    "path": "Sources/BackupModule.swift",
+    "before": "Kanyu-Backup-日期.zip",
+    "after": "Kanyu-Backup-日期-唯一标识.zip",
+    "count": 1
+  },
+  {
+    "path": "Sources/BackupModule.swift",
+    "before": "                        Button {\n                            if let u = makeBackup() {",
+    "after": "                        Button {\n                            exportURL = nil\n                            note = \"\"\n                            if let u = makeBackup() {",
+    "count": 1
+  },
+  {
+    "path": "Sources/BackupModule.swift",
+    "before": "备份失败：没有可备份的数据，或文件复制/打包失败。请检查存储空间。",
+    "after": "备份失败：没有可备份的数据，或文件复制/打包失败。请检查存储空间；本次没有生成可分享的备份。",
+    "count": 1
+  },
+  {
+    "path": "Sources/BackupModule.swift",
+    "before": "    private func makeBackup() -> URL? {\n        let fm = FileManager.default\n        let tmp = fm.temporaryDirectory.appendingPathComponent(\"Kanyu-Backup-\\(dateStr)\", isDirectory: true)\n        try? fm.removeItem(at: tmp)\n        do {\n            try fm.createDirectory(at: tmp, withIntermediateDirectories: true)\n            var count = 0\n            for f in sourceFiles where fm.fileExists(atPath: f.url.path) {\n                try fm.copyItem(at: f.url, to: tmp.appendingPathComponent(f.name))\n                count += 1\n            }\n            if let marks = UserDefaults.standard.dictionary(forKey: VerifyStore.key) {\n                let data = try JSONSerialization.data(withJSONObject: marks)\n                try data.write(to: tmp.appendingPathComponent(\"verify-marks-v2.json\"), options: .atomic)\n                count += 1\n            }\n            // 旧版全局标题标记仅原样保全，不迁入 v2，避免把历史标记错归当前人物。\n            if let legacy = UserDefaults.standard.dictionary(forKey: VerifyStore.legacyKey) {\n                let data = try JSONSerialization.data(withJSONObject: legacy)\n                try data.write(to: tmp.appendingPathComponent(\"verify-marks-v1-unassigned.json\"), options: .atomic)\n                count += 1\n            }\n            guard count > 0 else {\n                try? fm.removeItem(at: tmp)\n                return nil\n            }\n            try BackupIntegrity.writeManifest(in: tmp, fileManager: fm)\n        } catch {\n            try? fm.removeItem(at: tmp)\n            return nil\n        }\n        let zipURL = fm.temporaryDirectory.appendingPathComponent(\"Kanyu-Backup-\\(dateStr).zip\")\n        do {\n            if fm.fileExists(atPath: zipURL.path) { try fm.removeItem(at: zipURL) }\n            try fm.zipItem(at: tmp, to: zipURL)\n            try fm.removeItem(at: tmp)\n            return zipURL\n        } catch {\n            try? fm.removeItem(at: tmp)\n            try? fm.removeItem(at: zipURL)\n            return nil\n        }\n    }\n",
+    "after": "    private func makeBackup() -> URL? {\n        let fm = FileManager.default\n        return try? BackupExportArchive.write(in: fm.temporaryDirectory, date: dateStr) { tmp in\n            var count = 0\n            for f in sourceFiles where fm.fileExists(atPath: f.url.path) {\n                try fm.copyItem(at: f.url, to: tmp.appendingPathComponent(f.name))\n                count += 1\n            }\n            if let marks = UserDefaults.standard.dictionary(forKey: VerifyStore.key) {\n                let data = try JSONSerialization.data(withJSONObject: marks)\n                try data.write(to: tmp.appendingPathComponent(\"verify-marks-v2.json\"), options: .atomic)\n                count += 1\n            }\n            // 旧版全局标题标记仅原样保全，不迁入 v2，避免把历史标记错归当前人物。\n            if let legacy = UserDefaults.standard.dictionary(forKey: VerifyStore.legacyKey) {\n                let data = try JSONSerialization.data(withJSONObject: legacy)\n                try data.write(to: tmp.appendingPathComponent(\"verify-marks-v1-unassigned.json\"), options: .atomic)\n                count += 1\n            }\n            guard count > 0 else {\n                throw BackupExportArchive.Failure.noData\n            }\n            try BackupIntegrity.writeManifest(in: tmp, fileManager: fm)\n        }\n    }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/BackupModule.swift",
+    "before": "        let tmp = fm.temporaryDirectory.appendingPathComponent(\"Kanyu-Restore-\\(Int(Date().timeIntervalSince1970))\", isDirectory: true)\n        do {\n            try fm.unzipItem(at: zipURL, to: tmp)\n",
+    "after": "        let tmp: URL\n        do {\n            tmp = try BackupExportArchive.extract(from: zipURL, in: fm.temporaryDirectory)\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/BackupModule.swift",
+    "before": "        let roots = (try? fm.contentsOfDirectory(at: tmp, includingPropertiesForKeys: [.isDirectoryKey])) ?? []\n        let payloadDir = fm.fileExists(atPath: tmp.appendingPathComponent(BackupIntegrity.manifestName).path)\n            ? tmp\n            : (roots.first { fm.fileExists(atPath: $0.appendingPathComponent(BackupIntegrity.manifestName).path) } ?? tmp)\n        let validationNote: String\n        do {\n            validationNote = try BackupIntegrity.validate",
+    "after": "        let payloadDir: URL\n        let validationNote: String\n        do {\n            payloadDir = try BackupExportArchive.payloadDirectory(in: tmp, fileManager: fm)\n            validationNote = try BackupIntegrity.validate",
+    "count": 1
+  },
+  {
+    "path": "Sources/BackupModule.swift",
+    "before": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        return try BackupRestoreTransaction.perform(",
+    "after": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        guard try BackupExportArchive.hasRestorablePayload(in: dir, fileManager: fm) else {\n            throw BackupExportArchive.Failure.noData\n        }\n        return try BackupRestoreTransaction.perform(",
+    "count": 1
   }
 ]

@@ -92,9 +92,10 @@ private struct V6ExportQARunnerView: View {
                     name: "palm-empty-photo", style: .songQingdai, directory: directory))
             } catch { errors.append("palm: \(error)") }
             try saveExpectedReportText(to: directory)
+            try V6BackupQA.run(output: directory)
         } catch { errors.append("setup: \(error)") }
         let manifest = Manifest(status: errors.isEmpty && samples.count == 11 ? "success" : "failure",
-            scope: "Debug-only production rasterizer samples and full report drawing inputs for existing XCTest fixtures; not export-sheet, photo permission, sensor, or physical-device performance tests",
+            scope: "Debug-only production rasterizer, local backup/extraction helper checks and full report drawing inputs for existing XCTest fixtures; not export-sheet, photo permission, sensor, or physical-device performance tests",
             samples: samples, errors: errors)
         do {
             let encoder = JSONEncoder()

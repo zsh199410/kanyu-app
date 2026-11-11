@@ -46,12 +46,14 @@ struct BackupView: View {
                     Text("本地备份".scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     Text("人物 \(peopleStore.people.count) 位 · 前瞻 \(forecastStore.entries.count) 条 · 手相面相 \(palmStore.records.count) 条记录".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
-                    Text("导出为 Kanyu-Backup-日期.zip，可存入系统「文件」或发微信；换机后从文件导入一键恢复。照片原件不在包内。".scriptConverted)
+                    Text("导出为 Kanyu-Backup-日期-唯一标识.zip，可存入系统「文件」或发微信；换机后从文件导入一键恢复。照片原件不在包内。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                     HStack(spacing: 10) {
                         Button {
+                            exportURL = nil
+                            note = ""
                             if let u = makeBackup() { exportURL = u; note = "备份包已生成，可分享保存。" }
-                            else { note = "备份失败：没有可备份的数据，或文件复制/打包失败。请检查存储空间。" }
+                            else { note = "备份失败：没有可备份的数据，或文件复制/打包失败。请检查存储空间；本次没有生成可分享的备份。" }
                         } label: {
                             Label("导出备份（ZIP）".scriptConverted, systemImage: "square.and.arrow.up")
                                 .font(.subheadline).fontWeight(.semibold)
@@ -116,10 +118,7 @@ struct BackupView: View {
     // MARK: - 本地 ZIP
     private func makeBackup() -> URL? {
         let fm = FileManager.default
-        let tmp = fm.temporaryDirectory.appendingPathComponent("Kanyu-Backup-\(dateStr)", isDirectory: true)
-        try? fm.removeItem(at: tmp)
-        do {
-            try fm.createDirectory(at: tmp, withIntermediateDirectories: true)
+        return try? BackupExportArchive.write(in: fm.temporaryDirectory, date: dateStr) { tmp in
             var count = 0
             for f in sourceFiles where fm.fileExists(atPath: f.url.path) {
                 try fm.copyItem(at: f.url, to: tmp.appendingPathComponent(f.name))
@@ -137,41 +136,24 @@ struct BackupView: View {
                 count += 1
             }
             guard count > 0 else {
-                try? fm.removeItem(at: tmp)
-                return nil
+                throw BackupExportArchive.Failure.noData
             }
             try BackupIntegrity.writeManifest(in: tmp, fileManager: fm)
-        } catch {
-            try? fm.removeItem(at: tmp)
-            return nil
-        }
-        let zipURL = fm.temporaryDirectory.appendingPathComponent("Kanyu-Backup-\(dateStr).zip")
-        do {
-            if fm.fileExists(atPath: zipURL.path) { try fm.removeItem(at: zipURL) }
-            try fm.zipItem(at: tmp, to: zipURL)
-            try fm.removeItem(at: tmp)
-            return zipURL
-        } catch {
-            try? fm.removeItem(at: tmp)
-            try? fm.removeItem(at: zipURL)
-            return nil
         }
     }
 
     private func restore(from zipURL: URL) -> String {
         let fm = FileManager.default
-        let tmp = fm.temporaryDirectory.appendingPathComponent("Kanyu-Restore-\(Int(Date().timeIntervalSince1970))", isDirectory: true)
+        let tmp: URL
         do {
-            try fm.unzipItem(at: zipURL, to: tmp)
+            tmp = try BackupExportArchive.extract(from: zipURL, in: fm.temporaryDirectory)
         } catch {
             return "解压失败：不是有效的备份包。"
         }
-        let roots = (try? fm.contentsOfDirectory(at: tmp, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
-        let payloadDir = fm.fileExists(atPath: tmp.appendingPathComponent(BackupIntegrity.manifestName).path)
-            ? tmp
-            : (roots.first { fm.fileExists(atPath: $0.appendingPathComponent(BackupIntegrity.manifestName).path) } ?? tmp)
+        let payloadDir: URL
         let validationNote: String
         do {
+            payloadDir = try BackupExportArchive.payloadDirectory(in: tmp, fileManager: fm)
             validationNote = try BackupIntegrity.validate(in: payloadDir, fileManager: fm) == nil
                 ? "旧版备份未含完整性清单；已按兼容模式恢复。"
                 : "完整性校验通过。"
@@ -257,6 +239,9 @@ struct BackupView: View {
     /// 从已解开的目录导入四类数据；任一解析或写入失败时回滚全部内存、文件与回验标记。
     private func importFiles(from dir: URL) throws -> String {
         let fm = FileManager.default
+        guard try BackupExportArchive.hasRestorablePayload(in: dir, fileManager: fm) else {
+            throw BackupExportArchive.Failure.noData
+        }
         return try BackupRestoreTransaction.perform(
             snapshot: { try captureRestoreSnapshot(fileManager: fm) },
             apply: { try applyImportFiles(from: dir, fileManager: fm) },

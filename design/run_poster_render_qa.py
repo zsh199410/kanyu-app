@@ -49,6 +49,13 @@ try:
         assert (width, height) == (row['width'], row['height'])
         assert width == 1080 and height > width
         assert hashlib.sha256(payload).hexdigest() == row['sha256']
+    backup = json.loads((source / 'backup-verification.json').read_text())
+    assert backup['status'] == 'success' and len(backup['checks']) == 17
+    assert len(backup['archives']) == 3
+    for row in backup['archives']:
+        payload = (source / row['file']).read_bytes()
+        assert payload[:2] == b'PK' and hashlib.sha256(payload).hexdigest() == row['sha256']
+    print(f"PASS: {len(backup['checks'])} native production backup helper checks and three actual ZIP SHA256 values")
     print(f'PASS: {len(expected)} actual native PNGs, width/height, decoding and SHA256 verified; visual review still required')
 finally:
     # Preserve partial images even if rendering crashes or times out before the manifest.

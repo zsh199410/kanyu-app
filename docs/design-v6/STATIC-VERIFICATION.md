@@ -22,5 +22,5 @@
 | water Light | 9.41:1 |
 | water Dark | 7.34:1 |
 
-已核对：引擎与非呈现代码不变，Tests/UITests/Resources 文件与基线逐字节相同；Swift/JSON/Web 主要语义色一致；海报几何预算通过。
+已核对：排盘引擎保持冻结；其他变更仅限精确合同登记的 UI、导出与备份修复；Tests/UITests/Resources 文件与基线逐字节相同；Swift/JSON/Web 主要语义色一致；海报几何预算通过。
 此结果不是 Xcode 编译、截图、VoiceOver 或真机性能验收。
