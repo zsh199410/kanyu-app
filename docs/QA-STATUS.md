@@ -60,3 +60,11 @@
 - 原因是 V6 受保护基线包含 `Sources/BackupModule.swift`，而本 PR 正在修改备份模块。此处存在设计保护与 P0 数据安全修复之间的流程冲突。**不得删除/跳过门禁，不得直接刷新受保护文件哈希来掩盖未审查改动。**
 - 解除阻断的验收条件：由独立审查核对 BackupModule 的逐行变更及基线保护范围，明确记录获准变更和设计合同的影响；在受保护基线维护流程中按审查结论更新并保留可回滚记录；随后重新运行相同 head 的完整门禁、XCTest/XCUITest、设备 Release 与 IPA 校验。任何基线更新必须是可审计的独立提交，不能与业务修改混为一谈。
 - PR #45 与 #46 重叠，禁止分别合并；#10 跨人物回验隔离、#11 备份恢复故障注入及真机验收仍未关闭。无匹配 SHA 的成功 IPA 证据，不提供安装包。
+
+## 2026-11-11 PR #46 独立复核补记（CI #296）
+
+- 精确 head：`7ffbb5ef732efa0309cd14c4ce563a6752d95bfb`；Actions [#296](https://github.com/zsh199410/kanyu-app/actions/runs/43043655112) **failure**。Job `build` 第 3 步 `Verify protected engines and design contracts` 失败；第 4–12 步（Xcode、XCTest/XCUITest、设备 Release、IPA）均 **skipped**。没有可据此交付的 IPA。
+- 独立阅读 main 的 `design/verify_v6.py`：该脚本以 `1ae6503` 为逐字节保护基线，除 UI 白名单及精确 UI patch 外，拒绝修改包括 `Sources/BackupModule.swift` 在内的所有既有源码，并要求 `Tests/UITests/Resources` 文件清单与基线完全一致。因此本 PR 的必要备份源码修改及新增测试**均不符合该 V6 专用合同的允许范围**。不能通过只改文件哈希、关闭检查或删除测试来放行。
+- 代码审查范围：PR #46 相对 main 修改 `Sources/BackupModule.swift`、新增 `Tests/BackupExportPathTests.swift`、更新本 QA 文档；#45 是其中的重叠子集，不能分别合并。当前测试仅覆盖路径、文件类型与存在性；`containsRestorableData` 只做预筛，非空 JSON 不等于有效结构，恢复事务与 UI 仍需端到端验证。
+- **待决策的正规修复**：由 V6 设计合同维护者审查并批准非视觉 P0 修复的独立验收通道，仍保留引擎/设计保护和完整 XCTest/XCUITest/设备构建；或将经审查的业务变更作为新的受保护基线版本，独立提交保护范围和理由。两种方案均须在 PR 中留下审查记录，并在最新 SHA 上完整重跑。此处只记录阻断，不擅自放宽门禁。
+- 尚缺：损坏 ZIP、无效 JSON、恢复回滚失败、磁盘耗尽、跨人物标记重启/删除重建、真机 iCloud 恢复。任何 CI 成功也不能自动代替这些专项验收。
