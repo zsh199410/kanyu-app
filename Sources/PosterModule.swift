@@ -28,6 +28,7 @@ private struct PosterPalette {
     let cardStroke: Color
     let track: Color
     var isDark: Bool = false
+    var caution: Color { isDark ? accentHi : pCin }
     func elementColor(_ name: String) -> Color? { KanyuV6.elementColor(name, dark: isDark) }
 }
 
@@ -179,7 +180,7 @@ private struct PosterBrandFooter: View {
                     .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                 Text(subtitle)
                     .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
-                Text(Date.now.formatted(date: .abbreviated, time: .omitted))
+                Text(DisplayTimeReceipt.beijing(Date()))
                     .font(.system(size: 10).monospacedDigit()).foregroundStyle(pal.sub)
             }
             .multilineTextAlignment(.trailing)
@@ -326,9 +327,41 @@ struct PosterView: View {
         if xj.ji.contains(sWx) || xj.ji.contains(bWx) { return "\(year)年\(gz)：流年干支冲克忌神，宜守。" }
         return "\(year)年\(gz)：流年干支与喜忌无直接生克，平。"
     }
-    /// 前 6 维详批（解盘 25 维顺序前六：性格性情／十神做功／学业文书／天赋能力／事业方向／工作形态）
-    private var firstSixDims: [InterpretItem] {
-        items.filter { !InterpretEngine.coreTitles.contains($0.title) }.prefix(6).map { $0 }
+    private func yuceReceiptRow(_ left: String, _ right: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(left).frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(right).frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var yuceReceipt: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("命主：" + (name.isEmpty ? "命主" : name))
+                .font(.system(size: 11.5, weight: .bold, design: .serif))
+                .foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            yuceReceiptRow("城市：\(receiptCity) · 经度：\(receiptLongitude)",
+                "出生：\(Self.birthFmt.string(from: chart.birthDate))\(trueSolarSuffix)")
+            yuceReceiptRow("农历：\(chart.lunarText.isEmpty ? "—" : chart.lunarText)",
+                "\(chart.gender == "M" ? "男（乾造）" : "女（坤造）") · 年命：\(chart.naYin.first ?? "—")命")
+            yuceReceiptRow("上一节：\(chart.prevJieQiText.isEmpty ? "—" : chart.prevJieQiText)",
+                "下一节：\(chart.nextJieQiText.isEmpty ? "—" : chart.nextJieQiText)")
+            yuceReceiptRow("真太阳时校正：\(correctionText)", "旬空：\(chart.xunKong.isEmpty ? "—" : chart.xunKong)")
+            if !chart.nextJieQiGapText.isEmpty {
+                Text("★ \(chart.nextJieQiGapText)").foregroundStyle(pal.accentHi)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .font(.system(size: 10, weight: .medium, design: .serif)).monospacedDigit()
+        .foregroundStyle(pal.sub)
+        .padding(.horizontal, 32).padding(.top, 8)
+    }
+
+    /// 展示已有分类解读的全部条目，顺序与解释引擎一致。
+    private var detailDimensions: [InterpretItem] {
+        items.filter { !InterpretEngine.coreTitles.contains($0.title) }
     }
     /// 十二步大运长表（起年＋干支＋十神＋主题＋喜忌；以实际步数为准）
     private var dayun12Lines: [String] {
@@ -402,6 +435,9 @@ struct PosterView: View {
                         .padding(.top, 52)
                     Text(displayName.isEmpty ? "四柱命盘" : displayName)
                         .font(.system(size: 44, weight: .bold, design: .serif))
+                        .multilineTextAlignment(.center)
+                        .frame(width: 444)
+                        .fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
 
@@ -550,11 +586,11 @@ struct PosterView: View {
                         Text("五行气运：\(qiYunLine)")
                             .font(.system(size: 11, design: .serif)).foregroundStyle(pal.sub)
                             .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                        Text("前六维详批")
+                        Text("分类详批（\(detailDimensions.count) 项）")
                             .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                             .padding(.top, 4)
                         VStack(alignment: .leading, spacing: 10) {
-                            ForEach(firstSixDims, id: \.title) { d in
+                            ForEach(detailDimensions, id: \.title) { d in
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(d.title).font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                                     Text(d.conclusion).font(.system(size: 13)).foregroundStyle(pal.main).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
@@ -727,38 +763,8 @@ Text("\(receiptCity) · \(receiptLongitude)E · \(chart.naYin.first ?? "")命")
 .foregroundStyle(pal.accent)
 .padding(.top, 4)
 
-// 2. 三行生辰收据（城市/经度/出生时刻/农历/前后两节/性别/姓名/年命/真太阳时校正量）
-VStack(spacing: 2) {
-HStack(spacing: 0) {
-Text("城市：\(receiptCity)")
-Text("　经度：\(receiptLongitude)")
-Spacer()
-Text("出生：\(Self.birthFmt.string(from: chart.birthDate))\(trueSolarSuffix)")
-}
-HStack(spacing: 0) {
-Text("农历：\(chart.lunarText.isEmpty ? "—": chart.lunarText)")
-Text("　上一节 \(chart.prevJieQiText.isEmpty ? "—": chart.prevJieQiText)　下一节 \(chart.nextJieQiText.isEmpty ? "—": chart.nextJieQiText)")
-Spacer()
-Text("\(chart.gender == "M" ? "男（乾造）": "女（坤造）")　\(name.isEmpty ? "命主" : name)　\(chart.naYin.first ?? "")命")
-}
-HStack(spacing: 0) {
-Text("真太阳时校正：\(correctionText)")
-Text("　年命：\(chart.naYin.first ?? "—")命")
-Spacer()
-Text("旬空：\(chart.xunKong.isEmpty ? "—": chart.xunKong)")
-}
-if !chart.nextJieQiGapText.isEmpty {
-HStack(spacing: 0) {
-Text("★ \(chart.nextJieQiGapText)")
-.foregroundStyle(pal.accentHi)
-Spacer()
-}
-}
-}
-.font(.system(size: 10, weight:.medium, design:.serif))
-.foregroundStyle(pal.sub)
-.padding(.horizontal, 32)
-.padding(.top, 8)
+// 分栏生辰收据：姓名独占全宽，其余字段保持两列并允许完整换行。
+yuceReceipt
 
 Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24).padding(.vertical, 6)
 
@@ -1482,7 +1488,7 @@ private struct ZiweiMiniCell: View {
             HStack(spacing: 4) {
                 Text(p.name)
                     .font(.system(size: 11, weight: .bold, design: .serif))
-                    .foregroundStyle(isMing ? pCin : pal.main)
+                    .foregroundStyle(isMing ? pal.caution : pal.main)
                 Text("\(String(p.stem))\(String(ZiweiCore.DZ[p.branch]))")
                     .font(.system(size: 8.5)).foregroundStyle(pal.sub)
                 if p.isBody {
@@ -1507,7 +1513,7 @@ private struct ZiweiMiniCell: View {
         .background(pal.card)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(isMing ? pCin.opacity(0.6) : pal.cardStroke, lineWidth: isMing ? 1.1 : 0.7)
+                .stroke(isMing ? pal.caution.opacity(0.6) : pal.cardStroke, lineWidth: isMing ? 1.1 : 0.7)
         )
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
@@ -1600,6 +1606,33 @@ struct ZiweiPosterView: View {
     private var mingCard: (title: String, conclusion: String, facts: String, source: String)? {
         ZiweiReading.cards(chart: chart).first { $0.title == "命宫定型" }
     }
+    private var detailedReading: some View {
+        let cards = ZiweiReading.cards(chart: chart).filter { $0.title != "命宫定型" }
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("本盘逐项解读与依据（\(cards.count) 条）")
+                .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
+            ForEach(cards.indices, id: \.self) { index in
+                let card = cards[index]
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(card.title).font(.system(size: 12.5, weight: .bold, design: .serif))
+                        .foregroundStyle(pal.accent)
+                    Text(card.facts).font(.system(size: 10.5)).foregroundStyle(pal.sub)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(card.conclusion).font(.system(size: 12.5)).foregroundStyle(pal.main)
+                        .lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+                    Text("依据口径：" + card.source).font(.system(size: 10)).foregroundStyle(pal.sub)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(pal.card, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(pal.cardStroke, lineWidth: 0.7))
+            }
+        }
+        .frame(width: 444, alignment: .leading)
+        .padding(.top, 16)
+    }
+
     // 生年四化：全盘主星＋辅星带化者（年干四化表恰为 4 颗，不编不凑）
     private var huaItems: [(star: String, kind: String, palace: String)] {
         var out: [(star: String, kind: String, palace: String)] = []
@@ -1681,6 +1714,9 @@ struct ZiweiPosterView: View {
                         .padding(.top, 52)
                     Text(name.isEmpty ? "紫微命盘" : name)
                         .font(.system(size: 44, weight: .bold, design: .serif))
+                        .multilineTextAlignment(.center)
+                        .frame(width: 444)
+                        .fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
 
@@ -1720,7 +1756,7 @@ struct ZiweiPosterView: View {
                         ForEach(huaItems, id: \.star) { h in
                             HStack(spacing: 4) {
                                 Text(h.star).font(.system(size: 12, weight: .semibold, design: .serif)).foregroundStyle(pal.main)
-                                Text("化\(h.kind)").font(.system(size: 12, weight: .bold)).foregroundStyle(h.kind == "忌" ? pCin : pal.accent)
+                                Text("化\(h.kind)").font(.system(size: 12, weight: .bold)).foregroundStyle(h.kind == "忌" ? pal.caution : pal.accent)
                                 Text("入\(h.palace)").font(.system(size: 12)).foregroundStyle(pal.sub)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1760,7 +1796,7 @@ struct ZiweiPosterView: View {
 
                 // 十二宫逐宫详批（宫名＋主星＋大限区间）
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("十二宫逐宫详批")
+                    Text("十二宫星曜与大限")
                         .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                         ForEach(chart.palaces, id: \.branch) { p in
@@ -1768,6 +1804,11 @@ struct ZiweiPosterView: View {
                                 Text(p.name).font(.system(size: 9.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                                 Text(p.majors.map { $0.star }.joined(separator: "·").isEmpty ? "—" : p.majors.map { $0.star }.joined(separator: "·"))
                                     .font(.system(size: 11)).foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)
+                                Text(p.minors.isEmpty ? "辅曜：无" : "辅曜：" + p.minors.map { star in
+                                    star.star + (star.mutagen.map { "（化\($0)）" } ?? "")
+                                }.joined(separator: "、"))
+                                    .font(.system(size: 9.5)).foregroundStyle(pal.sub)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.system(size: 8.5)).foregroundStyle(pal.sub)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1780,6 +1821,8 @@ struct ZiweiPosterView: View {
                 }
                 .frame(width: 444, alignment: .leading)
                 .padding(.top, 10)
+
+                detailedReading
 
                 Spacer()
 
@@ -1994,6 +2037,9 @@ struct HeCanPosterView: View {
                         .padding(.top, 52)
                     Text(name.isEmpty ? "合参总览" : name)
                         .font(.system(size: 44, weight: .bold, design: .serif))
+                        .multilineTextAlignment(.center)
+                        .frame(width: 444)
+                        .fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
 
@@ -2095,8 +2141,8 @@ struct HeCanPosterView: View {
                         Text("尚未测量：在「手相面相」页测一张掌纹并按人保存后，这里会自动带上测量摘要。判读为娱乐参考。")
                             .font(.system(size: 12)).foregroundStyle(pal.sub).lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
                     } else {
-                        ForEach(palmLines.prefix(2), id: \.self) { line in
-                            Text(line)
+                        ForEach(palmLines.indices, id: \.self) { index in
+                            Text(palmLines[index])
                                 .font(.system(size: 12.5)).foregroundStyle(pal.main)
                                 .lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
                         }

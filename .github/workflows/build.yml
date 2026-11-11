@@ -52,7 +52,7 @@ jobs:
           DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; u=[x['udid'] for v in d.values() for x in v if 'iPhone' in x.get('name','') and x.get('isAvailable', True)]; print(u[0] if u else '')")
           echo "simulator UDID: $DEST"
           test -n "$DEST"
-          xcodebuild test -derivedDataPath build/SimulatorDD -resultBundlePath build/TestResults.xcresult -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/tests.log
+          xcodebuild test -clonedSourcePackagesDirPath build/SourcePackages -derivedDataPath build/SimulatorDD -resultBundlePath build/TestResults.xcresult -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/tests.log
 
       - name: Verify durable report archive from existing tests
         run: |
@@ -65,7 +65,7 @@ jobs:
       - name: Build (unsigned)
         run: |
           set -o pipefail
-          xcodebuild -project Kanyu.xcodeproj -scheme Kanyu \
+          xcodebuild -project Kanyu.xcodeproj -scheme Kanyu -clonedSourcePackagesDirPath build/SourcePackages \
             -sdk iphoneos -configuration Release \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \

@@ -72,7 +72,7 @@ private struct V6ExportQARunnerView: View {
                     await Task.yield()
                     do {
                         samples.append(try render(AnyView(HeCanPosterView(bazi: bazi, ziwei: ziwei,
-                            name: name, palmLines: [String(repeating: "QA长文换行样例。", count: 30)], style: style)),
+                            name: name, palmLines: [String(repeating: "QA长文换行样例。", count: 30), "QA第二条测量记录：用于核验多条摘要完整保留。", "QA第三条测量记录：不能因为条目数量而被省略。"], style: style)),
                             name: "hecan\(style.fileSuffix)", style: style, directory: directory))
                     } catch { errors.append("hecan\(style.fileSuffix): \(error)") }
                 }

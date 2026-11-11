@@ -1087,6 +1087,19 @@ struct PalmPosterView: View {
                     .background(cardBg)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(cin.opacity(0.35), lineWidth: 0.8))
+                } else {
+                    VStack(spacing: 10) {
+                        Image(systemName: "photo").font(.system(size: 30)).foregroundStyle(sub)
+                        Text("未附原始照片".scriptConverted)
+                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(ink)
+                        Text("本页展示已保存的测量摘要与解读，未包含原始照片。".scriptConverted)
+                            .font(.system(size: 11.5)).foregroundStyle(sub)
+                            .multilineTextAlignment(.center).lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(18).frame(width: 444)
+                    .background(cardBg, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(cin.opacity(0.35), lineWidth: 0.8))
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Text("测量数据".scriptConverted)

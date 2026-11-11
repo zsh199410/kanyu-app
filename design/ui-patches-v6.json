@@ -628,5 +628,137 @@
     "before": "        .frame(width: 540)\n    }\n}\n\nenum PalmPosterTemporaryFile",
     "after": "        .frame(minWidth: 540, maxWidth: 540, minHeight: 760)\n    }\n}\n\nenum PalmPosterTemporaryFile",
     "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    /// 前 6 维详批（解盘 25 维顺序前六：性格性情／十神做功／学业文书／天赋能力／事业方向／工作形态）\n    private var firstSixDims: [InterpretItem] {\n        items.filter { !InterpretEngine.coreTitles.contains($0.title) }.prefix(6).map { $0 }\n    }",
+    "after": "    /// 展示已有分类解读的全部条目，顺序与解释引擎一致。\n    private var detailDimensions: [InterpretItem] {\n        items.filter { !InterpretEngine.coreTitles.contains($0.title) }\n    }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Text(\"前六维详批\")",
+    "after": "Text(\"分类详批（\\(detailDimensions.count) 项）\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "ForEach(firstSixDims, id: \\.title)",
+    "after": "ForEach(detailDimensions, id: \\.title)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                    Text(name.isEmpty ? \"紫微命盘\" : name)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .foregroundStyle(pal.main)",
+    "after": "                    Text(name.isEmpty ? \"紫微命盘\" : name)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .multilineTextAlignment(.center)\n                        .frame(width: 444)\n                        .fixedSize(horizontal: false, vertical: true)\n                        .foregroundStyle(pal.main)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                    Text(name.isEmpty ? \"合参总览\" : name)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .foregroundStyle(pal.main)",
+    "after": "                    Text(name.isEmpty ? \"合参总览\" : name)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .multilineTextAlignment(.center)\n                        .frame(width: 444)\n                        .fixedSize(horizontal: false, vertical: true)\n                        .foregroundStyle(pal.main)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    // 生年四化：全盘主星＋辅星带化者（年干四化表恰为 4 颗，不编不凑）",
+    "after": "    private var detailedReading: some View {\n        let cards = ZiweiReading.cards(chart: chart).filter { $0.title != \"命宫定型\" }\n        return VStack(alignment: .leading, spacing: 12) {\n            Text(\"本盘逐项解读与依据（\\(cards.count) 条）\")\n                .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.accent)\n            ForEach(cards.indices, id: \\.self) { index in\n                let card = cards[index]\n                VStack(alignment: .leading, spacing: 7) {\n                    Text(card.title).font(.system(size: 12.5, weight: .bold, design: .serif))\n                        .foregroundStyle(pal.accent)\n                    Text(card.facts).font(.system(size: 10.5)).foregroundStyle(pal.sub)\n                        .fixedSize(horizontal: false, vertical: true)\n                    Text(card.conclusion).font(.system(size: 12.5)).foregroundStyle(pal.main)\n                        .lineSpacing(4).fixedSize(horizontal: false, vertical: true)\n                    Text(\"依据口径：\" + card.source).font(.system(size: 10)).foregroundStyle(pal.sub)\n                        .fixedSize(horizontal: false, vertical: true)\n                }\n                .padding(14)\n                .frame(maxWidth: .infinity, alignment: .leading)\n                .background(pal.card, in: RoundedRectangle(cornerRadius: 10))\n                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(pal.cardStroke, lineWidth: 0.7))\n            }\n        }\n        .frame(width: 444, alignment: .leading)\n        .padding(.top, 16)\n    }\n\n    // 生年四化：全盘主星＋辅星带化者（年干四化表恰为 4 颗，不编不凑）",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Text(\"十二宫逐宫详批\")",
+    "after": "Text(\"十二宫星曜与大限\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                                Text(\"\\(p.decadal.first ?? 0)–\\(p.decadal.last ?? 0) 岁\").font(.system(size: 8.5)).foregroundStyle(pal.sub)\n                            }\n                            .frame(maxWidth: .infinity, alignment: .leading)",
+    "after": "                                Text(p.minors.isEmpty ? \"辅曜：无\" : \"辅曜：\" + p.minors.map { star in\n                                    star.star + (star.mutagen.map { \"（化\\($0)）\" } ?? \"\")\n                                }.joined(separator: \"、\"))\n                                    .font(.system(size: 9.5)).foregroundStyle(pal.sub)\n                                    .fixedSize(horizontal: false, vertical: true)\n                                Text(\"\\(p.decadal.first ?? 0)–\\(p.decadal.last ?? 0) 岁\").font(.system(size: 8.5)).foregroundStyle(pal.sub)\n                            }\n                            .frame(maxWidth: .infinity, alignment: .leading)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                Spacer()\n\n                // 统一品牌落款（P3 第 1 项）：同一印章＋同一品牌行，副标与日期各款保留\n                PosterBrandFooter(pal: pal, subtitle: \"三合派天纪口径 · 方盘缩印 · 生年四化\")",
+    "after": "                detailedReading\n\n                Spacer()\n\n                // 统一品牌落款（P3 第 1 项）：同一印章＋同一品牌行，副标与日期各款保留\n                PosterBrandFooter(pal: pal, subtitle: \"三合派天纪口径 · 方盘缩印 · 生年四化\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                        ForEach(palmLines.prefix(2), id: \\.self) { line in\n                            Text(line)",
+    "after": "                        ForEach(palmLines.indices, id: \\.self) { index in\n                            Text(palmLines[index])",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "xcodebuild test -derivedDataPath build/SimulatorDD",
+    "after": "xcodebuild test -clonedSourcePackagesDirPath build/SourcePackages -derivedDataPath build/SimulatorDD",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "xcodebuild -project Kanyu.xcodeproj -scheme Kanyu \\\n",
+    "after": "xcodebuild -project Kanyu.xcodeproj -scheme Kanyu -clonedSourcePackagesDirPath build/SourcePackages \\\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Text(Date.now.formatted(date: .abbreviated, time: .omitted))",
+    "after": "Text(DisplayTimeReceipt.beijing(Date()))",
+    "count": 1
+  },
+  {
+    "path": "Sources/LearningModule.swift",
+    "before": "            .padding(KanyuV6.Metric.pageInset)\n            .padding(.bottom, 32)",
+    "after": "            .padding(KanyuV6.Metric.pageInset)\n            .padding(.bottom, 100)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(cin.opacity(0.35), lineWidth: 0.8))\n                }\n                VStack(alignment: .leading, spacing: 8) {\n                    Text(\"测量数据\".scriptConverted)",
+    "after": "                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(cin.opacity(0.35), lineWidth: 0.8))\n                } else {\n                    VStack(spacing: 10) {\n                        Image(systemName: \"photo\").font(.system(size: 30)).foregroundStyle(sub)\n                        Text(\"未附原始照片\".scriptConverted)\n                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(ink)\n                        Text(\"本页展示已保存的测量摘要与解读，未包含原始照片。\".scriptConverted)\n                            .font(.system(size: 11.5)).foregroundStyle(sub)\n                            .multilineTextAlignment(.center).lineSpacing(3)\n                            .fixedSize(horizontal: false, vertical: true)\n                    }\n                    .padding(18).frame(width: 444)\n                    .background(cardBg, in: RoundedRectangle(cornerRadius: 10))\n                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(cin.opacity(0.35), lineWidth: 0.8))\n                }\n                VStack(alignment: .leading, spacing: 8) {\n                    Text(\"测量数据\".scriptConverted)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    var isDark: Bool = false\n",
+    "after": "    var isDark: Bool = false\n    var caution: Color { isDark ? accentHi : pCin }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "isMing ? pCin : pal.main",
+    "after": "isMing ? pal.caution : pal.main",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "isMing ? pCin.opacity(0.6) : pal.cardStroke",
+    "after": "isMing ? pal.caution.opacity(0.6) : pal.cardStroke",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "h.kind == \"忌\" ? pCin : pal.accent",
+    "after": "h.kind == \"忌\" ? pal.caution : pal.accent",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                    Text(displayName.isEmpty ? \"四柱命盘\" : displayName)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .foregroundStyle(pal.main)",
+    "after": "                    Text(displayName.isEmpty ? \"四柱命盘\" : displayName)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .multilineTextAlignment(.center)\n                        .frame(width: 444)\n                        .fixedSize(horizontal: false, vertical: true)\n                        .foregroundStyle(pal.main)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "// 2. 三行生辰收据（城市/经度/出生时刻/农历/前后两节/性别/姓名/年命/真太阳时校正量）\nVStack(spacing: 2) {\nHStack(spacing: 0) {\nText(\"城市：\\(receiptCity)\")\nText(\"　经度：\\(receiptLongitude)\")\nSpacer()\nText(\"出生：\\(Self.birthFmt.string(from: chart.birthDate))\\(trueSolarSuffix)\")\n}\nHStack(spacing: 0) {\nText(\"农历：\\(chart.lunarText.isEmpty ? \"—\": chart.lunarText)\")\nText(\"　上一节 \\(chart.prevJieQiText.isEmpty ? \"—\": chart.prevJieQiText)　下一节 \\(chart.nextJieQiText.isEmpty ? \"—\": chart.nextJieQiText)\")\nSpacer()\nText(\"\\(chart.gender == \"M\" ? \"男（乾造）\": \"女（坤造）\")　\\(name.isEmpty ? \"命主\" : name)　\\(chart.naYin.first ?? \"\")命\")\n}\nHStack(spacing: 0) {\nText(\"真太阳时校正：\\(correctionText)\")\nText(\"　年命：\\(chart.naYin.first ?? \"—\")命\")\nSpacer()\nText(\"旬空：\\(chart.xunKong.isEmpty ? \"—\": chart.xunKong)\")\n}\nif !chart.nextJieQiGapText.isEmpty {\nHStack(spacing: 0) {\nText(\"★ \\(chart.nextJieQiGapText)\")\n.foregroundStyle(pal.accentHi)\nSpacer()\n}\n}\n}\n.font(.system(size: 10, weight:.medium, design:.serif))\n.foregroundStyle(pal.sub)\n.padding(.horizontal, 32)\n.padding(.top, 8)\n",
+    "after": "// 分栏生辰收据：姓名独占全宽，其余字段保持两列并允许完整换行。\nyuceReceipt\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    /// 展示已有分类解读的全部条目，顺序与解释引擎一致。",
+    "after": "    private func yuceReceiptRow(_ left: String, _ right: String) -> some View {\n        HStack(alignment: .top, spacing: 12) {\n            Text(left).frame(maxWidth: .infinity, alignment: .leading)\n                .fixedSize(horizontal: false, vertical: true)\n            Text(right).frame(maxWidth: .infinity, alignment: .leading)\n                .fixedSize(horizontal: false, vertical: true)\n        }\n    }\n\n    private var yuceReceipt: some View {\n        VStack(alignment: .leading, spacing: 7) {\n            Text(\"命主：\" + (name.isEmpty ? \"命主\" : name))\n                .font(.system(size: 11.5, weight: .bold, design: .serif))\n                .foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)\n                .frame(maxWidth: .infinity, alignment: .leading)\n            yuceReceiptRow(\"城市：\\(receiptCity) · 经度：\\(receiptLongitude)\",\n                \"出生：\\(Self.birthFmt.string(from: chart.birthDate))\\(trueSolarSuffix)\")\n            yuceReceiptRow(\"农历：\\(chart.lunarText.isEmpty ? \"—\" : chart.lunarText)\",\n                \"\\(chart.gender == \"M\" ? \"男（乾造）\" : \"女（坤造）\") · 年命：\\(chart.naYin.first ?? \"—\")命\")\n            yuceReceiptRow(\"上一节：\\(chart.prevJieQiText.isEmpty ? \"—\" : chart.prevJieQiText)\",\n                \"下一节：\\(chart.nextJieQiText.isEmpty ? \"—\" : chart.nextJieQiText)\")\n            yuceReceiptRow(\"真太阳时校正：\\(correctionText)\", \"旬空：\\(chart.xunKong.isEmpty ? \"—\" : chart.xunKong)\")\n            if !chart.nextJieQiGapText.isEmpty {\n                Text(\"★ \\(chart.nextJieQiGapText)\").foregroundStyle(pal.accentHi)\n                    .fixedSize(horizontal: false, vertical: true)\n            }\n        }\n        .font(.system(size: 10, weight: .medium, design: .serif)).monospacedDigit()\n        .foregroundStyle(pal.sub)\n        .padding(.horizontal, 32).padding(.top, 8)\n    }\n\n    /// 展示已有分类解读的全部条目，顺序与解释引擎一致。",
+    "count": 1
   }
 ]

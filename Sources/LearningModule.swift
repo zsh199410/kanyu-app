@@ -163,7 +163,7 @@ struct LearningCenterView: View {
                 }
             }
             .padding(KanyuV6.Metric.pageInset)
-            .padding(.bottom, 32)
+            .padding(.bottom, 100)
         }
         .background(Ky.bg)
         .foregroundStyle(Ky.ink)

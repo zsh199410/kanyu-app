@@ -9,7 +9,10 @@ import time
 from pathlib import Path
 
 def simctl(*args):
-    return subprocess.check_output(['xcrun', 'simctl', *args], text=True).strip()
+    print(f'QA stage: simctl {args[0]} started', flush=True)
+    output = subprocess.check_output(['xcrun', 'simctl', *args], text=True).strip()
+    print(f'QA stage: simctl {args[0]} completed', flush=True)
+    return output
 
 devices = json.loads(simctl('list', 'devices', 'available', '-j'))['devices']
 iPhones = [device for group in devices.values() for device in group if 'iPhone' in device['name']]
@@ -34,6 +37,7 @@ try:
         time.sleep(1)
     assert manifest_path.exists(), 'Native renderer did not produce a manifest within 180 seconds'
     manifest = json.loads(manifest_path.read_text())
+    print(f"QA manifest received: {manifest['status']}, {len(manifest['samples'])} valid samples", flush=True)
     assert manifest['status'] == 'success', manifest
     expected = {f'{kind}-{style}.png' for kind in ['bazi', 'ziwei', 'hecan']
                 for style in ['song', 'zhusha', 'xuanye']} | {'bazi-yucedan.png', 'palm-empty-photo.png'}
