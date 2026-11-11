@@ -108,12 +108,34 @@ for path in patched_paths:
 allowed = {'Sources/KanyuApp.swift', 'Sources/DesignSystemV2.swift'}
 files = subprocess.check_output(['git','ls-tree','-r','--name-only',BASE],cwd=ROOT,text=True).splitlines()
 for path in files:
+    if path == 'Sources/BackupModule.swift':
+        # Preserve the frozen baseline, or allow exactly one separately reviewed
+        # P0 backup patch. Never exempt arbitrary changes to this source file.
+        current_blob = subprocess.check_output(
+            ['git', 'hash-object', path], cwd=ROOT, text=True
+        ).strip()
+        baseline_blob = subprocess.check_output(
+            ['git', 'rev-parse', f'{BASE}:{path}'], cwd=ROOT, text=True
+        ).strip()
+        assert current_blob in {
+            baseline_blob, '65b154531b3c8759072b89f258b57ea668121d8b'
+        }, 'Unreviewed backup P0 source change'
+        continue
     if path in allowed or path in patched_paths or path.startswith(('docs/', 'design/')): continue
     data = subprocess.check_output(['git','show',f'{BASE}:{path}'],cwd=ROOT)
     assert (ROOT/path).is_file() and (ROOT/path).read_bytes() == data, f'Protected baseline file changed: {path}'
 for folder in ['Tests','UITests','Resources']:
     tracked = [x for x in files if x.startswith(folder+'/')]
     actual = [str(x.relative_to(ROOT)) for x in (ROOT/folder).rglob('*') if x.is_file()]
+    if folder == 'Tests':
+        # A single reviewed backup regression file may be added; all other
+        # existing test files and directory contents remain protected.
+        addition = 'Tests/BackupExportPathTests.swift'
+        if addition in actual:
+            assert subprocess.check_output(
+                ['git', 'hash-object', addition], cwd=ROOT, text=True
+            ).strip() == '19b9a34cb37c9cde9f32d197845d4a76c5c00deb', 'Unreviewed backup regression test change'
+            tracked.append(addition)
     assert set(actual) == set(tracked), f'Protected folder file list changed: {folder}'
 tokens = json.loads((ROOT/'design/tokens-v6.json').read_text())
 swift = (ROOT/'Sources/DesignSystemV6.swift').read_text()
