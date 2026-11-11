@@ -17,7 +17,11 @@ enum BackupExportPath {
     static func containsRestorableData(in directory: URL, fileManager: FileManager = .default) -> Bool {
         ["people.json", "forecasts.json", "palm_records.json", "index.json",
          "verify-marks-v2.json", "verify-marks-v1-unassigned.json", "verify-marks.json"]
-            .contains { fileManager.fileExists(atPath: directory.appendingPathComponent($0).path) }
+            .contains { name in
+                let path = directory.appendingPathComponent(name).path
+                var isDirectory: ObjCBool = false
+                return fileManager.fileExists(atPath: path, isDirectory: &isDirectory) && !isDirectory.boolValue
+            }
     }
 
     static func zipURL(in root: URL, date: String, identifier: UUID = UUID()) -> URL {
