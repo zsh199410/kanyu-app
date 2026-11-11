@@ -327,38 +327,6 @@ struct PosterView: View {
         if xj.ji.contains(sWx) || xj.ji.contains(bWx) { return "\(year)年\(gz)：流年干支冲克忌神，宜守。" }
         return "\(year)年\(gz)：流年干支与喜忌无直接生克，平。"
     }
-    private func yuceReceiptRow(_ left: String, _ right: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(left).frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-            Text(right).frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private var yuceReceipt: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("命主：" + (name.isEmpty ? "命主" : name))
-                .font(.system(size: 11.5, weight: .bold, design: .serif))
-                .foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            yuceReceiptRow("城市：\(receiptCity) · 经度：\(receiptLongitude)",
-                "出生：\(Self.birthFmt.string(from: chart.birthDate))\(trueSolarSuffix)")
-            yuceReceiptRow("农历：\(chart.lunarText.isEmpty ? "—" : chart.lunarText)",
-                "\(chart.gender == "M" ? "男（乾造）" : "女（坤造）") · 年命：\(chart.naYin.first ?? "—")命")
-            yuceReceiptRow("上一节：\(chart.prevJieQiText.isEmpty ? "—" : chart.prevJieQiText)",
-                "下一节：\(chart.nextJieQiText.isEmpty ? "—" : chart.nextJieQiText)")
-            yuceReceiptRow("真太阳时校正：\(correctionText)", "旬空：\(chart.xunKong.isEmpty ? "—" : chart.xunKong)")
-            if !chart.nextJieQiGapText.isEmpty {
-                Text("★ \(chart.nextJieQiGapText)").foregroundStyle(pal.accentHi)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .font(.system(size: 10, weight: .medium, design: .serif)).monospacedDigit()
-        .foregroundStyle(pal.sub)
-        .padding(.horizontal, 32).padding(.top, 8)
-    }
-
     /// 展示已有分类解读的全部条目，顺序与解释引擎一致。
     private var detailDimensions: [InterpretItem] {
         items.filter { !InterpretEngine.coreTitles.contains($0.title) }
@@ -721,6 +689,38 @@ let base = xj.xi.flatMap { (Self.numMap[Self.wxNames[$0]] ?? "").split(separator
 let all = (base + base.map { $0 + 10}).sorted()
 return all.map { String($0)}.joined(separator: "、") + " 层"
 }
+
+    private func yuceReceiptRow(_ left: String, _ right: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(left).frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(right).frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var yuceReceipt: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("命主：" + (name.isEmpty ? "命主" : name))
+                .font(.system(size: 11.5, weight: .bold, design: .serif))
+                .foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            yuceReceiptRow("城市：\(receiptCity) · 经度：\(receiptLongitude)",
+                "出生：\(Self.birthFmt.string(from: chart.birthDate))\(trueSolarSuffix)")
+            yuceReceiptRow("农历：\(chart.lunarText.isEmpty ? "—" : chart.lunarText)",
+                "\(chart.gender == "M" ? "男（乾造）" : "女（坤造）") · 年命：\(chart.naYin.first ?? "—")命")
+            yuceReceiptRow("上一节：\(chart.prevJieQiText.isEmpty ? "—" : chart.prevJieQiText)",
+                "下一节：\(chart.nextJieQiText.isEmpty ? "—" : chart.nextJieQiText)")
+            yuceReceiptRow("真太阳时校正：\(correctionText)", "旬空：\(chart.xunKong.isEmpty ? "—" : chart.xunKong)")
+            if !chart.nextJieQiGapText.isEmpty {
+                Text("★ \(chart.nextJieQiGapText)").foregroundStyle(pal.accentHi)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .font(.system(size: 10, weight: .medium, design: .serif)).monospacedDigit()
+        .foregroundStyle(pal.sub)
+        .padding(.horizontal, 32).padding(.top, 8)
+    }
 
 var body: some View {
 ZStack {
