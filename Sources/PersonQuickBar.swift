@@ -4,10 +4,12 @@ import SwiftUI
 /// 点名字胶囊会同步全局当前命主，再把生辰／性别／经度交给宿主页面。
 struct PersonQuickBar: View {
     @ObservedObject var store: PeopleStore
+    @Environment(\.colorScheme) private var scheme
     var selectedID: UUID? = nil
     var onSelect: (Person) -> Void
 
     var body: some View {
+        let theme = KanyuV6.Theme.resolved(scheme)
         if store.people.isEmpty {
             HStack(spacing: 6) {
                 Image(systemName: "person.crop.circle.badge.plus").foregroundStyle(Ky.gold)
@@ -33,10 +35,10 @@ struct PersonQuickBar: View {
                             .font(.caption)
                             .padding(.horizontal, 10).padding(.vertical, 6)
                             .frame(minHeight: 44)
-                            .background(active ? Ky.qingdai : Ky.elevated)
-                            .foregroundStyle(active ? Color.white : Ky.ink)
+                            .background(active ? theme.action : Ky.elevated)
+                            .foregroundStyle(active ? theme.actionForeground : Ky.ink)
                             .clipShape(Capsule())
-                            .overlay(Capsule().stroke(active ? Ky.qingdai : Ky.line, lineWidth: 0.7))
+                            .overlay(Capsule().stroke(active ? theme.action : Ky.line, lineWidth: 0.7))
                         }.buttonStyle(.plain)
                             .accessibilityLabel("调取命主：\(p.name)")
                             .accessibilityValue(active ? "已选中" : "")

@@ -81,11 +81,11 @@ final class ProfileContextTests: XCTestCase {
         XCTAssertFalse(element("tool.context." + id).exists, id)
     }
 
-    private func assertContext(_ name: String, year: String) {
+    private func assertContext(_ name: String, birth: String) {
         let context = element("tool.context.astro")
         XCTAssertTrue(context.waitForExistence(timeout: 15))
         let receipt = context.value as? String ?? ""
-        XCTAssertTrue(receipt.contains(name) && receipt.contains(year + "-"), receipt)
+        XCTAssertTrue(receipt.contains(name) && receipt.contains(birth), receipt)
         XCTAssertTrue(app.staticTexts[name + " · 星命合参"].waitForExistence(timeout: 10))
         XCTAssertFalse(element("tool.missing.astro").exists)
     }
@@ -98,16 +98,29 @@ final class ProfileContextTests: XCTestCase {
         field.typeText(text)
     }
 
-    private func fillPerson(_ name: String, year: String) {
+    @discardableResult
+    private func fillPerson(_ name: String, year: String) -> String {
         XCTAssertTrue(app.navigationBars["新建人物"].waitForExistence(timeout: 10))
-        XCTAssertFalse(element("person.form.save").isEnabled)
-        replace(element("person.form.name"), with: name)
+        let save = app.buttons["person.form.save"]
+        let saveExists = save.waitForExistence(timeout: 10)
+        if !saveExists || save.isEnabled { print(app.debugDescription) }
+        XCTAssertTrue(saveExists)
+        XCTAssertFalse(save.isEnabled)
+        replace(app.textFields["person.form.name"], with: name)
         tap("birth.edit")
         XCTAssertTrue(app.navigationBars["选择出生时间"].waitForExistence(timeout: 10))
-        replace(element("birth.year"), with: year)
+        replace(app.textFields["birth.year"], with: year)
         tap("birth.confirm")
         XCTAssertTrue(app.navigationBars["新建人物"].waitForExistence(timeout: 10))
-        XCTAssertTrue(element("person.form.save").isEnabled)
+        XCTAssertTrue(app.buttons["person.form.save"].isEnabled)
+        let label = app.buttons["birth.edit"].label
+        let pattern = try! NSRegularExpression(pattern: "([0-9]{4})年([0-9]{1,2})月([0-9]{1,2})日 ([0-9]{2}):([0-9]{2})")
+        let range = NSRange(label.startIndex..<label.endIndex, in: label)
+        guard let match = pattern.firstMatch(in: label, range: range) else {
+            XCTFail("Missing visible birth receipt: " + label); return ""
+        }
+        let values = (1...5).map { Int((label as NSString).substring(with: match.range(at: $0)))! }
+        return String(format: "%04d-%02d-%02d %02d:%02d", values[0], values[1], values[2], values[3], values[4])
     }
 
     private func selectedHome(_ name: String) {
@@ -136,7 +149,7 @@ final class ProfileContextTests: XCTestCase {
     }
 
     private func deletePerson(_ name: String) {
-        let row = app.cells.containing(.staticText, identifier: name).firstMatch
+        let row = app.buttons["人物档案：" + name]
         reveal(row)
         row.swipeLeft()
         let deletion = app.buttons.matching(identifier: "删除").allElementsBoundByIndex.first { $0.isHittable }
@@ -145,7 +158,7 @@ final class ProfileContextTests: XCTestCase {
         let confirmation = app.buttons.matching(identifier: "删除").allElementsBoundByIndex.first { $0.isHittable }
         XCTAssertNotNil(confirmation)
         confirmation?.tap()
-        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.staticTexts[name])
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: row)
         XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 10), .completed)
     }
 
@@ -158,6 +171,13 @@ final class ProfileContextTests: XCTestCase {
         XCTAssertTrue(environment.waitForExistence(timeout: 30))
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "QA环境 " + theme + " " + size), object: environment)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
+        let clock = element("qa.context.clock")
+        XCTAssertTrue(clock.waitForExistence(timeout: 10))
+        XCTAssertTrue(clock.label.hasPrefix("QA时钟 2000-1-1 8:0|946684800|"), clock.label)
+        let clockAttachment = XCTAttachment(string: clock.label)
+        clockAttachment.name = caseName + "-clock-receipt"
+        clockAttachment.lifetime = .keepAlways
+        add(clockAttachment)
         homeTop()
         snapshot("empty-home")
         openAstroFromHome()
@@ -187,14 +207,14 @@ final class ProfileContextTests: XCTestCase {
         homeTop()
         openAstroFromHome()
         tap("tool.createPerson")
-        fillPerson("QA-A", year: "2000")
+        let birthA = fillPerson("QA-A", year: "2000")
         tap("person.form.save")
-        assertContext("QA-A", year: "2000")
+        assertContext("QA-A", birth: birthA)
         snapshot("saved-2000")
         back()
         homeTop()
         app.buttons["快速新建档案"].tap()
-        fillPerson("QA-B", year: "2001")
+        let birthB = fillPerson("QA-B", year: "2001")
         tap("person.form.save")
         selectedHome("QA-A")
         app.terminate()
@@ -205,11 +225,11 @@ final class ProfileContextTests: XCTestCase {
         app.launch()
         selectedHome("QA-B")
         openAstroFromHome()
-        assertContext("QA-B", year: "2001")
+        assertContext("QA-B", birth: birthB)
         let quick = app.buttons["调取命主：QA-A"]
         reveal(quick)
         quick.tap()
-        assertContext("QA-A", year: "2000")
+        assertContext("QA-A", birth: birthA)
         snapshot("quick-switch-2000")
         back()
         selectedHome("QA-A")
@@ -220,7 +240,7 @@ final class ProfileContextTests: XCTestCase {
         back()
         selectedHome("QA-B")
         openAstroFromHome()
-        assertContext("QA-B", year: "2001")
+        assertContext("QA-B", birth: birthB)
         back()
         profileManager()
         deletePerson("QA-B")

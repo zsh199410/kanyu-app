@@ -1036,5 +1036,95 @@
     "before": ".accessibilityValue(active ? \"当前命主\" : \"\")",
     "after": ".accessibilityValue(active ? \"已选中\" : \"\")",
     "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "    @ObservedObject var store: PeopleStore\n",
+    "after": "    @ObservedObject var store: PeopleStore\n    @Environment(\\.colorScheme) private var scheme\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "        if store.people.isEmpty {",
+    "after": "        let theme = KanyuV6.Theme.resolved(scheme)\n        if store.people.isEmpty {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": ".background(active ? Ky.qingdai : Ky.elevated)\n                            .foregroundStyle(active ? Color.white : Ky.ink)",
+    "after": ".background(active ? theme.action : Ky.elevated)\n                            .foregroundStyle(active ? theme.actionForeground : Ky.ink)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "        .swipeActions(edge: .trailing) {",
+    "after": "        .accessibilityLabel(\"人物档案：\\(p.name)\")\n        .accessibilityValue(\"\\(p.gender == \"M\" ? \"男\" : \"女\") · \\(DisplayTimeReceipt.beijing(p.birthDate))\")\n        .accessibilityHint(\"打开人物详情；向左轻扫可编辑或删除\")\n        .swipeActions(edge: .trailing) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "    @ViewBuilder private var content: some View {\n        if Self.chartRequiredIDs.contains(item.id), peopleStore.currentPerson == nil {\n            VStack(spacing: 16) {\n                ContentUnavailableView(\"请先选择人物档案\", systemImage: \"person.crop.circle.badge.questionmark\",\n                    description: Text(\"此工具需要出生资料。请先创建或选择人物。\"))\n                Button(\"新建人物档案\") { showingNewPerson = true }\n                    .buttonStyle(.borderedProminent).padding(.bottom, 24)\n                    .accessibilityIdentifier(\"tool.createPerson\")\n            }\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")\n        } else if let person = peopleStore.currentPerson {\n            toolDestination(\n                for: item,\n                person: person,\n                chart: BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,\n                                         longitude: person.useLongitude ? person.longitude : nil)\n            )\n            .id(person)\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityValue(\"\\(person.name) · \\(DisplayTimeReceipt.beijing(person.birthDate))\")\n        } else {\n            // Independent tools ignore the chart argument. A placeholder is never\n            // presented as a person's chart; chart-dependent routes are blocked above.\n            let placeholder = Person(name: \"工具上下文\", relation: \"工具\", gender: \"M\", birthEpoch: 0)\n            toolDestination(for: item, person: placeholder,\n                            chart: BaziEngine.paipan(clock: placeholder.birthDate,\n                                                      gender: placeholder.gender, longitude: nil))\n                .accessibilityElement(children: .contain)\n                .accessibilityIdentifier(\"tool.independent.\\(item.id)\")\n        }\n    }",
+    "after": "    @ViewBuilder private var content: some View {\n        if !Self.chartRequiredIDs.contains(item.id) {\n            // Independent tools never construct a fake person or an unused birth chart.\n            independentToolDestination(for: item)\n                .accessibilityElement(children: .contain)\n                .accessibilityIdentifier(\"tool.independent.\\(item.id)\")\n        } else if let person = peopleStore.currentPerson {\n            toolDestination(\n                for: item,\n                person: person,\n                chart: BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,\n                                         longitude: person.useLongitude ? person.longitude : nil)\n            )\n            .id(person)\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityValue(\"\\(person.name) · \\(DisplayTimeReceipt.beijing(person.birthDate))\")\n        } else {\n            VStack(spacing: 16) {\n                ContentUnavailableView(\"请先选择人物档案\", systemImage: \"person.crop.circle.badge.questionmark\",\n                    description: Text(\"此工具需要出生资料。请先创建或选择人物。\"))\n                Button(\"新建人物档案\") { showingNewPerson = true }\n                    .buttonStyle(.borderedProminent).padding(.bottom, 24)\n                    .accessibilityIdentifier(\"tool.createPerson\")\n            }\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")\n        }\n    }",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "@ViewBuilder\nfunc toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> some View {\n    switch item.id {\n    case \"learning\":\n        LearningCenterView()\n    case \"astro\":\n        AstroHomeView(person: person, chart: chart)\n    case \"synastry\":\n        SynastryView()\n    case \"wealth\":\n        WealthView()\n    case \"ganzhi\":\n        GanZhiLookupView()\n    case \"family\":\n        FamilyChartView()\n    case \"sharecard\":\n        SynastryShareCardView()\n    case \"compare\":\n        CompareView()\n    case \"yearly\":\n        YearByYearView(chart: chart, name: person.name)\n    case \"interpret\":\n        InterpretView(chart: chart, name: person.name, verificationOwnerID: \"person:\\(person.id.uuidString)\")\n    case \"chartdepth\":\n        ChartDepthView(person: person, chart: chart)\n    case \"poster\":\n        BaziResultView(chart: chart, name: person.name, verificationOwnerID: \"person:\\(person.id.uuidString)\")\n    case \"reportcenter\":\n        ReportCenterView()\n    case \"almanac\":\n        AlmanacView()\n    case \"monthcal\":\n        MonthCalendarTabView()\n    case \"zeji\":\n        ZejiView()\n    case \"yunqi\":\n        YunQiPageView()\n    case \"chenggu\":\n        ChengguView(person: person, chart: chart)\n    case \"meihua\":\n        MeihuaView()\n    case \"library\":\n        LibraryView()\n    case \"classics\":\n        ClassicsView()\n    case \"academy\":\n        AcademyView()\n    case \"quiz\":\n        QuizView()\n    case \"blindtest\":\n        BlindTestView()\n    case \"celeb\":\n        CelebView()\n    case \"shahandbook\":\n        ShaHandbookView()\n    case \"compass\":\n        CompassStandaloneView()\n    case \"floorplan\":\n        FloorPlanOverlayView()\n    case \"ask\":\n        AskView()\n    case \"lucky\":\n        LuckyGuideView(person: person, chart: chart)\n    case \"annual\":\n        AnnualReportView(chart: chart, name: person.name, initialYear: Calendar.current.component(.year, from: Date()))\n    case \"accessory\":\n        AccessoryListView()\n    case \"forecast\":\n        ForecastView()\n    case \"backtest\":\n        BacktestView()\n    case \"backup\":\n        BackupView()\n    case \"caliber\":\n        CaliberSettingsView()\n    default:\n        EmptyView()\n    }\n}\n\n",
+    "after": "@ViewBuilder\nfunc toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> some View {\n    switch item.id {\n    case \"astro\":\n        AstroHomeView(person: person, chart: chart)\n    case \"yearly\":\n        YearByYearView(chart: chart, name: person.name)\n    case \"interpret\":\n        InterpretView(chart: chart, name: person.name, verificationOwnerID: \"person:\\(person.id.uuidString)\")\n    case \"chartdepth\":\n        ChartDepthView(person: person, chart: chart)\n    case \"poster\":\n        BaziResultView(chart: chart, name: person.name, verificationOwnerID: \"person:\\(person.id.uuidString)\")\n    case \"chenggu\":\n        ChengguView(person: person, chart: chart)\n    case \"lucky\":\n        LuckyGuideView(person: person, chart: chart)\n    case \"annual\":\n        AnnualReportView(chart: chart, name: person.name, initialYear: Calendar.current.component(.year, from: Date()))\n    default:\n        independentToolDestination(for: item)\n    }\n}\n\n/// Routes which do not consume a passed birth chart keep their state when profiles change.\n@ViewBuilder\nfunc independentToolDestination(for item: ToolItem) -> some View {\n    switch item.id {\n    case \"learning\":\n        LearningCenterView()\n    case \"synastry\":\n        SynastryView()\n    case \"wealth\":\n        WealthView()\n    case \"ganzhi\":\n        GanZhiLookupView()\n    case \"family\":\n        FamilyChartView()\n    case \"sharecard\":\n        SynastryShareCardView()\n    case \"compare\":\n        CompareView()\n    case \"reportcenter\":\n        ReportCenterView()\n    case \"almanac\":\n        AlmanacView()\n    case \"monthcal\":\n        MonthCalendarTabView()\n    case \"zeji\":\n        ZejiView()\n    case \"yunqi\":\n        YunQiPageView()\n    case \"meihua\":\n        MeihuaView()\n    case \"library\":\n        LibraryView()\n    case \"classics\":\n        ClassicsView()\n    case \"academy\":\n        AcademyView()\n    case \"quiz\":\n        QuizView()\n    case \"blindtest\":\n        BlindTestView()\n    case \"celeb\":\n        CelebView()\n    case \"shahandbook\":\n        ShaHandbookView()\n    case \"compass\":\n        CompassStandaloneView()\n    case \"floorplan\":\n        FloorPlanOverlayView()\n    case \"ask\":\n        AskView()\n    case \"accessory\":\n        AccessoryListView()\n    case \"forecast\":\n        ForecastView()\n    case \"backtest\":\n        BacktestView()\n    case \"backup\":\n        BackupView()\n    case \"caliber\":\n        CaliberSettingsView()\n    default:\n        EmptyView()\n    }\n}\n\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": ".overlay(Capsule().stroke(active ? Ky.qingdai : Ky.line, lineWidth: 0.7))",
+    "after": ".overlay(Capsule().stroke(active ? theme.action : Ky.line, lineWidth: 0.7))",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "Calendar(identifier: .gregorian)",
+    "after": "BirthClockInput.calendar",
+    "count": 11
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "TrueSolarTime.corrected(clock: clock, longitude: lo)",
+    "after": "TrueSolarTime.corrected(clock: clock, longitude: lo, calendar: BirthClockInput.calendar)",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "TrueSolarTime.corrected(clock: d, longitude: lo)",
+    "after": "TrueSolarTime.corrected(clock: d, longitude: lo, calendar: BirthClockInput.calendar)",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "            // 生辰摘要票据卡：点一下弹层改时间",
+    "after": "            DisclosureGroup(\"标准北京时间 UTC+8 · 填写说明\") {\n                Text(\"这里统一按标准北京时间录入。海外出生或使用历史夏令时的记录，请先换算为 UTC+8。经度开关只计算真太阳时校正，不替代法定时区或夏令时换算。\".scriptConverted)\n                    .font(.caption).foregroundStyle(Ky.sub)\n                    .fixedSize(horizontal: false, vertical: true)\n            }\n            .font(.caption).tint(Ky.qingdai)\n            // 生辰摘要票据卡：点一下弹层改时间",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "            .accessibilityIdentifier(\"birth.edit\")",
+    "after": "            .accessibilityLabel(\"修改生辰：\\(summarySolar)，北京时间 UTC+8\")\n            .accessibilityValue(\"农历：\\(summaryLunar)\")\n            .accessibilityIdentifier(\"birth.edit\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "                    Button(\"保存\".scriptConverted) {\n                        var p = person",
+    "after": "                    Button(\"保存\".scriptConverted) {\n                        guard !person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }\n                        var p = person",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "}.disabled(person.name.trimmingCharacters(in: .whitespaces).isEmpty)",
+    "after": "}.disabled(person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityValue",
+    "after": "            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityLabel(\"当前命主\")\n            .accessibilityValue",
+    "count": 1
   }
 ]

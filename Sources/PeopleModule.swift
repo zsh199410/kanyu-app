@@ -225,6 +225,9 @@ struct PeopleView: View {
                     .font(.caption).foregroundStyle(Ky.sub)
             }
         }
+        .accessibilityLabel("人物档案：\(p.name)")
+        .accessibilityValue("\(p.gender == "M" ? "男" : "女") · \(DisplayTimeReceipt.beijing(p.birthDate))")
+        .accessibilityHint("打开人物详情；向左轻扫可编辑或删除")
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
                 pendingDeletePerson = p
@@ -269,13 +272,14 @@ struct PersonFormView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("取消".scriptConverted) { dismiss() }.accessibilityIdentifier("person.form.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存".scriptConverted) {
+                        guard !person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                         var p = person
                         p.birthEpoch = birth.timeIntervalSince1970
                         p.longitude = Double(longitudeText) ?? p.longitude
                         store.upsert(p)
                         onSaved?()
                         dismiss()
-                    }.disabled(person.name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }.disabled(person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityIdentifier("person.form.save")
                 }
             }

@@ -28,12 +28,22 @@ private struct ContextAcceptanceReceipt: View {
         if typeSize == .large { return "large" }
         return "other"
     }
+    private var clockReceipt: String {
+        let solar = BirthInputView.solarOf(Date(timeIntervalSince1970: 946684800))
+        let date = BirthClockInput.calendar.date(from: DateComponents(year: 2000, month: 1, day: 1, hour: 8, minute: 0))
+        let epoch = date.map { String(Int($0.timeIntervalSince1970)) } ?? "invalid"
+        return "QA时钟 \(solar.year)-\(solar.month)-\(solar.day) \(solar.hour):\(solar.minute)|\(epoch)|\(TimeZone.current.identifier)"
+    }
     var body: some View {
-        Text("QA环境 \(scheme == .dark ? "dark" : "light") \(sizeName)")
-            .font(.system(size: 1))
-            .frame(width: 1, height: 1).clipped().opacity(0.02)
-            .allowsHitTesting(false)
-            .accessibilityIdentifier("qa.context.environment")
+        VStack(spacing: 0) {
+            Text("QA环境 \(scheme == .dark ? "dark" : "light") \(sizeName)")
+                .font(.system(size: 1)).frame(width: 1, height: 1).clipped()
+                .accessibilityIdentifier("qa.context.environment")
+            Text(clockReceipt)
+                .font(.system(size: 1)).frame(width: 1, height: 1).clipped()
+                .accessibilityIdentifier("qa.context.clock")
+        }
+        .opacity(0.02).allowsHitTesting(false)
     }
 }
 #endif

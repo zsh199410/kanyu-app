@@ -17,16 +17,11 @@ struct ContextualToolDestination: View {
     }
 
     @ViewBuilder private var content: some View {
-        if Self.chartRequiredIDs.contains(item.id), peopleStore.currentPerson == nil {
-            VStack(spacing: 16) {
-                ContentUnavailableView("请先选择人物档案", systemImage: "person.crop.circle.badge.questionmark",
-                    description: Text("此工具需要出生资料。请先创建或选择人物。"))
-                Button("新建人物档案") { showingNewPerson = true }
-                    .buttonStyle(.borderedProminent).padding(.bottom, 24)
-                    .accessibilityIdentifier("tool.createPerson")
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("tool.missing.\(item.id)")
+        if !Self.chartRequiredIDs.contains(item.id) {
+            // Independent tools never construct a fake person or an unused birth chart.
+            independentToolDestination(for: item)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("tool.independent.\(item.id)")
         } else if let person = peopleStore.currentPerson {
             toolDestination(
                 for: item,
@@ -37,16 +32,18 @@ struct ContextualToolDestination: View {
             .id(person)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("tool.context.\(item.id)")
+            .accessibilityLabel("当前命主")
             .accessibilityValue("\(person.name) · \(DisplayTimeReceipt.beijing(person.birthDate))")
         } else {
-            // Independent tools ignore the chart argument. A placeholder is never
-            // presented as a person's chart; chart-dependent routes are blocked above.
-            let placeholder = Person(name: "工具上下文", relation: "工具", gender: "M", birthEpoch: 0)
-            toolDestination(for: item, person: placeholder,
-                            chart: BaziEngine.paipan(clock: placeholder.birthDate,
-                                                      gender: placeholder.gender, longitude: nil))
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("tool.independent.\(item.id)")
+            VStack(spacing: 16) {
+                ContentUnavailableView("请先选择人物档案", systemImage: "person.crop.circle.badge.questionmark",
+                    description: Text("此工具需要出生资料。请先创建或选择人物。"))
+                Button("新建人物档案") { showingNewPerson = true }
+                    .buttonStyle(.borderedProminent).padding(.bottom, 24)
+                    .accessibilityIdentifier("tool.createPerson")
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("tool.missing.\(item.id)")
         }
     }
 }
@@ -186,10 +183,33 @@ struct AllToolsData {
 @ViewBuilder
 func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> some View {
     switch item.id {
-    case "learning":
-        LearningCenterView()
     case "astro":
         AstroHomeView(person: person, chart: chart)
+    case "yearly":
+        YearByYearView(chart: chart, name: person.name)
+    case "interpret":
+        InterpretView(chart: chart, name: person.name, verificationOwnerID: "person:\(person.id.uuidString)")
+    case "chartdepth":
+        ChartDepthView(person: person, chart: chart)
+    case "poster":
+        BaziResultView(chart: chart, name: person.name, verificationOwnerID: "person:\(person.id.uuidString)")
+    case "chenggu":
+        ChengguView(person: person, chart: chart)
+    case "lucky":
+        LuckyGuideView(person: person, chart: chart)
+    case "annual":
+        AnnualReportView(chart: chart, name: person.name, initialYear: Calendar.current.component(.year, from: Date()))
+    default:
+        independentToolDestination(for: item)
+    }
+}
+
+/// Routes which do not consume a passed birth chart keep their state when profiles change.
+@ViewBuilder
+func independentToolDestination(for item: ToolItem) -> some View {
+    switch item.id {
+    case "learning":
+        LearningCenterView()
     case "synastry":
         SynastryView()
     case "wealth":
@@ -202,14 +222,6 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
         SynastryShareCardView()
     case "compare":
         CompareView()
-    case "yearly":
-        YearByYearView(chart: chart, name: person.name)
-    case "interpret":
-        InterpretView(chart: chart, name: person.name, verificationOwnerID: "person:\(person.id.uuidString)")
-    case "chartdepth":
-        ChartDepthView(person: person, chart: chart)
-    case "poster":
-        BaziResultView(chart: chart, name: person.name, verificationOwnerID: "person:\(person.id.uuidString)")
     case "reportcenter":
         ReportCenterView()
     case "almanac":
@@ -220,8 +232,6 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
         ZejiView()
     case "yunqi":
         YunQiPageView()
-    case "chenggu":
-        ChengguView(person: person, chart: chart)
     case "meihua":
         MeihuaView()
     case "library":
@@ -244,10 +254,6 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
         FloorPlanOverlayView()
     case "ask":
         AskView()
-    case "lucky":
-        LuckyGuideView(person: person, chart: chart)
-    case "annual":
-        AnnualReportView(chart: chart, name: person.name, initialYear: Calendar.current.component(.year, from: Date()))
     case "accessory":
         AccessoryListView()
     case "forecast":
