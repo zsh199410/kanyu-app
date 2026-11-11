@@ -2,6 +2,18 @@ import SwiftUI
 import ZIPFoundation
 import UniformTypeIdentifiers
 
+/// Each export owns its own staging directory and ZIP destination.
+/// An unsuccessful export must not delete an earlier same-day backup.
+enum BackupExportPath {
+    static func stagingDirectory(in root: URL, identifier: UUID = UUID()) -> URL {
+        root.appendingPathComponent("Kanyu-Backup-stage-\(identifier.uuidString)", isDirectory: true)
+    }
+
+    static func zipURL(in root: URL, date: String, identifier: UUID = UUID()) -> URL {
+        root.appendingPathComponent("Kanyu-Backup-\(date)-\(identifier.uuidString).zip")
+    }
+}
+
 /// 数据备份与恢复中心：本地 ZIP 导出／导入＋ iCloud 云端同步。
 /// 备份内容：人物档案 people.json、前瞻验真账本 forecasts.json、手相面相记录 palm_records.json、
 /// 勘察案件 AppData/index.json、按人物隔离的回验标记。照片原件不在包内（体积大，另行导出）。
@@ -116,8 +128,7 @@ struct BackupView: View {
     // MARK: - 本地 ZIP
     private func makeBackup() -> URL? {
         let fm = FileManager.default
-        let tmp = fm.temporaryDirectory.appendingPathComponent("Kanyu-Backup-\(dateStr)", isDirectory: true)
-        try? fm.removeItem(at: tmp)
+        let tmp = BackupExportPath.stagingDirectory(in: fm.temporaryDirectory)
         do {
             try fm.createDirectory(at: tmp, withIntermediateDirectories: true)
             var count = 0
@@ -145,9 +156,9 @@ struct BackupView: View {
             try? fm.removeItem(at: tmp)
             return nil
         }
-        let zipURL = fm.temporaryDirectory.appendingPathComponent("Kanyu-Backup-\(dateStr).zip")
+        let zipURL = BackupExportPath.zipURL(in: fm.temporaryDirectory, date: dateStr)
         do {
-            if fm.fileExists(atPath: zipURL.path) { try fm.removeItem(at: zipURL) }
+
             try fm.zipItem(at: tmp, to: zipURL)
             try fm.removeItem(at: tmp)
             return zipURL
