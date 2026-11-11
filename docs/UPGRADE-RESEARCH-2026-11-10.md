@@ -76,3 +76,18 @@ AskClient 的实际请求包含 question；选中人物时还包含姓名、生�
 AskResponse 原先在服务端未提供 confidence 时默认显示“高”，并编造“逐句校验通过”的说明。本轮改为“未标注”，拒绝/降级标志优先，未知标签不当作可信；新增缺失、未知和矛盾标签的回归测试。
 
 额外验收依据：[Apple 可访问性](https://developer.apple.com/design/human-interface-guidelines/accessibility)、[系统颜色](https://developer.apple.com/design/human-interface-guidelines/color)、[NOAA WMM 误差与适用范围](https://www.ncei.noaa.gov/products/world-magnetic-model/accuracy-limitations-error-model)、[iztro 官方开源库](https://github.com/SylarLong/iztro)。后者仅作为后续对照候选，尚未引入或用它验证本项目。
+
+
+## 2026-11-12 解读证据标签专项源码审计（待修复）
+
+核对 main `f97c03654a9c4ef02162a0ae0d9cb8c335860088` 的 `Sources/InterpretModule.swift`：`InterpretEngine.confidenceLabel(title:mechanism:ownerID:)` 当前使用机制字符串关键字分级。只要包含左书名号 `《`，就可能输出“**五典原文**”；包含“纪律”或“回测”则输出“本系统回测纪律”。这只是字符串匹配，**不构成可核验的原文出处或真实回测证据**。同时，用户手动标记 `true` 显示“已验真”，容易被误读为算法验证结果。该问题与 Issue #10 的跨人物存储隔离不同，后者已在 v2 处理。
+
+**建议修复合同（尚未实现）：**
+1. 在解读条目中引入明确的 `sourceKind`（盘面实算／可核验古籍引文／流派解释／民俗象征／内部方法）和可选 `sourceRef`（书名、卷章节、原文片段或可查来源）；不从书名号推断原文。
+2. 仅当来源字段与引文内容完整且经过核对时展示“古籍原文引用”；只提书名的机制文本应显示“流派解释（来源待核）”。没有来源时不得标成“原文”。
+3. 用户回验状态改用“用户标记：自述符合／待核对／未标记”，与依据级别分开展示；不把个人记录等同客观验证或准确率。
+4. 保持既有 `VerifyStore` v2 键、历史标记和人物数据原样；若改变存储格式，必须有显式迁移、回滚和兼容测试。
+
+**最低回归矩阵（未执行）：** 仅出现 `《子平真诠》` 书名、存在原文但缺卷章、完整可查引文、民俗象征、机制为空、两个人物同名条目、旧 v1 标记、重启后状态、导出 PDF/海报标签一致性。验证输入、显示标签及缺失来源时的降级文案。应在独立 PR 中修改代码和测试，先审核 V6 受保护源码合同，再取得对应 SHA 的 XCTest、XCUITest、设备 Release 证据；不得为通过 CI 静默更新基线。
+
+本节是对源码的静态核查，不代表已运行上述测试，也不代表对任何古籍文本完成版本学核验。
