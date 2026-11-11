@@ -40,7 +40,7 @@ final class PalmPosterTemporaryFileTests: XCTestCase {
 
     func testWriteToMissingDirectoryFailsWithoutCreatingPoster() {
         let missingDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("palm-poster-missing-\\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("palm-poster-missing-\(UUID().uuidString)", isDirectory: true)
         let target = PalmPosterTemporaryFile.url(for: UUID(), directory: missingDirectory)
         XCTAssertThrowsError(try Data([0x01, 0x02]).write(to: target, options: .atomic))
         XCTAssertFalse(FileManager.default.fileExists(atPath: target.path))
