@@ -226,5 +226,17 @@
     "before": "            if timeLevel <= 1 { timeNavRow() }\n            switch timeLevel {\n            case 0: dayunLevel\n            case 1: liunianLevel\n            case 2: liuyueLevel\n            default: liuriLevel\n            }",
     "after": "            if chart.dayunGanZhi.isEmpty {\n                Text(\"暂无大运资料，请核对人物档案。\".scriptConverted)\n                    .font(.body).foregroundStyle(Ky.sub)\n            } else {\n                if timeLevel <= 1 { timeNavRow() }\n                switch timeLevel {\n                case 0: dayunLevel\n                case 1: liunianLevel\n                case 2: liuyueLevel\n                default: liuriLevel\n                }\n            }",
     "count": 1
+  },
+  {
+    "path": "Sources/QimenModule.swift",
+    "before": "        let f = DateFormatter(); f.locale = Locale(identifier: \"zh_CN\"); f.dateFormat = \"EEEE\"",
+    "after": "        let f = DateFormatter(); f.locale = Locale(identifier: \"zh_CN\"); f.dateFormat = \"EEEE\"; f.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!",
+    "count": 1
+  },
+  {
+    "path": "Sources/QimenModule.swift",
+    "before": "                    DatePicker(\"起局时间\".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])",
+    "after": "                    DatePicker(\"起局时间（北京时间）\".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])\n                        .environment(\\.timeZone, TimeZone(secondsFromGMT: 8 * 3600)!)",
+    "count": 1
   }
 ]

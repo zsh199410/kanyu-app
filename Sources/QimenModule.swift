@@ -1138,7 +1138,7 @@ struct QimenHomeView: View {
         return f
     }()
     private static let weekdayFmt: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.dateFormat = "EEEE"
+        let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.dateFormat = "EEEE"; f.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
         return f
     }()
     private var dateText: String { Self.dateFmt.string(from: date) }
@@ -1158,7 +1158,8 @@ struct QimenHomeView: View {
                     if !qmPersonName.isEmpty {
                         Text("起局命主：".scriptConverted + qmPersonName + "（已按其生辰起局）".scriptConverted).font(.caption).foregroundStyle(Ky.qingdai)
                     }
-                    DatePicker("起局时间".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])
+                    DatePicker("起局时间（北京时间）".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])
+                        .environment(\.timeZone, TimeZone(secondsFromGMT: 8 * 3600)!)
                         .labelsHidden()
                         .accessibilityLabel("起局时间".scriptConverted)
                         .datePickerStyle(.compact)
