@@ -116,6 +116,17 @@ final class BackupExportPathTests: XCTestCase {
         XCTAssertTrue(BackupExportPath.containsRestorableData(in: root))
     }
 
+    func testZeroByteRecognizedFileIsNotRestorable() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("restore-zero-byte-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        try Data().write(to: root.appendingPathComponent("people.json"), options: .atomic)
+        XCTAssertFalse(BackupExportPath.containsRestorableData(in: root))
+        try Data("[]".utf8).write(to: root.appendingPathComponent("people.json"), options: .atomic)
+        XCTAssertTrue(BackupExportPath.containsRestorableData(in: root))
+    }
+
     func testRecognizedBackupDataCanBeRestored() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("restore-valid-\(UUID().uuidString)", isDirectory: true)
