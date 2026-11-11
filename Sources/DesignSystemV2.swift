@@ -7,13 +7,7 @@ import LunarSwift
 enum KyV2 {
     // 五行色（双编码：降饱和宋韵五色＋文字标签并行，正文对比 ≥4.5:1）
     static let wuxingNames = ["木", "火", "土", "金", "水"]
-    static var wuxingColors: [Color] = [
-        .kyDyn(0x4E7A51, 0x68A86C),  // 木：松石翠 / 竹青
-        .kyDyn(0xB54932, 0xE06D53),  // 火：朱砂丹 / 暖绯
-        .kyDyn(0x9A6E4B, 0xC89B73),  // 土：赭石暖棕
-        .kyDyn(0x8C733E, 0xD4B46A),  // 金：古铜苍金
-        .kyDyn(0x2F5C78, 0x6497B8),  // 水：青黛深蓝
-    ]
+    static var wuxingColors: [Color] { KanyuV6.elementColors }
 
     static func tabular(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight).monospacedDigit()
@@ -73,6 +67,7 @@ enum KyV2 {
 
 // 通用语义胶囊标签
 struct KyBadge: View {
+    @Environment(\.colorScheme) private var badgeScheme
     let text: String
     var color: Color = Ky.qingdai
     var filled: Bool = false
@@ -81,7 +76,7 @@ struct KyBadge: View {
             .font(.caption2).fontWeight(.semibold)
             .padding(.horizontal, 8).padding(.vertical, 3.5)
             .background(filled ? color : color.opacity(0.13))
-            .foregroundStyle(filled ? Color.white : color)
+            .foregroundStyle(filled ? KanyuV6.readableForeground(on: color, scheme: badgeScheme) : color)
             .clipShape(Capsule())
     }
 }
@@ -331,17 +326,9 @@ struct KyWorkspaceHeading: View {
 }
 
 extension View {
-    /// iOS 27 120Hz 零掉帧卡片：采用 continuous 连续曲率圆角（18pt）＋精细发丝描边，
-    /// 剔除昂贵的动态离屏高斯阴影（.shadow），确保 ProMotion 滚动满帧丝滑。
+    /// V6 opaque content surface. Frame pacing still requires measurement on target hardware.
     func kyCard() -> some View {
-        self.padding(16)
-            .background(Ky.card)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Ky.line, lineWidth: 1)
-                    .allowsHitTesting(false)
-            )
+        KanyuV6Card { self }
     }
 
     /// 浅染内嵌卡（用于卡片内部二级同心圆角区块，12pt continuous）

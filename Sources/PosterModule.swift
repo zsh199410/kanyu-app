@@ -4,15 +4,17 @@ import Photos
 
 // MARK: - 命盘海报 v5（定版「宋纸青黛版」为唯一款式，严格对齐《模板规范-2026-10-29.md》）
 
-private let pPaper = Color(red: 0.968, green: 0.949, blue: 0.906) // #F7F2E7 宋纸
-private let pSub = Color(red: 0.478, green: 0.447, blue: 0.408)   // #7A7268 次级
-private let pCin = Color(red: 0.604, green: 0.165, blue: 0.133)   // #9A2A22 故宫红
-private let pTeal = Color(red: 0.153, green: 0.306, blue: 0.361)  // #274E5C 青黛
+private let pPaper = Color(rgb: KanyuV6.Hex.paper) // #F7F2E7 宋纸
+private let pSub = Color(rgb: KanyuV6.Hex.secondaryLight)   // #7A7268 次级
+private let pCin = Color(rgb: KanyuV6.Hex.cinnabar)   // #9A2A22 故宫红
+private let pTeal = Color(rgb: KanyuV6.Hex.indigo)  // #274E5C 青黛
 
 // MARK: - 海报版本：只留一款——宋纸青黛版（定版规范），做到极致；尊享预测单为独立长图产品（不占款式位）
 enum PosterStyle: String, CaseIterable {
     case songQingdai = "宋纸青黛版"
     case yuceDan = "尊享预测单"
+    case zhusha = "宣纸朱砂版"
+    case xuanye = "玄夜墨金版"
 }
 
 private struct PosterPalette {
@@ -25,15 +27,30 @@ private struct PosterPalette {
     let card: Color
     let cardStroke: Color
     let track: Color
+    var isDark: Bool = false
+    var caution: Color { isDark ? accentHi : pCin }
+    func elementColor(_ name: String) -> Color? { KanyuV6.elementColor(name, dark: isDark) }
 }
 
 private extension PosterStyle {
     var palette: PosterPalette {
         switch self {
+        case .xuanye:
+            return PosterPalette(bg0: Color(rgb: 0x111317), bg1: Color(rgb: 0x1A1D23),
+                main: Color(rgb: 0xF2EBDD), sub: Color(rgb: 0xB5AEA2),
+                accent: Color(rgb: 0xD1AC53), accentHi: Color(rgb: 0xE98A76),
+                card: Color(rgb: 0x1A1D23), cardStroke: Color(rgb: 0x6F634A),
+                track: Color.white.opacity(0.12), isDark: true)
+        case .zhusha:
+            return PosterPalette(bg0: Color(rgb: 0xF6F1E6), bg1: Color(rgb: 0xFCFBF7),
+                main: Color(rgb: 0x2B2723), sub: Color(rgb: 0x6D665D),
+                accent: Color(rgb: 0x9A2A22), accentHi: Color(rgb: 0x80601F),
+                card: Color(rgb: 0xFCFBF7), cardStroke: Color(rgb: 0xC9AD7D),
+                track: Color.black.opacity(0.07))
         case .songQingdai, .yuceDan:
-            let ink = Color(red: 0.18, green: 0.165, blue: 0.15)
-            let cardBg = Color(red: 0.992, green: 0.984, blue: 0.961) // #FDFBF5
-            let line = Color(red: 0.886, green: 0.851, blue: 0.769)   // #E2D9C4
+            let ink = Color(rgb: KanyuV6.Hex.ink)
+            let cardBg = Color(rgb: KanyuV6.Hex.ivory) // #FDFBF5
+            let line = Color(rgb: KanyuV6.Hex.ruleLight)   // #E2D9C4
             return PosterPalette(bg0: pPaper, bg1: cardBg, main: ink, sub: pSub,
                                  accent: pTeal, accentHi: pCin,
                                  card: cardBg, cardStroke: line, track: Color.black.opacity(0.07))
@@ -48,6 +65,8 @@ extension PosterStyle {
         switch self {
         case .songQingdai: return "-song"
         case .yuceDan: return "-yucedan"
+        case .zhusha: return "-zhusha"
+        case .xuanye: return "-xuanye"
         }
     }
 }
@@ -74,17 +93,11 @@ struct PosterPhotoSaver {
 }
 
 // 降饱和宋韵五行色（对齐《模板规范-2026-10-29.md》）
-private let wxColor: [String: Color] = [
-    "木": Color(red: 0.357, green: 0.498, blue: 0.306), // #5B7F4E
-    "火": Color(red: 0.710, green: 0.314, blue: 0.184), // #B5502F
-    "土": Color(red: 0.643, green: 0.471, blue: 0.392), // #A47864
-    "金": Color(red: 0.557, green: 0.545, blue: 0.510), // #8E8B82
-    "水": Color(red: 0.290, green: 0.420, blue: 0.518), // #4A6B84
-]
+// Element colours are shared with V6; glyph-to-element rules remain in KyV2.
 
-private func posterCharColor(_ ch: Character, fallback: Color) -> Color {
+private func posterCharColor(_ ch: Character, fallback: Color, dark: Bool = false) -> Color {
     let el = KyV2.element(ofChar: ch)
-    return wxColor[el] ?? fallback
+    return KanyuV6.elementColor(el, dark: dark) ?? fallback
 }
 
 
@@ -167,7 +180,7 @@ private struct PosterBrandFooter: View {
                     .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                 Text(subtitle)
                     .font(.system(size: 11, design: .serif)).foregroundStyle(pal.accent)
-                Text(Date.now.formatted(date: .abbreviated, time: .omitted))
+                Text(DisplayTimeReceipt.beijing(Date()))
                     .font(.system(size: 10).monospacedDigit()).foregroundStyle(pal.sub)
             }
             .multilineTextAlignment(.trailing)
@@ -239,7 +252,7 @@ struct PosterView: View {
     private var pal: PosterPalette {
         let base = style.palette
         guard let accent = accentOverride else { return base }
-        return PosterPalette(bg0: base.bg0, bg1: base.bg1, main: base.main, sub: base.sub, accent: accent, accentHi: base.accentHi, card: base.card, cardStroke: base.cardStroke, track: base.track)
+        return PosterPalette(bg0: base.bg0, bg1: base.bg1, main: base.main, sub: base.sub, accent: accent, accentHi: base.accentHi, card: base.card, cardStroke: base.cardStroke, track: base.track, isDark: base.isDark)
     }
     /// 编辑器标题：有覆盖且非空时用覆盖文案，否则用人物名。
     private var displayName: String {
@@ -314,9 +327,9 @@ struct PosterView: View {
         if xj.ji.contains(sWx) || xj.ji.contains(bWx) { return "\(year)年\(gz)：流年干支冲克忌神，宜守。" }
         return "\(year)年\(gz)：流年干支与喜忌无直接生克，平。"
     }
-    /// 前 6 维详批（解盘 25 维顺序前六：性格性情／十神做功／学业文书／天赋能力／事业方向／工作形态）
-    private var firstSixDims: [InterpretItem] {
-        items.filter { !InterpretEngine.coreTitles.contains($0.title) }.prefix(6).map { $0 }
+    /// 展示已有分类解读的全部条目，顺序与解释引擎一致。
+    private var detailDimensions: [InterpretItem] {
+        items.filter { !InterpretEngine.coreTitles.contains($0.title) }
     }
     /// 十二步大运长表（起年＋干支＋十神＋主题＋喜忌；以实际步数为准）
     private var dayun12Lines: [String] {
@@ -375,7 +388,7 @@ struct PosterView: View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
                 // 宋式极简发丝外框＋底部远山意境
-                RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
+                RoundedRectangle(cornerRadius: 4).strokeBorder(pal.cardStroke, lineWidth: 0.5).padding(17.5)
                 VStack {
                     Spacer()
                     SongMountainHeaderView(accent: pal.accent)
@@ -390,6 +403,9 @@ struct PosterView: View {
                         .padding(.top, 52)
                     Text(displayName.isEmpty ? "四柱命盘" : displayName)
                         .font(.system(size: 44, weight: .bold, design: .serif))
+                        .multilineTextAlignment(.center)
+                        .frame(width: 444)
+                        .fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
 
@@ -407,8 +423,8 @@ struct PosterView: View {
                 HStack(spacing: 12) {
                     ForEach(0..<4, id: \.self) { i in
                         let gz = Array(chart.pillars[i])
-                        let sColor = posterCharColor(gz[0], fallback: pal.main)
-                        let bColor = posterCharColor(gz[1], fallback: pal.main)
+                        let sColor = posterCharColor(gz[0], fallback: pal.main, dark: pal.isDark)
+                        let bColor = posterCharColor(gz[1], fallback: pal.main, dark: pal.isDark)
                         VStack(spacing: 5) {
                             Text(["年柱", "月柱", "日柱", "时柱"][i])
                                 .font(.system(size: 10.5, weight: .medium)).foregroundStyle(pal.sub)
@@ -442,13 +458,13 @@ struct PosterView: View {
                         HStack(spacing: 8) {
                             Text(e)
                                 .font(.system(size: 12, weight: .bold, design: .serif))
-                                .foregroundStyle(wxColor[e] ?? pal.main)
+                                .foregroundStyle(pal.elementColor(e) ?? pal.main)
                                 .frame(width: 16)
                             // 海报画布固定 540 宽（横向留白 54×2），轨道宽定死 364，不用 GeometryReader 量尺寸
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 3).fill(pal.track)
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(wxColor[e] ?? pal.accent)
+                                    .fill(pal.elementColor(e) ?? pal.accent)
                                     .frame(width: max(3, 364 * CGFloat(min(v, 100)) / 100.0))
                             }
                             .frame(width: 364, height: 7)
@@ -538,11 +554,11 @@ struct PosterView: View {
                         Text("五行气运：\(qiYunLine)")
                             .font(.system(size: 11, design: .serif)).foregroundStyle(pal.sub)
                             .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                        Text("前六维详批")
+                        Text("分类详批（\(detailDimensions.count) 项）")
                             .font(.system(size: 12.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                             .padding(.top, 4)
                         VStack(alignment: .leading, spacing: 10) {
-                            ForEach(firstSixDims, id: \.title) { d in
+                            ForEach(detailDimensions, id: \.title) { d in
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(d.title).font(.system(size: 11, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                                     Text(d.conclusion).font(.system(size: 13)).foregroundStyle(pal.main).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
@@ -674,12 +690,44 @@ let all = (base + base.map { $0 + 10}).sorted()
 return all.map { String($0)}.joined(separator: "、") + " 层"
 }
 
+    private func yuceReceiptRow(_ left: String, _ right: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(left).frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(right).frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var yuceReceipt: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("命主：" + (name.isEmpty ? "命主" : name))
+                .font(.system(size: 11.5, weight: .bold, design: .serif))
+                .foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            yuceReceiptRow("城市：\(receiptCity) · 经度：\(receiptLongitude)",
+                "出生：\(Self.birthFmt.string(from: chart.birthDate))\(trueSolarSuffix)")
+            yuceReceiptRow("农历：\(chart.lunarText.isEmpty ? "—" : chart.lunarText)",
+                "\(chart.gender == "M" ? "男（乾造）" : "女（坤造）") · 年命：\(chart.naYin.first ?? "—")命")
+            yuceReceiptRow("上一节：\(chart.prevJieQiText.isEmpty ? "—" : chart.prevJieQiText)",
+                "下一节：\(chart.nextJieQiText.isEmpty ? "—" : chart.nextJieQiText)")
+            yuceReceiptRow("真太阳时校正：\(correctionText)", "旬空：\(chart.xunKong.isEmpty ? "—" : chart.xunKong)")
+            if !chart.nextJieQiGapText.isEmpty {
+                Text("★ \(chart.nextJieQiGapText)").foregroundStyle(pal.accentHi)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .font(.system(size: 10, weight: .medium, design: .serif)).monospacedDigit()
+        .foregroundStyle(pal.sub)
+        .padding(.horizontal, 32).padding(.top, 8)
+    }
+
 var body: some View {
 ZStack {
 pal.bg0
 // 细线红黑边框
 RoundedRectangle(cornerRadius: 6, style:.continuous)
-.stroke(Color(red: 0.18, green: 0.165, blue: 0.15).opacity(0.8), lineWidth: 1.2)
+.stroke(Color(rgb: KanyuV6.Hex.ink).opacity(0.8), lineWidth: 1.2)
 .padding(14)
 RoundedRectangle(cornerRadius: 4, style:.continuous)
 .stroke(pal.accentHi.opacity(0.4), lineWidth: 0.6)
@@ -715,38 +763,8 @@ Text("\(receiptCity) · \(receiptLongitude)E · \(chart.naYin.first ?? "")命")
 .foregroundStyle(pal.accent)
 .padding(.top, 4)
 
-// 2. 三行生辰收据（城市/经度/出生时刻/农历/前后两节/性别/姓名/年命/真太阳时校正量）
-VStack(spacing: 2) {
-HStack(spacing: 0) {
-Text("城市：\(receiptCity)")
-Text("　经度：\(receiptLongitude)")
-Spacer()
-Text("出生：\(Self.birthFmt.string(from: chart.birthDate))\(trueSolarSuffix)")
-}
-HStack(spacing: 0) {
-Text("农历：\(chart.lunarText.isEmpty ? "—": chart.lunarText)")
-Text("　上一节 \(chart.prevJieQiText.isEmpty ? "—": chart.prevJieQiText)　下一节 \(chart.nextJieQiText.isEmpty ? "—": chart.nextJieQiText)")
-Spacer()
-Text("\(chart.gender == "M" ? "男（乾造）": "女（坤造）")　\(name.isEmpty ? "命主" : name)　\(chart.naYin.first ?? "")命")
-}
-HStack(spacing: 0) {
-Text("真太阳时校正：\(correctionText)")
-Text("　年命：\(chart.naYin.first ?? "—")命")
-Spacer()
-Text("旬空：\(chart.xunKong.isEmpty ? "—": chart.xunKong)")
-}
-if !chart.nextJieQiGapText.isEmpty {
-HStack(spacing: 0) {
-Text("★ \(chart.nextJieQiGapText)")
-.foregroundStyle(pal.accentHi)
-Spacer()
-}
-}
-}
-.font(.system(size: 10, weight:.medium, design:.serif))
-.foregroundStyle(pal.sub)
-.padding(.horizontal, 32)
-.padding(.top, 8)
+// 分栏生辰收据：姓名独占全宽，其余字段保持两列并允许完整换行。
+yuceReceipt
 
 Rectangle().fill(pal.cardStroke).frame(height: 0.7).padding(.horizontal, 24).padding(.vertical, 6)
 
@@ -836,7 +854,7 @@ Text(yueLingText)
 .fixedSize(horizontal: false, vertical: true)
 .frame(maxWidth: .infinity, alignment: .leading)
 .lineLimit(nil)
-Text("调候用神（《穷通宝鉴》）：\(tiaoHouNames.isEmpty ? "—" : tiaoHouNames)（\(chart.monthPillar.last ?? "—")月，寒暖燥湿查表，调候优先）")
+Text("调候用神（《穷通宝鉴》）：\(tiaoHouNames.isEmpty ? "—" : tiaoHouNames)（\(String(chart.monthPillar.last ?? "—"))月，寒暖燥湿查表，调候优先）")
 .font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
 .fixedSize(horizontal: false, vertical: true)
 .frame(maxWidth: .infinity, alignment: .leading)
@@ -851,12 +869,12 @@ let v = chart.wuxingPercents[idx]
 HStack(spacing: 8) {
 Text(e)
 .font(.system(size: 11, weight:.bold, design:.serif))
-.foregroundStyle(wxColor[e] ?? pal.main)
+.foregroundStyle(pal.elementColor(e) ?? pal.main)
 .frame(width: 16)
 ZStack(alignment:.leading) {
 RoundedRectangle(cornerRadius: 3).fill(pal.track)
 RoundedRectangle(cornerRadius: 3)
-.fill(wxColor[e] ?? pal.accent)
+.fill(pal.elementColor(e) ?? pal.accent)
 .frame(width: max(3, 364 * CGFloat(min(v, 100)) / 100.0))
 }
 .frame(width: 364, height: 7)
@@ -978,7 +996,7 @@ let rad = angle * Double.pi / 180.0
 VStack(spacing: 0) {
 Text(String(w.branch))
 .font(.system(size: 13, weight:.bold, design:.serif))
-.foregroundStyle(posterCharColor(w.branch, fallback: pal.main))
+.foregroundStyle(posterCharColor(w.branch, fallback: pal.main, dark: pal.isDark))
 Text("\(String(w.year))")
 .font(.system(size: 9, design:.monospaced)).foregroundStyle(pal.sub)
 Text("\(w.age)岁 \(w.glyph)")
@@ -1101,7 +1119,7 @@ private var xiJiBasis: String {
 if xj.level == "中和" { return "；同党异党接近，贵在流通，不预设固定喜忌"}
 let thNames = xj.tiaoHou.map { Self.wxNames[$0]}.joined(separator: "、")
 if thNames.isEmpty { return ""}
-return "；调候喜\(thNames)（\(chart.monthPillar.last ?? "—")月，调候优先）"
+return "；调候喜\(thNames)（\(String(chart.monthPillar.last ?? "—"))月，调候优先）"
 }
 /// 神煞全表（按柱；太极贵人已入 BaziTables.shenSha）
 private var shenShaList: [[String]] { BaziTables.shenSha(chart) }
@@ -1168,7 +1186,7 @@ private var wuxingRadar: some View {
         ForEach(0..<5, id: \.self) { i in
             Text("\(Self.wxNames[i])\(Int(pcts[i].rounded()))%")
                 .font(.system(size: 9, weight:.bold, design:.serif))
-                .foregroundStyle(wxColor[Self.wxNames[i]] ?? pal.main)
+                .foregroundStyle(pal.elementColor(Self.wxNames[i]) ?? pal.main)
                 .position(radarPoint(i, scale: 1.18))
         }
     }
@@ -1238,8 +1256,8 @@ private var pillarTable: some View {
 VStack(spacing: 0) {
 pillarRow(label: "", cells: ["年柱", "月柱", "日柱", "时柱"], size: 10, weight: .bold, color: { _ in pal.accent })
 pillarRow(label: "十神", cells: chart.stemShiShen, size: 9.5, weight: .medium, color: { i in i == 2 ? pal.accentHi : pal.accent })
-pillarRow(label: "天干", cells: chart.pillars.map { String($0.first!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].first!, fallback: pal.main) })
-pillarRow(label: "地支", cells: chart.pillars.map { String($0.last!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].last!, fallback: pal.main) })
+pillarRow(label: "天干", cells: chart.pillars.map { String($0.first!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].first!, fallback: pal.main, dark: pal.isDark) })
+pillarRow(label: "地支", cells: chart.pillars.map { String($0.last!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].last!, fallback: pal.main, dark: pal.isDark) })
 pillarRow(label: "藏干", cells: cangGanCells, size: 8.5, weight: .regular, color: { _ in pal.main })
 pillarRow(label: "长生", cells: chart.diShi, size: 9.5, weight: .regular, color: { _ in pal.sub })
 pillarRow(label: "纳音", cells: chart.pillars.map { BaziTables.naYin($0) }, size: 9.5, weight: .regular, color: { _ in pal.main })
@@ -1252,7 +1270,7 @@ private func pillarRow(label: String, cells: [String], size: CGFloat, weight: Fo
 HStack(spacing: 0) {
 Text(label).font(.system(size: 9, weight:.medium)).foregroundStyle(pal.sub).frame(width: 44, alignment:.trailing).padding(.trailing, 6)
 ForEach(0..<4, id: \.self) { i in
-Text(cells[i]).font(.system(size: size, weight: weight)).foregroundStyle(color(i)).frame(width: 108).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).padding(.vertical, 2)
+Text(cells[i]).font(.system(size: size, weight: weight)).foregroundStyle(color(i)).frame(width: 106.5).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).padding(.vertical, 2)
 }
 }
 }
@@ -1355,16 +1373,22 @@ struct PosterSheetView: View {
     @State private var style: PosterStyle = .songQingdai
     @State private var showEditor = false
     @State private var saveMessage: String?
+    @State private var renderError: String?
+    @State private var renderRequestID = UUID()
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 // 尊享预测单独立入口（不占款式位）：宋纸青黛与预测单长图二选一
-                Button(style == .yuceDan ? "切换回宋纸青黛海报" : "切换到尊享预测单长图") {
-                    style = style == .yuceDan ? .songQingdai : .yuceDan
+                Picker("海报款式", selection: $style) {
+                    ForEach(PosterStyle.allCases, id: \.self) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: style) { _, _ in
                     fileURL = nil; previewImage = nil; saveMessage = nil
                 }
-                .buttonStyle(.bordered)
 
                 // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）
                 Button("打开海报编辑器（换字／换色）") { showEditor = true }
@@ -1378,7 +1402,9 @@ struct PosterSheetView: View {
                 }
 
                 // 预览只展示缓存图片：海报矢量树绝不直接进 ScrollView（每帧重算 InterpretEngine.interpret 与 Canvas 重绘是粘滞主因之一）
-                if let img = previewImage {
+                if let renderError {
+                    V6ExportFailureCard(message: renderError, retry: render)
+                } else if let img = previewImage {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFit()
@@ -1396,7 +1422,10 @@ struct PosterSheetView: View {
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
-                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                        let savingStyle = style
+                        PosterPhotoSaver.save(img) { message in
+                            if style == savingStyle { saveMessage = message }
+                        }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
                             .frame(maxWidth: .infinity, minHeight: 44)
@@ -1420,24 +1449,31 @@ struct PosterSheetView: View {
     }
 
     // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图
-    private func render() {
+    @MainActor private func render() {
         let chart = chart, name = name, style = style
+        let request = UUID()
+        renderRequestID = request
+        fileURL = nil; previewImage = nil; renderError = nil; saveMessage = nil
         Task { @MainActor in
-            // P3：海报内含 V6 Ky 组件（预测单的 KyMetricCard／KyHomeSection）时，Ky token 须按浅色定版渲染，
-            // 不随系统深色走；海报自有 palette 为固定色，不受此环境值影响。
-            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style).environment(\.colorScheme, .light))
-            renderer.scale = 2.0
-            guard let img = renderer.uiImage, let data = img.pngData() else { return }
-            let suffix = style.fileSuffix
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(suffix).png")
-            do { try data.write(to: url, options: .atomic) }
-            catch {
-                saveMessage = "海报保存失败，请检查剩余空间后重试。"
+            guard self.renderRequestID == request else { return }
+            let scheme: ColorScheme = style == .xuanye ? .dark : .light
+            let output: PosterRasterizer.Output
+            do {
+                output = try PosterRasterizer.render(PosterView(chart: chart, name: name, style: style)
+                    .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+            } catch {
+                renderError = error.localizedDescription
                 return
             }
-            guard self.style == style else { return }
-            previewImage = img
-            fileURL = url
+            let img = output.image, data = output.pngData
+            let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png"
+            do {
+                let url = try ReportExportArchive.save(data, fileName: fileName)
+                guard self.renderRequestID == request, self.style == style else { return }
+                previewImage = img; fileURL = url
+            } catch {
+                renderError = "海报写入失败，请检查剩余空间后重试。"
+            }
         }
     }
 }
@@ -1454,8 +1490,8 @@ private struct ZiweiMiniCell: View {
             HStack(spacing: 4) {
                 Text(p.name)
                     .font(.system(size: 11, weight: .bold, design: .serif))
-                    .foregroundStyle(isMing ? pCin : pal.main)
-                Text("\(p.stem)\(ZiweiCore.DZ[p.branch])")
+                    .foregroundStyle(isMing ? pal.caution : pal.main)
+                Text("\(String(p.stem))\(String(ZiweiCore.DZ[p.branch]))")
                     .font(.system(size: 8.5)).foregroundStyle(pal.sub)
                 if p.isBody {
                     Text("身").font(.system(size: 8, weight: .bold)).foregroundStyle(pal.accentHi)
@@ -1479,7 +1515,7 @@ private struct ZiweiMiniCell: View {
         .background(pal.card)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(isMing ? pCin.opacity(0.6) : pal.cardStroke, lineWidth: isMing ? 1.1 : 0.7)
+                .stroke(isMing ? pal.caution.opacity(0.6) : pal.cardStroke, lineWidth: isMing ? 1.1 : 0.7)
         )
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
@@ -1572,6 +1608,33 @@ struct ZiweiPosterView: View {
     private var mingCard: (title: String, conclusion: String, facts: String, source: String)? {
         ZiweiReading.cards(chart: chart).first { $0.title == "命宫定型" }
     }
+    private var detailedReading: some View {
+        let cards = ZiweiReading.cards(chart: chart).filter { $0.title != "命宫定型" }
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("本盘逐项解读与依据（\(cards.count) 条）")
+                .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
+            ForEach(cards.indices, id: \.self) { index in
+                let card = cards[index]
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(card.title).font(.system(size: 12.5, weight: .bold, design: .serif))
+                        .foregroundStyle(pal.accent)
+                    Text(card.facts).font(.system(size: 10.5)).foregroundStyle(pal.sub)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(card.conclusion).font(.system(size: 12.5)).foregroundStyle(pal.main)
+                        .lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+                    Text("依据口径：" + card.source).font(.system(size: 10)).foregroundStyle(pal.sub)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(pal.card, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(pal.cardStroke, lineWidth: 0.7))
+            }
+        }
+        .frame(width: 444, alignment: .leading)
+        .padding(.top, 16)
+    }
+
     // 生年四化：全盘主星＋辅星带化者（年干四化表恰为 4 颗，不编不凑）
     private var huaItems: [(star: String, kind: String, palace: String)] {
         var out: [(star: String, kind: String, palace: String)] = []
@@ -1638,7 +1701,7 @@ struct ZiweiPosterView: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-                RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
+                RoundedRectangle(cornerRadius: 4).strokeBorder(pal.cardStroke, lineWidth: 0.5).padding(17.5)
                 VStack {
                     Spacer()
                     SongMountainHeaderView(accent: pal.accent)
@@ -1653,6 +1716,9 @@ struct ZiweiPosterView: View {
                         .padding(.top, 52)
                     Text(name.isEmpty ? "紫微命盘" : name)
                         .font(.system(size: 44, weight: .bold, design: .serif))
+                        .multilineTextAlignment(.center)
+                        .frame(width: 444)
+                        .fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
 
@@ -1692,7 +1758,7 @@ struct ZiweiPosterView: View {
                         ForEach(huaItems, id: \.star) { h in
                             HStack(spacing: 4) {
                                 Text(h.star).font(.system(size: 12, weight: .semibold, design: .serif)).foregroundStyle(pal.main)
-                                Text("化\(h.kind)").font(.system(size: 12, weight: .bold)).foregroundStyle(h.kind == "忌" ? pCin : pal.accent)
+                                Text("化\(h.kind)").font(.system(size: 12, weight: .bold)).foregroundStyle(h.kind == "忌" ? pal.caution : pal.accent)
                                 Text("入\(h.palace)").font(.system(size: 12)).foregroundStyle(pal.sub)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1732,7 +1798,7 @@ struct ZiweiPosterView: View {
 
                 // 十二宫逐宫详批（宫名＋主星＋大限区间）
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("十二宫逐宫详批")
+                    Text("十二宫星曜与大限")
                         .font(.system(size: 12, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                         ForEach(chart.palaces, id: \.branch) { p in
@@ -1740,6 +1806,11 @@ struct ZiweiPosterView: View {
                                 Text(p.name).font(.system(size: 9.5, weight: .bold, design: .serif)).foregroundStyle(pal.accent)
                                 Text(p.majors.map { $0.star }.joined(separator: "·").isEmpty ? "—" : p.majors.map { $0.star }.joined(separator: "·"))
                                     .font(.system(size: 11)).foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)
+                                Text(p.minors.isEmpty ? "辅曜：无" : "辅曜：" + p.minors.map { star in
+                                    star.star + (star.mutagen.map { "（化\($0)）" } ?? "")
+                                }.joined(separator: "、"))
+                                    .font(.system(size: 9.5)).foregroundStyle(pal.sub)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.system(size: 8.5)).foregroundStyle(pal.sub)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1752,6 +1823,8 @@ struct ZiweiPosterView: View {
                 }
                 .frame(width: 444, alignment: .leading)
                 .padding(.top, 10)
+
+                detailedReading
 
                 Spacer()
 
@@ -1770,7 +1843,7 @@ struct ZiweiPosterView: View {
 struct ZiweiPosterSheetView: View {
     let chart: ZiweiChart
     let name: String
-    @State private var renderFailed = false
+    @State private var renderError: String?
     @State private var style: PosterStyle = .songQingdai
     @State private var previewImage: UIImage?
     @State private var saveMessage: String?
@@ -1778,6 +1851,7 @@ struct ZiweiPosterSheetView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
+                V6PosterSkinPicker(style: $style)
                 // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
                 HStack(spacing: 10) {
                     KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
@@ -1793,9 +1867,8 @@ struct ZiweiPosterSheetView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
                     Group {
-                        if renderFailed {
-                            Button("海报生成失败，点此重试") { render() }
-                                .buttonStyle(.bordered)
+                        if let renderError {
+                            V6ExportFailureCard(message: renderError, retry: render)
                         } else {
                             ProgressView("正在生成海报…")
                         }
@@ -1809,7 +1882,10 @@ struct ZiweiPosterSheetView: View {
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
-                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                        let savingStyle = style
+                        PosterPhotoSaver.save(img) { message in
+                            if style == savingStyle { saveMessage = message }
+                        }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
                             .frame(maxWidth: .infinity, minHeight: 44)
@@ -1829,15 +1905,28 @@ struct ZiweiPosterSheetView: View {
         .background(Ky.bg)
         .navigationTitle("紫微命盘海报")
         .navigationBarTitleDisplayMode(.inline)
-        .task { render() }
+        .task(id: style) { render() }
     }
 
     @MainActor private func render() {
-        renderFailed = false
-        let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style))
-        renderer.scale = 2.0
-        previewImage = renderer.uiImage
-        renderFailed = previewImage == nil
+        previewImage = nil; renderError = nil; saveMessage = nil
+        let scheme: ColorScheme = style == .xuanye ? .dark : .light
+        let output: PosterRasterizer.Output
+        do {
+            output = try PosterRasterizer.render(ZiweiPosterView(chart: chart, name: name, style: style)
+                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+        } catch {
+            renderError = error.localizedDescription
+            return
+        }
+        let image = output.image, data = output.pngData
+        do {
+            _ = try ReportExportArchive.save(data,
+                fileName: "ziwei-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
+            previewImage = image
+        } catch {
+            renderError = "海报写入失败，请检查剩余空间后重试。"
+        }
     }
 }
 
@@ -1937,7 +2026,7 @@ struct HeCanPosterView: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-                RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
+                RoundedRectangle(cornerRadius: 4).strokeBorder(pal.cardStroke, lineWidth: 0.5).padding(17.5)
                 VStack {
                     Spacer()
                     SongMountainHeaderView(accent: pal.accent)
@@ -1952,6 +2041,9 @@ struct HeCanPosterView: View {
                         .padding(.top, 52)
                     Text(name.isEmpty ? "合参总览" : name)
                         .font(.system(size: 44, weight: .bold, design: .serif))
+                        .multilineTextAlignment(.center)
+                        .frame(width: 444)
+                        .fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(pal.main)
                         .padding(.top, 16)
 
@@ -1973,10 +2065,10 @@ struct HeCanPosterView: View {
                                 .font(.system(size: 10, weight: .medium)).foregroundStyle(pal.sub)
                             Text(String(gz[0]))
                                 .font(.system(size: 28, weight: .bold, design: .serif))
-                                .foregroundStyle(posterCharColor(gz[0], fallback: pal.main))
+                                .foregroundStyle(posterCharColor(gz[0], fallback: pal.main, dark: pal.isDark))
                             Text(String(gz[1]))
                                 .font(.system(size: 28, weight: .bold, design: .serif))
-                                .foregroundStyle(posterCharColor(gz[1], fallback: pal.main))
+                                .foregroundStyle(posterCharColor(gz[1], fallback: pal.main, dark: pal.isDark))
                             Text(i == 2 ? "日主" : bazi.stemShiShen[i])
                                 .font(.system(size: 9.5, weight: .semibold))
                                 .foregroundStyle(i == 2 ? pal.accentHi : pal.accent)
@@ -2053,8 +2145,8 @@ struct HeCanPosterView: View {
                         Text("尚未测量：在「手相面相」页测一张掌纹并按人保存后，这里会自动带上测量摘要。判读为娱乐参考。")
                             .font(.system(size: 12)).foregroundStyle(pal.sub).lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
                     } else {
-                        ForEach(palmLines.prefix(2), id: \.self) { line in
-                            Text(line)
+                        ForEach(palmLines.indices, id: \.self) { index in
+                            Text(palmLines[index])
                                 .font(.system(size: 12.5)).foregroundStyle(pal.main)
                                 .lineSpacing(3.5).fixedSize(horizontal: false, vertical: true)
                         }
@@ -2082,7 +2174,7 @@ struct HeCanPosterSheetView: View {
     let ziwei: ZiweiChart
     let name: String
     var palmLines: [String] = []
-    @State private var renderFailed = false
+    @State private var renderError: String?
     @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
     @State private var saveMessage: String?
@@ -2090,6 +2182,7 @@ struct HeCanPosterSheetView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
+                V6PosterSkinPicker(style: $style)
                 // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
                 HStack(spacing: 10) {
                     KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
@@ -2106,9 +2199,8 @@ struct HeCanPosterSheetView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
                     Group {
-                        if renderFailed {
-                            Button("海报生成失败，点此重试") { render() }
-                                .buttonStyle(.bordered)
+                        if let renderError {
+                            V6ExportFailureCard(message: renderError, retry: render)
                         } else {
                             ProgressView("正在生成海报…")
                         }
@@ -2122,7 +2214,10 @@ struct HeCanPosterSheetView: View {
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
-                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                        let savingStyle = style
+                        PosterPhotoSaver.save(img) { message in
+                            if style == savingStyle { saveMessage = message }
+                        }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
                             .frame(maxWidth: .infinity, minHeight: 44)
@@ -2142,14 +2237,27 @@ struct HeCanPosterSheetView: View {
         .background(Ky.bg)
         .navigationTitle("合参海报")
         .navigationBarTitleDisplayMode(.inline)
-        .task { render() }
+        .task(id: style) { render() }
     }
 
     @MainActor private func render() {
-        renderFailed = false
-        let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style))
-        renderer.scale = 2.0
-        previewImage = renderer.uiImage
-        renderFailed = previewImage == nil
+        previewImage = nil; renderError = nil; saveMessage = nil
+        let scheme: ColorScheme = style == .xuanye ? .dark : .light
+        let output: PosterRasterizer.Output
+        do {
+            output = try PosterRasterizer.render(HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)
+                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+        } catch {
+            renderError = error.localizedDescription
+            return
+        }
+        let image = output.image, data = output.pngData
+        do {
+            _ = try ReportExportArchive.save(data,
+                fileName: "hecan-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
+            previewImage = image
+        } catch {
+            renderError = "海报写入失败，请检查剩余空间后重试。"
+        }
     }
 }

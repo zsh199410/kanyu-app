@@ -1,0 +1,60 @@
+{
+  "scope": "recovered local frontend served by browser interception at production origin; read-only live backend; not deployed",
+  "routes": 31,
+  "coreNavigationItems": 6,
+  "viewports": [
+    {
+      "width": 320,
+      "viewport": 320,
+      "scroll": 320,
+      "nav": 64
+    },
+    {
+      "width": 375,
+      "viewport": 375,
+      "scroll": 375,
+      "nav": 64
+    },
+    {
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "nav": 64
+    },
+    {
+      "width": 430,
+      "viewport": 430,
+      "scroll": 430,
+      "nav": 64
+    },
+    {
+      "width": 768,
+      "viewport": 768,
+      "scroll": 768,
+      "nav": 64
+    },
+    {
+      "width": 1024,
+      "viewport": 1024,
+      "scroll": 1024,
+      "nav": 0
+    },
+    {
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "nav": 0
+    }
+  ],
+  "checks": [
+    "all routes retained",
+    "no document horizontal overflow",
+    "mobile navigation height",
+    "tool search",
+    "tool route",
+    "Escape closes dialog",
+    "focus returns to opener",
+    "theme toggle"
+  ],
+  "pageErrors": []
+}

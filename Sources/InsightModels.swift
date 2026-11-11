@@ -171,6 +171,12 @@ fileSuffix = "-song"
 case.yuceDan:
 webStyleId = "yucedan"
 fileSuffix = "-yucedan"
+case.zhusha:
+webStyleId = "zhusha"
+fileSuffix = "-zhusha"
+case.xuanye:
+webStyleId = "xuanye"
+fileSuffix = "-xuanye"
 }
 }
 
@@ -186,6 +192,7 @@ case report
 case poster
 case ziweiPoster
 case hecanPoster
+case palmPoster
 case unknown
 }
 
@@ -193,6 +200,7 @@ static let reportPrefix = "命书-"
 static let posterPrefix = "poster-"
 static let ziweiPosterPrefix = "ziwei-poster-"
 static let hecanPosterPrefix = "hecan-poster-"
+static let palmPosterPrefix = "palm-poster-"
 
 static func kind(of fileName: String) -> Kind {
 if fileName.hasPrefix(reportPrefix) {
@@ -203,6 +211,9 @@ return.ziweiPoster
 }
 if fileName.hasPrefix(hecanPosterPrefix) {
 return.hecanPoster
+}
+if fileName.hasPrefix(palmPosterPrefix) {
+return.palmPoster
 }
 if fileName.hasPrefix(posterPrefix) {
 return.poster
@@ -224,6 +235,8 @@ case.ziweiPoster:
 return ziweiPosterPrefix + name + suffix + ".png"
 case.hecanPoster:
 return hecanPosterPrefix + name + suffix + ".png"
+case.palmPoster:
+return palmPosterPrefix + name + suffix + ".png"
 case.unknown:
 return name
 }

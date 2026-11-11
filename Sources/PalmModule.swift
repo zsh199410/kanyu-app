@@ -407,11 +407,12 @@ struct HandMeasureView: View {
     ]
 
     var body: some View {
-        ScrollView {
+        let hasSelectedImage = box.image != nil
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
                 if box.image == nil { palmGuideCard }
                 PhotosPicker(selection: $item, matching: .images) {
-                    Label(box.image == nil ? "选一张手掌照片" : "换一张照片", systemImage: "photo")
+                    Label(hasSelectedImage ? "换一张照片" : "选一张手掌照片", systemImage: "photo")
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
                         .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                 }
@@ -635,10 +636,11 @@ struct FaceMeasureView: View {
     private let labels = ["发际线", "眉线", "鼻底", "下颌"]
 
     var body: some View {
-        ScrollView {
+        let hasSelectedImage = box.image != nil
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
                 PhotosPicker(selection: $item, matching: .images) {
-                    Label(box.image == nil ? "选一张正面照片" : "换一张照片", systemImage: "photo")
+                    Label(hasSelectedImage ? "换一张照片" : "选一张正面照片", systemImage: "photo")
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
                         .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                 }
@@ -782,6 +784,9 @@ struct FaceMeasureView: View {
                 let ratios = fiveEyesRatios(points: fixed)
                 let hairY = fixed[10].y
                 let corrected = appliedRoll.flatMap { r in regions.flatMap { poseCorrectedFaceMarks(regions: $0, roll: r) } }
+                let presentationPose = pose
+                let presentationRoll = appliedRoll
+                let presentationRollSource = rollSource
                 await MainActor.run {
                     if let r = ratios { fiveEyes = r }
                     marks[0] = Double(hairY); markAuto[0] = true; hairEstimated = true
@@ -799,10 +804,10 @@ struct FaceMeasureView: View {
                             markAuto[3] = true
                         }
                     }
-                    if let p = pose, let ar = appliedRoll {
+                    if let p = presentationPose, let ar = presentationRoll {
                         headPose = p
-                        poseNote = poseSummaryText(pose: p, appliedRoll: ar, rollSource: rollSource)
-                    } else if let ar = appliedRoll {
+                        poseNote = poseSummaryText(pose: p, appliedRoll: ar, rollSource: presentationRollSource)
+                    } else if let ar = presentationRoll {
                         poseNote = "头姿矩阵未输出，已按眼线校正侧倾 \(Int((ar * 180 / Double.pi).rounded()))°"
                     }
                 }
@@ -1026,7 +1031,7 @@ struct PalmPosterView: View {
     private let cin = Color(red: 0.604, green: 0.165, blue: 0.133)
     private let gold = Color(red: 0.78, green: 0.64, blue: 0.36)
     private var dateText: String {
-        Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .omitted)
+        DisplayTimeReceipt.beijing(Date(timeIntervalSince1970: record.createdEpoch))
     }
     private var lineCards: [String] {
         [
@@ -1047,6 +1052,9 @@ struct PalmPosterView: View {
                     .padding(.top, 48)
                 Text(record.personName.isEmpty ? "未命名" : record.personName)
                     .font(.system(size: 40, weight: .bold, design: .serif))
+                    .multilineTextAlignment(.center)
+                    .frame(width: 444)
+                    .fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(ink)
                     .padding(.top, 14)
                 Text("\(record.kind) · \(dateText)")
@@ -1079,6 +1087,19 @@ struct PalmPosterView: View {
                     .background(cardBg)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(cin.opacity(0.35), lineWidth: 0.8))
+                } else {
+                    VStack(spacing: 10) {
+                        Image(systemName: "photo").font(.system(size: 30)).foregroundStyle(sub)
+                        Text("未附原始照片".scriptConverted)
+                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(ink)
+                        Text("本页展示已保存的测量摘要与解读，未包含原始照片。".scriptConverted)
+                            .font(.system(size: 11.5)).foregroundStyle(sub)
+                            .multilineTextAlignment(.center).lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(18).frame(width: 444)
+                    .background(cardBg, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(cin.opacity(0.35), lineWidth: 0.8))
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Text("测量数据".scriptConverted)
@@ -1128,7 +1149,14 @@ struct PalmPosterView: View {
                 .padding(.horizontal, 48).padding(.bottom, 42)
             }
         }
-        .frame(width: 540)
+        .frame(minWidth: 540, maxWidth: 540, minHeight: 760)
+    }
+}
+
+enum PalmPosterTemporaryFile {
+    /// A fresh filename per render prevents concurrent sheets and retries from overwriting one another.
+    static func url(for recordID: UUID, directory: URL = FileManager.default.temporaryDirectory) -> URL {
+        directory.appendingPathComponent("palm-poster-\(recordID.uuidString)-\(UUID().uuidString).png")
     }
 }
 
@@ -1138,20 +1166,31 @@ struct PalmPosterSheetView: View {
     @State private var fileURL: URL?
     @State private var previewImage: UIImage?
     @State private var saveMessage: String?
+    @State private var renderError: String?
+    @State private var isRendering = false
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                if let img = previewImage {
+                if let renderError {
+                    VStack(spacing: 12) {
+                        Label(renderError, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(Ky.cinnabar)
+                            .multilineTextAlignment(.center)
+                        Button("重新生成海报") { render() }
+                            .buttonStyle(KyPrimaryButton())
+                    }
+                    .accessibilityElement(children: .contain)
+                } else if let img = previewImage {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
-                } else {
+                } else if isRendering {
                     KyLoadingState(title: "正在渲染鉴定海报…")
                 }
-                if fileURL != nil, let img = previewImage {
+                if renderError == nil, fileURL != nil, let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview("手相面相鉴定海报", image: Image(uiImage: img))) {
                         Label("保存 / 分享鉴定海报（1080宽 · 自适应长图）".scriptConverted, systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -1179,18 +1218,37 @@ struct PalmPosterSheetView: View {
         .task { render() }
     }
     private func render() {
+        guard !isRendering else { return }
+        isRendering = true
+        // Clear any previous successful share target before starting another render.
+        fileURL = nil
+        previewImage = nil
+        renderError = nil
+        saveMessage = nil
         let img = store.image(of: record)
         let view = PalmPosterView(record: record, image: img)
-        Task.detached(priority: .userInitiated) {
-            let renderer = ImageRenderer(content: view)
-            renderer.scale = 2.0
-            guard let out = renderer.uiImage, let data = out.pngData() else { return }
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("palm-poster-\(record.id.uuidString).png")
-            try? data.write(to: url, options: .atomic)
-            await MainActor.run {
+            .environment(\.colorScheme, .light).environment(\.dynamicTypeSize, .large)
+        Task { @MainActor in
+            let output: PosterRasterizer.Output
+            do {
+                output = try PosterRasterizer.render(view)
+            } catch {
+                renderError = error.localizedDescription
+                isRendering = false
+                return
+            }
+            let out = output.image, data = output.pngData
+            let url = PalmPosterTemporaryFile.url(for: record.id)
+            do {
+                try data.write(to: url, options: .atomic)
+                _ = try ReportExportArchive.save(data,
+                    fileName: "palm-poster-\(ReportBuilder.exportName(record.personName)).png")
                 previewImage = out
                 fileURL = url
+            } catch {
+                renderError = "海报写入失败，请检查设备剩余空间后重试。"
             }
+            isRendering = false
         }
     }
 }

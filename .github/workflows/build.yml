@@ -24,6 +24,13 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify protected engines and design contracts
+        run: |
+          python3 design/verify_v6.py
+          python3 design/verify_web_source.py
 
       - name: Select Xcode 26 (iOS 26 SDK / Liquid Glass)
         run: |
@@ -45,12 +52,23 @@ jobs:
           DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; u=[x['udid'] for v in d.values() for x in v if 'iPhone' in x.get('name','') and x.get('isAvailable', True)]; print(u[0] if u else '')")
           echo "simulator UDID: $DEST"
           test -n "$DEST"
-          xcodebuild test -resultBundlePath build/TestResults.xcresult -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/tests.log
+          xcodebuild test -clonedSourcePackagesDirPath build/SourcePackages -derivedDataPath build/SimulatorDD -resultBundlePath build/TestResults.xcresult -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/tests.log
+
+      - name: Verify durable report archive from existing tests
+        run: |
+          python3 design/verify_archive_outputs.py
+          swift design/verify_report_receipts.swift build/report-samples
+
+      - name: Render all poster variants from the Debug app
+        run: python3 design/run_poster_render_qa.py
+
+      - name: Verify complete text in the actual PDF reports
+        run: swift design/verify_report_text.swift build/report-samples build/poster-samples/report-expected-text.json
 
       - name: Build (unsigned)
         run: |
           set -o pipefail
-          xcodebuild -project Kanyu.xcodeproj -scheme Kanyu \
+          xcodebuild -project Kanyu.xcodeproj -scheme Kanyu -clonedSourcePackagesDirPath build/SourcePackages \
             -sdk iphoneos -configuration Release \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
@@ -76,6 +94,16 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Export UI screenshot evidence
+        if: always()
+        run: |
+          if [ -d build/TestResults.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots
+            python3 design/package_ui_evidence.py
+          else
+            echo "No test result bundle; screenshot export skipped."
+          fi
+
       - name: Preserve verification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,6 +113,12 @@ jobs:
             build/*.log
             build/commit.txt
             build/TestResults.xcresult
+            build/screenshots
+            build/report-samples
+            build/archive-verification.json
+            build/report-receipts.json
+            build/report-text-verification.json
+            build/poster-samples
           if-no-files-found: warn
           retention-days: 30
 
@@ -93,8 +127,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
           name: 三术合参 未签名 IPA（第 ${{ github.run_number }} 次构建）
-          body: 未签名 IPA：用开发者证书签名后安装（全能签 / ESign / Feather 等）。数据包格式见仓库 README。
+          prerelease: ${{ github.ref != 'refs/heads/main' }}
+          body: 未签名 IPA：自行签名后安装。非 main 分支为预览版本；UI-evidence.zip 含本次测试截图、日志与提交记录。
           files: |
             Kanyu-unsigned.ipa
             Kanyu-unsigned.ipa.sha256
+            UI-evidence.zip
+
+      - name: Verify published source tag
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SOURCE_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/build-${{ github.run_number }}" --jq '.object.sha')
+          test "$SOURCE_SHA" = "$GITHUB_SHA"

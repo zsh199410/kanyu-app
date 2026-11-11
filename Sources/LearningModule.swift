@@ -121,47 +121,86 @@ struct LearningCenterView: View {
         }
     }
     var body: some View {
-        List {
-            Section {
-                Text(LearningContent.readingOrder.scriptConverted)
-                    .font(.body).lineSpacing(5).textSelection(.enabled)
-            } header: { Text("先读懂，再判断") }
-            ForEach(LearningContent.search(query)) { topic in
-                Section {
-                    Text(topic.summary.scriptConverted).font(.body).lineSpacing(4)
-                    ForEach(Array(topic.steps.enumerated()), id: \.offset) { index, step in
-                        HStack(alignment: .top, spacing: 12) {
-                            Text("\(index + 1)").font(.body.monospacedDigit().weight(.semibold)).foregroundStyle(Ky.qingdai)
-                            Text(step.scriptConverted).font(.body).lineSpacing(5).textSelection(.enabled)
-                        }.padding(.vertical, 4)
-                    }
-                    DisclosureGroup("术语白话解释（\(topic.terms.count) 项）") {
-                        ForEach(topic.terms) { term in
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(term.name.scriptConverted).font(.headline)
-                                Text(term.meaning.scriptConverted).font(.body).lineSpacing(4).textSelection(.enabled)
-                            }.padding(.vertical, 6)
-                        }
-                    }
-                } header: { Text(topic.title.scriptConverted).font(.headline) }
-            }
-            Section("全部工具的使用说明") {
-                ForEach(matchingTools) { item in
-                    NavigationLink { ToolHelpView(item: item) } label: {
-                        Label(item.title.scriptConverted, systemImage: item.icon)
-                            .font(.body).padding(.vertical, 4)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("先读懂，再判断".scriptConverted, systemImage: "book.pages")
+                        .font(KanyuV6.Typography.cardTitle).foregroundStyle(Ky.qingdai)
+                    Text(LearningContent.readingOrder.scriptConverted)
+                        .font(.body).lineSpacing(5).textSelection(.enabled)
+                }.kyCard()
+
+                ForEach(LearningContent.search(query)) { topic in
+                    topicCard(topic)
+                }
+
+                if !matchingTools.isEmpty {
+                    Text("全部工具的使用说明".scriptConverted)
+                        .font(KanyuV6.Typography.cardTitle).padding(.top, 8)
+                    ForEach(matchingTools) { item in
+                        NavigationLink { ToolHelpView(item: item) } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: item.icon).font(.title3)
+                                    .foregroundStyle(Ky.qingdai).frame(width: 28)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.title.scriptConverted).font(.headline)
+                                    Text(item.desc.scriptConverted).font(.subheadline)
+                                        .foregroundStyle(Ky.sub).fixedSize(horizontal: false, vertical: true)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                                    .foregroundStyle(Ky.sub).accessibilityHidden(true)
+                            }
+                            .frame(minHeight: 44, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .kyCard()
+                        }.buttonStyle(.plain)
                     }
                 }
+                if LearningContent.search(query).isEmpty && matchingTools.isEmpty {
+                    KyEmptyState(icon: "magnifyingglass", title: "没有找到相关内容",
+                        message: "试试“真北”“四化”或“大运”，也可以搜索功能名称。")
+                }
             }
-            if LearningContent.search(query).isEmpty && matchingTools.isEmpty {
-                Text("没有找到相关内容，试试“真北”“四化”或“大运”。")
-                    .foregroundStyle(.secondary)
-            }
+            .padding(KanyuV6.Metric.pageInset)
+            .padding(.bottom, 100)
         }
+        .background(Ky.bg)
+        .foregroundStyle(Ky.ink)
+        .tint(Ky.qingdai)
         .searchable(text: $query, prompt: "搜功能、术语或问题")
         .navigationTitle("白话使用指南")
         .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("learning.center")
+    }
+
+    private func topicCard(_ topic: LearningTopic) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(topic.title.scriptConverted).font(KanyuV6.Typography.cardTitle)
+            Text(topic.summary.scriptConverted).font(.body).lineSpacing(5)
+                .foregroundStyle(Ky.sub).textSelection(.enabled)
+            Divider().overlay(Ky.line)
+            ForEach(Array(topic.steps.enumerated()), id: \.offset) { index, step in
+                HStack(alignment: .top, spacing: 12) {
+                    Text(String(index + 1)).font(.body.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(Ky.qingdai).frame(minWidth: 28, minHeight: 28)
+                        .background(Ky.qingdai.opacity(0.08), in: Circle())
+                    Text(step.scriptConverted).font(.body).lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                }
+            }
+            DisclosureGroup("术语白话解释（\(topic.terms.count) 项）") {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(topic.terms) { term in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(term.name.scriptConverted).font(.headline).foregroundStyle(Ky.qingdai)
+                            Text(term.meaning.scriptConverted).font(.body).lineSpacing(5)
+                                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                        }
+                    }
+                }.padding(.top, 12)
+            }.frame(minHeight: 44)
+        }.kyCard()
     }
 }
 

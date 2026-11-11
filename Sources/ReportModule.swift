@@ -3,6 +3,7 @@
 import SwiftUI
 import UIKit
 import CryptoKit
+import CoreText
 
 /// 命书三档（G1 报告体系）：档位只做章节取舍，不改任何结论文案与引擎口径。
 /// 简洁＝总纲＋核心结论＋要点；专业＝现行全部 6 章（默认档位，等于改版前输出）；
@@ -67,7 +68,7 @@ enum ReportBuilder {
                                    longitude: person.useLongitude ? person.longitude : nil)
         var L: [String] = []
         L.append("命书 · \(person.name)")
-        L.append("生辰：\(person.birthDate.formatted(date: .long, time: .shortened))（\(person.gender == "M" ? "男" : "女")，经度 \(person.useLongitude ? String(format: "%.1f", person.longitude) : "未校正")）")
+        L.append("生辰：\(DisplayTimeReceipt.beijing(person.birthDate))（\(person.gender == "M" ? "男" : "女")，经度 \(person.useLongitude ? String(format: "%.1f", person.longitude) : "未校正")）")
         L.append("四柱：\(ch.pillars.joined(separator: " ")) · 起运方向：\(ch.qiyunDirection) · 日柱旬空：\(ch.xunKong)")
         L.append("胎元 \(ch.taiYuan) · 胎息 \(ch.taiXi) · 命宫 \(ch.mingGong) · 身宫 \(ch.shenGong)")
         L.append("")
@@ -221,7 +222,11 @@ enum ReportBuilder {
         let stamp = stampFormatter.string(from: Date())
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("命书-\(exportName(person.name))-\(tier.displayName)-\(stamp)-\(hashShort).pdf")
-        do { try data.write(to: url, options: .atomic); return url } catch { return nil }
+        do {
+            try data.write(to: url, options: .atomic)
+            _ = try ReportExportArchive.save(data, fileName: url.lastPathComponent)
+            return url
+        } catch { return nil }
     }
 
     /// 一行已排版的正文行（绘制时直接取 y 与 height，不再重算断页）
@@ -265,22 +270,48 @@ enum ReportBuilder {
             let style = NSMutableParagraphStyle()
             style.lineSpacing = 3
             let attr: [NSAttributedString.Key: Any] = [.font: font, .paragraphStyle: style]
-            let h = (line as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
-                                                     options: [.usesLineFragmentOrigin], attributes: attr, context: nil).height
-            if y + h > bottom {
-                pages.append(ContentPage())
-                y = 48
+            let fragments = layoutFragments(line, attributes: attr, width: width, capacity: bottom - inset)
+            var firstPage: Int?
+            for fragment in fragments {
+                let h = ceil((fragment as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                    options: [.usesLineFragmentOrigin], attributes: attr, context: nil).height)
+                if y + h > bottom && !pages[pages.count - 1].lines.isEmpty {
+                    pages.append(ContentPage())
+                    y = inset
+                }
+                if firstPage == nil { firstPage = pages.count + 2 }
+                pages[pages.count - 1].lines.append(PlacedLine(text: fragment, font: font, y: y, height: h))
+                y += h + gap
             }
-            pages[pages.count - 1].lines.append(PlacedLine(text: line, font: font, y: y, height: h))
             if line.hasPrefix("【") {
-                chapters.append((title: line, page: pages.count - 1 + 3))
+                chapters.append((title: line, page: firstPage ?? pages.count + 2))
             }
             if inSummary, let itemTitle = summaryItemTitle(line) {
-                tocItems.append((title: itemTitle, page: pages.count - 1 + 3))
+                tocItems.append((title: itemTitle, page: firstPage ?? pages.count + 2))
             }
-            y += h + gap
         }
         return (pages, chapters, tocItems)
+    }
+
+    // Split only oversized paragraphs; content and hash inputs remain untouched.
+    private static func layoutFragments(_ text: String, attributes: [NSAttributedString.Key: Any], width: CGFloat, capacity: CGFloat) -> [String] {
+        let fullHeight = (text as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin], attributes: attributes, context: nil).height
+        guard fullHeight > capacity else { return [text] }
+        var remaining = text as NSString
+        var result: [String] = []
+        while remaining.length > 0 {
+            let attributed = NSAttributedString(string: remaining as String, attributes: attributes)
+            let setter = CTFramesetterCreateWithAttributedString(attributed as CFAttributedString)
+            let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: capacity - 8), transform: nil)
+            let frame = CTFramesetterCreateFrame(setter, CFRange(location: 0, length: 0), path, nil)
+            let count = CTFrameGetVisibleStringRange(frame).length
+            // A composed-character fallback guarantees progress without splitting surrogate pairs.
+            let length = count > 0 ? count : remaining.rangeOfComposedCharacterSequence(at: 0).length
+            result.append(remaining.substring(to: length))
+            remaining = remaining.substring(from: length) as NSString
+        }
+        return result
     }
 
     /// 摘要区条目行「N. 标题：首句…」→ 目录条目「N. 标题」；非此格式返回 nil。

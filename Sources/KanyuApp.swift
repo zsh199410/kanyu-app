@@ -1232,6 +1232,7 @@ struct KanyuSurveyApp: App {
     var body: some Scene {
         WindowGroup {
             RootTabView()
+                .modifier(V6ExportQAHost())
                 .environmentObject(store)
                 .environmentObject(location)
                 .environmentObject(motion)
@@ -1297,17 +1298,18 @@ extension Color {
 }
 
 enum Ky {
-    static var bg: Color { Color(uiColor: .systemGroupedBackground) }
-    static var card: Color { Color(uiColor: .secondarySystemGroupedBackground) }
-    static var elevated: Color { Color(uiColor: .tertiarySystemGroupedBackground) }
-    static var ink: Color { Color.primary }
-    static var sub: Color { Color.secondary }
-    static var gold: Color { .kyDyn(0x9E782F, 0xD1AC53) }      // 宋式雅金
-    static var cinnabar: Color { .kyDyn(0x9A2A22, 0xE05A47) }  // 故宫朱砂红
-    static var jade: Color { .kyDyn(0x367552, 0x52B788) }      // 松石玉绿
-    static var qingdai: Color { .kyDyn(0x1F4959, 0x6CA2B8) }   // 宋韵青黛（主交互色）
-    static var line: Color { .kyDyn(0xE2D9C5, 0x2E333C) }      // 宋纸发丝线
-    // 仪器页恒深色（罗盘、拍摄、AR）
+    // Compatibility facade; preserve call sites and the existing uiStyle preference.
+    static var bg: Color { .kyDyn(KanyuV6.Hex.paper, KanyuV6.Hex.obsidian) }
+    static var card: Color { .kyDyn(KanyuV6.Hex.ivory, KanyuV6.Hex.jadeCard) }
+    static var elevated: Color { .kyDyn(KanyuV6.Hex.elevatedLight, KanyuV6.Hex.elevatedDark) }
+    static var ink: Color { .kyDyn(KanyuV6.Hex.ink, KanyuV6.Hex.foregroundDark) }
+    static var sub: Color { .kyDyn(KanyuV6.Hex.secondaryLight, KanyuV6.Hex.secondaryDark) }
+    // Legacy gold is frequently used as small text. Original bronze remains an ornament token.
+    static var gold: Color { .kyDyn(KanyuV6.Hex.bronzeText, KanyuV6.Hex.champagne) }
+    static var cinnabar: Color { .kyDyn(KanyuV6.Hex.cinnabar, 0xE05A47) }
+    static var jade: Color { .kyDyn(0x367552, 0x52B788) }
+    static var qingdai: Color { .kyDyn(KanyuV6.Hex.indigo, KanyuV6.Hex.nightIndigo) }
+    static var line: Color { .kyDyn(KanyuV6.Hex.ruleLight, KanyuV6.Hex.ruleDark) }
     static let instBg = Color(rgb: 0x111317)
     static let instGold = Color(rgb: 0xD1AC53)
     static let instCinnabar = Color(rgb: 0xE05A47)
@@ -1324,25 +1326,9 @@ enum KyMotion {
     static let dragSpring = Animation.spring()                   // 拖拽回弹（户型中宫复位）
 }
 
-struct KyPrimaryButton: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(.headline, design: .serif))
-            .fontWeight(.semibold)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .background(isEnabled ? Ky.qingdai : Ky.elevated)
-            .foregroundStyle(isEnabled ? Color.white : Ky.sub)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1.0)
-            .opacity(configuration.isPressed ? 0.86 : 1)
-    }
-}
+// Type alias keeps the existing initializer and installs the style through SwiftUI,
+// so its Environment properties are resolved by the system.
+typealias KyPrimaryButton = KanyuV6PrimaryButton
 
 extension View {
     // Liquid Glass（iOS 26/27+）/ 旧系统回退磨砂材质（仅用于浮动控制层，严禁用于内容卡片）
@@ -1443,6 +1429,7 @@ struct HomePageView: View {
     @AppStorage("signCertDays") private var signCertDays: Int = 365
     @StateObject private var forecastStore = ForecastStore()
     @EnvironmentObject var peopleStore: PeopleStore
+    @Environment(\.dynamicTypeSize) private var homeTypeSize
     @State private var showingNewPerson = false
     @State private var showingMyView = false
     @State private var showingPersonDetail = false
@@ -1455,12 +1442,14 @@ struct HomePageView: View {
 
     var body: some View {
         ScrollView {
-            // 120Hz：外层改回 LazyVStack，只渲染可见区段（纠正 build-72 的说法——VStack 全量预布局抬高首帧挂载成本，长页正确做法是可见区渲染）
-            LazyVStack(alignment: .leading, spacing: 16) {
-                KyWorkspaceHeading(title: "选择人物，开始合参", detail: "从命盘进入解读、回验和报告。", icon: "person.crop.circle")
-                    .accessibilityIdentifier("workspace.workbench")
+            // Keep the workspace lazy; frame pacing requires device measurement.
+            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
                 signBanner
                 personSwitcherCard
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("workspace.workbench")
+                todaySection
+                V6ReadingTopicLinks()
                 primaryBentoGrid
                 NavigationLink { LearningCenterView() } label: {
                     Label("看不懂命盘？从白话指南开始", systemImage: "book.closed")
@@ -1470,14 +1459,12 @@ struct HomePageView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
                 .accessibilityIdentifier("home.learning")
-                todaySection
                 // 05 最近使用与专项工具（dueCard 置顶常驻）
                 dueCard
                 recentToolsSection
                 allToolsLink
-                brandHeader
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, KanyuV6.Metric.pageInset)
             .padding(.top, 6)
             .padding(.bottom, 38) // 预留充足底部安全距离，避让 iOS 27 Liquid Glass 悬浮胶囊栏
         }
@@ -1488,6 +1475,7 @@ struct HomePageView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 6) {
+                    AppLogoView(size: 24).accessibilityHidden(true)
                     Text("三术合参".scriptConverted)
                         .font(.system(.headline, design: .serif))
                         .fontWeight(.bold)
@@ -1495,17 +1483,22 @@ struct HomePageView: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 8) {
-                    Button { showingNewPerson = true } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.badge.plus")
-                        Text("建档")
+                Button { showingMyView = true } label: {
+                    ZStack {
+                        Circle().fill(Ky.card)
+                        if currentPersonNameForHeader.isEmpty {
+                            Image(systemName: "person.crop.circle")
+                        } else {
+                            Text(String(currentPersonNameForHeader.prefix(1)))
+                                .font(.system(.headline, design: .serif))
+                        }
                     }
-                    .font(.caption).fontWeight(.bold)
                     .foregroundStyle(Ky.qingdai)
+                    .frame(width: 44, height: 44)
+                    .overlay(Circle().strokeBorder(Ky.line, lineWidth: 0.7).allowsHitTesting(false))
                 }
-                .accessibilityLabel("新建人物档案")
-                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("个人中心与全局设置")
             }
         }
         .sheet(isPresented: $showingNewPerson) {
@@ -1648,7 +1641,15 @@ struct HomePageView: View {
                     }
             )
         }
-        return AnyView(TodayFortuneCard(person: nil, chart: nil))
+        return AnyView(
+            HStack(spacing: 10) {
+                Image(systemName: "person.crop.circle.badge.plus").foregroundStyle(Ky.gold)
+                Text("建档后可查看命主专属的今日解读。".scriptConverted)
+                    .font(.subheadline).foregroundStyle(Ky.sub)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .kyCard()
+        )
     }
 
     // 待回验提醒
@@ -1673,10 +1674,16 @@ struct HomePageView: View {
     }
 
     // 04 核心排盘 2×2 矩阵（标题严格 4 字「核心排盘」，绝不断行！）
+    private var coreRowLayout: AnyLayout {
+        homeTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: KanyuV6.Metric.cardGap))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: KanyuV6.Metric.cardGap))
+    }
+
     private var primaryBentoGrid: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
             KySectionTitle(title: "核心排盘", trailing: "四柱 · 斗数 · 奇门 · 相法")
-            HStack(spacing: 12) {
+            coreRowLayout {
                 Button { selectedTab = 1 } label: {
                     bentoCard(
                         icon: "tablecells.fill",
@@ -1697,7 +1704,7 @@ struct HomePageView: View {
                     )
                 }.buttonStyle(.plain)
             }
-            HStack(spacing: 12) {
+            coreRowLayout {
                 Button { selectedTab = 3 } label: {
                     bentoCard(
                         icon: "circle.grid.3x3.fill",
@@ -2042,10 +2049,7 @@ struct KanyuWorkbenchTabView: View {
                 KyWorkspaceHeading(title: "罗盘与现场勘察", detail: "从坐向测量或户型分析开始，在案件中整理现场记录。", icon: "safari")
                     .accessibilityIdentifier("workspace.survey")
                 heroCard
-                VStack(alignment: .leading, spacing: 10) {
-                    KySectionTitle(title: "勘察案件", trailing: "现场记录")
-                    casesSection
-                }
+                casesSection
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "罗盘工作区", trailing: "二十四山")
                     compassToolCard

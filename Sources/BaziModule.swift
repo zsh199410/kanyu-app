@@ -697,7 +697,7 @@ struct BaziResultView: View {
     @State private var timeLevel = 0        // 0 大运 1 流年 2 流月 3 流日
     // UI 2.1 第6批：大运／流年／点柱选中跨启动保留（SceneStorage；Int? 用 -1＝未选）
     @SceneStorage("bazi.selectedDayun") private var selectedDayun = 0
-    private var safeDayun: Int { chart.dayunGanZhi.isEmpty ? 0 : min(selectedDayun, chart.dayunGanZhi.count - 1) }
+    private var safeDayun: Int { chart.dayunGanZhi.isEmpty ? 0 : min(max(selectedDayun, 0), chart.dayunGanZhi.count - 1) }
     @SceneStorage("bazi.selectedYear") private var selectedYearStored: Int = -1
     private var selectedYear: Int? {
         get { selectedYearStored >= 0 ? selectedYearStored : nil }
@@ -714,7 +714,7 @@ struct BaziResultView: View {
     @State private var showShichen = false  // 十二时辰对照默认折叠，不喧宾夺主
     @SceneStorage("bazi.selectedPillar") private var selectedPillarStored: Int = -1
     private var selectedPillar: Int? {  // 点柱牵动源（nil＝未选）
-        get { selectedPillarStored >= 0 ? selectedPillarStored : nil }
+        get { (0..<chart.pillars.count).contains(selectedPillarStored) ? selectedPillarStored : nil }
         set { selectedPillarStored = newValue ?? -1 }
     }
     @State private var yunSource: YunSource? = nil  // 下钻大运／流年牵动源（与点柱互斥）
@@ -812,6 +812,7 @@ struct BaziResultView: View {
     }
     private func refreshYunSource() {
         guard yunSource != nil else { return }
+        guard !chart.dayunGanZhi.isEmpty else { yunSource = nil; return }
         if timeLevel == 0 {
             let gz = chart.dayunGanZhi[safeDayun]
             yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(gz)运")
@@ -1170,7 +1171,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                         RoundedRectangle(cornerRadius: 11)
                             .stroke(highlightColor(for: i), lineWidth: 1.6)
                             .opacity(highlightOpacity(for: i))
-                            .animation(KyMotion.breathing, value: pulse)
+                            .animation(nil, value: pulse)
                     )
                     .onTapGesture {
                         tapHaptic()
@@ -1257,7 +1258,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                         VStack(alignment: .leading, spacing: 4) {
                             Text(names[idx].scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             HStack(spacing: 0) {
-                                Text("天干：\(stem)（\(KyV2.element(ofChar: stem)) · ")
+                                Text("天干：\(String(stem))（\(KyV2.element(ofChar: stem)) · ")
                                 TermButton(term: chart.stemShiShen[idx], display: chart.stemShiShen[idx])
                                 Text("）")
                             }
@@ -1404,12 +1405,17 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
             }
             TimeCapsuleBar(levels: ["大运", "流年", "流月", "流日", "流时"],
                            enabled: [true, true, true, true, false], selection: $timeLevel)
-            if timeLevel <= 1 { timeNavRow() }
-            switch timeLevel {
-            case 0: dayunLevel
-            case 1: liunianLevel
-            case 2: liuyueLevel
-            default: liuriLevel
+            if chart.dayunGanZhi.isEmpty {
+                Text("暂无大运资料，请核对人物档案。".scriptConverted)
+                    .font(.body).foregroundStyle(Ky.sub)
+            } else {
+                if timeLevel <= 1 { timeNavRow() }
+                switch timeLevel {
+                case 0: dayunLevel
+                case 1: liunianLevel
+                case 2: liuyueLevel
+                default: liuriLevel
+                }
             }
         }
         .kyCard()

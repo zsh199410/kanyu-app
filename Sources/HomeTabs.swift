@@ -639,13 +639,6 @@ struct MyView: View {
                     myLink("person.2.fill", "人物档案管理", "家人与命例建档 · 支持数据导入导出备份", Ky.qingdai) { PeopleView() }
                 }
 
-                // (3) 我的记录：前瞻登记簿＋手相面相记录（原散落在「档案账本」组内，现立分组标题）
-                KySectionTitle(title: "我的记录", trailing: "封存与回验")
-                VStack(spacing: 10) {
-                    myLink("checkmark.seal.fill", "前瞻断语登记簿", "事前封存断语 · 到期核验命中率", Ky.jade) { ForecastView() }
-                    myLink("hand.raised.fill", "手相面相与测量记录", "21点几何掌型 · 三线手描 · 三停校准归档", Ky.gold) { PalmHomeView() }
-                }
-
                 // (4) 我的命书／报告中心（P3）：报告中心已上线——按人物归档已生成的命书 PDF 与海报
                 KySectionTitle(title: "我的命书／报告中心", trailing: "已生成命书与海报")
                 VStack(alignment: .leading, spacing: 8) {
@@ -659,6 +652,13 @@ struct MyView: View {
                     myLink("archivebox.fill", "报告中心", "已生成的命书 PDF 与海报 · 按人物归档 · 含生成时间与类型", Ky.gold) {
                         ReportCenterView()
                     }
+                }
+
+                // (3) 我的记录：前瞻登记簿＋手相面相记录（原散落在「档案账本」组内，现立分组标题）
+                KySectionTitle(title: "我的记录", trailing: "封存与回验")
+                VStack(spacing: 10) {
+                    myLink("checkmark.seal.fill", "前瞻断语登记簿", "事前封存断语 · 到期核验命中率", Ky.jade) { ForecastView() }
+                    myLink("hand.raised.fill", "手相面相与测量记录", "21点几何掌型 · 三线手描 · 三停校准归档", Ky.gold) { PalmHomeView() }
                 }
 
                 // (5) 智库设置

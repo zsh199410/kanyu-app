@@ -1,0 +1,830 @@
+[
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "min(selectedDayun, chart.dayunGanZhi.count - 1)",
+    "after": "min(max(selectedDayun, 0), chart.dayunGanZhi.count - 1)",
+    "count": 1
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "get { selectedPillarStored >= 0 ? selectedPillarStored : nil }",
+    "after": "get { (0..<chart.pillars.count).contains(selectedPillarStored) ? selectedPillarStored : nil }",
+    "count": 1
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": ".animation(KyMotion.breathing, value: pulse)",
+    "after": ".animation(nil, value: pulse)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "get { selectedStored >= 0 ? selectedStored : nil }",
+    "after": "get { (0..<12).contains(selectedStored) ? selectedStored : nil }",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "    @State private var flyProgress: Double = 0",
+    "after": "    @Environment(\\.accessibilityReduceMotion) private var reduceFlyMotion\n    @State private var flyProgress: Double = 0",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "        flyProgress = 0\n        withAnimation(KyMotion.flyline) {",
+    "after": "        if reduceFlyMotion { flyProgress = 3; return }\n        flyProgress = 0\n        withAnimation(KanyuV6.Motion.flyline) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)",
+    "after": "RoundedRectangle(cornerRadius: 4).strokeBorder(pal.cardStroke, lineWidth: 0.5).padding(17.5)",
+    "count": 3
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": ".frame(width: 108).multilineTextAlignment(.center)",
+    "after": ".frame(width: 106.5).multilineTextAlignment(.center)",
+    "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "                // (3) 我的记录：前瞻登记簿＋手相面相记录（原散落在「档案账本」组内，现立分组标题）\n                KySectionTitle(title: \"我的记录\", trailing: \"封存与回验\")\n                VStack(spacing: 10) {\n                    myLink(\"checkmark.seal.fill\", \"前瞻断语登记簿\", \"事前封存断语 · 到期核验命中率\", Ky.jade) { ForecastView() }\n                    myLink(\"hand.raised.fill\", \"手相面相与测量记录\", \"21点几何掌型 · 三线手描 · 三停校准归档\", Ky.gold) { PalmHomeView() }\n                }\n\n                // (4) 我的命书／报告中心（P3）：报告中心已上线——按人物归档已生成的命书 PDF 与海报\n                KySectionTitle(title: \"我的命书／报告中心\", trailing: \"已生成命书与海报\")\n                VStack(alignment: .leading, spacing: 8) {\n                    myLink(\"doc.text.fill\", \"生成我的命书（PDF）\", \"当前命主的命书文件 · 在详情页生成后分享\", Ky.qingdai) {\n                        if let p = PeopleStore.shared.currentPerson {\n                            PersonDetailView(person: p, store: PeopleStore.shared)\n                        } else {\n                            PeopleView()\n                        }\n                    }\n                    myLink(\"archivebox.fill\", \"报告中心\", \"已生成的命书 PDF 与海报 · 按人物归档 · 含生成时间与类型\", Ky.gold) {\n                        ReportCenterView()\n                    }\n                }\n\n",
+    "after": "                // (4) 我的命书／报告中心（P3）：报告中心已上线——按人物归档已生成的命书 PDF 与海报\n                KySectionTitle(title: \"我的命书／报告中心\", trailing: \"已生成命书与海报\")\n                VStack(alignment: .leading, spacing: 8) {\n                    myLink(\"doc.text.fill\", \"生成我的命书（PDF）\", \"当前命主的命书文件 · 在详情页生成后分享\", Ky.qingdai) {\n                        if let p = PeopleStore.shared.currentPerson {\n                            PersonDetailView(person: p, store: PeopleStore.shared)\n                        } else {\n                            PeopleView()\n                        }\n                    }\n                    myLink(\"archivebox.fill\", \"报告中心\", \"已生成的命书 PDF 与海报 · 按人物归档 · 含生成时间与类型\", Ky.gold) {\n                        ReportCenterView()\n                    }\n                }\n\n                // (3) 我的记录：前瞻登记簿＋手相面相记录（原散落在「档案账本」组内，现立分组标题）\n                KySectionTitle(title: \"我的记录\", trailing: \"封存与回验\")\n                VStack(spacing: 10) {\n                    myLink(\"checkmark.seal.fill\", \"前瞻断语登记簿\", \"事前封存断语 · 到期核验命中率\", Ky.jade) { ForecastView() }\n                    myLink(\"hand.raised.fill\", \"手相面相与测量记录\", \"21点几何掌型 · 三线手描 · 三停校准归档\", Ky.gold) { PalmHomeView() }\n                }\n\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    case yuceDan = \"尊享预测单\"",
+    "after": "    case yuceDan = \"尊享预测单\"\n    case zhusha = \"宣纸朱砂版\"\n    case xuanye = \"玄夜墨金版\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "        case .songQingdai, .yuceDan:",
+    "after": "        case .xuanye:\n            return PosterPalette(bg0: Color(rgb: 0x111317), bg1: Color(rgb: 0x1A1D23),\n                main: Color(rgb: 0xF2EBDD), sub: Color(rgb: 0xB5AEA2),\n                accent: Color(rgb: 0xD1AC53), accentHi: Color(rgb: 0xE98A76),\n                card: Color(rgb: 0x1A1D23), cardStroke: Color(rgb: 0x6F634A),\n                track: Color.white.opacity(0.12))\n        case .zhusha:\n            return PosterPalette(bg0: Color(rgb: 0xF6F1E6), bg1: Color(rgb: 0xFCFBF7),\n                main: Color(rgb: 0x2B2723), sub: Color(rgb: 0x6D665D),\n                accent: Color(rgb: 0x9A2A22), accentHi: Color(rgb: 0x80601F),\n                card: Color(rgb: 0xFCFBF7), cardStroke: Color(rgb: 0xC9AD7D),\n                track: Color.black.opacity(0.07))\n        case .songQingdai, .yuceDan:",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "        case .yuceDan: return \"-yucedan\"",
+    "after": "        case .yuceDan: return \"-yucedan\"\n        case .zhusha: return \"-zhusha\"\n        case .xuanye: return \"-xuanye\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                Button(style == .yuceDan ? \"切换回宋纸青黛海报\" : \"切换到尊享预测单长图\") {\n                    style = style == .yuceDan ? .songQingdai : .yuceDan\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }\n                .buttonStyle(.bordered)",
+    "after": "                Picker(\"海报款式\", selection: $style) {\n                    ForEach(PosterStyle.allCases, id: \\.self) { option in\n                        Text(option.rawValue).tag(option)\n                    }\n                }\n                .pickerStyle(.menu)\n                .onChange(of: style) { _, _ in\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportCenterView.swift",
+    "before": "[\"-yucedan\", \"-song\", \"-xuan\", \"-ink\"]",
+    "after": "[\"-yucedan\", \"-zhusha\", \"-xuanye\", \"-song\", \"-xuan\", \"-ink\"]",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                    Text(\"换色：强调色（品牌色板内）\")",
+    "after": "                    Picker(\"海报款式\", selection: $style) {\n                        ForEach(PosterStyle.allCases, id: \\.self) { option in\n                            Text(option.rawValue).tag(option)\n                        }\n                    }\n                    .pickerStyle(.menu)\n                    .onChange(of: style) { _, _ in\n                        fileURL = nil\n                        previewImage = nil\n                        saveMessage = nil\n                        refreshRenderKey()\n                    }\n                    Text(\"换色：强调色（品牌色板内）\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/InsightModels.swift",
+    "before": "case.yuceDan:\nwebStyleId = \"yucedan\"\nfileSuffix = \"-yucedan\"",
+    "after": "case.yuceDan:\nwebStyleId = \"yucedan\"\nfileSuffix = \"-yucedan\"\ncase.zhusha:\nwebStyleId = \"zhusha\"\nfileSuffix = \"-zhusha\"\ncase.xuanye:\nwebStyleId = \"xuanye\"\nfileSuffix = \"-xuanye\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "accentOverride: accent.color",
+    "after": "accentOverride: style == .xuanye ? nil : accent.color",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                    .pickerStyle(.segmented)\n                    .onChange(of: accent)",
+    "after": "                    .pickerStyle(.segmented)\n                    .disabled(style == .xuanye)\n                    if style == .xuanye {\n                        Text(\"玄夜版使用固定高对比金色，保证深色长卷可读。\")\n                            .font(.footnote).foregroundStyle(Ky.sub)\n                    }\n                    .onChange(of: accent)",
+    "count": 1
+  },
+  {
+    "path": "Sources/FloorPlanOverlayView.swift",
+    "before": "Slider(value: $overlayOpacity, in: 0.2...0.9).frame(width: 80)",
+    "after": "Slider(value: $overlayOpacity, in: 0.2...0.9)\n.frame(minWidth: 80, minHeight: 44)\n.accessibilityLabel(\"飞星图层透明度\")\nText(overlayOpacity, format: .percent.precision(.fractionLength(0)))\n.font(.caption.monospacedDigit())\n.foregroundStyle(Ky.ink)\n.accessibilityHidden(true)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                    if style == .xuanye {\n                        Text(\"玄夜版使用固定高对比金色，保证深色长卷可读。\")\n                            .font(.footnote).foregroundStyle(Ky.sub)\n                    }\n",
+    "after": "",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "      - name: Preserve verification evidence\n",
+    "after": "      - name: Export UI screenshot evidence\n        if: always()\n        run: |\n          if [ -d build/TestResults.xcresult ]; then\n            xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots\n          else\n            echo \"No test result bundle; screenshot export skipped.\"\n          fi\n\n      - name: Preserve verification evidence\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            build/TestResults.xcresult\n",
+    "after": "            build/TestResults.xcresult\n            build/screenshots\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "import CryptoKit",
+    "after": "import CryptoKit\nimport CoreText",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "            let h = (line as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),\n                                                     options: [.usesLineFragmentOrigin], attributes: attr, context: nil).height\n            if y + h > bottom {\n                pages.append(ContentPage())\n                y = 48\n            }\n            pages[pages.count - 1].lines.append(PlacedLine(text: line, font: font, y: y, height: h))\n            if line.hasPrefix(\"【\") {\n                chapters.append((title: line, page: pages.count - 1 + 3))\n            }\n            if inSummary, let itemTitle = summaryItemTitle(line) {\n                tocItems.append((title: itemTitle, page: pages.count - 1 + 3))\n            }\n            y += h + gap",
+    "after": "            let fragments = layoutFragments(line, attributes: attr, width: width, capacity: bottom - inset)\n            var firstPage: Int?\n            for fragment in fragments {\n                let h = ceil((fragment as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),\n                    options: [.usesLineFragmentOrigin], attributes: attr, context: nil).height)\n                if y + h > bottom && !pages[pages.count - 1].lines.isEmpty {\n                    pages.append(ContentPage())\n                    y = inset\n                }\n                if firstPage == nil { firstPage = pages.count + 2 }\n                pages[pages.count - 1].lines.append(PlacedLine(text: fragment, font: font, y: y, height: h))\n                y += h + gap\n            }\n            if line.hasPrefix(\"【\") {\n                chapters.append((title: line, page: firstPage ?? pages.count + 2))\n            }\n            if inSummary, let itemTitle = summaryItemTitle(line) {\n                tocItems.append((title: itemTitle, page: firstPage ?? pages.count + 2))\n            }",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "    /// 摘要区条目行「N. 标题：首句…」",
+    "after": "    // Split only oversized paragraphs; content and hash inputs remain untouched.\n    private static func layoutFragments(_ text: String, attributes: [NSAttributedString.Key: Any], width: CGFloat, capacity: CGFloat) -> [String] {\n        let fullHeight = (text as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),\n            options: [.usesLineFragmentOrigin], attributes: attributes, context: nil).height\n        guard fullHeight > capacity else { return [text] }\n        var remaining = text as NSString\n        var result: [String] = []\n        while remaining.length > 0 {\n            let attributed = NSAttributedString(string: remaining as String, attributes: attributes)\n            let setter = CTFramesetterCreateWithAttributedString(attributed)\n            let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: capacity - 8), transform: nil)\n            let frame = CTFramesetterCreateFrame(setter, CFRange(location: 0, length: 0), path, nil)\n            let count = CTFrameGetVisibleStringRange(frame).length\n            // A composed-character fallback guarantees progress without splitting surrogate pairs.\n            let length = count > 0 ? count : remaining.rangeOfComposedCharacterSequence(at: 0).length\n            result.append(remaining.substring(to: length))\n            remaining = remaining.substring(from: length) as NSString\n        }\n        return result\n    }\n\n    /// 摘要区条目行「N. 标题：首句…」",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "CTFramesetterCreateWithAttributedString(attributed)",
+    "after": "CTFramesetterCreateWithAttributedString(attributed as CFAttributedString)",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "      - uses: actions/checkout@v4\n",
+    "after": "      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n\n      - name: Verify protected engines and design contracts\n        run: python3 design/verify_v6.py\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "        run: python3 design/verify_v6.py\n",
+    "after": "        run: |\n          python3 design/verify_v6.py\n          python3 design/verify_web_source.py\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots\n",
+    "after": "            xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots\n            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "          body: 未签名 IPA：用开发者证书签名后安装（全能签 / ESign / Feather 等）。数据包格式见仓库 README。\n",
+    "after": "          prerelease: ${{ github.ref != 'refs/heads/main' }}\n          body: 未签名 IPA：自行签名后安装。非 main 分支为预览版本；UI-evidence.zip 含本次测试截图、日志与提交记录。\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "          files: |\n            Kanyu-unsigned.ipa\n            Kanyu-unsigned.ipa.sha256\n",
+    "after": "          files: |\n            Kanyu-unsigned.ipa\n            Kanyu-unsigned.ipa.sha256\n            UI-evidence.zip\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "struct PalmPosterSheetView: View {\n    let record: PalmRecord\n    @ObservedObject var store: PalmRecordStore\n    @State private var fileURL: URL?\n    @State private var previewImage: UIImage?\n    @State private var saveMessage: String?\n    var body: some View {\n        ScrollView {\n            LazyVStack(spacing: 16) {\n                if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        .frame(maxWidth: .infinity)\n                        .clipShape(RoundedRectangle(cornerRadius: 12))\n                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))\n                } else {\n                    KyLoadingState(title: \"正在渲染鉴定海报…\")\n                }\n                if fileURL != nil, let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(\"手相面相鉴定海报\", image: Image(uiImage: img))) {\n                        Label(\"保存 / 分享鉴定海报（1080宽 · 自适应长图）\".scriptConverted, systemImage: \"square.and.arrow.down\")\n                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        PosterPhotoSaver.save(img) { saveMessage = $0 }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。\".scriptConverted)\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n            }\n            .padding(20)\n        }\n        .background(Ky.bg)\n        .navigationTitle(\"手相面相鉴定海报\".scriptConverted).navigationBarTitleDisplayMode(.inline)\n        .task { render() }\n    }\n    private func render() {\n        let img = store.image(of: record)\n        let view = PalmPosterView(record: record, image: img)\n        Task.detached(priority: .userInitiated) {\n            let renderer = ImageRenderer(content: view)\n            renderer.scale = 2.0\n            guard let out = renderer.uiImage, let data = out.pngData() else { return }\n            let url = FileManager.default.temporaryDirectory.appendingPathComponent(\"palm-poster-\\(record.id.uuidString).png\")\n            try? data.write(to: url, options: .atomic)\n            await MainActor.run {\n                previewImage = out\n                fileURL = url\n            }\n        }\n    }\n}\n",
+    "after": "enum PalmPosterTemporaryFile {\n    /// A fresh filename per render prevents concurrent sheets and retries from overwriting one another.\n    static func url(for recordID: UUID, directory: URL = FileManager.default.temporaryDirectory) -> URL {\n        directory.appendingPathComponent(\"palm-poster-\\(recordID.uuidString)-\\(UUID().uuidString).png\")\n    }\n}\n\nstruct PalmPosterSheetView: View {\n    let record: PalmRecord\n    @ObservedObject var store: PalmRecordStore\n    @State private var fileURL: URL?\n    @State private var previewImage: UIImage?\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var isRendering = false\n    var body: some View {\n        ScrollView {\n            LazyVStack(spacing: 16) {\n                if let renderError {\n                    VStack(spacing: 12) {\n                        Label(renderError, systemImage: \"exclamationmark.triangle\")\n                            .foregroundStyle(Ky.cinnabar)\n                            .multilineTextAlignment(.center)\n                        Button(\"重新生成海报\") { render() }\n                            .buttonStyle(KyPrimaryButton())\n                    }\n                    .accessibilityElement(children: .contain)\n                } else if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        .frame(maxWidth: .infinity)\n                        .clipShape(RoundedRectangle(cornerRadius: 12))\n                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))\n                } else if isRendering {\n                    KyLoadingState(title: \"正在渲染鉴定海报…\")\n                }\n                if renderError == nil, fileURL != nil, let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(\"手相面相鉴定海报\", image: Image(uiImage: img))) {\n                        Label(\"保存 / 分享鉴定海报（1080宽 · 自适应长图）\".scriptConverted, systemImage: \"square.and.arrow.down\")\n                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        PosterPhotoSaver.save(img) { saveMessage = $0 }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"分享单点「存储图像」可存入相册，或点「保存到相册」直接存入；也可以直接转发微信。\".scriptConverted)\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n            }\n            .padding(20)\n        }\n        .background(Ky.bg)\n        .navigationTitle(\"手相面相鉴定海报\".scriptConverted).navigationBarTitleDisplayMode(.inline)\n        .task { render() }\n    }\n    private func render() {\n        guard !isRendering else { return }\n        isRendering = true\n        // Clear any previous successful share target before starting another render.\n        fileURL = nil\n        previewImage = nil\n        renderError = nil\n        saveMessage = nil\n        let img = store.image(of: record)\n        let view = PalmPosterView(record: record, image: img)\n        Task { @MainActor in\n            // ImageRenderer and SwiftUI view rendering are MainActor-isolated.\n            let renderer = ImageRenderer(content: view)\n            renderer.scale = 2.0\n            guard let out = renderer.uiImage, let data = out.pngData() else {\n                renderError = \"海报生成失败，请重试；没有保存任何文件。\"\n                isRendering = false\n                return\n            }\n            let url = PalmPosterTemporaryFile.url(for: record.id)\n            do {\n                try data.write(to: url, options: .atomic)\n                previewImage = out\n                fileURL = url\n            } catch {\n                renderError = \"海报写入失败，请检查设备剩余空间后重试。\"\n            }\n            isRendering = false\n        }\n    }\n}\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "                let corrected = appliedRoll.flatMap { r in regions.flatMap { poseCorrectedFaceMarks(regions: $0, roll: r) } }\n                await MainActor.run {",
+    "after": "                let corrected = appliedRoll.flatMap { r in regions.flatMap { poseCorrectedFaceMarks(regions: $0, roll: r) } }\n                let presentationPose = pose\n                let presentationRoll = appliedRoll\n                let presentationRollSource = rollSource\n                await MainActor.run {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "if let p = pose, let ar = appliedRoll {",
+    "after": "if let p = presentationPose, let ar = presentationRoll {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "poseSummaryText(pose: p, appliedRoll: ar, rollSource: rollSource)",
+    "after": "poseSummaryText(pose: p, appliedRoll: ar, rollSource: presentationRollSource)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "} else if let ar = appliedRoll {",
+    "after": "} else if let ar = presentationRoll {",
+    "count": 1
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "        guard yunSource != nil else { return }\n        if timeLevel == 0 {",
+    "after": "        guard yunSource != nil else { return }\n        guard !chart.dayunGanZhi.isEmpty else { yunSource = nil; return }\n        if timeLevel == 0 {",
+    "count": 1
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "            if timeLevel <= 1 { timeNavRow() }\n            switch timeLevel {\n            case 0: dayunLevel\n            case 1: liunianLevel\n            case 2: liuyueLevel\n            default: liuriLevel\n            }",
+    "after": "            if chart.dayunGanZhi.isEmpty {\n                Text(\"暂无大运资料，请核对人物档案。\".scriptConverted)\n                    .font(.body).foregroundStyle(Ky.sub)\n            } else {\n                if timeLevel <= 1 { timeNavRow() }\n                switch timeLevel {\n                case 0: dayunLevel\n                case 1: liunianLevel\n                case 2: liuyueLevel\n                default: liuriLevel\n                }\n            }",
+    "count": 1
+  },
+  {
+    "path": "Sources/QimenModule.swift",
+    "before": "        let f = DateFormatter(); f.locale = Locale(identifier: \"zh_CN\"); f.dateFormat = \"EEEE\"",
+    "after": "        let f = DateFormatter(); f.locale = Locale(identifier: \"zh_CN\"); f.dateFormat = \"EEEE\"; f.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!",
+    "count": 1
+  },
+  {
+    "path": "Sources/QimenModule.swift",
+    "before": "                    DatePicker(\"起局时间\".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])",
+    "after": "                    DatePicker(\"起局时间（北京时间）\".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])\n                        .environment(\\.timeZone, TimeZone(secondsFromGMT: 8 * 3600)!)",
+    "count": 1
+  },
+  {
+    "path": "Sources/DesignSystemV2.swift",
+    "before": "    static var wuxingColors: [Color] = [\n        .kyDyn(0x4E7A51, 0x68A86C),  // 木：松石翠 / 竹青\n        .kyDyn(0xB54932, 0xE06D53),  // 火：朱砂丹 / 暖绯\n        .kyDyn(0x9A6E4B, 0xC89B73),  // 土：赭石暖棕\n        .kyDyn(0x8C733E, 0xD4B46A),  // 金：古铜苍金\n        .kyDyn(0x2F5C78, 0x6497B8),  // 水：青黛深蓝\n    ]",
+    "after": "    static var wuxingColors: [Color] { KanyuV6.elementColors }",
+    "count": 1
+  },
+  {
+    "path": "Sources/DesignSystemV2.swift",
+    "before": "struct KyBadge: View {",
+    "after": "struct KyBadge: View {\n    @Environment(\\.colorScheme) private var badgeScheme",
+    "count": 1
+  },
+  {
+    "path": "Sources/DesignSystemV2.swift",
+    "before": ".foregroundStyle(filled ? Color.white : color)",
+    "after": ".foregroundStyle(filled ? KanyuV6.readableForeground(on: color, scheme: badgeScheme) : color)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    let cardStroke: Color\n    let track: Color\n}",
+    "after": "    let cardStroke: Color\n    let track: Color\n    var isDark: Bool = false\n    func elementColor(_ name: String) -> Color? { KanyuV6.elementColor(name, dark: isDark) }\n}",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "track: Color.white.opacity(0.12))",
+    "after": "track: Color.white.opacity(0.12), isDark: true)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "cardStroke: base.cardStroke, track: base.track)",
+    "after": "cardStroke: base.cardStroke, track: base.track, isDark: base.isDark)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "private let wxColor: [String: Color] = [\n    \"木\": Color(red: 0.357, green: 0.498, blue: 0.306), // #5B7F4E\n    \"火\": Color(red: 0.710, green: 0.314, blue: 0.184), // #B5502F\n    \"土\": Color(red: 0.643, green: 0.471, blue: 0.392), // #A47864\n    \"金\": Color(red: 0.557, green: 0.545, blue: 0.510), // #8E8B82\n    \"水\": Color(red: 0.290, green: 0.420, blue: 0.518), // #4A6B84\n]",
+    "after": "// Element colours are shared with V6; glyph-to-element rules remain in KyV2.",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "private func posterCharColor(_ ch: Character, fallback: Color) -> Color {",
+    "after": "private func posterCharColor(_ ch: Character, fallback: Color, dark: Bool = false) -> Color {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "return wxColor[el] ?? fallback",
+    "after": "return KanyuV6.elementColor(el, dark: dark) ?? fallback",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "fallback: pal.main)",
+    "after": "fallback: pal.main, dark: pal.isDark)",
+    "count": 7
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "wxColor[e]",
+    "after": "pal.elementColor(e)",
+    "count": 4
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "wxColor[Self.wxNames[i]]",
+    "after": "pal.elementColor(Self.wxNames[i])",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.968, green: 0.949, blue: 0.906)",
+    "after": "Color(rgb: KanyuV6.Hex.paper)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.478, green: 0.447, blue: 0.408)",
+    "after": "Color(rgb: KanyuV6.Hex.secondaryLight)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.604, green: 0.165, blue: 0.133)",
+    "after": "Color(rgb: KanyuV6.Hex.cinnabar)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.153, green: 0.306, blue: 0.361)",
+    "after": "Color(rgb: KanyuV6.Hex.indigo)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.18, green: 0.165, blue: 0.15)",
+    "after": "Color(rgb: KanyuV6.Hex.ink)",
+    "count": 2
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.992, green: 0.984, blue: 0.961)",
+    "after": "Color(rgb: KanyuV6.Hex.ivory)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.886, green: 0.851, blue: 0.769)",
+    "after": "Color(rgb: KanyuV6.Hex.ruleLight)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "    var body: some View {\n        ScrollView {\n            LazyVStack(alignment: .leading, spacing: 14) {\n                if box.image == nil { palmGuideCard }\n                PhotosPicker(selection: $item, matching: .images) {\n                    Label(box.image == nil ? \"选一张手掌照片\" : \"换一张照片\", systemImage: \"photo\")",
+    "after": "    var body: some View {\n        let hasSelectedImage = box.image != nil\n        return ScrollView {\n            LazyVStack(alignment: .leading, spacing: 14) {\n                if box.image == nil { palmGuideCard }\n                PhotosPicker(selection: $item, matching: .images) {\n                    Label(hasSelectedImage ? \"换一张照片\" : \"选一张手掌照片\", systemImage: \"photo\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "    var body: some View {\n        ScrollView {\n            LazyVStack(alignment: .leading, spacing: 14) {\n                PhotosPicker(selection: $item, matching: .images) {\n                    Label(box.image == nil ? \"选一张正面照片\" : \"换一张照片\", systemImage: \"photo\")",
+    "after": "    var body: some View {\n        let hasSelectedImage = box.image != nil\n        return ScrollView {\n            LazyVStack(alignment: .leading, spacing: 14) {\n                PhotosPicker(selection: $item, matching: .images) {\n                    Label(hasSelectedImage ? \"换一张照片\" : \"选一张正面照片\", systemImage: \"photo\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    @State private var showEditor = false\n    @State private var saveMessage: String?",
+    "after": "    @State private var showEditor = false\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    private func render() {\n        let chart = chart, name = name, style = style\n        Task { @MainActor in\n            // P3：海报内含 V6 Ky 组件（预测单的 KyMetricCard／KyHomeSection）时，Ky token 须按浅色定版渲染，\n            // 不随系统深色走；海报自有 palette 为固定色，不受此环境值影响。\n            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style).environment(\\.colorScheme, .light))\n            renderer.scale = 2.0\n            guard let img = renderer.uiImage, let data = img.pngData() else { return }\n            let suffix = style.fileSuffix\n            let url = FileManager.default.temporaryDirectory.appendingPathComponent(\"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(suffix).png\")\n            do { try data.write(to: url, options: .atomic) }\n            catch {\n                saveMessage = \"海报保存失败，请检查剩余空间后重试。\"\n                return\n            }\n            guard self.style == style else { return }\n            previewImage = img\n            fileURL = url\n        }\n    }",
+    "after": "    @MainActor private func render() {\n        let chart = chart, name = name, style = style\n        let request = UUID()\n        renderRequestID = request\n        fileURL = nil; previewImage = nil; renderError = nil; saveMessage = nil\n        Task { @MainActor in\n            guard self.renderRequestID == request else { return }\n            let scheme: ColorScheme = style == .xuanye ? .dark : .light\n            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style)\n                .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .medium))\n            renderer.scale = 2.0\n            guard let img = renderer.uiImage, let data = img.pngData() else {\n                renderError = \"海报生成失败，请重试。\"\n                return\n            }\n            let fileName = \"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\"\n            do {\n                let url = try ReportExportArchive.save(data, fileName: fileName)\n                guard self.renderRequestID == request, self.style == style else { return }\n                previewImage = img; fileURL = url\n            } catch {\n                renderError = \"海报写入失败，请检查剩余空间后重试。\"\n            }\n        }\n    }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "struct PosterSheetView: View {\n    let chart: BaziChart\n    let name: String\n    @State private var fileURL: URL?\n    @State private var previewImage: UIImage?\n    @State private var style: PosterStyle = .songQingdai\n    @State private var showEditor = false\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()\n\n    var body: some View {\n        ScrollView {\n            LazyVStack(spacing: 16) {\n                // 尊享预测单独立入口（不占款式位）：宋纸青黛与预测单长图二选一\n                Picker(\"海报款式\", selection: $style) {\n                    ForEach(PosterStyle.allCases, id: \\.self) { option in\n                        Text(option.rawValue).tag(option)\n                    }\n                }\n                .pickerStyle(.menu)\n                .onChange(of: style) { _, _ in\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }\n\n                // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）\n                Button(\"打开海报编辑器（换字／换色）\") { showEditor = true }\n                    .buttonStyle(KyPrimaryButton())\n                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name) }\n\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n                    KyMetricCard(label: \"导出宽度\", value: \"1080 px\", badgeText: \"PNG\")\n                    KyMetricCard(label: \"渲染倍率\", value: \"2.0×\", badgeText: \"540 pt\")\n                }\n\n                // 预览只展示缓存图片：海报矢量树绝不直接进 ScrollView（每帧重算 InterpretEngine.interpret 与 Canvas 重绘是粘滞主因之一）\n                if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        .frame(maxWidth: .infinity)\n                        .clipShape(RoundedRectangle(cornerRadius: 12))\n                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))\n                } else {\n                    ProgressView(style == .yuceDan ? \"正在渲染 1080宽长图海报…\" : \"正在渲染海报…\")\n                        .frame(maxWidth: .infinity)\n                }\n\n                if fileURL != nil, let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? \"尊享预测单长图海报\" : \"命盘海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        PosterPhotoSaver.save(img) { saveMessage = $0 }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n            }\n            .padding(20)\n        }\n        .background(Ky.bg)\n        .navigationTitle(\"命盘海报\")\n        .navigationBarTitleDisplayMode(.inline)\n        .task(id: style) { render() }\n    }\n\n    // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图\n    @MainActor private func render() {\n        let chart = chart, name = name, style = style\n        let request = UUID()\n        renderRequestID = request\n        fileURL = nil; previewImage = nil; renderError = nil; saveMessage = nil\n        Task { @MainActor in\n            guard self.renderRequestID == request else { return }\n            let scheme: ColorScheme = style == .xuanye ? .dark : .light\n            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style)\n                .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .medium))\n            renderer.scale = 2.0\n            guard let img = renderer.uiImage, let data = img.pngData() else {\n                renderError = \"海报生成失败，请重试。\"\n                return\n            }\n            let fileName = \"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\"\n            do {\n                let url = try ReportExportArchive.save(data, fileName: fileName)\n                guard self.renderRequestID == request, self.style == style else { return }\n                previewImage = img; fileURL = url\n            } catch {\n                renderError = \"海报写入失败，请检查剩余空间后重试。\"\n            }\n        }\n    }\n}",
+    "after": "struct PosterSheetView: View {\n    let chart: BaziChart\n    let name: String\n    @State private var fileURL: URL?\n    @State private var previewImage: UIImage?\n    @State private var style: PosterStyle = .songQingdai\n    @State private var showEditor = false\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()\n\n    var body: some View {\n        ScrollView {\n            LazyVStack(spacing: 16) {\n                // 尊享预测单独立入口（不占款式位）：宋纸青黛与预测单长图二选一\n                Picker(\"海报款式\", selection: $style) {\n                    ForEach(PosterStyle.allCases, id: \\.self) { option in\n                        Text(option.rawValue).tag(option)\n                    }\n                }\n                .pickerStyle(.menu)\n                .onChange(of: style) { _, _ in\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }\n\n                // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）\n                Button(\"打开海报编辑器（换字／换色）\") { showEditor = true }\n                    .buttonStyle(KyPrimaryButton())\n                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name) }\n\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n                    KyMetricCard(label: \"导出宽度\", value: \"1080 px\", badgeText: \"PNG\")\n                    KyMetricCard(label: \"渲染倍率\", value: \"2.0×\", badgeText: \"540 pt\")\n                }\n\n                // 预览只展示缓存图片：海报矢量树绝不直接进 ScrollView（每帧重算 InterpretEngine.interpret 与 Canvas 重绘是粘滞主因之一）\n                if let renderError {\n                    V6ExportFailureCard(message: renderError, retry: render)\n                } else if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        .frame(maxWidth: .infinity)\n                        .clipShape(RoundedRectangle(cornerRadius: 12))\n                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))\n                } else {\n                    ProgressView(style == .yuceDan ? \"正在渲染 1080宽长图海报…\" : \"正在渲染海报…\")\n                        .frame(maxWidth: .infinity)\n                }\n\n                if fileURL != nil, let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? \"尊享预测单长图海报\" : \"命盘海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        PosterPhotoSaver.save(img) { saveMessage = $0 }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n            }\n            .padding(20)\n        }\n        .background(Ky.bg)\n        .navigationTitle(\"命盘海报\")\n        .navigationBarTitleDisplayMode(.inline)\n        .task(id: style) { render() }\n    }\n\n    // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图\n    @MainActor private func render() {\n        let chart = chart, name = name, style = style\n        let request = UUID()\n        renderRequestID = request\n        fileURL = nil; previewImage = nil; renderError = nil; saveMessage = nil\n        Task { @MainActor in\n            guard self.renderRequestID == request else { return }\n            let scheme: ColorScheme = style == .xuanye ? .dark : .light\n            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style)\n                .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .medium))\n            renderer.scale = 2.0\n            guard let img = renderer.uiImage, let data = img.pngData() else {\n                renderError = \"海报生成失败，请重试。\"\n                return\n            }\n            let fileName = \"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\"\n            do {\n                let url = try ReportExportArchive.save(data, fileName: fileName)\n                guard self.renderRequestID == request, self.style == style else { return }\n                previewImage = img; fileURL = url\n            } catch {\n                renderError = \"海报写入失败，请检查剩余空间后重试。\"\n            }\n        }\n    }\n}",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "    @State private var renderKey: String\n    @State private var saveMessage: String?",
+    "after": "    @State private var renderKey: String\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "    private func render() {\n        let chart = chart\n        let name = name\n        let style = style\n        let accent = accent\n        let appliedTitle = appliedTitle\n        let appliedSubtitle = appliedSubtitle\n        let expectedKey = renderKey\n        Task { @MainActor in\n            let titleValue: String? = appliedTitle.isEmpty ? nil : appliedTitle\n            let subtitleValue: String? = appliedSubtitle.isEmpty ? nil : appliedSubtitle\n            let view = PosterView(chart: chart, name: name, style: style, titleOverride: titleValue, subtitleOverride: subtitleValue, accentOverride: style == .xuanye ? nil : accent.color)\n            let renderer = ImageRenderer(content: view.environment(\\.colorScheme, .light))\n            renderer.scale = 2.0\n            guard let img = renderer.uiImage, let data = img.pngData() else { return }\n            let url = FileManager.default.temporaryDirectory.appendingPathComponent(\"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\")\n            do { try data.write(to: url, options: .atomic) }\n            catch {\n                saveMessage = \"海报保存失败，请检查剩余空间后重试。\"\n                return\n            }\n            guard self.renderKey == expectedKey else { return }\n            previewImage = img\n            fileURL = url\n        }\n    }",
+    "after": "    @MainActor private func render() {\n        let chart = chart, name = name, style = style, accent = accent\n        let title = appliedTitle, subtitle = appliedSubtitle, expectedKey = renderKey\n        let request = UUID()\n        renderRequestID = request\n        fileURL = nil; previewImage = nil; renderError = nil; saveMessage = nil\n        Task { @MainActor in\n            guard self.renderRequestID == request else { return }\n            let view = PosterView(chart: chart, name: name, style: style,\n                titleOverride: title.isEmpty ? nil : title,\n                subtitleOverride: subtitle.isEmpty ? nil : subtitle,\n                accentOverride: style == .xuanye ? nil : accent.color)\n            let scheme: ColorScheme = style == .xuanye ? .dark : .light\n            let renderer = ImageRenderer(content: view.environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .medium))\n            renderer.scale = 2.0\n            guard let img = renderer.uiImage, let data = img.pngData() else {\n                renderError = \"海报生成失败，请重试。\"\n                return\n            }\n            let fileName = \"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\"\n            do {\n                let url = try ReportExportArchive.save(data, fileName: fileName)\n                guard self.renderRequestID == request, self.renderKey == expectedKey else { return }\n                previewImage = img; fileURL = url\n            } catch {\n                renderError = \"海报写入失败，请检查剩余空间后重试。\"\n            }\n        }\n    }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                    if let img = previewImage {\n                        Image(uiImage: img)\n                            .resizable()\n                            .scaledToFit()\n                            .frame(maxWidth: .infinity)\n                            .clipShape(RoundedRectangle(cornerRadius: 12))\n                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))",
+    "after": "                    if let renderError {\n                        V6ExportFailureCard(message: renderError, retry: render)\n                    } else if let img = previewImage {\n                        Image(uiImage: img)\n                            .resizable()\n                            .scaledToFit()\n                            .frame(maxWidth: .infinity)\n                            .clipShape(RoundedRectangle(cornerRadius: 12))\n                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "struct ZiweiPosterSheetView: View {\n    let chart: ZiweiChart\n    let name: String\n    @State private var renderFailed = false\n    @State private var style: PosterStyle = .songQingdai\n    @State private var previewImage: UIImage?\n    @State private var saveMessage: String?\n\n    var body: some View {\n        ScrollView {\n            LazyVStack(spacing: 16) {\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n                    KyMetricCard(label: \"导出宽度\", value: \"1080 px\", badgeText: \"PNG\")\n                    KyMetricCard(label: \"渲染倍率\", value: \"2.0×\", badgeText: \"540 pt\")\n                }\n\n                if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        .frame(maxWidth: .infinity)\n                        .clipShape(RoundedRectangle(cornerRadius: 12))\n                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))\n                } else {\n                    Group {\n                        if renderFailed {\n                            Button(\"海报生成失败，点此重试\") { render() }\n                                .buttonStyle(.bordered)\n                        } else {\n                            ProgressView(\"正在生成海报…\")\n                        }\n                    }\n                    .frame(maxWidth: .infinity)\n                }\n\n                if let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(\"紫微命盘海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        PosterPhotoSaver.save(img) { saveMessage = $0 }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n            }\n            .padding(20)\n        }\n        .background(Ky.bg)\n        .navigationTitle(\"紫微命盘海报\")\n        .navigationBarTitleDisplayMode(.inline)\n        .task { render() }\n    }\n\n    @MainActor private func render() {\n        renderFailed = false\n        let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style))\n        renderer.scale = 2.0\n        previewImage = renderer.uiImage\n        renderFailed = previewImage == nil\n    }\n}",
+    "after": "struct ZiweiPosterSheetView: View {\n    let chart: ZiweiChart\n    let name: String\n    @State private var renderError: String?\n    @State private var style: PosterStyle = .songQingdai\n    @State private var previewImage: UIImage?\n    @State private var saveMessage: String?\n\n    var body: some View {\n        ScrollView {\n            LazyVStack(spacing: 16) {\n                V6PosterSkinPicker(style: $style)\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n                    KyMetricCard(label: \"导出宽度\", value: \"1080 px\", badgeText: \"PNG\")\n                    KyMetricCard(label: \"渲染倍率\", value: \"2.0×\", badgeText: \"540 pt\")\n                }\n\n                if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        .frame(maxWidth: .infinity)\n                        .clipShape(RoundedRectangle(cornerRadius: 12))\n                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))\n                } else {\n                    Group {\n                        if let renderError {\n                            V6ExportFailureCard(message: renderError, retry: render)\n                        } else {\n                            ProgressView(\"正在生成海报…\")\n                        }\n                    }\n                    .frame(maxWidth: .infinity)\n                }\n\n                if let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(\"紫微命盘海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        PosterPhotoSaver.save(img) { saveMessage = $0 }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n            }\n            .padding(20)\n        }\n        .background(Ky.bg)\n        .navigationTitle(\"紫微命盘海报\")\n        .navigationBarTitleDisplayMode(.inline)\n        .task(id: style) { render() }\n    }\n\n    @MainActor private func render() {\n        previewImage = nil; renderError = nil; saveMessage = nil\n        let scheme: ColorScheme = style == .xuanye ? .dark : .light\n        let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style)\n            .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .medium))\n        renderer.scale = 2.0\n        guard let image = renderer.uiImage, let data = image.pngData() else {\n            renderError = \"海报生成失败，请重试。\"\n            return\n        }\n        do {\n            _ = try ReportExportArchive.save(data,\n                fileName: \"ziwei-poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\")\n            previewImage = image\n        } catch {\n            renderError = \"海报写入失败，请检查剩余空间后重试。\"\n        }\n    }\n}",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "struct HeCanPosterSheetView: View {\n    let bazi: BaziChart\n    let ziwei: ZiweiChart\n    let name: String\n    var palmLines: [String] = []\n    @State private var renderFailed = false\n    @State private var previewImage: UIImage?\n    @State private var style: PosterStyle = .songQingdai\n    @State private var saveMessage: String?\n\n    var body: some View {\n        ScrollView {\n            LazyVStack(spacing: 16) {\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n                    KyMetricCard(label: \"导出宽度\", value: \"1080 px\", badgeText: \"PNG\")\n                    KyMetricCard(label: \"渲染倍率\", value: \"2.0×\", badgeText: \"540 pt\")\n                }\n\n                // 预览只展示缓存图片（与命盘／紫微海报同款；旧 live 缩放预览依赖 960 定高，自适应高度后改走缓存图）\n                if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        .frame(maxWidth: .infinity)\n                        .clipShape(RoundedRectangle(cornerRadius: 12))\n                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))\n                } else {\n                    Group {\n                        if renderFailed {\n                            Button(\"海报生成失败，点此重试\") { render() }\n                                .buttonStyle(.bordered)\n                        } else {\n                            ProgressView(\"正在生成海报…\")\n                        }\n                    }\n                    .frame(maxWidth: .infinity)\n                }\n\n                if let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(\"合参海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        PosterPhotoSaver.save(img) { saveMessage = $0 }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n            }\n            .padding(20)\n        }\n        .background(Ky.bg)\n        .navigationTitle(\"合参海报\")\n        .navigationBarTitleDisplayMode(.inline)\n        .task { render() }\n    }\n\n    @MainActor private func render() {\n        renderFailed = false\n        let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style))\n        renderer.scale = 2.0\n        previewImage = renderer.uiImage\n        renderFailed = previewImage == nil\n    }\n}",
+    "after": "struct HeCanPosterSheetView: View {\n    let bazi: BaziChart\n    let ziwei: ZiweiChart\n    let name: String\n    var palmLines: [String] = []\n    @State private var renderError: String?\n    @State private var previewImage: UIImage?\n    @State private var style: PosterStyle = .songQingdai\n    @State private var saveMessage: String?\n\n    var body: some View {\n        ScrollView {\n            LazyVStack(spacing: 16) {\n                V6PosterSkinPicker(style: $style)\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n                    KyMetricCard(label: \"导出宽度\", value: \"1080 px\", badgeText: \"PNG\")\n                    KyMetricCard(label: \"渲染倍率\", value: \"2.0×\", badgeText: \"540 pt\")\n                }\n\n                // 预览只展示缓存图片（与命盘／紫微海报同款；旧 live 缩放预览依赖 960 定高，自适应高度后改走缓存图）\n                if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        .frame(maxWidth: .infinity)\n                        .clipShape(RoundedRectangle(cornerRadius: 12))\n                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))\n                } else {\n                    Group {\n                        if let renderError {\n                            V6ExportFailureCard(message: renderError, retry: render)\n                        } else {\n                            ProgressView(\"正在生成海报…\")\n                        }\n                    }\n                    .frame(maxWidth: .infinity)\n                }\n\n                if let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(\"合参海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        PosterPhotoSaver.save(img) { saveMessage = $0 }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n            }\n            .padding(20)\n        }\n        .background(Ky.bg)\n        .navigationTitle(\"合参海报\")\n        .navigationBarTitleDisplayMode(.inline)\n        .task(id: style) { render() }\n    }\n\n    @MainActor private func render() {\n        previewImage = nil; renderError = nil; saveMessage = nil\n        let scheme: ColorScheme = style == .xuanye ? .dark : .light\n        let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)\n            .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .medium))\n        renderer.scale = 2.0\n        guard let image = renderer.uiImage, let data = image.pngData() else {\n            renderError = \"海报生成失败，请重试。\"\n            return\n        }\n        do {\n            _ = try ReportExportArchive.save(data,\n                fileName: \"hecan-poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\")\n            previewImage = image\n        } catch {\n            renderError = \"海报写入失败，请检查剩余空间后重试。\"\n        }\n    }\n}",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "        do { try data.write(to: url, options: .atomic); return url } catch { return nil }",
+    "after": "        do {\n            try data.write(to: url, options: .atomic)\n            _ = try ReportExportArchive.save(data, fileName: url.lastPathComponent)\n            return url\n        } catch { return nil }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "                try data.write(to: url, options: .atomic)\n                previewImage = out",
+    "after": "                try data.write(to: url, options: .atomic)\n                _ = try ReportExportArchive.save(data,\n                    fileName: \"palm-poster-\\(ReportBuilder.exportName(record.personName)).png\")\n                previewImage = out",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": ".environment(\\.dynamicTypeSize, .medium)",
+    "after": ".environment(\\.dynamicTypeSize, .large)",
+    "count": 3
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": ".environment(\\.dynamicTypeSize, .medium)",
+    "after": ".environment(\\.dynamicTypeSize, .large)",
+    "count": 1
+  },
+  {
+    "path": "Sources/InsightModels.swift",
+    "before": "case hecanPoster\ncase unknown",
+    "after": "case hecanPoster\ncase palmPoster\ncase unknown",
+    "count": 1
+  },
+  {
+    "path": "Sources/InsightModels.swift",
+    "before": "static let hecanPosterPrefix = \"hecan-poster-\"",
+    "after": "static let hecanPosterPrefix = \"hecan-poster-\"\nstatic let palmPosterPrefix = \"palm-poster-\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/InsightModels.swift",
+    "before": "if fileName.hasPrefix(posterPrefix) {\nreturn.poster\n}",
+    "after": "if fileName.hasPrefix(palmPosterPrefix) {\nreturn.palmPoster\n}\nif fileName.hasPrefix(posterPrefix) {\nreturn.poster\n}",
+    "count": 1
+  },
+  {
+    "path": "Sources/InsightModels.swift",
+    "before": "case.hecanPoster:\nreturn hecanPosterPrefix + name + suffix + \".png\"\ncase.unknown:",
+    "after": "case.hecanPoster:\nreturn hecanPosterPrefix + name + suffix + \".png\"\ncase.palmPoster:\nreturn palmPosterPrefix + name + suffix + \".png\"\ncase.unknown:",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportCenterView.swift",
+    "before": "        var seen: Set<URL> = []",
+    "after": "        var archived: [URL] = []\n        if let directory = try? ReportExportArchive.rootDirectory(),\n           let walker = fm.enumerator(at: directory, includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey], options: [.skipsHiddenFiles]) {\n            for case let url as URL in walker {\n                let kind = ExportManager.kind(of: url.lastPathComponent)\n                if (kind == .report && url.pathExtension == \"pdf\") ||\n                    ([.poster, .ziweiPoster, .hecanPoster, .palmPoster].contains(kind) && url.pathExtension == \"png\") {\n                    archived.append(url)\n                }\n            }\n        }\n        // makePDF keeps its tested temporary URL; hide that duplicate when its durable copy exists.\n        let archivedPDFNames = Set(archived.filter { $0.pathExtension == \"pdf\" }.map { $0.lastPathComponent })\n        urls.removeAll { url in\n            url.pathExtension == \"pdf\" && archivedPDFNames.contains(url.lastPathComponent) &&\n                url.deletingLastPathComponent().standardizedFileURL == fm.temporaryDirectory.standardizedFileURL\n        }\n        urls.append(contentsOf: archived)\n        var seen: Set<URL> = []",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportCenterView.swift",
+    "before": "        } else {\n            if raw.contains(\"-yucedan\") {",
+    "after": "        } else if raw.hasPrefix(\"palm-poster-\") {\n            kind = \"手相面相鉴定海报\"\n            icon = \"hand.raised.fill\"\n            personName = String(raw.dropFirst(\"palm-poster-\".count))\n        } else {\n            if raw.contains(\"-yucedan\") {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "        let view = PalmPosterView(record: record, image: img)",
+    "after": "        let view = PalmPosterView(record: record, image: img)\n            .environment(\\.colorScheme, .light).environment(\\.dynamicTypeSize, .large)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                        PosterPhotoSaver.save(img) { saveMessage = $0 }",
+    "after": "                        let savingStyle = style\n                        PosterPhotoSaver.save(img) { message in\n                            if style == savingStyle { saveMessage = message }\n                        }",
+    "count": 3
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                            PosterPhotoSaver.save(img) { saveMessage = $0 }",
+    "after": "                            let savingKey = renderKey\n                            PosterPhotoSaver.save(img) { message in\n                                if renderKey == savingKey { saveMessage = message }\n                            }",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "      - name: Build (unsigned)\n",
+    "after": "      - name: Verify durable report archive from existing tests\n        run: python3 design/verify_archive_outputs.py\n\n      - name: Build (unsigned)\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt",
+    "after": "            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt build/report-samples build/archive-verification.json",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            build/screenshots\n",
+    "after": "            build/screenshots\n            build/report-samples\n            build/archive-verification.json\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/BlindTestModule.swift",
+    "before": "\\(q.year) 年",
+    "after": "\\(String(q.year)) 年",
+    "count": 1
+  },
+  {
+    "path": "Sources/BlindTestModule.swift",
+    "before": "\\(item.year) 年",
+    "after": "\\(String(item.year)) 年",
+    "count": 1
+  },
+  {
+    "path": "Sources/AnnualReportModule.swift",
+    "before": "Text(\"\\(r.year) · \\(r.gz)年\")",
+    "after": "Text(\"\\(String(r.year)) · \\(r.gz)年\").monospacedDigit()",
+    "count": 1
+  },
+  {
+    "path": "Sources/FamilyModule.swift",
+    "before": "Text(\"\\(year)年 \\(rep.gz)年",
+    "after": "Text(\"\\(String(year))年 \\(rep.gz)年",
+    "count": 2
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "Text(\"天干：\\(stem)（\\(KyV2.element(ofChar: stem)) · \")",
+    "after": "Text(\"天干：\\(String(stem))（\\(KyV2.element(ofChar: stem)) · \")",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "Text(\"\\(p.stem)\\(ZiweiCore.DZ[p.branch])\")",
+    "after": "Text(\"\\(String(p.stem))\\(String(ZiweiCore.DZ[p.branch]))\")",
+    "count": 2
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "\\(chart.monthPillar.last ?? \"—\")月",
+    "after": "\\(String(chart.monthPillar.last ?? \"—\"))月",
+    "count": 2
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Text(\"\\(p.stem)\\(ZiweiCore.DZ[p.branch])\")",
+    "after": "Text(\"\\(String(p.stem))\\(String(ZiweiCore.DZ[p.branch]))\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "person.birthDate.formatted(date: .long, time: .shortened)",
+    "after": "DisplayTimeReceipt.beijing(person.birthDate)",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "run: python3 design/verify_archive_outputs.py",
+    "after": "run: |\n          python3 design/verify_archive_outputs.py\n          swift design/verify_report_receipts.swift build/report-samples",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "build/report-samples build/archive-verification.json",
+    "after": "build/report-samples build/archive-verification.json build/report-receipts.json",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            build/archive-verification.json\n",
+    "after": "            build/archive-verification.json\n            build/report-receipts.json\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "xcodebuild test -resultBundlePath build/TestResults.xcresult",
+    "after": "xcodebuild test -derivedDataPath build/SimulatorDD -resultBundlePath build/TestResults.xcresult",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "      - name: Build (unsigned)\n",
+    "after": "      - name: Render all poster variants from the Debug app\n        run: python3 design/run_poster_render_qa.py\n\n      - name: Build (unsigned)\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt build/report-samples build/archive-verification.json build/report-receipts.json",
+    "after": "            python3 design/package_ui_evidence.py",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            build/report-receipts.json\n",
+    "after": "            build/report-receipts.json\n            build/poster-samples\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "        Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .omitted)",
+    "after": "        DisplayTimeReceipt.beijing(Date(timeIntervalSince1970: record.createdEpoch))",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "                Text(record.personName.isEmpty ? \"未命名\" : record.personName)\n                    .font(.system(size: 40, weight: .bold, design: .serif))\n                    .foregroundStyle(ink)",
+    "after": "                Text(record.personName.isEmpty ? \"未命名\" : record.personName)\n                    .font(.system(size: 40, weight: .bold, design: .serif))\n                    .multilineTextAlignment(.center)\n                    .frame(width: 444)\n                    .fixedSize(horizontal: false, vertical: true)\n                    .foregroundStyle(ink)",
+    "count": 1
+  },
+  {
+    "path": "Sources/LearningModule.swift",
+    "before": "    var body: some View {\n        List {\n            Section {\n                Text(LearningContent.readingOrder.scriptConverted)\n                    .font(.body).lineSpacing(5).textSelection(.enabled)\n            } header: { Text(\"先读懂，再判断\") }\n            ForEach(LearningContent.search(query)) { topic in\n                Section {\n                    Text(topic.summary.scriptConverted).font(.body).lineSpacing(4)\n                    ForEach(Array(topic.steps.enumerated()), id: \\.offset) { index, step in\n                        HStack(alignment: .top, spacing: 12) {\n                            Text(\"\\(index + 1)\").font(.body.monospacedDigit().weight(.semibold)).foregroundStyle(Ky.qingdai)\n                            Text(step.scriptConverted).font(.body).lineSpacing(5).textSelection(.enabled)\n                        }.padding(.vertical, 4)\n                    }\n                    DisclosureGroup(\"术语白话解释（\\(topic.terms.count) 项）\") {\n                        ForEach(topic.terms) { term in\n                            VStack(alignment: .leading, spacing: 6) {\n                                Text(term.name.scriptConverted).font(.headline)\n                                Text(term.meaning.scriptConverted).font(.body).lineSpacing(4).textSelection(.enabled)\n                            }.padding(.vertical, 6)\n                        }\n                    }\n                } header: { Text(topic.title.scriptConverted).font(.headline) }\n            }\n            Section(\"全部工具的使用说明\") {\n                ForEach(matchingTools) { item in\n                    NavigationLink { ToolHelpView(item: item) } label: {\n                        Label(item.title.scriptConverted, systemImage: item.icon)\n                            .font(.body).padding(.vertical, 4)\n                    }\n                }\n            }\n            if LearningContent.search(query).isEmpty && matchingTools.isEmpty {\n                Text(\"没有找到相关内容，试试“真北”“四化”或“大运”。\")\n                    .foregroundStyle(.secondary)\n            }\n        }\n        .searchable(text: $query, prompt: \"搜功能、术语或问题\")\n        .navigationTitle(\"白话使用指南\")\n        .navigationBarTitleDisplayMode(.inline)\n        .accessibilityIdentifier(\"learning.center\")\n    }",
+    "after": "    var body: some View {\n        ScrollView {\n            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {\n                VStack(alignment: .leading, spacing: 12) {\n                    Label(\"先读懂，再判断\".scriptConverted, systemImage: \"book.pages\")\n                        .font(KanyuV6.Typography.cardTitle).foregroundStyle(Ky.qingdai)\n                    Text(LearningContent.readingOrder.scriptConverted)\n                        .font(.body).lineSpacing(5).textSelection(.enabled)\n                }.kyCard()\n\n                ForEach(LearningContent.search(query)) { topic in\n                    topicCard(topic)\n                }\n\n                if !matchingTools.isEmpty {\n                    Text(\"全部工具的使用说明\".scriptConverted)\n                        .font(KanyuV6.Typography.cardTitle).padding(.top, 8)\n                    ForEach(matchingTools) { item in\n                        NavigationLink { ToolHelpView(item: item) } label: {\n                            HStack(spacing: 12) {\n                                Image(systemName: item.icon).font(.title3)\n                                    .foregroundStyle(Ky.qingdai).frame(width: 28)\n                                VStack(alignment: .leading, spacing: 4) {\n                                    Text(item.title.scriptConverted).font(.headline)\n                                    Text(item.desc.scriptConverted).font(.subheadline)\n                                        .foregroundStyle(Ky.sub).fixedSize(horizontal: false, vertical: true)\n                                }\n                                Spacer(minLength: 0)\n                                Image(systemName: \"chevron.right\").font(.caption.weight(.semibold))\n                                    .foregroundStyle(Ky.sub).accessibilityHidden(true)\n                            }\n                            .frame(minHeight: 44, alignment: .leading)\n                            .frame(maxWidth: .infinity, alignment: .leading)\n                            .kyCard()\n                        }.buttonStyle(.plain)\n                    }\n                }\n                if LearningContent.search(query).isEmpty && matchingTools.isEmpty {\n                    KyEmptyState(icon: \"magnifyingglass\", title: \"没有找到相关内容\",\n                        message: \"试试“真北”“四化”或“大运”，也可以搜索功能名称。\")\n                }\n            }\n            .padding(KanyuV6.Metric.pageInset)\n            .padding(.bottom, 32)\n        }\n        .background(Ky.bg)\n        .foregroundStyle(Ky.ink)\n        .tint(Ky.qingdai)\n        .searchable(text: $query, prompt: \"搜功能、术语或问题\")\n        .navigationTitle(\"白话使用指南\")\n        .navigationBarTitleDisplayMode(.inline)\n        .accessibilityIdentifier(\"learning.center\")\n    }\n\n    private func topicCard(_ topic: LearningTopic) -> some View {\n        VStack(alignment: .leading, spacing: 14) {\n            Text(topic.title.scriptConverted).font(KanyuV6.Typography.cardTitle)\n            Text(topic.summary.scriptConverted).font(.body).lineSpacing(5)\n                .foregroundStyle(Ky.sub).textSelection(.enabled)\n            Divider().overlay(Ky.line)\n            ForEach(Array(topic.steps.enumerated()), id: \\.offset) { index, step in\n                HStack(alignment: .top, spacing: 12) {\n                    Text(String(index + 1)).font(.body.monospacedDigit().weight(.semibold))\n                        .foregroundStyle(Ky.qingdai).frame(minWidth: 28, minHeight: 28)\n                        .background(Ky.qingdai.opacity(0.08), in: Circle())\n                    Text(step.scriptConverted).font(.body).lineSpacing(5)\n                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)\n                }\n            }\n            DisclosureGroup(\"术语白话解释（\\(topic.terms.count) 项）\") {\n                VStack(alignment: .leading, spacing: 16) {\n                    ForEach(topic.terms) { term in\n                        VStack(alignment: .leading, spacing: 6) {\n                            Text(term.name.scriptConverted).font(.headline).foregroundStyle(Ky.qingdai)\n                            Text(term.meaning.scriptConverted).font(.body).lineSpacing(5)\n                                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)\n                        }\n                    }\n                }.padding(.top, 12)\n            }.frame(minHeight: 44)\n        }.kyCard()\n    }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "        .frame(width: 540)\n    }\n}\n\nenum PalmPosterTemporaryFile",
+    "after": "        .frame(minWidth: 540, maxWidth: 540, minHeight: 760)\n    }\n}\n\nenum PalmPosterTemporaryFile",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    /// 前 6 维详批（解盘 25 维顺序前六：性格性情／十神做功／学业文书／天赋能力／事业方向／工作形态）\n    private var firstSixDims: [InterpretItem] {\n        items.filter { !InterpretEngine.coreTitles.contains($0.title) }.prefix(6).map { $0 }\n    }",
+    "after": "    /// 展示已有分类解读的全部条目，顺序与解释引擎一致。\n    private var detailDimensions: [InterpretItem] {\n        items.filter { !InterpretEngine.coreTitles.contains($0.title) }\n    }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Text(\"前六维详批\")",
+    "after": "Text(\"分类详批（\\(detailDimensions.count) 项）\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "ForEach(firstSixDims, id: \\.title)",
+    "after": "ForEach(detailDimensions, id: \\.title)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                    Text(name.isEmpty ? \"紫微命盘\" : name)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .foregroundStyle(pal.main)",
+    "after": "                    Text(name.isEmpty ? \"紫微命盘\" : name)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .multilineTextAlignment(.center)\n                        .frame(width: 444)\n                        .fixedSize(horizontal: false, vertical: true)\n                        .foregroundStyle(pal.main)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                    Text(name.isEmpty ? \"合参总览\" : name)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .foregroundStyle(pal.main)",
+    "after": "                    Text(name.isEmpty ? \"合参总览\" : name)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .multilineTextAlignment(.center)\n                        .frame(width: 444)\n                        .fixedSize(horizontal: false, vertical: true)\n                        .foregroundStyle(pal.main)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    // 生年四化：全盘主星＋辅星带化者（年干四化表恰为 4 颗，不编不凑）",
+    "after": "    private var detailedReading: some View {\n        let cards = ZiweiReading.cards(chart: chart).filter { $0.title != \"命宫定型\" }\n        return VStack(alignment: .leading, spacing: 12) {\n            Text(\"本盘逐项解读与依据（\\(cards.count) 条）\")\n                .font(.system(size: 13, weight: .bold, design: .serif)).foregroundStyle(pal.accent)\n            ForEach(cards.indices, id: \\.self) { index in\n                let card = cards[index]\n                VStack(alignment: .leading, spacing: 7) {\n                    Text(card.title).font(.system(size: 12.5, weight: .bold, design: .serif))\n                        .foregroundStyle(pal.accent)\n                    Text(card.facts).font(.system(size: 10.5)).foregroundStyle(pal.sub)\n                        .fixedSize(horizontal: false, vertical: true)\n                    Text(card.conclusion).font(.system(size: 12.5)).foregroundStyle(pal.main)\n                        .lineSpacing(4).fixedSize(horizontal: false, vertical: true)\n                    Text(\"依据口径：\" + card.source).font(.system(size: 10)).foregroundStyle(pal.sub)\n                        .fixedSize(horizontal: false, vertical: true)\n                }\n                .padding(14)\n                .frame(maxWidth: .infinity, alignment: .leading)\n                .background(pal.card, in: RoundedRectangle(cornerRadius: 10))\n                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(pal.cardStroke, lineWidth: 0.7))\n            }\n        }\n        .frame(width: 444, alignment: .leading)\n        .padding(.top, 16)\n    }\n\n    // 生年四化：全盘主星＋辅星带化者（年干四化表恰为 4 颗，不编不凑）",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Text(\"十二宫逐宫详批\")",
+    "after": "Text(\"十二宫星曜与大限\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                                Text(\"\\(p.decadal.first ?? 0)–\\(p.decadal.last ?? 0) 岁\").font(.system(size: 8.5)).foregroundStyle(pal.sub)\n                            }\n                            .frame(maxWidth: .infinity, alignment: .leading)",
+    "after": "                                Text(p.minors.isEmpty ? \"辅曜：无\" : \"辅曜：\" + p.minors.map { star in\n                                    star.star + (star.mutagen.map { \"（化\\($0)）\" } ?? \"\")\n                                }.joined(separator: \"、\"))\n                                    .font(.system(size: 9.5)).foregroundStyle(pal.sub)\n                                    .fixedSize(horizontal: false, vertical: true)\n                                Text(\"\\(p.decadal.first ?? 0)–\\(p.decadal.last ?? 0) 岁\").font(.system(size: 8.5)).foregroundStyle(pal.sub)\n                            }\n                            .frame(maxWidth: .infinity, alignment: .leading)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                Spacer()\n\n                // 统一品牌落款（P3 第 1 项）：同一印章＋同一品牌行，副标与日期各款保留\n                PosterBrandFooter(pal: pal, subtitle: \"三合派天纪口径 · 方盘缩印 · 生年四化\")",
+    "after": "                detailedReading\n\n                Spacer()\n\n                // 统一品牌落款（P3 第 1 项）：同一印章＋同一品牌行，副标与日期各款保留\n                PosterBrandFooter(pal: pal, subtitle: \"三合派天纪口径 · 方盘缩印 · 生年四化\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                        ForEach(palmLines.prefix(2), id: \\.self) { line in\n                            Text(line)",
+    "after": "                        ForEach(palmLines.indices, id: \\.self) { index in\n                            Text(palmLines[index])",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "xcodebuild test -derivedDataPath build/SimulatorDD",
+    "after": "xcodebuild test -clonedSourcePackagesDirPath build/SourcePackages -derivedDataPath build/SimulatorDD",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "xcodebuild -project Kanyu.xcodeproj -scheme Kanyu \\\n",
+    "after": "xcodebuild -project Kanyu.xcodeproj -scheme Kanyu -clonedSourcePackagesDirPath build/SourcePackages \\\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Text(Date.now.formatted(date: .abbreviated, time: .omitted))",
+    "after": "Text(DisplayTimeReceipt.beijing(Date()))",
+    "count": 1
+  },
+  {
+    "path": "Sources/LearningModule.swift",
+    "before": "            .padding(KanyuV6.Metric.pageInset)\n            .padding(.bottom, 32)",
+    "after": "            .padding(KanyuV6.Metric.pageInset)\n            .padding(.bottom, 100)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(cin.opacity(0.35), lineWidth: 0.8))\n                }\n                VStack(alignment: .leading, spacing: 8) {\n                    Text(\"测量数据\".scriptConverted)",
+    "after": "                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(cin.opacity(0.35), lineWidth: 0.8))\n                } else {\n                    VStack(spacing: 10) {\n                        Image(systemName: \"photo\").font(.system(size: 30)).foregroundStyle(sub)\n                        Text(\"未附原始照片\".scriptConverted)\n                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(ink)\n                        Text(\"本页展示已保存的测量摘要与解读，未包含原始照片。\".scriptConverted)\n                            .font(.system(size: 11.5)).foregroundStyle(sub)\n                            .multilineTextAlignment(.center).lineSpacing(3)\n                            .fixedSize(horizontal: false, vertical: true)\n                    }\n                    .padding(18).frame(width: 444)\n                    .background(cardBg, in: RoundedRectangle(cornerRadius: 10))\n                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(cin.opacity(0.35), lineWidth: 0.8))\n                }\n                VStack(alignment: .leading, spacing: 8) {\n                    Text(\"测量数据\".scriptConverted)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    var isDark: Bool = false\n",
+    "after": "    var isDark: Bool = false\n    var caution: Color { isDark ? accentHi : pCin }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "isMing ? pCin : pal.main",
+    "after": "isMing ? pal.caution : pal.main",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "isMing ? pCin.opacity(0.6) : pal.cardStroke",
+    "after": "isMing ? pal.caution.opacity(0.6) : pal.cardStroke",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "h.kind == \"忌\" ? pCin : pal.accent",
+    "after": "h.kind == \"忌\" ? pal.caution : pal.accent",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                    Text(displayName.isEmpty ? \"四柱命盘\" : displayName)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .foregroundStyle(pal.main)",
+    "after": "                    Text(displayName.isEmpty ? \"四柱命盘\" : displayName)\n                        .font(.system(size: 44, weight: .bold, design: .serif))\n                        .multilineTextAlignment(.center)\n                        .frame(width: 444)\n                        .fixedSize(horizontal: false, vertical: true)\n                        .foregroundStyle(pal.main)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "// 2. 三行生辰收据（城市/经度/出生时刻/农历/前后两节/性别/姓名/年命/真太阳时校正量）\nVStack(spacing: 2) {\nHStack(spacing: 0) {\nText(\"城市：\\(receiptCity)\")\nText(\"　经度：\\(receiptLongitude)\")\nSpacer()\nText(\"出生：\\(Self.birthFmt.string(from: chart.birthDate))\\(trueSolarSuffix)\")\n}\nHStack(spacing: 0) {\nText(\"农历：\\(chart.lunarText.isEmpty ? \"—\": chart.lunarText)\")\nText(\"　上一节 \\(chart.prevJieQiText.isEmpty ? \"—\": chart.prevJieQiText)　下一节 \\(chart.nextJieQiText.isEmpty ? \"—\": chart.nextJieQiText)\")\nSpacer()\nText(\"\\(chart.gender == \"M\" ? \"男（乾造）\": \"女（坤造）\")　\\(name.isEmpty ? \"命主\" : name)　\\(chart.naYin.first ?? \"\")命\")\n}\nHStack(spacing: 0) {\nText(\"真太阳时校正：\\(correctionText)\")\nText(\"　年命：\\(chart.naYin.first ?? \"—\")命\")\nSpacer()\nText(\"旬空：\\(chart.xunKong.isEmpty ? \"—\": chart.xunKong)\")\n}\nif !chart.nextJieQiGapText.isEmpty {\nHStack(spacing: 0) {\nText(\"★ \\(chart.nextJieQiGapText)\")\n.foregroundStyle(pal.accentHi)\nSpacer()\n}\n}\n}\n.font(.system(size: 10, weight:.medium, design:.serif))\n.foregroundStyle(pal.sub)\n.padding(.horizontal, 32)\n.padding(.top, 8)\n",
+    "after": "// 分栏生辰收据：姓名独占全宽，其余字段保持两列并允许完整换行。\nyuceReceipt\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    /// 展示已有分类解读的全部条目，顺序与解释引擎一致。",
+    "after": "    private func yuceReceiptRow(_ left: String, _ right: String) -> some View {\n        HStack(alignment: .top, spacing: 12) {\n            Text(left).frame(maxWidth: .infinity, alignment: .leading)\n                .fixedSize(horizontal: false, vertical: true)\n            Text(right).frame(maxWidth: .infinity, alignment: .leading)\n                .fixedSize(horizontal: false, vertical: true)\n        }\n    }\n\n    private var yuceReceipt: some View {\n        VStack(alignment: .leading, spacing: 7) {\n            Text(\"命主：\" + (name.isEmpty ? \"命主\" : name))\n                .font(.system(size: 11.5, weight: .bold, design: .serif))\n                .foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)\n                .frame(maxWidth: .infinity, alignment: .leading)\n            yuceReceiptRow(\"城市：\\(receiptCity) · 经度：\\(receiptLongitude)\",\n                \"出生：\\(Self.birthFmt.string(from: chart.birthDate))\\(trueSolarSuffix)\")\n            yuceReceiptRow(\"农历：\\(chart.lunarText.isEmpty ? \"—\" : chart.lunarText)\",\n                \"\\(chart.gender == \"M\" ? \"男（乾造）\" : \"女（坤造）\") · 年命：\\(chart.naYin.first ?? \"—\")命\")\n            yuceReceiptRow(\"上一节：\\(chart.prevJieQiText.isEmpty ? \"—\" : chart.prevJieQiText)\",\n                \"下一节：\\(chart.nextJieQiText.isEmpty ? \"—\" : chart.nextJieQiText)\")\n            yuceReceiptRow(\"真太阳时校正：\\(correctionText)\", \"旬空：\\(chart.xunKong.isEmpty ? \"—\" : chart.xunKong)\")\n            if !chart.nextJieQiGapText.isEmpty {\n                Text(\"★ \\(chart.nextJieQiGapText)\").foregroundStyle(pal.accentHi)\n                    .fixedSize(horizontal: false, vertical: true)\n            }\n        }\n        .font(.system(size: 10, weight: .medium, design: .serif)).monospacedDigit()\n        .foregroundStyle(pal.sub)\n        .padding(.horizontal, 32).padding(.top, 8)\n    }\n\n    /// 展示已有分类解读的全部条目，顺序与解释引擎一致。",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    private func yuceReceiptRow(_ left: String, _ right: String) -> some View {\n        HStack(alignment: .top, spacing: 12) {\n            Text(left).frame(maxWidth: .infinity, alignment: .leading)\n                .fixedSize(horizontal: false, vertical: true)\n            Text(right).frame(maxWidth: .infinity, alignment: .leading)\n                .fixedSize(horizontal: false, vertical: true)\n        }\n    }\n\n    private var yuceReceipt: some View {\n        VStack(alignment: .leading, spacing: 7) {\n            Text(\"命主：\" + (name.isEmpty ? \"命主\" : name))\n                .font(.system(size: 11.5, weight: .bold, design: .serif))\n                .foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)\n                .frame(maxWidth: .infinity, alignment: .leading)\n            yuceReceiptRow(\"城市：\\(receiptCity) · 经度：\\(receiptLongitude)\",\n                \"出生：\\(Self.birthFmt.string(from: chart.birthDate))\\(trueSolarSuffix)\")\n            yuceReceiptRow(\"农历：\\(chart.lunarText.isEmpty ? \"—\" : chart.lunarText)\",\n                \"\\(chart.gender == \"M\" ? \"男（乾造）\" : \"女（坤造）\") · 年命：\\(chart.naYin.first ?? \"—\")命\")\n            yuceReceiptRow(\"上一节：\\(chart.prevJieQiText.isEmpty ? \"—\" : chart.prevJieQiText)\",\n                \"下一节：\\(chart.nextJieQiText.isEmpty ? \"—\" : chart.nextJieQiText)\")\n            yuceReceiptRow(\"真太阳时校正：\\(correctionText)\", \"旬空：\\(chart.xunKong.isEmpty ? \"—\" : chart.xunKong)\")\n            if !chart.nextJieQiGapText.isEmpty {\n                Text(\"★ \\(chart.nextJieQiGapText)\").foregroundStyle(pal.accentHi)\n                    .fixedSize(horizontal: false, vertical: true)\n            }\n        }\n        .font(.system(size: 10, weight: .medium, design: .serif)).monospacedDigit()\n        .foregroundStyle(pal.sub)\n        .padding(.horizontal, 32).padding(.top, 8)\n    }\n\n",
+    "after": "",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "return all.map { String($0)}.joined(separator: \"、\") + \" 层\"\n}\n\nvar body: some View {",
+    "after": "return all.map { String($0)}.joined(separator: \"、\") + \" 层\"\n}\n\n    private func yuceReceiptRow(_ left: String, _ right: String) -> some View {\n        HStack(alignment: .top, spacing: 12) {\n            Text(left).frame(maxWidth: .infinity, alignment: .leading)\n                .fixedSize(horizontal: false, vertical: true)\n            Text(right).frame(maxWidth: .infinity, alignment: .leading)\n                .fixedSize(horizontal: false, vertical: true)\n        }\n    }\n\n    private var yuceReceipt: some View {\n        VStack(alignment: .leading, spacing: 7) {\n            Text(\"命主：\" + (name.isEmpty ? \"命主\" : name))\n                .font(.system(size: 11.5, weight: .bold, design: .serif))\n                .foregroundStyle(pal.main).fixedSize(horizontal: false, vertical: true)\n                .frame(maxWidth: .infinity, alignment: .leading)\n            yuceReceiptRow(\"城市：\\(receiptCity) · 经度：\\(receiptLongitude)\",\n                \"出生：\\(Self.birthFmt.string(from: chart.birthDate))\\(trueSolarSuffix)\")\n            yuceReceiptRow(\"农历：\\(chart.lunarText.isEmpty ? \"—\" : chart.lunarText)\",\n                \"\\(chart.gender == \"M\" ? \"男（乾造）\" : \"女（坤造）\") · 年命：\\(chart.naYin.first ?? \"—\")命\")\n            yuceReceiptRow(\"上一节：\\(chart.prevJieQiText.isEmpty ? \"—\" : chart.prevJieQiText)\",\n                \"下一节：\\(chart.nextJieQiText.isEmpty ? \"—\" : chart.nextJieQiText)\")\n            yuceReceiptRow(\"真太阳时校正：\\(correctionText)\", \"旬空：\\(chart.xunKong.isEmpty ? \"—\" : chart.xunKong)\")\n            if !chart.nextJieQiGapText.isEmpty {\n                Text(\"★ \\(chart.nextJieQiGapText)\").foregroundStyle(pal.accentHi)\n                    .fixedSize(horizontal: false, vertical: true)\n            }\n        }\n        .font(.system(size: 10, weight: .medium, design: .serif)).monospacedDigit()\n        .foregroundStyle(pal.sub)\n        .padding(.horizontal, 32).padding(.top, 8)\n    }\n\nvar body: some View {",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "      - name: Build (unsigned)\n",
+    "after": "      - name: Verify complete text in the actual PDF reports\n        run: swift design/verify_report_text.swift build/report-samples build/poster-samples/report-expected-text.json\n\n      - name: Build (unsigned)\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            build/report-receipts.json\n",
+    "after": "            build/report-receipts.json\n            build/report-text-verification.json\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style)\n                .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))\n            renderer.scale = 2.0\n            guard let img = renderer.uiImage, let data = img.pngData() else {\n                renderError = \"海报生成失败，请重试。\"\n                return\n            }",
+    "after": "            let output: PosterRasterizer.Output\n            do {\n                output = try PosterRasterizer.render(PosterView(chart: chart, name: name, style: style)\n                    .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))\n            } catch {\n                renderError = error.localizedDescription\n                return\n            }\n            let img = output.image, data = output.pngData",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "            let renderer = ImageRenderer(content: view.environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))\n            renderer.scale = 2.0\n            guard let img = renderer.uiImage, let data = img.pngData() else {\n                renderError = \"海报生成失败，请重试。\"\n                return\n            }",
+    "after": "            let output: PosterRasterizer.Output\n            do {\n                output = try PosterRasterizer.render(view.environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))\n            } catch {\n                renderError = error.localizedDescription\n                return\n            }\n            let img = output.image, data = output.pngData",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "        let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style)\n            .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))\n        renderer.scale = 2.0\n        guard let image = renderer.uiImage, let data = image.pngData() else {\n            renderError = \"海报生成失败，请重试。\"\n            return\n        }",
+    "after": "        let output: PosterRasterizer.Output\n        do {\n            output = try PosterRasterizer.render(ZiweiPosterView(chart: chart, name: name, style: style)\n                .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))\n        } catch {\n            renderError = error.localizedDescription\n            return\n        }\n        let image = output.image, data = output.pngData",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "        let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)\n            .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))\n        renderer.scale = 2.0\n        guard let image = renderer.uiImage, let data = image.pngData() else {\n            renderError = \"海报生成失败，请重试。\"\n            return\n        }",
+    "after": "        let output: PosterRasterizer.Output\n        do {\n            output = try PosterRasterizer.render(HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)\n                .environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))\n        } catch {\n            renderError = error.localizedDescription\n            return\n        }\n        let image = output.image, data = output.pngData",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "            // ImageRenderer and SwiftUI view rendering are MainActor-isolated.\n            let renderer = ImageRenderer(content: view)\n            renderer.scale = 2.0\n            guard let out = renderer.uiImage, let data = out.pngData() else {\n                renderError = \"海报生成失败，请重试；没有保存任何文件。\"\n                isRendering = false\n                return\n            }",
+    "after": "            let output: PosterRasterizer.Output\n            do {\n                output = try PosterRasterizer.render(view)\n            } catch {\n                renderError = error.localizedDescription\n                isRendering = false\n                return\n            }\n            let out = output.image, data = output.pngData",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "          tag_name: build-${{ github.run_number }}\n",
+    "after": "          tag_name: build-${{ github.run_number }}\n          target_commitish: ${{ github.sha }}\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            UI-evidence.zip\n",
+    "after": "            UI-evidence.zip\n\n      - name: Verify published source tag\n        if: github.event_name != 'pull_request'\n        env:\n          GH_TOKEN: ${{ github.token }}\n        run: |\n          SOURCE_SHA=$(gh api \"repos/${GITHUB_REPOSITORY}/git/ref/tags/build-${{ github.run_number }}\" --jq '.object.sha')\n          test \"$SOURCE_SHA\" = \"$GITHUB_SHA\"\n",
+    "count": 1
+  }
+]

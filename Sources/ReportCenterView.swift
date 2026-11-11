@@ -37,6 +37,24 @@ enum ReportHistory {
                 if name.hasPrefix("hecan-poster-") && u.pathExtension == "png" { urls.append(u) }
             }
         }
+        var archived: [URL] = []
+        if let directory = try? ReportExportArchive.rootDirectory(),
+           let walker = fm.enumerator(at: directory, includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey], options: [.skipsHiddenFiles]) {
+            for case let url as URL in walker {
+                let kind = ExportManager.kind(of: url.lastPathComponent)
+                if (kind == .report && url.pathExtension == "pdf") ||
+                    ([.poster, .ziweiPoster, .hecanPoster, .palmPoster].contains(kind) && url.pathExtension == "png") {
+                    archived.append(url)
+                }
+            }
+        }
+        // makePDF keeps its tested temporary URL; hide that duplicate when its durable copy exists.
+        let archivedPDFNames = Set(archived.filter { $0.pathExtension == "pdf" }.map { $0.lastPathComponent })
+        urls.removeAll { url in
+            url.pathExtension == "pdf" && archivedPDFNames.contains(url.lastPathComponent) &&
+                url.deletingLastPathComponent().standardizedFileURL == fm.temporaryDirectory.standardizedFileURL
+        }
+        urls.append(contentsOf: archived)
         var seen: Set<URL> = []
         var out: [ReportHistoryEntry] = []
         for u in urls {
@@ -75,6 +93,10 @@ enum ReportHistory {
             kind = "合参海报"
             icon = "sparkles"
             personName = stripStyleSuffix(String(raw.dropFirst("hecan-poster-".count)))
+        } else if raw.hasPrefix("palm-poster-") {
+            kind = "手相面相鉴定海报"
+            icon = "hand.raised.fill"
+            personName = String(raw.dropFirst("palm-poster-".count))
         } else {
             if raw.contains("-yucedan") {
                 kind = "尊享预测单长图"
@@ -131,7 +153,7 @@ enum ReportHistory {
 
     /// 去掉文件名末尾的款式后缀（-song／-yucedan 为现行款；-xuan／-ink 为已砍款式旧文件兼容），余下即命主姓名
     private static func stripStyleSuffix(_ s: String) -> String {
-        for suffix in ["-yucedan", "-song", "-xuan", "-ink"] {
+        for suffix in ["-yucedan", "-zhusha", "-xuanye", "-song", "-xuan", "-ink"] {
             if s.hasSuffix(suffix) { return String(s.dropLast(suffix.count)) }
         }
         return s

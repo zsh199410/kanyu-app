@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="三术合参 Web 版：八字排盘、三十维详批、海报与择吉。只调后端 REST API，不内嵌排盘算法。">
+<meta name="theme-color" content="#9A2A22">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="三术合参">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<title>三术合参 · Web 版</title>
+<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./v6.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img class="brand-icon" src="./apple-touch-icon.png" alt="三术合参">
+    <div>
+      <h1>三术合参</h1>
+      <p class="brand-sub">八字 · 紫微 · 奇门 · 堪舆 — Web 版</p>
+    </div>
+  </div>
+  <nav class="topnav" aria-label="主导航">
+    <a href="#/hecan" data-route="hecan">合参</a>
+    <a href="#/bazi" data-route="bazi">八字</a>
+    <a href="#/ziwei" data-route="ziwei">紫微</a>
+    <a href="#/astro" data-route="astro">星命</a>
+    <a href="#/qimen" data-route="qimen">奇门</a>
+    <a href="#/qimen-cases" data-route="qimen-cases">奇门案例</a>
+    <a href="#/kanyu" data-route="kanyu">堪舆</a>
+    <a href="#/compass" data-route="compass">罗盘</a>
+    <a href="#/hepan" data-route="hepan">合盘</a>
+    <a href="#/family" data-route="family">全家盘</a>
+    <a href="#/luncai" data-route="luncai">论财</a>
+    <a href="#/chenggu" data-route="chenggu">称骨</a>
+    <a href="#/lucky" data-route="lucky">开运指南</a>
+    <a href="#/accessories" data-route="accessories">配饰库</a>
+    <a href="#/annual" data-route="annual">年度报告</a>
+    <a href="#/chartdepth" data-route="chartdepth">深度图表</a>
+    <a href="#/reports" data-route="reports">报告中心</a>
+    <a href="#/divination" data-route="divination">梅花六爻</a>
+    <a href="#/ask" data-route="ask">AI 问答</a>
+    <a href="#/yunqi" data-route="yunqi">五运六气</a>
+    <a href="#/celebs" data-route="celebs">名人库</a>
+    <a href="#/library" data-route="library">图书馆</a>
+    <a href="#/classics" data-route="classics">古籍</a>
+    <a href="#/quiz" data-route="quiz">题库</a>
+    <a href="#/academy" data-route="academy">学堂</a>
+    <a href="#/palm" data-route="palm">手相面相</a>
+    <a href="#/xiangpi" data-route="xiangpi">详批</a>
+    <a href="#/poster" data-route="poster">海报</a>
+    <a href="#/poster-editor" data-route="poster-editor">海报编辑</a>
+    <a href="#/zeji" data-route="zeji">择吉</a>
+    <a href="#/settings" data-route="settings">备份</a>
+  </nav>
+  <div class="top-actions">
+    <span class="verify-badge" id="verifyBadge" title="已验准条目数">已验准 0 条</span>
+    <span class="health-dot" id="healthDot" title="后端状态：检测中">● 检测中</span>
+    <div id="authCapsule"></div>
+    <button type="button" id="themeToggle" class="theme-btn" aria-label="切换浅色 / 墨色主题">🌙 墨色</button>
+    <span class="lang-switch" role="group" aria-label="简繁切换">
+      <button type="button" id="langHans" class="theme-btn">简体</button>
+      <button type="button" id="langHant" class="theme-btn">繁體</button>
+    </span>
+  </div>
+</header>
+
+<div class="announce-bar" id="announceBar" hidden></div>
+
+<div class="person-strip" aria-label="已建档人物速选">
+  <span class="strip-label">命主</span>
+  <div class="strip-list" id="personStrip"><span class="muted">加载中…</span></div>
+  <span class="strip-current" id="stripCurrent"></span>
+</div>
+
+<div class="error-bar" id="errorBar" role="alert" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<div class="layout">
+  <aside class="col-left" aria-label="人物档案库">
+    <section class="card">
+      <h2>人物档案库</h2>
+      <p class="hint">点选切换当前命主，全站通用。示例人物仅用于演示界面。</p>
+      <ul class="people-list" id="peopleList"><li class="muted">加载中…</li></ul>
+      <button type="button" class="btn ghost" id="reloadPeople">刷新列表</button>
+    </section>
+
+    <section class="card">
+      <h2>新建档案</h2>
+      <form id="personForm">
+        <label>姓名 <input type="text" name="name" required maxlength="20" placeholder="例如：示例·甲"></label>
+        <label>关系
+          <select name="relation">
+            <option value="本人">本人</option>
+            <option value="配偶">配偶</option>
+            <option value="子女">子女</option>
+            <option value="父母">父母</option>
+            <option value="朋友">朋友</option>
+            <option value="其他">其他</option>
+          </select>
+        </label>
+        <label>性别
+          <select name="gender">
+            <option value="F">女</option>
+            <option value="M">男</option>
+          </select>
+        </label>
+        <label>出生日期时间 <input type="datetime-local" name="birth" min="1900-01-01T00:00" max="2100-12-31T23:59" required></label>
+        <label>省份 <select name="province" id="provinceSel" required><option value="">请选择省份</option></select></label>
+        <label>城市 <select name="city" id="citySel" required><option value="">请先选择省份</option></select></label>
+        <label>经度（°） <input type="number" name="lon" id="lonInput" step="0.1" min="73" max="135" placeholder="选市后自动填入"></label>
+        <label class="check"><input type="checkbox" name="useLongitude" id="useLonCheck" checked> 使用经度做真太阳时校正</label>
+        <p class="correction" id="correctionLine">真太阳时校正约 — 分钟（请先选择城市或填写经度）</p>
+        <p class="hint">示例：姓名填「示例·甲」并注明示例即可；请勿输入真实家人信息作演示。</p>
+        <button type="submit" class="btn primary" id="createBtn">新建档案</button>
+        <p class="form-msg" id="formMsg" role="status"></p>
+      </form>
+    </section>
+  </aside>
+
+  <main class="col-center" id="mainView">
+    <section class="view" id="view-hecan">
+      <h2 class="view-title">合参总览</h2>
+      <p class="view-sub">当前命主：<strong id="hecanPerson">未选择</strong></p>
+      <div class="card" id="todayCard">
+        <h3>今日 <span id="todayDate" class="muted"></span></h3>
+        <p id="todayGanzhi"><span class="muted">今日卡加载中…</span></p>
+        <p id="todayYiJi" class="muted"></p>
+        <div id="todayLines"><p class="muted">请选择命主后查看今日五行旺衰、冲合与大运流年（三行由本机引擎现算）。</p></div>
+      </div>
+      <div id="hecanLoading" class="loading" hidden>合参加载中…</div>
+      <div id="hecanContent" hidden>
+        <div class="card"><h3>命宫定型 · 紫微</h3><div id="hecanMing"><p class="muted">加载中…</p></div></div>
+        <div id="hecanCross"></div>
+        <div class="card"><h3>合参海报</h3>
+          <p class="muted">八字 × 紫微双术合参长图：并列总断、四维裁决、十二宫方盘与十一卡摘要。由后端 /api/poster?style=hecan 生成。</p>
+          <div class="entry-links">
+            <a class="btn primary" id="hecanPosterDownload" href="#" download>下载合参海报 PNG</a>
+            <a class="btn" href="#/poster">去海报页预览</a>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="hecanSummary"><h3>当前命主排盘摘要</h3><p class="muted">请选择命主后查看八字摘要（数据来自后端 /api/paipan）。</p></div>
+    </section>
+
+    <section class="view" id="view-bazi" hidden>
+      <h2 class="view-title">八字排盘</h2>
+      <p class="view-sub" id="baziPerson">未选择命主</p>
+      <div id="baziLoading" class="loading" hidden>排盘加载中…</div>
+      <div id="baziEmpty" class="card"><p>请先在左侧档案库选择一位命主，或新建档案。</p></div>
+      <div id="baziContent" hidden>
+        <div class="pillars" id="pillars"></div>
+        <div class="card"><h3>日主与格局要素</h3><dl class="kv" id="baziMeta"></dl></div>
+        <div class="card"><h3>五行力量</h3><div id="wuxingBars"></div></div>
+        <div class="card"><h3>喜用忌</h3><div id="xijiBox"></div></div>
+        <div class="card"><h3>大运时间轴</h3><div class="timeline" id="dayunList"></div></div>
+        <div class="card">
+          <h3>逐年四查</h3>
+          <label class="inline-label">年龄
+            <select id="ageSel"></select>
+          </label>
+          <span id="yearlyYear" class="muted"></span>
+          <div id="yearlyBox"><p class="muted">请选择年龄查看该年流年。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-xiangpi" hidden>
+      <h2 class="view-title">三十维详批</h2>
+      <p class="view-sub" id="xiangpiPerson">未选择命主</p>
+      <div id="xiangpiLoading" class="loading" hidden>详批加载中…</div>
+      <div id="xiangpiList"></div>
+    </section>
+
+    <section class="view" id="view-poster" hidden>
+      <h2 class="view-title">海报</h2>
+      <p class="view-sub" id="posterPerson">未选择命主</p>
+      <div class="card">
+        <div class="style-row" role="group" aria-label="海报款式">
+          <button type="button" class="btn style-btn active" data-style="qingdai">宋纸青黛</button>
+          <button type="button" class="btn style-btn" data-style="yucedan">尊享预测单</button>
+          <button type="button" class="btn style-btn" data-style="hecan">双术合参</button>
+        </div>
+        <p class="hint">只留宋纸青黛一款，做到极致：宋纸青黛——五典原句 · 前六维详批 · 前六步大运详批；尊享预测单与双术合参为独立海报产品，同属宋纸青黛视觉。去<a href="#/poster-editor">海报编辑器</a>可换字／换色。</p>
+        <div class="poster-wrap">
+          <img id="posterImg" alt="命主海报预览" hidden>
+          <p class="muted" id="posterEmpty">请选择命主后预览海报。</p>
+        </div>
+        <div class="entry-links">
+          <a class="btn primary" id="posterDownload" href="#" download>一键下载 PNG</a>
+          <button type="button" class="btn" id="posterNewTab">新窗口打开</button>
+        </div>
+        <p class="hint">海报由后端 /api/poster 生成 PNG；本页不做任何排版合成。海报暂只出简体版（PNG 海报不随简繁切换转换）。</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-poster-editor" hidden>
+      <h2 class="view-title">海报编辑器</h2>
+      <p class="view-sub" id="editorPerson">未选择命主</p>
+      <div class="card">
+        <div class="style-row" role="group" aria-label="海报款式">
+          <button type="button" class="btn style-btn active" data-estyle="qingdai">宋纸青黛</button>
+          <button type="button" class="btn style-btn" data-estyle="yucedan">尊享预测单</button>
+          <button type="button" class="btn style-btn" data-estyle="hecan">双术合参</button>
+        </div>
+        <label>标题题签 <input type="text" id="editorTitle" maxlength="20" placeholder="留空则用人物名"></label>
+        <label>落款副标 <input type="text" id="editorSubtitle" maxlength="40" placeholder="留空则用「三术合参 · 堪舆命理院 谨制」"></label>
+        <div class="style-row" role="group" aria-label="强调色">
+          <button type="button" class="btn style-btn active" data-accent="#9A2A22">朱砂红</button>
+          <button type="button" class="btn style-btn" data-accent="#1F4959">青黛</button>
+          <button type="button" class="btn style-btn" data-accent="#9E782F">雅金</button>
+          <button type="button" class="btn style-btn" data-accent="#2B2620">墨色</button>
+        </div>
+        <div class="entry-links">
+          <button type="button" class="btn primary" id="editorRender">生成预览</button>
+          <a class="btn" id="editorDownload" href="#" download>下载 PNG</a>
+        </div>
+        <p class="hint">编辑器在 /api/poster 原图下方加一段题签（标题＋落款副标，以所选强调色书写），不改海报内文结论；导出为 1080 宽 PNG。本页只调后端 /api/poster，不新增第三方请求。</p>
+        <div class="poster-wrap">
+          <canvas id="editorCanvas" hidden></canvas>
+          <p class="muted" id="editorEmpty">请选择命主后生成预览。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-zeji" hidden>
+      <h2 class="view-title">择吉</h2>
+      <p class="view-sub" id="zejiPerson">未选择命主</p>
+      <div class="card">
+        <label class="inline-label">月份 <input type="month" id="zejiMonth"></label>
+        <button type="button" class="btn primary" id="zejiLoad">查询本月吉日</button>
+        <div id="zejiLoading" class="loading" hidden>择吉加载中…</div>
+        <div class="calendar" id="zejiGrid" aria-label="当月日历"></div>
+        <div class="card inner" id="zejiDay" hidden>
+          <h3 id="zejiDayTitle">当日宜忌</h3>
+          <div id="zejiDayBody"></div>
+        </div>
+        <p class="hint">冲克日置灰并标注原因；专属大吉日以朱砂徽章标出。吉时以后端返回为准，本页不自行推算吉时。</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-ziwei" hidden>
+      <h2 class="view-title">紫微斗数</h2>
+      <p class="view-sub" id="ziweiPerson">未选择命主</p>
+      <div id="ziweiLoading" class="loading" hidden>紫微排盘加载中…</div>
+      <div id="ziweiEmpty" class="card"><p>请先在左侧档案库选择一位命主，或新建档案。</p></div>
+      <div id="ziweiContent" hidden>
+        <div class="card"><h3>局 · 命身宫</h3><div id="ziweiMeta"></div></div>
+        <div class="fangpan" id="ziweiBoard" aria-label="紫微十二宫方盘"></div>
+        <div class="card">
+          <h3>流年与小限推演 <span class="muted" id="liunianYearLabel"></span></h3>
+          <div class="entry-links" role="group" aria-label="流年年份切换">
+            <button type="button" class="btn" id="liunianPrev">‹ 上一年</button>
+            <input type="number" id="liunianYear" min="1950" max="2100" step="1" aria-label="流年年份" style="width:6.5em">
+            <button type="button" class="btn" id="liunianNext">下一年 ›</button>
+            <label class="inline-label">农历月 <input type="number" id="liunianMonth" min="1" max="12" step="1" aria-label="农历月" style="width:4em"></label>
+            <button type="button" class="btn primary" id="liunianLoad">看流年</button>
+          </div>
+          <div id="liunianBox"><p class="muted">选年份后查看流年命宫、小限、流年四化与斗君流月（与 App 紫微流年层同口径）。</p></div>
+        </div>
+        <div id="ziweiCards"></div>
+        <p class="hint">紫微排盘来自已移植的天纪三合引擎（与 iOS 端同口径），解盘结论与盘面事实均由后端生成，本页不自行推算。</p>
+        <p class="hint">依据与金标准：引擎来源 App ZiweiModule.swift ZiweiCore（天纪三合口径）；金标准为 iOS 端 ziwei_golden.json 14 例（命宫／身宫／五行局／十四主星／四化／十六辅星／大限逐项对拍全对）；流年层另经 test_ziwei_liunian.py 对拍（小限／斗君／流年宫名／流年四化逐式复算）。</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-hepan" hidden>
+      <h2 class="view-title">合盘 · 合婚四看</h2>
+      <p class="view-sub">从人物档案里选两个人（甲方／乙方）。双盘各自先立，再看喜用互补、日柱、配偶星、全局互动；结论只讲实算事实。</p>
+      <div class="card">
+        <div class="entry-links">
+          <label class="inline-label">甲方 <select id="hepanA"></select></label>
+          <label class="inline-label">乙方 <select id="hepanB"></select></label>
+          <button type="button" class="btn primary" id="hepanLoad">合盘</button>
+        </div>
+      </div>
+      <div id="hepanLoading" class="loading" hidden>合盘计算中…</div>
+      <div id="hepanEmpty" class="card"><p>档案里不足两人时，先去左侧「新建档案」建档。</p></div>
+      <div id="hepanContent" hidden></div>
+      <div id="hepanShare" hidden></div>
+      <p class="hint">依据与金标准：流程与判语逐式对齐 App SynastryModule.swift（合婚四看）与图书馆「合婚四看」条（id:34–40）；金标准见 test_hepan.py（合成人物对拍喜用／日柱／配偶星／互动计数）。生肖只作民间末位参，不入主断。分享链接形如 https://bazi.vip668.xin/#/hepan?pair=&lt;id1&gt;,&lt;id2&gt;，打开后即显示该对合盘；二维码由 MIT 协议 qrcode-generator 1.4.4 单文件库在浏览器本地生成，不经过任何在线二维码服务（LICENSE 见 qrcode-LICENSE.txt）。</p>
+    </section>
+
+    <section class="view" id="view-family" hidden>
+      <h2 class="view-title">全家盘 · 三人盘并置</h2>
+      <p class="view-sub">从人物档案里任选三人（默认不预选）。每人四柱＋喜忌定论＋大运当年要点均由现有引擎现算；三人之间两两合盘复用合婚四看，四维交叉裁决复用八字×紫微 hecan 原文。</p>
+      <p class="hint">口径：每人盘面事实来源 paipan.py 现算＋bazi_rules.analyze() 定论＋yearly_detail 当年要点；两两合盘裁决来源 hepan.py 合婚四看；四维裁决来源 ziwei.hecan_cross_cards（事业／财富／婚恋／健康），裁决句（同频相催／互补制化／分期应验）取各自 hecan 原文，本页不另造新裁决、不编新断语。</p>
+      <div class="card">
+        <div class="entry-links">
+          <label class="inline-label">其一 <select id="familyA"></select></label>
+          <label class="inline-label">其二 <select id="familyB"></select></label>
+          <label class="inline-label">其三 <select id="familyC"></select></label>
+          <button type="button" class="btn primary" id="familyLoad">全家盘</button>
+          <a class="btn" id="familyPosterLink" href="#" hidden>下载全家盘海报 PNG</a>
+        </div>
+      </div>
+      <div id="familyLoading" class="loading" hidden>全家盘计算中…</div>
+      <div id="familyEmpty" class="card"><p>档案里不足三人时，先去左侧「新建档案」建档。</p></div>
+      <div id="familyContent" hidden></div>
+      <p class="hint">依据与金标准：三人现算与 paipan／bazi_rules／yearly_detail 逐项对拍、两两合盘与 /api/hepan 同源、四维裁决与 /api/hecan 同源，见 test_family.py。全家盘海报沿用合参长图海报引擎（1080 宽、左右 28px 零墨）。</p>
+    </section>
+
+    <section class="view" id="view-luncai" hidden>
+      <h2 class="view-title">论财</h2>
+      <p class="view-sub" id="luncaiPerson">未选择命主</p>
+      <div id="luncaiLoading" class="loading" hidden>论财计算中…</div>
+      <div id="luncaiEmpty" class="card"><p>请先在左侧档案库选择一位命主，或新建档案。</p></div>
+      <div id="luncaiContent" hidden></div>
+      <p class="hint">依据与金标准：结论取已移植详批引擎 bazi_rules.analyze()「财运形态」「财富量级蓄水池」两条原文（与 App InterpretModule 论财口径同源：财星量级看身与财的任受、财库随日主五行定、财气通门户出《滴天髓》何知章）；金标准见 test_luncai.py（财星／财库／通门户／大运财运／破耗年份逐项复算）。</p>
+    </section>
+
+    <section class="view" id="view-chenggu" hidden>
+      <h2 class="view-title">称骨</h2>
+      <p class="view-sub" id="chengguPerson">未选择命主</p>
+      <div id="chengguLoading" class="loading" hidden>称骨计算中…</div>
+      <div id="chengguEmpty" class="card"><p>请先在左侧档案库选择一位命主，或新建档案。</p></div>
+      <div id="chengguContent" hidden></div>
+      <p class="hint">依据与金标准：年／月／日／时四重称重表与 52 格歌诀（七言四句正文）经三源逐字核对，异文裁决见后端 app/chenggu.py 注释；歌诀不含男女注解，本工具不设寿元关口。称骨仅 52 格、人人落格，粗疏不可据。金标准见 test_chenggu.py（合成四柱 10 例＋实盘 4 例＋闰月归属逐项复算）。</p>
+    </section>
+
+    <section class="view" id="view-lucky" hidden>
+      <h2 class="view-title">开运指南</h2>
+      <p class="view-sub" id="luckyPerson">未选择命主</p>
+      <div id="luckyLoading" class="loading" hidden>开运指南计算中…</div>
+      <div id="luckyEmpty" class="card"><p>请先在左侧档案库选择一位命主，或新建档案。</p></div>
+      <div id="luckyContent" hidden></div>
+      <p class="hint">依据与口径：喜用色（中文色名＋HEX／RGB 色卡）、吉祥数字、适宜方位、化解五路全部引自详批引擎 bazi_rules.analyze()「幸运颜色与数字」「适合方位」「如何化解（破局调理）」三条原文（与 App InterpretModule 同口径）；HEX 对照表见后端 app/lucky.py 模块头，属五行配色通说应用层色值对照，不是对典籍的引用。本页全部内容属传统应用参考／民间象征层，图提醒与心安，不是典籍断法，别为它花高价买“开运物”。收藏只存本机 localStorage，不上传服务器。金标准见 test_lucky_guide.py。</p>
+    </section>
+
+    <section class="view" id="view-accessories" hidden>
+      <h2 class="view-title">配饰材质库</h2>
+      <p class="view-sub">配饰材质结构化库（民间象征层，不代表功效主张）</p>
+      <div id="accLoading" class="loading" hidden>配饰库加载中…</div>
+      <div id="accContent" hidden></div>
+      <p class="hint">依据与口径：10 条材质覆盖 App 预测单真迹调理五项（玉石／翡翠／玛瑙／水晶／珍珠／金银饰品／木质工艺品）与图书馆 id 49／id 56 第 3、4 层提及的材质；每条含对应五行／来源／可信度／备注，来源覆盖率 100%，可信度全为“低”（民间象征层无实证口径）。本库整体只进民间象征层，不代表功效主张，不接电商、无购买入口。金标准见 test_accessories.py。</p>
+    </section>
+
+    <section class="view" id="view-annual" hidden>
+      <h2 class="view-title">年度报告</h2>
+      <p class="view-sub" id="annualPerson">未选择命主</p>
+      <div class="card">
+        <label class="inline-label">起始年份 <input type="number" id="annualYear" min="1900" max="2089" step="1"></label>
+        <button type="button" class="btn primary" id="annualLoad">生成年度报告</button>
+        <div id="annualLoading" class="loading" hidden>年度报告计算中…</div>
+        <div id="annualEmpty"><p>请先在左侧档案库选择一位命主，或新建档案。</p></div>
+        <div id="annualContent"></div>
+        <p class="hint">依据与口径：连续 12 个流年（本年起一轮），每年的直断原文引自 bazi_rules.yearly_detail，一字未改；年度 verdict 按定稿规则表聚合（关口级计数＋大运交接＋冲提纲标志），全文见后端 app/annual.py 模块头；本报告不是按月直断。金标准见 test_annual.py。</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-chartdepth" hidden>
+      <h2 class="view-title">深度图表</h2>
+      <p class="view-sub" id="chartDepthPerson">未选择命主</p>
+      <div id="chartDepthLoading" class="loading" hidden>深度图表计算中…</div>
+      <div id="chartDepthEmpty" class="card"><p>请先在左侧档案库选择一位命主，或新建档案。</p></div>
+      <div id="chartDepthContent" hidden></div>
+      <p class="hint">依据与口径：四柱、五行占比与喜忌取自 /api/interpret 返回（排盘 paipan.py、详批 bazi_rules.analyze()，与 App BaziModule 同口径）；藏干十神由返回的地支藏干＋日主按同一十神关系表（paipan.py shishen()）在页内换算，不新增后端接口、不新增请求；点击五行或十神只高亮本盘已有干支，不新编断语。本页只展示盘面事实，不写寿数、不落健康病名、不断确定性断语。金标准见 test_chart_depth.py。</p>
+    </section>
+
+    <section class="view" id="view-reports" hidden>
+      <h2 class="view-title">报告中心</h2>
+      <p class="view-sub" id="reportsPerson">全部人物</p>
+      <div class="card">
+        <button type="button" class="btn" id="reportsScopeAll">全部</button>
+        <button type="button" class="btn" id="reportsScopePerson">仅看此人</button>
+        <button type="button" class="btn primary" id="reportsReload">刷新</button>
+        <div id="reportsLoading" class="loading" hidden>报告中心加载中…</div>
+        <div id="reportsEmpty"><p>报告中心按人物列出命书三档、海报五款与前瞻断语；命书与海报为按需生成，不落盘。</p></div>
+        <div id="reportsContent"></div>
+        <p class="hint">口径：命书三档与 App 命书同口径（引擎口径版本 2026.11-g1，内容哈希见各条目）；健康只给倾向、非西医疾病诊断、六亲生死不在此列。紫微为三合派。娱乐与研习参考。</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-yunqi" hidden>
+      <h2 class="view-title">五运六气</h2>
+      <p class="view-sub" id="yunqiPerson">未选择命主（不选命主亦可只看年度五运六气）</p>
+      <div class="card">
+        <label class="inline-label">年份 <input type="number" id="yunqiYear" min="1900" max="2100" step="1"></label>
+        <button type="button" class="btn primary" id="yunqiLoad">查询本年运气</button>
+        <div id="yunqiLoading" class="loading" hidden>运气推算中…</div>
+        <div id="yunqiContent"></div>
+        <p class="hint">依据与金标准：中运出《素问·天元纪大论》，主气六步与司天在泉出《素问·六元正纪大论》《六微旨大论》体系，与 App 五运六气页同口径；季度提示只讲当季主气与节律，不落病名、不开药方。选命主后，起运前年份另附小运行运干支一行（小运以时柱为起点，阳男阴女顺行、阴男阳女逆行，一岁一运，虚岁计）。金标准见 test_wuyunliuqi.py（12 年份＋5 人小运逐项复算）。</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-divination" hidden>
+      <h2 class="view-title">梅花六爻 · 时间起卦</h2>
+      <p class="view-sub">只做时间起卦：一事一断的占卜辅助线，不编断语。起卦后自动进前瞻登记，到期回验。</p>
+      <div class="card">
+        <label class="inline-label">起卦时间 <input type="datetime-local" id="divDt"></label>
+        <label class="inline-label">问事（可选） <input type="text" id="divQuestion" placeholder="例如：此事是否宜推进" maxlength="120"></label>
+        <label class="inline-label">经度 <input type="number" id="divLon" step="0.1" value="107.8" title="真太阳时校正用经度，默认梁平 107.8"></label>
+        <button type="button" class="btn primary" id="divCast">起卦并登记前瞻</button>
+        <button type="button" class="btn" id="divPreview">只起卦不登记</button>
+        <div id="divLoading" class="loading" hidden>起卦中…</div>
+        <div id="divContent"></div>
+        <p class="hint">依据与金标准：起卦法传为宋·邵雍《梅花易数》年月日时起卦（先天数乾 1…坤 8，上卦＝(年＋月＋日)%8、下卦＝(年＋月＋日＋时)%8、动爻＝(年＋月＋日＋时)%6）；农历与真太阳时与 paipan.py 同口径（默认经度 107.8 梁平，晚子时 sect=2，闰月上半月本月、下半月下月）；六爻世应六亲为京房八宫纳甲通行口径；卦辞爻辞为公有领域《周易》通行本原文＋白话直述。解卦只给卦辞／爻辞白话＋体用生克结论，不编具体吉凶断语、不落病名、不做寿数断语。金标准见 test_meihua_liuyao.py（13 例时间起卦＋乾坤本宫＋闰月／晚子时边界逐项复算）。</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-ask" hidden>
+      <h2 class="view-title">AI 问答 · 只引引擎事实</h2>
+      <p class="view-sub" id="askPerson">未选择命主（通用问题可不选；事业／财运／婚恋等问题需选命主）</p>
+      <div class="card">
+        <label class="inline-label">问题 <input type="text" id="askQuestion" placeholder="例如：今年换工作合适吗" maxlength="200"></label>
+        <button type="button" class="btn primary" id="askSubmit">提问</button>
+        <div id="askLoading" class="loading" hidden>问答中…（本机引擎现算事实，再请模型组织回答）</div>
+        <div id="askResult"></div>
+        <p class="hint">依据与金标准：回答只许引用本机引擎现算的事实包（八字／紫微／合参／奇门／梅花／称骨／五运六气／堪舆流年紫白／星命），事实包里没有的明说“盘上无据”，不许编造、不许用模型自带命理知识补、不许落病名、不许做寿数断语；每条结论附来源引擎与字段，模型答案逐句过后校验，未通过则降级返回事实包原文。模型不可用时同样降级。问题原文不写入服务端，问答记录只存本机 localStorage。金标准见 test_ask.py（事实包／拒绝／编造拦截／降级／限流／HTTP 端点）。奇门值使／天盘星／天德口径待裁决，现行引擎按旧口径输出，问答中如实标注。</p>
+      </div>
+      <div class="card">
+        <h3>本机问答记录（只存浏览器）</h3>
+        <div id="askHistory"></div>
+        <button type="button" class="btn" id="askClearHistory">清空本机记录</button>
+      </div>
+    </section>
+
+    <section class="view" id="view-celebs" hidden>
+      <h2 class="view-title">名人命例库</h2>
+      <p class="view-sub">只收出生时间有公开记载者：高＝出生证／官方记录，中＝传记通行记载。时辰无据者一律不收——盘宁可少，不可假。点开看本机现算的八字与紫微盘。</p>
+      <div id="celebsLoading" class="loading" hidden>加载中…</div>
+      <div id="celebsList"></div>
+      <div id="celebDetail" hidden></div>
+      <p class="hint">依据与金标准：14 条逐字对齐 App CelebModule.swift CelebData.all；金标准见 test_g2_content.py（逐条核对姓名／性别／出生时间／经度／出生地／可信度／备注与 App 一致）。外国出生者经度已按生地计真太阳时，其当地钟表时间按通行记载的当地时间录入后以北京时间通道换算，时柱或有半时辰级误差，读盘时留意。</p>
+    </section>
+
+    <section class="view" id="view-library" hidden>
+      <h2 class="view-title">研习图书馆</h2>
+      <p class="view-sub">工作室自有研习文本与典籍纲要（100 条）。只做检索＋分类＋白话弹窗，每条正文均标出处。</p>
+      <div class="card">
+        <div class="entry-links">
+          <input type="search" id="libQ" placeholder="搜标题或正文（如：调候、财库、合婚）" aria-label="检索图书馆" style="flex:1;min-width:12em">
+          <select id="libCat" aria-label="分类"><option value="">全部分类</option></select>
+          <button type="button" class="btn primary" id="libSearch">检索</button>
+        </div>
+      </div>
+      <div id="libLoading" class="loading" hidden>检索中…</div>
+      <div id="libList"></div>
+      <div id="libDetail" class="card" hidden></div>
+    </section>
+
+    <section class="view" id="view-classics" hidden>
+      <h2 class="view-title">古籍检索</h2>
+      <p class="view-sub">只收公有领域原文：《滴天髓》64 篇歌诀、《子平真诠》一～十篇全文。原文与白话严格区分：白话是本系统自己的字面疏解，不得冒充原文；异文见各句校勘。未收录的篇目标明“未收录”。</p>
+      <div class="card">
+        <div class="entry-links">
+          <input type="search" id="clsQ" placeholder="搜原文或白话（如：提纲、用神、月令）" aria-label="检索古籍" style="flex:1;min-width:12em">
+          <button type="button" class="btn primary" id="clsSearch">检索</button>
+        </div>
+      </div>
+      <div id="clsLoading" class="loading" hidden>检索中…</div>
+      <div id="clsBooks"></div>
+      <div id="clsHits"></div>
+      <div id="clsDetail" class="card" hidden></div>
+      <p class="hint" id="clsNote"></p>
+    </section>
+
+    <section class="view" id="view-quiz" hidden>
+      <h2 class="view-title">排盘口径自测</h2>
+      <p class="view-sub">44 题，全部围绕本系统排盘口径（真太阳时、晚子时、闰月、节气、夏令时、年份范围、称骨、梅花、奇门、古籍原文）。每题答案由本机引擎现算复核；答错即显示解析与口径出处。得分与错题回顾只存本机，不落库。</p>
+      <div class="card">
+        <p>共 <strong id="quizCount">44</strong> 题 · 覆盖 10 个口径点，每点至少 2 题。</p>
+        <button type="button" class="btn primary" id="quizStart">开始自测</button>
+        <button type="button" class="btn ghost" id="quizClear" hidden>清空本机答题记录</button>
+      </div>
+      <div id="quizLoading" class="loading" hidden>加载题库中…</div>
+      <div id="quizBody"></div>
+      <div id="quizResult" class="card" hidden></div>
+    </section>
+
+    <section class="view" id="view-academy" hidden>
+      <h2 class="view-title">学堂</h2>
+      <p class="view-sub">学习入口收拢一页：图书馆、古籍、题库、依据与金标准、排盘口径收据行说明。不做视频课、不做付费课。</p>
+      <div class="card">
+        <h3>研习入口</h3>
+        <p><a href="#/library">图书馆</a> —— 100 条研习文本与典籍纲要，检索＋分类＋出处。</p>
+        <p><a href="#/classics">古籍检索</a> —— 《滴天髓》《子平真诠》公有领域原文逐句对照＋检索。</p>
+        <p><a href="#/quiz">排盘口径自测</a> —— 44 题口径自测，答案由引擎现算复核。</p>
+      </div>
+      <div class="card">
+        <h3>依据与金标准（D3）</h3>
+        <p>每条断语、每个口径都以可复核的金标准为据：三方互校日柱 1900–2100、奇门 183 断言、紫微 14 例、堪舆 114 断言、户型 69 断言；验证脚本见 kanyu-web/tools/tests/。</p>
+        <p><a href="#/hecan">合参</a>页的“依据链”会逐条列出每条结论的出处与引擎字段；不编造、无依据的断语不上线。</p>
+      </div>
+      <div class="card">
+        <h3>排盘口径收据行说明</h3>
+        <p>每张排盘都附收据行，写明本次排盘用的口径：真太阳时校正分钟数与经度、晚子时 sect=2（23:00–24:00 日柱不换、时干按次日日干推）、节气交节时刻、夏令时命中与处理、年份验证范围 1900–2100。收据行与引擎同式现算，口径有变即随盘更新。</p>
+        <p>口径自测（#/quiz）逐条考这些收据行背后的规则；看不懂哪一条，先去题库里做两道题。</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-palm" hidden>
+      <h2 class="view-title">手相面相</h2>
+      <p class="view-sub">照片上传＋人工标点／描线＋同款分析呈现。测量是几何事实，判读为娱乐参考；不做疾病灾祸预测。</p>
+      <div class="card">
+        <h3>实测与判读分区</h3>
+        <p><strong>实测（几何事实）：</strong>你亲手标定的点位、描线与三停比例——数字由你的标点现算，可复核。</p>
+        <p><strong>判读（娱乐参考）：</strong>按相书通说给出的定性文字，只作参考，不套成人断语于儿童，不落病名、不论寿数。</p>
+        <p><strong>未做（明说）：</strong>Vision 21 点手部关节点自动识别——iOS 端用系统 Vision 框架，浏览器与服务器均无等价实现，Web 端改由人工标点替代，测量数学与阈值与 App 一致；掌纹自动提取——App 同样不做自动提取，三线本就是「预置线形＋逐点可拖修正」的手描层，Web 端同款；测量记录只存本机浏览器（localStorage），不上传服务器档案库。</p>
+      </div>
+      <div class="card">
+        <h3>手相 · 测量与描线</h3>
+        <p class="muted">用掌心正对、光线均匀的照片。先拖 7 个标点（腕／食指根／中指根／小指根／中指尖／食指尖／无名指尖）量掌型与指长比，再拖三线圆点到你真实掌纹上。</p>
+        <div class="entry-links">
+          <input type="file" id="palmFile" accept="image/*" aria-label="选择手掌照片">
+          <button type="button" class="btn primary" id="palmUpload">上传照片</button>
+        </div>
+        <div id="palmStage" class="palm-stage" hidden>
+          <img id="palmImg" alt="手掌照片">
+          <svg id="palmSvg" aria-label="描线与标点层"></svg>
+        </div>
+        <div id="palmLines" class="entry-links" hidden>
+          <button type="button" class="btn palm-line-btn active" data-line="0">感情线</button>
+          <button type="button" class="btn palm-line-btn" data-line="1">智慧线</button>
+          <button type="button" class="btn palm-line-btn" data-line="2">生命线</button>
+          <span class="muted">拖动圆点修正描线；拖动方点修正标点</span>
+        </div>
+        <p id="palmLineCard" class="hint" hidden></p>
+        <div id="palmMeasure"></div>
+        <div class="entry-links" id="palmSaveRow" hidden>
+          <input type="text" id="palmName" placeholder="姓名（按人归档）" maxlength="20" aria-label="姓名">
+          <button type="button" class="btn primary" id="palmSave">保存记录（照片＋描线＋测量值）</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>面相 · 三停校准</h3>
+        <p class="muted">用正面自然光、无美颜的照片。发际线以实际发际为准手动拖准（儿童发际未定型更要人工校正）；三停比例为几何事实，判读按相书通说、娱乐参考。</p>
+        <div class="entry-links">
+          <input type="file" id="faceFile" accept="image/*" aria-label="选择正面照片">
+          <button type="button" class="btn primary" id="faceUpload">上传照片</button>
+        </div>
+        <div id="faceStage" class="palm-stage" hidden>
+          <img id="faceImg" alt="正面照片">
+          <svg id="faceSvg" aria-label="三停标线层"></svg>
+        </div>
+        <div id="faceResult"></div>
+        <div class="entry-links" id="faceSaveRow" hidden>
+          <input type="text" id="faceName" placeholder="姓名（按人归档）" maxlength="20" aria-label="姓名">
+          <button type="button" class="btn primary" id="faceSave">保存记录（照片＋三停比例）</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>测量记录（本机存档）</h3>
+        <div id="palmRecords"><p class="muted">暂无记录。</p></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-qimen" hidden>
+      <h2 class="view-title">奇门遁甲</h2>
+      <p class="view-sub" id="qimenPerson">未选择命主</p>
+      <p class="hint">口径：拆补法定局（可切置闰法） · 三奇得使统宗标准 · 寄宫默认恒寄坤二。默认按当前命主出生时间＋经度做真太阳时校正起局；也可改填任意起局时间（裸时间默认不校正，勾选真太阳时后按经度校正，默认 107.8 梁平）。依据与金标准见页底。</p>
+      <div class="card">
+        <label class="inline-label">起局时间 <input type="datetime-local" id="qimenDt"></label>
+        <label class="inline-label">定局法
+          <select id="qimenDingju">
+            <option value="chaibu">拆补法</option>
+            <option value="zhiyun">置闰法</option>
+          </select>
+        </label>
+        <label class="inline-label">寄宫
+          <select id="qimenJigong">
+            <option value="kun2">恒寄坤二</option>
+            <option value="gen8">恒寄艮八</option>
+            <option value="yanggen_yinkun">阳艮阴坤</option>
+            <option value="yangkun_yingen">阳坤阴艮</option>
+          </select>
+        </label>
+        <label class="inline-label"><input type="checkbox" id="qimenAngan" checked> 布暗干（值使门起）</label>
+        <label class="inline-label"><input type="checkbox" id="qimenSolar"> 真太阳时校正 <input type="number" id="qimenLon" value="107.8" step="0.1" style="width:5.5em" disabled> 经度</label>
+        <label class="inline-label">用神
+          <select id="qimenTopic">
+            <option value="">不选</option>
+            <option value="求财">求财</option>
+            <option value="婚姻">婚姻</option>
+            <option value="出行">出行</option>
+            <option value="求官">求官</option>
+            <option value="失物">失物</option>
+            <option value="疾病">疾病</option>
+            <option value="考试">考试</option>
+            <option value="官司">官司</option>
+          </select>
+        </label>
+        <div class="entry-links">
+          <button type="button" class="btn primary" id="qimenPersonBtn">用当前命主起局</button>
+          <button type="button" class="btn" id="qimenTimeBtn">按起局时间起局</button>
+          <button type="button" class="btn" id="qimenRijiaBtn">日家盘（同时间）</button>
+          <a class="btn" href="#/qimen-cases">案例库</a>
+        </div>
+        <div id="qimenLoading" class="loading" hidden>起局中…</div>
+        <div id="qimenEmpty" class="card inner"><p>请选择起局方式后起局；用神可先不选，起局后可再换用神重算。日家盘与置闰法见上方控件。</p></div>
+        <div id="qimenContent" hidden>
+          <div class="card inner"><h3>局象</h3><div id="qimenMeta"></div><p class="hint" id="qimenReceipt"></p></div>
+          <div class="qm-board" id="qimenBoard" aria-label="奇门九宫盘面"></div>
+          <div id="qimenPatterns"></div>
+          <div id="qimenLayers"></div>
+          <div id="qimenChangsheng"></div>
+          <div id="qimenRijia"></div>
+          <div id="qimenYongshen"></div>
+          <div class="card"><h3>术语表</h3><div id="qimenGlossary"></div></div>
+          <p class="hint">依据与金标准：寄宫四档见《奇门遁甲统宗》卷二（恒寄坤二／阳坤阴艮）与遁甲神盤四种寄宫方式；置闰法见统宗卷一「论超接之法」「置闰法」（仅芒种／大雪后置闰）；日家见统宗卷二附日奇门起例（一）；击刑／入墓／时干入墓见《烟波钓叟歌》；十二长生见《渊海子平》《三命通会》通行表（阳顺阴逆）；十干克应见《十干克应》全表 81 格；暗干为值使门起法。金标准：tools/tests/test_qimen_jigong.py（61 断言）、test_qimen_rijia_zhiyun.py（75 断言）、test_qimen_layers.py（101 断言）、test_qimen_solar.py（35 断言）、test_qimen_cases.py（106 断言），旧 test_qimen_golden.py（183 断言）旧口径下仍全过。值使落宫口径差异（引擎时支序数起 vs 教程旬首起数法）见案例库逐条标注，待裁决。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-qimen-cases" hidden>
+      <h2 class="view-title">奇门案例库</h2>
+      <p class="view-sub">只收公开记载、可核验的奇门案例</p>
+      <p class="hint">每条附起局时间、局象原文、应验记录与来源；典籍／教程算例仅核定局与值符值使，无实战应验记录的如实写“无”。值使落宫口径差异逐条标注（引擎时支序数起 vs 教程旬首起数法，待裁决）；案例已走前瞻回验流程登记（来源标记 qimen_case，状态已验）。依据与金标准：tools/tests/test_qimen_cases.py（106 断言）。</p>
+      <div id="qimenCasesLoading" class="loading" hidden>加载中…</div>
+      <div id="qimenCasesList"></div>
+    </section>
+
+    <section class="view" id="view-astro" hidden>
+      <h2 class="view-title">星命合参</h2>
+      <p class="view-sub" id="astroPerson">未选择命主</p>
+      <p class="hint">口径：真太阳时校正 · 黄道回归历。星盘按真太阳时校正后排盘（与八字/紫微一致）；App 端目前不校正，同一人两端上升点可能差十几度，属 App 侧待办。</p>
+      <div id="astroLoading" class="loading" hidden>星盘加载中…</div>
+      <div id="astroEmpty" class="card"><p>请先在左侧档案库选择一位命主，或新建档案。</p></div>
+      <div id="astroContent" hidden>
+        <div class="card"><h3>日月升三曜</h3><div class="astro-planets" id="astroPlanets"></div><p class="muted" id="astroTst"></p></div>
+        <div class="card"><h3>等宫十二宫</h3><div id="astroHouses"></div></div>
+        <div id="astroCross"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-kanyu" hidden>
+      <h2 class="view-title">风水堪舆</h2>
+      <p class="view-sub">无需命主，坐向定盘即可；住户用于命卦与宅匹配（可选）。</p>
+      <p class="hint">口径：玄空飞星＋八宅大游年。预设 desc 仅作预设文案展示，不把它当作飞星结论；飞星盘数字以引擎真实值为准。</p>
+      <div class="card">
+        <label class="inline-label">坐向预设
+          <select id="kanyuOrientation">
+            <option value="">自定义度数</option>
+            <option value="子山午向">子山午向（坐北朝南）</option>
+            <option value="壬山丙向">壬山丙向（正北朝偏南）</option>
+            <option value="癸山丁向">癸山丁向（偏北朝偏南）</option>
+            <option value="午山子向">午山子向（坐南朝北）</option>
+            <option value="卯山酉向">卯山酉向（坐东朝西）</option>
+            <option value="酉山卯向">酉山卯向（坐西朝东）</option>
+            <option value="艮山坤向">艮山坤向（坐东北朝西南）</option>
+            <option value="乾山巽向">乾山巽向（坐西北朝东南）</option>
+          </select>
+        </label>
+        <label class="inline-label">坐山度数（°） <input type="number" id="kanyuDegree" step="0.5" min="0" max="360" placeholder="如 180"></label>
+        <label class="inline-label">建成 / 入住年份 <input type="number" id="kanyuYear" min="1900" max="2100" placeholder="如 2019"></label>
+        <label class="inline-label">流年年份 <input type="number" id="kanyuAnnual" min="1900" max="2100" placeholder="如 2026"></label>
+        <h3>住户（可选，至多 3 人）</h3>
+        <div class="resident-row">
+          <input type="text" id="kyR0Name" maxlength="10" placeholder="称谓，如 本人">
+          <input type="number" id="kyR0Year" min="1900" max="2100" placeholder="出生年">
+          <select id="kyR0Gender"><option value="女">女</option><option value="男">男</option></select>
+        </div>
+        <div class="resident-row">
+          <input type="text" id="kyR1Name" maxlength="10" placeholder="称谓">
+          <input type="number" id="kyR1Year" min="1900" max="2100" placeholder="出生年">
+          <select id="kyR1Gender"><option value="女">女</option><option value="男">男</option></select>
+        </div>
+        <div class="resident-row">
+          <input type="text" id="kyR2Name" maxlength="10" placeholder="称谓">
+          <input type="number" id="kyR2Year" min="1900" max="2100" placeholder="出生年">
+          <select id="kyR2Gender"><option value="女">女</option><option value="男">男</option></select>
+        </div>
+        <div class="entry-links">
+          <button type="button" class="btn primary" id="kanyuLoad">排盘</button>
+          <a class="btn" href="#/floorplan">户型压盘 →</a>
+        </div>
+        <div id="kanyuLoading" class="loading" hidden>排盘中…</div>
+        <div id="kanyuEmpty" class="card inner"><p>请先选坐向预设或填坐山度数，再点排盘。</p></div>
+        <div id="kanyuContent" hidden>
+          <div class="card inner"><h3>定盘</h3><div id="kanyuMeta"></div></div>
+          <div class="ky-board" id="kanyuBoard" aria-label="玄空飞星九宫盘"></div>
+          <div id="kanyuPattern"></div>
+          <div class="card"><h3>组合断语</h3><div id="kanyuCombo"></div></div>
+          <div class="card"><h3>八宅表</h3><div id="kanyuBazhai"></div></div>
+          <div class="card"><h3>结论</h3><div id="kanyuConclusion"></div></div>
+          <div id="kanyuResidents"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-floorplan" hidden>
+      <h2 class="view-title">户型压盘</h2>
+      <p class="view-sub">上传户型图仅在本地预览，不上传原图到服务端；只把坐向与中宫坐标发给 /api/floorplan。</p>
+      <p class="hint">口径：玄空飞星＋八宅大游年。拖动中宫圆点可立极重算；九宫格南上北下。</p>
+      <div class="card">
+        <label>户型图 <input type="file" id="fpFile" accept="image/*"></label>
+        <label class="inline-label">坐向预设
+          <select id="fpOrientation">
+            <option value="">自定义度数</option>
+            <option value="子山午向">子山午向（坐北朝南）</option>
+            <option value="壬山丙向">壬山丙向（正北朝偏南）</option>
+            <option value="癸山丁向">癸山丁向（偏北朝偏南）</option>
+            <option value="午山子向">午山子向（坐南朝北）</option>
+            <option value="卯山酉向">卯山酉向（坐东朝西）</option>
+            <option value="酉山卯向">酉山卯向（坐西朝东）</option>
+            <option value="艮山坤向">艮山坤向（坐东北朝西南）</option>
+            <option value="乾山巽向">乾山巽向（坐西北朝东南）</option>
+          </select>
+        </label>
+        <label class="inline-label">坐山度数（°） <input type="number" id="fpDegree" step="0.5" min="0" max="360" placeholder="如 180"></label>
+        <div class="entry-links" role="group" aria-label="压盘模式">
+          <button type="button" class="btn active" id="fpModeXk">玄空飞星</button>
+          <button type="button" class="btn" id="fpModeBz">八宅大游年</button>
+          <button type="button" class="btn primary" id="fpLoad">压盘</button>
+        </div>
+        <div class="fp-wrap">
+          <canvas id="fpCanvas" width="900" height="900"></canvas>
+          <p class="muted" id="fpEmpty">请先上传户型图并选择坐向，再点压盘；拖动中宫圆点可立极重算。</p>
+        </div>
+        <div id="fpInfo"></div>
+        <div id="fpCells"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-compass" hidden>
+      <h2 class="view-title">罗盘实测</h2>
+      <p class="view-sub">手机浏览器轻量罗盘：竖屏持握，盘面随手机转动；锁定后可带入堪舆与户型压盘。</p>
+      <p class="hint" style="border-left:3px solid #9A2A22">浏览器传感器精度有限，仅供参考，以 App 罗盘或实体罗盘为准。</p>
+      <p class="hint">依据与金标准：磁偏角按 WMM2025（NOAA NCEI＋英国地质调查局，Chulliat et al. 2025，doi:10.25923/prbcs316）由 /api/compass 现算；二十四山与堪舆引擎同口径（子起顺时针，每山 15°，＋7.5° 偏置，0°＝子山正北）；坐山度数＝罗盘「大门外朝内」真北读数，向山＝坐山＋12 山。金标准见 Web test_compass.py（NOAA §1.5 数值例逐项对拍，284 断言全过）。</p>
+      <div class="card">
+        <div class="fp-wrap">
+          <canvas id="compassCanvas" width="360" height="360"></canvas>
+          <p class="muted" id="compassEmpty">请先点「启用罗盘传感器」，竖屏持握手机，盘面即随转动。</p>
+        </div>
+        <div id="compassReading" style="font-size:30px;font-weight:700;text-align:center">—</div>
+        <div id="compassMountain" style="text-align:center" class="muted">等待传感器…</div>
+        <div id="compassDeclination" style="text-align:center" class="muted">磁偏角加载中…</div>
+        <div class="entry-links" role="group" aria-label="北向模式">
+          <button type="button" class="btn active" id="compassModeTrue">真北</button>
+          <button type="button" class="btn" id="compassModeMag">磁北</button>
+        </div>
+        <label class="inline-label">手动磁偏角（°，东偏为正） <input type="number" id="compassManualDec" step="0.1" placeholder="留空＝自动"></label>
+        <div class="entry-links">
+          <button type="button" class="btn primary" id="compassEnable">启用罗盘传感器</button>
+          <button type="button" class="btn primary" id="compassLock" disabled>锁定当前度数／山向</button>
+        </div>
+        <p class="form-msg" id="compassStatus" role="status"></p>
+        <div id="compassLockInfo"></div>
+        <div class="entry-links" id="compassBringRow" hidden>
+          <button type="button" class="btn" id="compassToKanyu">带入堪舆 →</button>
+          <button type="button" class="btn" id="compassToFloorplan">带入户型压盘 →</button>
+          <button type="button" class="btn" id="compassClearLock">清除锁定</button>
+        </div>
+        <div class="card inner">
+          <h3>校准提示</h3>
+          <p class="muted">远离磁铁、金属与电器；出现校准提示时按系统提示画 8 字。iOS Safari 须点「启用罗盘传感器」授权方向传感器；若浏览器不支持，会明示不支持。精度约 ±5°（校准良好时）。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-settings" hidden>
+      <h2 class="view-title">备份中心</h2>
+      <div class="card">
+        <h3>全量备份</h3>
+        <p>下载包含人物档案与验真标记的 zip 备份（GET /api/backup）。</p>
+        <a class="btn primary" href="/api/backup" download>一键下载全量备份</a>
+      </div>
+      <div class="card">
+        <h3>上传恢复</h3>
+        <p>选择之前下载的 zip 备份文件恢复（POST /api/backup/restore，字段 file）。成功后刷新人物列表并提示恢复条数。</p>
+        <label>备份 zip 文件 <input type="file" id="restoreFile" accept=".zip,application/zip"></label>
+        <button type="button" class="btn primary" id="restoreBtn">上传并恢复</button>
+        <p class="form-msg" id="restoreMsg" role="status"></p>
+      </div>
+      <div class="card">
+        <h3>关于</h3>
+        <p>三术合参 Web 版 v1。前端只调后端 REST API，不内嵌任何排盘算法；无外部 CDN 依赖，内网可开。</p>
+        <p>简／繁切换：右上角「简体／繁體」，选择存本机浏览器（localStorage）；切换后界面文案与引擎输出文本按对照表转换，只换字形、不换数值（四柱、分数、度数不变），海报 PNG 暂只出简体版。英文版远期只做范围说明、不做机翻（见对标落地进度 G13 节）。</p>
+      </div>
+    </section>
+  </main>
+
+  <aside class="col-right" aria-label="三十维详批与验真溯源">
+    <section class="card">
+      <h2>三十维详批 · 验真溯源</h2>
+      <p class="hint" id="rightPerson">未选择命主</p>
+      <div id="rightLoading" class="loading" hidden>加载中…</div>
+      <div id="rightList"><p class="muted">请选择命主后查看详批条目。</p></div>
+    </section>
+  </aside>
+</div>
+
+<nav class="bottom-nav" aria-label="底部导航">
+  <a href="#/hecan" data-route="hecan">合参</a>
+  <a href="#/bazi" data-route="bazi">八字</a>
+  <a href="#/ziwei" data-route="ziwei">紫微</a>
+  <a href="#/astro" data-route="astro">星命</a>
+  <a href="#/qimen" data-route="qimen">奇门</a>
+  <a href="#/kanyu" data-route="kanyu">堪舆</a>
+  <a href="#/compass" data-route="compass">罗盘</a>
+  <a href="#/hepan" data-route="hepan">合盘</a>
+  <a href="#/family" data-route="family">全家盘</a>
+  <a href="#/luncai" data-route="luncai">论财</a>
+  <a href="#/chenggu" data-route="chenggu">称骨</a>
+  <a href="#/lucky" data-route="lucky">开运指南</a>
+  <a href="#/accessories" data-route="accessories">配饰库</a>
+  <a href="#/annual" data-route="annual">年度报告</a>
+  <a href="#/reports" data-route="reports">报告中心</a>
+  <a href="#/divination" data-route="divination">梅花六爻</a>
+  <a href="#/ask" data-route="ask">AI 问答</a>
+  <a href="#/yunqi" data-route="yunqi">五运六气</a>
+  <a href="#/celebs" data-route="celebs">名人库</a>
+  <a href="#/library" data-route="library">图书馆</a>
+  <a href="#/classics" data-route="classics">古籍</a>
+  <a href="#/quiz" data-route="quiz">题库</a>
+  <a href="#/academy" data-route="academy">学堂</a>
+  <a href="#/palm" data-route="palm">手相面相</a>
+</nav>
+
+<script src="./qrcode.min.js"></script>
+<script src="./auth.js"></script>
+<script src="./chartdepth.js?v=insight3-g11"></script>
+<script src="./app.js?v=insight2-20261109"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"08ed82a0c39d4ac8ae83d33d843e1970","r":1,"spa":2}' crossorigin="anonymous"></script>
+<script src="./v6.js"></script>
+</body>
+</html>

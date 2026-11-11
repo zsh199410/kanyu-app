@@ -420,10 +420,11 @@ struct ZiweiBoardView: View {
     // UI 2.1 第6批：选中宫位跨启动保留（SceneStorage；-1＝未选）
     @SceneStorage("ziwei.selectedBranch") private var selectedStored: Int = -1
     private var selected: Int? {
-        get { selectedStored >= 0 ? selectedStored : nil }
+        get { (0..<12).contains(selectedStored) ? selectedStored : nil }
         set { selectedStored = newValue ?? -1 }
     }
     @State private var showPalaceSheet = false
+    @Environment(\.accessibilityReduceMotion) private var reduceFlyMotion
     @State private var flyProgress: Double = 0
     // UI 2.1 第6批：紫微方盘独立放大（缩放变换，不进布局；按钮 1.0↔1.6，双指捏合 1.0–1.8）
     @State private var boardScale: CGFloat = 1.0
@@ -481,8 +482,9 @@ struct ZiweiBoardView: View {
 
     // P1 续：飞线分段淡入——对宫先亮（0–0.25 秒），三合两宫随后（各 0.25 秒）；几何与虚线样式不动
     private func replayFlyLines() {
+        if reduceFlyMotion { flyProgress = 3; return }
         flyProgress = 0
-        withAnimation(KyMotion.flyline) {
+        withAnimation(KanyuV6.Motion.flyline) {
             flyProgress = 3
         }
     }
@@ -507,7 +509,7 @@ struct ZiweiBoardView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(p.name.scriptConverted).font(.callout).fontWeight(.bold).foregroundStyle(p.branch == chart.mingGong ? Ky.cinnabar : Ky.ink)
-                        Text("\(p.stem)\(ZiweiCore.DZ[p.branch])").font(.caption).foregroundStyle(Ky.sub)
+                        Text("\(String(p.stem))\(String(ZiweiCore.DZ[p.branch]))").font(.caption).foregroundStyle(Ky.sub)
                         if p.isBody { KyBadge(text: "身宫", color: Ky.gold) }
                         Spacer()
                         Text("\(p.decadal.first ?? 0)–\(p.decadal.last ?? 0) 岁").font(.caption).foregroundStyle(Ky.sub)
@@ -755,7 +757,7 @@ struct ZiweiBoardView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 3))
                     }
                     Spacer(minLength: 1)
-                    Text("\(p.stem)\(ZiweiCore.DZ[p.branch])")
+                    Text("\(String(p.stem))\(String(ZiweiCore.DZ[p.branch]))")
                         .font(.system(size: 9))
                         .foregroundStyle(Ky.sub)
                 }
