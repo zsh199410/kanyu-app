@@ -9,6 +9,10 @@ enum BackupExportPath {
         root.appendingPathComponent("Kanyu-Backup-stage-\(identifier.uuidString)", isDirectory: true)
     }
 
+    static func restoreDirectory(in root: URL, identifier: UUID = UUID()) -> URL {
+        root.appendingPathComponent("Kanyu-Restore-\(identifier.uuidString)", isDirectory: true)
+    }
+
     static func zipURL(in root: URL, date: String, identifier: UUID = UUID()) -> URL {
         root.appendingPathComponent("Kanyu-Backup-\(date)-\(identifier.uuidString).zip")
     }
@@ -171,10 +175,12 @@ struct BackupView: View {
 
     private func restore(from zipURL: URL) -> String {
         let fm = FileManager.default
-        let tmp = fm.temporaryDirectory.appendingPathComponent("Kanyu-Restore-\(Int(Date().timeIntervalSince1970))", isDirectory: true)
+        let tmp = BackupExportPath.restoreDirectory(in: fm.temporaryDirectory)
         do {
             try fm.unzipItem(at: zipURL, to: tmp)
         } catch {
+            // ZIPFoundation may leave a partially extracted directory on failure.
+            try? fm.removeItem(at: tmp)
             return "解压失败：不是有效的备份包。"
         }
         let roots = (try? fm.contentsOfDirectory(at: tmp, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
