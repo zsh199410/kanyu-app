@@ -44,7 +44,7 @@ private struct V6ExportQARunnerView: View {
         let samples: [Sample]
         let errors: [String]
     }
-    enum Failure: Error { case imageUnavailable, invalidDimensions, unreadablePNG }
+    enum Failure: Error { case imageUnavailable, invalidDimensions(Int, Int), unreadablePNG }
 
     static func run() async {
         let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
@@ -102,10 +102,13 @@ private struct V6ExportQARunnerView: View {
                 .environment(\.dynamicTypeSize, .large))
             renderer.scale = 2
             guard let image = renderer.uiImage, let cg = image.cgImage else { throw Failure.imageUnavailable }
-            guard cg.width == 1080, cg.height > cg.width else { throw Failure.invalidDimensions }
             guard let data = image.pngData(), UIImage(data: data)?.cgImage != nil else { throw Failure.unreadablePNG }
             let file = name + ".png"
+            // Keep the actual failed image for review, without counting it as a valid sample.
             try data.write(to: directory.appendingPathComponent(file), options: .atomic)
+            guard cg.width == 1080, cg.height > cg.width else {
+                throw Failure.invalidDimensions(cg.width, cg.height)
+            }
             return Sample(file: file, width: cg.width, height: cg.height,
                 sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined())
         }

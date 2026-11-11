@@ -45,8 +45,9 @@ try:
         assert (width, height) == (row['width'], row['height'])
         assert width == 1080 and height > width
         assert hashlib.sha256(payload).hexdigest() == row['sha256']
-    destination = Path('build/poster-samples')
-    shutil.copytree(source, destination, dirs_exist_ok=True)
     print(f'PASS: {len(expected)} actual native PNGs, width/height, decoding and SHA256 verified; visual review still required')
 finally:
+    # Preserve partial images even if rendering crashes or times out before the manifest.
+    if source.exists():
+        shutil.copytree(source, Path('build/poster-samples'), dirs_exist_ok=True)
     subprocess.run(['xcrun', 'simctl', 'terminate', udid, 'com.kanyu.survey'], check=False)

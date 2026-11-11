@@ -1031,7 +1031,7 @@ struct PalmPosterView: View {
     private let cin = Color(red: 0.604, green: 0.165, blue: 0.133)
     private let gold = Color(red: 0.78, green: 0.64, blue: 0.36)
     private var dateText: String {
-        Date(timeIntervalSince1970: record.createdEpoch).formatted(date: .abbreviated, time: .omitted)
+        DisplayTimeReceipt.beijing(Date(timeIntervalSince1970: record.createdEpoch))
     }
     private var lineCards: [String] {
         [
@@ -1052,6 +1052,9 @@ struct PalmPosterView: View {
                     .padding(.top, 48)
                 Text(record.personName.isEmpty ? "未命名" : record.personName)
                     .font(.system(size: 40, weight: .bold, design: .serif))
+                    .multilineTextAlignment(.center)
+                    .frame(width: 444)
+                    .fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(ink)
                     .padding(.top, 14)
                 Text("\(record.kind) · \(dateText)")
@@ -1133,7 +1136,7 @@ struct PalmPosterView: View {
                 .padding(.horizontal, 48).padding(.bottom, 42)
             }
         }
-        .frame(width: 540)
+        .frame(minWidth: 540, maxWidth: 540, minHeight: 760)
     }
 }
 
