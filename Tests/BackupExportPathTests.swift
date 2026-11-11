@@ -95,6 +95,17 @@ final class BackupExportPathTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: external), Data("[]".utf8))
     }
 
+    func testBrokenSymlinkNamedLikeBackupDataIsNotRestorable() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("restore-broken-link-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        let missingTarget = root.appendingPathComponent("missing-data.json")
+        try fm.createSymbolicLink(at: root.appendingPathComponent("people.json"), withDestinationURL: missingTarget)
+        XCTAssertFalse(BackupExportPath.containsRestorableData(in: root))
+        XCTAssertFalse(fm.fileExists(atPath: missingTarget.path))
+    }
+
     func testRecognizedBackupDataCanBeRestored() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("restore-valid-\(UUID().uuidString)", isDirectory: true)
