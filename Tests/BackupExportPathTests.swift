@@ -106,6 +106,16 @@ final class BackupExportPathTests: XCTestCase {
         XCTAssertFalse(fm.fileExists(atPath: missingTarget.path))
     }
 
+    func testValidBackupFileIsAcceptedAlongsideSpoofedDirectory() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("restore-mixed-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        try fm.createDirectory(at: root.appendingPathComponent("people.json"), withIntermediateDirectories: true)
+        try Data("[]".utf8).write(to: root.appendingPathComponent("forecasts.json"), options: .atomic)
+        XCTAssertTrue(BackupExportPath.containsRestorableData(in: root))
+    }
+
     func testRecognizedBackupDataCanBeRestored() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("restore-valid-\(UUID().uuidString)", isDirectory: true)
