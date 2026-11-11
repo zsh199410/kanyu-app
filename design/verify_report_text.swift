@@ -40,15 +40,26 @@ for report in expected {
     try extracted.write(to: directory.appendingPathComponent("pdfkit-text-\(report.tier).txt"), atomically: true, encoding: .utf8)
     let raw = normalized(extracted)
     let text = footer.stringByReplacingMatches(in: raw, range: NSRange(raw.startIndex..<raw.endIndex, in: raw), withTemplate: "")
+    let chapterTitles = report.lines.filter { $0.hasPrefix("【") }.map(normalized)
+    var orphanHeadings: [[String: Any]] = []
+    for pageIndex in (0..<pdf.pageCount).dropFirst(2) {
+        let pageText = normalized(pdf.page(at: pageIndex)?.string ?? "")
+        let body = footer.stringByReplacingMatches(in: pageText,
+            range: NSRange(pageText.startIndex..<pageText.endIndex, in: pageText), withTemplate: "")
+        if let title = chapterTitles.first(where: { body.hasSuffix($0) }) {
+            orphanHeadings.append(["page": pageIndex + 1, "heading": title])
+        }
+    }
+    if !orphanHeadings.isEmpty { failures.append("\(report.tier): orphan chapter headings \(orphanHeadings)") }
     let rows = report.lines.enumerated().filter { !normalized($0.element).isEmpty }
     let missing = rows.filter { !text.contains(normalized($0.element)) }
     let summary = missing.map { "row \($0.offset): \($0.element.prefix(90))" }
     if !missing.isEmpty { failures.append("\(report.tier): \(missing.count) missing lines; \(summary.prefix(5))") }
     results.append(["file": file.lastPathComponent, "tier": report.tier, "pages": pdf.pageCount,
-                    "sourceLines": rows.count, "missingLines": summary,
+                    "sourceLines": rows.count, "missingLines": summary, "orphanHeadings": orphanHeadings,
                     "contentHash": report.contentHash])
 }
-let result: [String: Any] = ["scope": "Full source-line preservation in three actual XCTest PDFs; normalize NFKC, whitespace and Unicode two/three-em glyph equivalents only; not visual/device acceptance",
+let result: [String: Any] = ["scope": "Full source-line preservation in three actual XCTest PDFs; normalize NFKC, whitespace and Unicode two/three-em glyph equivalents only; reject chapter headings stranded at page endings; not full visual/device acceptance",
                              "reports": results, "status": failures.isEmpty ? "success" : "failure"]
 let data = try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys])
 try data.write(to: directory.deletingLastPathComponent().appendingPathComponent("report-text-verification.json"))

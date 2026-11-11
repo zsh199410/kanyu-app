@@ -826,5 +826,41 @@
     "before": "            UI-evidence.zip\n",
     "after": "            UI-evidence.zip\n\n      - name: Verify published source tag\n        if: github.event_name != 'pull_request'\n        env:\n          GH_TOKEN: ${{ github.token }}\n        run: |\n          SOURCE_SHA=$(gh api \"repos/${GITHUB_REPOSITORY}/git/ref/tags/build-${{ github.run_number }}\" --jq '.object.sha')\n          test \"$SOURCE_SHA\" = \"$GITHUB_SHA\"\n",
     "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "        var inSummary = false\n        var y: CGFloat = 48\n",
+    "after": "        var inSummary = false\n        var followsHeading = false\n        var y: CGFloat = 48\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "            let attr: [NSAttributedString.Key: Any] = [.font: font, .paragraphStyle: style]\n            let fragments = layoutFragments(line, attributes: attr, width: width, capacity: bottom - inset)\n",
+    "after": "            let attr: [NSAttributedString.Key: Any] = [.font: font, .paragraphStyle: style]\n            // Keep a chapter with its first paragraph; long paragraphs can begin in the\n            // remaining space and continue on the next page without orphaning the title.\n            if line.hasPrefix(\"【\"), let nextIndex = lines.indices.dropFirst(i + 1).first(where: {\n                !lines[$0].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty\n            }) {\n                let headingHeight = ceil((line as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),\n                    options: [.usesLineFragmentOrigin], attributes: attr, context: nil).height)\n                let nextFont = lines[nextIndex].hasPrefix(\"【\") ? headFont : bodyFont\n                let nextAttr: [NSAttributedString.Key: Any] = [.font: nextFont, .paragraphStyle: style]\n                let nextHeight = ceil((lines[nextIndex] as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),\n                    options: [.usesLineFragmentOrigin], attributes: nextAttr, context: nil).height)\n                let blankSpacing = CGFloat(nextIndex - i - 1) * 5\n                let firstParagraphSpace = max(0, bottom - inset - headingHeight - gap - blankSpacing)\n                let keepHeight = headingHeight + gap + blankSpacing + min(nextHeight, firstParagraphSpace)\n                if y + keepHeight > bottom && !pages[pages.count - 1].lines.isEmpty {\n                    pages.append(ContentPage())\n                    y = inset\n                }\n            }\n            let fragments = layoutFragments(line, attributes: attr, width: width, capacity: bottom - inset,\n                                            initialCapacity: followsHeading ? bottom - y : nil)\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "                tocItems.append((title: itemTitle, page: firstPage ?? pages.count + 2))\n            }\n        }\n",
+    "after": "                tocItems.append((title: itemTitle, page: firstPage ?? pages.count + 2))\n            }\n            if !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {\n                followsHeading = line.hasPrefix(\"【\")\n            }\n        }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "    // Split only oversized paragraphs; content and hash inputs remain untouched.\n    private static func layoutFragments(_ text: String, attributes: [NSAttributedString.Key: Any], width: CGFloat, capacity: CGFloat) -> [String] {\n",
+    "after": "    // Split oversized paragraphs, including the first paragraph after a chapter heading.\n    // Content and hash inputs remain untouched.\n    private static func layoutFragments(_ text: String, attributes: [NSAttributedString.Key: Any], width: CGFloat, capacity: CGFloat, initialCapacity: CGFloat? = nil) -> [String] {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "        guard fullHeight > capacity else { return [text] }\n",
+    "after": "        let firstCapacity = max(1, min(capacity, initialCapacity ?? capacity))\n        guard fullHeight > firstCapacity else { return [text] }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "            let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: capacity - 8), transform: nil)\n",
+    "after": "            let fragmentCapacity = result.isEmpty ? firstCapacity : capacity\n            let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: max(1, fragmentCapacity - 8)), transform: nil)\n",
+    "count": 1
   }
 ]

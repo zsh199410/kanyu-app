@@ -255,6 +255,7 @@ enum ReportBuilder {
         var chapters: [(title: String, page: Int)] = []
         var tocItems: [(title: String, page: Int)] = []
         var inSummary = false
+        var followsHeading = false
         var y: CGFloat = 48
         for (i, line) in lines.enumerated() {
             let isInterpretationSection = line.hasPrefix("【解盘维度摘要") || line.hasPrefix("【逐项解盘详解")
@@ -270,7 +271,27 @@ enum ReportBuilder {
             let style = NSMutableParagraphStyle()
             style.lineSpacing = 3
             let attr: [NSAttributedString.Key: Any] = [.font: font, .paragraphStyle: style]
-            let fragments = layoutFragments(line, attributes: attr, width: width, capacity: bottom - inset)
+            // Keep a chapter with its first paragraph; long paragraphs can begin in the
+            // remaining space and continue on the next page without orphaning the title.
+            if line.hasPrefix("【"), let nextIndex = lines.indices.dropFirst(i + 1).first(where: {
+                !lines[$0].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }) {
+                let headingHeight = ceil((line as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                    options: [.usesLineFragmentOrigin], attributes: attr, context: nil).height)
+                let nextFont = lines[nextIndex].hasPrefix("【") ? headFont : bodyFont
+                let nextAttr: [NSAttributedString.Key: Any] = [.font: nextFont, .paragraphStyle: style]
+                let nextHeight = ceil((lines[nextIndex] as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                    options: [.usesLineFragmentOrigin], attributes: nextAttr, context: nil).height)
+                let blankSpacing = CGFloat(nextIndex - i - 1) * 5
+                let firstParagraphSpace = max(0, bottom - inset - headingHeight - gap - blankSpacing)
+                let keepHeight = headingHeight + gap + blankSpacing + min(nextHeight, firstParagraphSpace)
+                if y + keepHeight > bottom && !pages[pages.count - 1].lines.isEmpty {
+                    pages.append(ContentPage())
+                    y = inset
+                }
+            }
+            let fragments = layoutFragments(line, attributes: attr, width: width, capacity: bottom - inset,
+                                            initialCapacity: followsHeading ? bottom - y : nil)
             var firstPage: Int?
             for fragment in fragments {
                 let h = ceil((fragment as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
@@ -289,21 +310,27 @@ enum ReportBuilder {
             if inSummary, let itemTitle = summaryItemTitle(line) {
                 tocItems.append((title: itemTitle, page: firstPage ?? pages.count + 2))
             }
+            if !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                followsHeading = line.hasPrefix("【")
+            }
         }
         return (pages, chapters, tocItems)
     }
 
-    // Split only oversized paragraphs; content and hash inputs remain untouched.
-    private static func layoutFragments(_ text: String, attributes: [NSAttributedString.Key: Any], width: CGFloat, capacity: CGFloat) -> [String] {
+    // Split oversized paragraphs, including the first paragraph after a chapter heading.
+    // Content and hash inputs remain untouched.
+    private static func layoutFragments(_ text: String, attributes: [NSAttributedString.Key: Any], width: CGFloat, capacity: CGFloat, initialCapacity: CGFloat? = nil) -> [String] {
         let fullHeight = (text as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin], attributes: attributes, context: nil).height
-        guard fullHeight > capacity else { return [text] }
+        let firstCapacity = max(1, min(capacity, initialCapacity ?? capacity))
+        guard fullHeight > firstCapacity else { return [text] }
         var remaining = text as NSString
         var result: [String] = []
         while remaining.length > 0 {
             let attributed = NSAttributedString(string: remaining as String, attributes: attributes)
             let setter = CTFramesetterCreateWithAttributedString(attributed as CFAttributedString)
-            let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: capacity - 8), transform: nil)
+            let fragmentCapacity = result.isEmpty ? firstCapacity : capacity
+            let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: max(1, fragmentCapacity - 8)), transform: nil)
             let frame = CTFramesetterCreateFrame(setter, CFRange(location: 0, length: 0), path, nil)
             let count = CTFrameGetVisibleStringRange(frame).length
             // A composed-character fallback guarantees progress without splitting surrogate pairs.
