@@ -24,6 +24,11 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify protected engines and design contracts
+        run: python3 design/verify_v6.py
 
       - name: Select Xcode 26 (iOS 26 SDK / Liquid Glass)
         run: |

@@ -154,5 +154,11 @@
     "before": "CTFramesetterCreateWithAttributedString(attributed)",
     "after": "CTFramesetterCreateWithAttributedString(attributed as CFAttributedString)",
     "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "      - uses: actions/checkout@v4\n",
+    "after": "      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n\n      - name: Verify protected engines and design contracts\n        run: python3 design/verify_v6.py\n",
+    "count": 1
   }
 ]
