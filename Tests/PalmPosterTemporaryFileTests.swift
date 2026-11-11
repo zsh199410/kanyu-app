@@ -19,4 +19,30 @@ final class PalmPosterTemporaryFileTests: XCTestCase {
         let second = PalmPosterTemporaryFile.url(for: UUID())
         XCTAssertNotEqual(first.lastPathComponent, second.lastPathComponent)
     }
+    func testRepeatedExportsPreserveEarlierFileContents() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("palm-poster-regression-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let recordID = UUID()
+        let first = PalmPosterTemporaryFile.url(for: recordID, directory: directory)
+        let second = PalmPosterTemporaryFile.url(for: recordID, directory: directory)
+        let firstPNG = Data([0x89, 0x50, 0x4e, 0x47, 0x01])
+        let secondPNG = Data([0x89, 0x50, 0x4e, 0x47, 0x02])
+        try firstPNG.write(to: first, options: .atomic)
+        try secondPNG.write(to: second, options: .atomic)
+
+        XCTAssertNotEqual(first, second)
+        XCTAssertEqual(try Data(contentsOf: first), firstPNG)
+        XCTAssertEqual(try Data(contentsOf: second), secondPNG)
+    }
+
+    func testGeneratedNameContainsNoPathSeparatorsFromRecordID() {
+        let url = PalmPosterTemporaryFile.url(for: UUID())
+        XCTAssertFalse(url.lastPathComponent.contains("/"))
+        XCTAssertFalse(url.lastPathComponent.contains("\\"))
+        XCTAssertEqual(url.pathExtension, "png")
+    }
+
 }
