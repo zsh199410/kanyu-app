@@ -63,4 +63,23 @@ final class BackupExportPathTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: marker), Data("preserve".utf8))
     }
 
+    func testEmptyOrManifestOnlyBackupIsNotRestorable() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("restore-empty-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        XCTAssertFalse(BackupExportPath.containsRestorableData(in: root))
+        try Data("{}".utf8).write(to: root.appendingPathComponent("manifest.json"))
+        XCTAssertFalse(BackupExportPath.containsRestorableData(in: root))
+    }
+
+    func testRecognizedBackupDataCanBeRestored() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("restore-valid-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        try Data("[]".utf8).write(to: root.appendingPathComponent("people.json"))
+        XCTAssertTrue(BackupExportPath.containsRestorableData(in: root))
+    }
+
 }
