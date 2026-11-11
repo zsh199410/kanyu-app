@@ -49,7 +49,7 @@ final class BackupExportPathTests: XCTestCase {
 
     func testFailedUnzipCleanupDoesNotDeleteAnotherRestoreDirectory() throws {
         let fm = FileManager.default
-        let root = fm.temporaryDirectory.appendingPathComponent("restore-isolation-\\(UUID().uuidString)", isDirectory: true)
+        let root = fm.temporaryDirectory.appendingPathComponent("restore-isolation-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: root) }
         let first = BackupExportPath.restoreDirectory(in: root)
