@@ -556,5 +556,29 @@
     "before": "Text(\"\\(p.stem)\\(ZiweiCore.DZ[p.branch])\")",
     "after": "Text(\"\\(String(p.stem))\\(String(ZiweiCore.DZ[p.branch]))\")",
     "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "person.birthDate.formatted(date: .long, time: .shortened)",
+    "after": "DisplayTimeReceipt.beijing(person.birthDate)",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "run: python3 design/verify_archive_outputs.py",
+    "after": "run: |\n          python3 design/verify_archive_outputs.py\n          swift design/verify_report_receipts.swift build/report-samples",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "build/report-samples build/archive-verification.json",
+    "after": "build/report-samples build/archive-verification.json build/report-receipts.json",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            build/archive-verification.json\n",
+    "after": "            build/archive-verification.json\n            build/report-receipts.json\n",
+    "count": 1
   }
 ]

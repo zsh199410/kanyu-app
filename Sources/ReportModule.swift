@@ -68,7 +68,7 @@ enum ReportBuilder {
                                    longitude: person.useLongitude ? person.longitude : nil)
         var L: [String] = []
         L.append("命书 · \(person.name)")
-        L.append("生辰：\(person.birthDate.formatted(date: .long, time: .shortened))（\(person.gender == "M" ? "男" : "女")，经度 \(person.useLongitude ? String(format: "%.1f", person.longitude) : "未校正")）")
+        L.append("生辰：\(DisplayTimeReceipt.beijing(person.birthDate))（\(person.gender == "M" ? "男" : "女")，经度 \(person.useLongitude ? String(format: "%.1f", person.longitude) : "未校正")）")
         L.append("四柱：\(ch.pillars.joined(separator: " ")) · 起运方向：\(ch.qiyunDirection) · 日柱旬空：\(ch.xunKong)")
         L.append("胎元 \(ch.taiYuan) · 胎息 \(ch.taiXi) · 命宫 \(ch.mingGong) · 身宫 \(ch.shenGong)")
         L.append("")
