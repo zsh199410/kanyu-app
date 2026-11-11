@@ -13,6 +13,13 @@ enum BackupExportPath {
         root.appendingPathComponent("Kanyu-Restore-\(identifier.uuidString)", isDirectory: true)
     }
 
+    /// A manifest alone is not restorable user data. Reject empty or unrelated ZIPs.
+    static func containsRestorableData(in directory: URL, fileManager: FileManager = .default) -> Bool {
+        ["people.json", "forecasts.json", "palm_records.json", "index.json",
+         "verify-marks-v2.json", "verify-marks-v1-unassigned.json", "verify-marks.json"]
+            .contains { fileManager.fileExists(atPath: directory.appendingPathComponent($0).path) }
+    }
+
     static func zipURL(in root: URL, date: String, identifier: UUID = UUID()) -> URL {
         root.appendingPathComponent("Kanyu-Backup-\(date)-\(identifier.uuidString).zip")
     }
@@ -287,6 +294,12 @@ struct BackupView: View {
     private func applyImportFiles(from dir: URL, fileManager fm: FileManager) throws -> String {
         var parts: [String] = []
         let decoder = JSONDecoder()
+        guard BackupExportPath.containsRestorableData(in: dir, fileManager: fm) else {
+            throw CocoaError(.fileReadCorruptFile, userInfo: [
+                NSLocalizedDescriptionKey: "备份包没有可恢复的数据文件",
+                NSFilePathErrorKey: dir.path
+            ])
+        }
 
         let peopleURL = dir.appendingPathComponent("people.json")
         if fm.fileExists(atPath: peopleURL.path) {
