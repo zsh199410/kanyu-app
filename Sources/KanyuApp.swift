@@ -1448,6 +1448,7 @@ struct HomePageView: View {
                 signBanner
                 personSwitcherCard
                 todaySection
+                V6ReadingTopicLinks()
                 primaryBentoGrid
                 NavigationLink { LearningCenterView() } label: {
                     Label("看不懂命盘？从白话指南开始", systemImage: "book.closed")

@@ -34,6 +34,7 @@ def home_layout_v6(text):
     home=home.replace('''                personSwitcherCard
                 primaryBentoGrid''','''                personSwitcherCard
                 todaySection
+                V6ReadingTopicLinks()
                 primaryBentoGrid''',1)
     home=home.replace('''                todaySection
                 // 05 最近使用''','''                // 05 最近使用''',1)

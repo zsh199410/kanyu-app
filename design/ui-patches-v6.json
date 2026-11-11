@@ -214,5 +214,17 @@
     "before": "} else if let ar = appliedRoll {",
     "after": "} else if let ar = presentationRoll {",
     "count": 1
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "        guard yunSource != nil else { return }\n        if timeLevel == 0 {",
+    "after": "        guard yunSource != nil else { return }\n        guard !chart.dayunGanZhi.isEmpty else { yunSource = nil; return }\n        if timeLevel == 0 {",
+    "count": 1
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "            if timeLevel <= 1 { timeNavRow() }\n            switch timeLevel {\n            case 0: dayunLevel\n            case 1: liunianLevel\n            case 2: liuyueLevel\n            default: liuriLevel\n            }",
+    "after": "            if chart.dayunGanZhi.isEmpty {\n                Text(\"暂无大运资料，请核对人物档案。\".scriptConverted)\n                    .font(.body).foregroundStyle(Ky.sub)\n            } else {\n                if timeLevel <= 1 { timeNavRow() }\n                switch timeLevel {\n                case 0: dayunLevel\n                case 1: liunianLevel\n                case 2: liuyueLevel\n                default: liuriLevel\n                }\n            }",
+    "count": 1
   }
 ]

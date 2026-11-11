@@ -812,6 +812,7 @@ struct BaziResultView: View {
     }
     private func refreshYunSource() {
         guard yunSource != nil else { return }
+        guard !chart.dayunGanZhi.isEmpty else { yunSource = nil; return }
         if timeLevel == 0 {
             let gz = chart.dayunGanZhi[safeDayun]
             yunSource = YunSource(stem: gz.first!, branch: gz.last!, label: "\(gz)运")
@@ -1404,12 +1405,17 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
             }
             TimeCapsuleBar(levels: ["大运", "流年", "流月", "流日", "流时"],
                            enabled: [true, true, true, true, false], selection: $timeLevel)
-            if timeLevel <= 1 { timeNavRow() }
-            switch timeLevel {
-            case 0: dayunLevel
-            case 1: liunianLevel
-            case 2: liuyueLevel
-            default: liuriLevel
+            if chart.dayunGanZhi.isEmpty {
+                Text("暂无大运资料，请核对人物档案。".scriptConverted)
+                    .font(.body).foregroundStyle(Ky.sub)
+            } else {
+                if timeLevel <= 1 { timeNavRow() }
+                switch timeLevel {
+                case 0: dayunLevel
+                case 1: liunianLevel
+                case 2: liuyueLevel
+                default: liuriLevel
+                }
             }
         }
         .kyCard()
