@@ -42,6 +42,9 @@ def refine_home_v6(text):
     before = '                VStack(alignment: .leading, spacing: 10) {\n                    KySectionTitle(title: "勘察案件", trailing: "现场记录")\n                    casesSection\n                }'
     assert text.count(before) == 1, "Survey UI anchor drift"
     text = text.replace(before, '                casesSection')
+    before = '            RootTabView()\n'
+    assert text.count(before) == 1, "QA host anchor drift"
+    text = text.replace(before, '            RootTabView()\n                .modifier(V6ExportQAHost())\n')
     return text
 
 def home_layout_v6(text):

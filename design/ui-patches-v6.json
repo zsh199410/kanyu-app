@@ -580,5 +580,29 @@
     "before": "            build/archive-verification.json\n",
     "after": "            build/archive-verification.json\n            build/report-receipts.json\n",
     "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "xcodebuild test -resultBundlePath build/TestResults.xcresult",
+    "after": "xcodebuild test -derivedDataPath build/SimulatorDD -resultBundlePath build/TestResults.xcresult",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "      - name: Build (unsigned)\n",
+    "after": "      - name: Render all poster variants from the Debug app\n        run: python3 design/run_poster_render_qa.py\n\n      - name: Build (unsigned)\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt build/report-samples build/archive-verification.json build/report-receipts.json",
+    "after": "            python3 design/package_ui_evidence.py",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            build/report-receipts.json\n",
+    "after": "            build/report-receipts.json\n            build/poster-samples\n",
+    "count": 1
   }
 ]

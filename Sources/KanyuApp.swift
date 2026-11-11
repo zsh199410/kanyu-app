@@ -1232,6 +1232,7 @@ struct KanyuSurveyApp: App {
     var body: some Scene {
         WindowGroup {
             RootTabView()
+                .modifier(V6ExportQAHost())
                 .environmentObject(store)
                 .environmentObject(location)
                 .environmentObject(motion)

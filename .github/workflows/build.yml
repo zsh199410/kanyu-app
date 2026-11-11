@@ -52,12 +52,15 @@ jobs:
           DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; u=[x['udid'] for v in d.values() for x in v if 'iPhone' in x.get('name','') and x.get('isAvailable', True)]; print(u[0] if u else '')")
           echo "simulator UDID: $DEST"
           test -n "$DEST"
-          xcodebuild test -resultBundlePath build/TestResults.xcresult -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/tests.log
+          xcodebuild test -derivedDataPath build/SimulatorDD -resultBundlePath build/TestResults.xcresult -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/tests.log
 
       - name: Verify durable report archive from existing tests
         run: |
           python3 design/verify_archive_outputs.py
           swift design/verify_report_receipts.swift build/report-samples
+
+      - name: Render all poster variants from the Debug app
+        run: python3 design/run_poster_render_qa.py
 
       - name: Build (unsigned)
         run: |
@@ -93,7 +96,7 @@ jobs:
         run: |
           if [ -d build/TestResults.xcresult ]; then
             xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots
-            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt build/report-samples build/archive-verification.json build/report-receipts.json
+            python3 design/package_ui_evidence.py
           else
             echo "No test result bundle; screenshot export skipped."
           fi
@@ -111,6 +114,7 @@ jobs:
             build/report-samples
             build/archive-verification.json
             build/report-receipts.json
+            build/poster-samples
           if-no-files-found: warn
           retention-days: 30
 
