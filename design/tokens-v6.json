@@ -26,7 +26,17 @@
     "elevatedLight": "#EFE9DA",
     "elevatedDark": "#242830",
     "ruleLight": "#E2D9C5",
-    "ruleDark": "#3B414B"
+    "ruleDark": "#3B414B",
+    "woodLight": "#3B6843",
+    "fireLight": "#9A2A22",
+    "earthLight": "#815638",
+    "metalLight": "#80601F",
+    "waterLight": "#1F4959",
+    "woodDark": "#8CB88F",
+    "fireDark": "#E98A76",
+    "earthDark": "#D0AB80",
+    "metalDark": "#D1AC53",
+    "waterDark": "#81B2C8"
   },
   "layout": {
     "pageInset": 20,

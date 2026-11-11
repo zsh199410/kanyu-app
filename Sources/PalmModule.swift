@@ -407,11 +407,12 @@ struct HandMeasureView: View {
     ]
 
     var body: some View {
-        ScrollView {
+        let hasSelectedImage = box.image != nil
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
                 if box.image == nil { palmGuideCard }
                 PhotosPicker(selection: $item, matching: .images) {
-                    Label(box.image == nil ? "选一张手掌照片" : "换一张照片", systemImage: "photo")
+                    Label(hasSelectedImage ? "换一张照片" : "选一张手掌照片", systemImage: "photo")
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
                         .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                 }
@@ -635,10 +636,11 @@ struct FaceMeasureView: View {
     private let labels = ["发际线", "眉线", "鼻底", "下颌"]
 
     var body: some View {
-        ScrollView {
+        let hasSelectedImage = box.image != nil
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
                 PhotosPicker(selection: $item, matching: .images) {
-                    Label(box.image == nil ? "选一张正面照片" : "换一张照片", systemImage: "photo")
+                    Label(hasSelectedImage ? "换一张照片" : "选一张正面照片", systemImage: "photo")
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
                         .background(Ky.card).clipShape(RoundedRectangle(cornerRadius: 12))
                 }

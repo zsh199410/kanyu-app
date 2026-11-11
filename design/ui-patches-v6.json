@@ -238,5 +238,131 @@
     "before": "                    DatePicker(\"起局时间\".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])",
     "after": "                    DatePicker(\"起局时间（北京时间）\".scriptConverted, selection: $date, displayedComponents: [.date, .hourAndMinute])\n                        .environment(\\.timeZone, TimeZone(secondsFromGMT: 8 * 3600)!)",
     "count": 1
+  },
+  {
+    "path": "Sources/DesignSystemV2.swift",
+    "before": "    static var wuxingColors: [Color] = [\n        .kyDyn(0x4E7A51, 0x68A86C),  // 木：松石翠 / 竹青\n        .kyDyn(0xB54932, 0xE06D53),  // 火：朱砂丹 / 暖绯\n        .kyDyn(0x9A6E4B, 0xC89B73),  // 土：赭石暖棕\n        .kyDyn(0x8C733E, 0xD4B46A),  // 金：古铜苍金\n        .kyDyn(0x2F5C78, 0x6497B8),  // 水：青黛深蓝\n    ]",
+    "after": "    static var wuxingColors: [Color] { KanyuV6.elementColors }",
+    "count": 1
+  },
+  {
+    "path": "Sources/DesignSystemV2.swift",
+    "before": "struct KyBadge: View {",
+    "after": "struct KyBadge: View {\n    @Environment(\\.colorScheme) private var badgeScheme",
+    "count": 1
+  },
+  {
+    "path": "Sources/DesignSystemV2.swift",
+    "before": ".foregroundStyle(filled ? Color.white : color)",
+    "after": ".foregroundStyle(filled ? KanyuV6.readableForeground(on: color, scheme: badgeScheme) : color)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    let cardStroke: Color\n    let track: Color\n}",
+    "after": "    let cardStroke: Color\n    let track: Color\n    var isDark: Bool = false\n    func elementColor(_ name: String) -> Color? { KanyuV6.elementColor(name, dark: isDark) }\n}",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "track: Color.white.opacity(0.12))",
+    "after": "track: Color.white.opacity(0.12), isDark: true)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "cardStroke: base.cardStroke, track: base.track)",
+    "after": "cardStroke: base.cardStroke, track: base.track, isDark: base.isDark)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "private let wxColor: [String: Color] = [\n    \"木\": Color(red: 0.357, green: 0.498, blue: 0.306), // #5B7F4E\n    \"火\": Color(red: 0.710, green: 0.314, blue: 0.184), // #B5502F\n    \"土\": Color(red: 0.643, green: 0.471, blue: 0.392), // #A47864\n    \"金\": Color(red: 0.557, green: 0.545, blue: 0.510), // #8E8B82\n    \"水\": Color(red: 0.290, green: 0.420, blue: 0.518), // #4A6B84\n]",
+    "after": "// Element colours are shared with V6; glyph-to-element rules remain in KyV2.",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "private func posterCharColor(_ ch: Character, fallback: Color) -> Color {",
+    "after": "private func posterCharColor(_ ch: Character, fallback: Color, dark: Bool = false) -> Color {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "return wxColor[el] ?? fallback",
+    "after": "return KanyuV6.elementColor(el, dark: dark) ?? fallback",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "fallback: pal.main)",
+    "after": "fallback: pal.main, dark: pal.isDark)",
+    "count": 7
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "wxColor[e]",
+    "after": "pal.elementColor(e)",
+    "count": 4
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "wxColor[Self.wxNames[i]]",
+    "after": "pal.elementColor(Self.wxNames[i])",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.968, green: 0.949, blue: 0.906)",
+    "after": "Color(rgb: KanyuV6.Hex.paper)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.478, green: 0.447, blue: 0.408)",
+    "after": "Color(rgb: KanyuV6.Hex.secondaryLight)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.604, green: 0.165, blue: 0.133)",
+    "after": "Color(rgb: KanyuV6.Hex.cinnabar)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.153, green: 0.306, blue: 0.361)",
+    "after": "Color(rgb: KanyuV6.Hex.indigo)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.18, green: 0.165, blue: 0.15)",
+    "after": "Color(rgb: KanyuV6.Hex.ink)",
+    "count": 2
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.992, green: 0.984, blue: 0.961)",
+    "after": "Color(rgb: KanyuV6.Hex.ivory)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Color(red: 0.886, green: 0.851, blue: 0.769)",
+    "after": "Color(rgb: KanyuV6.Hex.ruleLight)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "    var body: some View {\n        ScrollView {\n            LazyVStack(alignment: .leading, spacing: 14) {\n                if box.image == nil { palmGuideCard }\n                PhotosPicker(selection: $item, matching: .images) {\n                    Label(box.image == nil ? \"选一张手掌照片\" : \"换一张照片\", systemImage: \"photo\")",
+    "after": "    var body: some View {\n        let hasSelectedImage = box.image != nil\n        return ScrollView {\n            LazyVStack(alignment: .leading, spacing: 14) {\n                if box.image == nil { palmGuideCard }\n                PhotosPicker(selection: $item, matching: .images) {\n                    Label(hasSelectedImage ? \"换一张照片\" : \"选一张手掌照片\", systemImage: \"photo\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "    var body: some View {\n        ScrollView {\n            LazyVStack(alignment: .leading, spacing: 14) {\n                PhotosPicker(selection: $item, matching: .images) {\n                    Label(box.image == nil ? \"选一张正面照片\" : \"换一张照片\", systemImage: \"photo\")",
+    "after": "    var body: some View {\n        let hasSelectedImage = box.image != nil\n        return ScrollView {\n            LazyVStack(alignment: .leading, spacing: 14) {\n                PhotosPicker(selection: $item, matching: .images) {\n                    Label(hasSelectedImage ? \"换一张照片\" : \"选一张正面照片\", systemImage: \"photo\")",
+    "count": 1
   }
 ]

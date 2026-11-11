@@ -1,8 +1,19 @@
 import SwiftUI
+import UIKit
 
 /// Oriental Precision V6. Presentation-only; Ky palette, card and primary-button APIs bridge here.
 enum KanyuV6 {
     enum Hex {
+        static let woodLight: UInt32 = 0x3B6843
+        static let fireLight: UInt32 = 0x9A2A22
+        static let earthLight: UInt32 = 0x815638
+        static let metalLight: UInt32 = 0x80601F
+        static let waterLight: UInt32 = 0x1F4959
+        static let woodDark: UInt32 = 0x8CB88F
+        static let fireDark: UInt32 = 0xE98A76
+        static let earthDark: UInt32 = 0xD0AB80
+        static let metalDark: UInt32 = 0xD1AC53
+        static let waterDark: UInt32 = 0x81B2C8
         static let paper: UInt32 = 0xF6F1E6
         static let ivory: UInt32 = 0xFCFBF7
         static let ink: UInt32 = 0x2B2723
@@ -23,6 +34,28 @@ enum KanyuV6 {
         static let elevatedDark: UInt32 = 0x242830
         static let ruleLight: UInt32 = 0xE2D9C5
         static let ruleDark: UInt32 = 0x3B414B
+    }
+    private static let elementNames = ["木", "火", "土", "金", "水"]
+    private static let elementLight: [UInt32] = [Hex.woodLight, Hex.fireLight, Hex.earthLight, Hex.metalLight, Hex.waterLight]
+    private static let elementDark: [UInt32] = [Hex.woodDark, Hex.fireDark, Hex.earthDark, Hex.metalDark, Hex.waterDark]
+    static var elementColors: [Color] {
+        zip(elementLight, elementDark).map { Color.kyDyn($0.0, $0.1) }
+    }
+    static func elementColor(_ name: String, dark: Bool) -> Color? {
+        guard let index = elementNames.firstIndex(of: name) else { return nil }
+        return Color(rgb: (dark ? elementDark : elementLight)[index])
+    }
+    @MainActor static func readableForeground(on color: Color, scheme: ColorScheme) -> Color {
+        let resolved = UIColor(color).resolvedColor(with: UITraitCollection(userInterfaceStyle: scheme == .dark ? .dark : .light))
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, alpha: CGFloat = 0
+        guard resolved.getRed(&r, green: &g, blue: &b, alpha: &alpha) else { return scheme == .dark ? .black : .white }
+        let base = scheme == .dark ? [26.0/255, 29.0/255, 35.0/255] : [252.0/255, 251.0/255, 247.0/255]
+        let rgb = zip([Double(r), Double(g), Double(b)], base).map { pair in
+            min(max(pair.0, 0), 1) * Double(alpha) + pair.1 * (1 - Double(alpha))
+        }
+        let linear = rgb.map { $0 <= 0.04045 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
+        let luminance = linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722
+        return (1.05 / (luminance + 0.05)) >= ((luminance + 0.05) / 0.05) ? .white : .black
     }
     enum Palette {
         static let paper = Color(rgb: Hex.paper)

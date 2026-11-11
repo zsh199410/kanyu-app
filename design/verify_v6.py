@@ -55,6 +55,13 @@ def home_layout_v6(text):
 '''
     return head+home[:a]+helper+grid+home[b:]
 
+patches = json.loads((ROOT/'design/ui-patches-v6.json').read_text())
+def apply_ui_patches(path, value):
+    for patch in [p for p in patches if p['path'] == path]:
+        assert value.count(patch['before']) == patch['count'], f'Patch anchor drift: {path}'
+        value = value.replace(patch['before'], patch['after'])
+    return value
+
 # P2 permits only these exact UI layout transformations; all other app code stays protected.
 assert mask_app(home_layout_v6(original('Sources/KanyuApp.swift'))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
 # Keep everything outside the first card wrapper unchanged, including the complete settings code.
@@ -62,16 +69,16 @@ def mask_card(text):
     a = text.index('extension View {\n', text.index('struct KyWorkspaceHeading'))
     b = text.index('    /// 浅染内嵌卡', a)
     return text[:a] + '<CARD-WRAPPER>\n' + text[b:]
-assert mask_card(original('Sources/DesignSystemV2.swift')) == mask_card((ROOT/'Sources/DesignSystemV2.swift').read_text()), 'Non-card code changed'
+assert mask_card(apply_ui_patches('Sources/DesignSystemV2.swift', original('Sources/DesignSystemV2.swift'))) == mask_card((ROOT/'Sources/DesignSystemV2.swift').read_text()), 'Non-card code changed'
 # Additional mixed files permit only reviewed literal UI patches, never whole-file exemptions.
-patches = json.loads((ROOT/'design/ui-patches-v6.json').read_text())
 patched_paths = {p['path'] for p in patches}
 for path in patched_paths:
     expected = original(path)
     for patch in [p for p in patches if p['path'] == path]:
         assert expected.count(patch['before']) == patch['count'], f'Patch anchor drift: {path}'
         expected = expected.replace(patch['before'], patch['after'])
-    assert expected == (ROOT/path).read_text(), f'Unreviewed change outside exact UI patches: {path}'
+    actual = (ROOT/path).read_text()
+    assert (mask_card(expected) == mask_card(actual) if path == 'Sources/DesignSystemV2.swift' else expected == actual), f'Unreviewed change outside exact UI patches: {path}'
 # Compare every baseline file except explicitly allowed presentation/doc additions.
 allowed = {'Sources/KanyuApp.swift', 'Sources/DesignSystemV2.swift'}
 files = subprocess.check_output(['git','ls-tree','-r','--name-only',BASE],cwd=ROOT,text=True).splitlines()
@@ -118,6 +125,9 @@ pairs = [('Light body','#2B2723','#FCFBF7'),('Light secondary','#6D665D','#F6F1E
          ('Dark body','#F2EBDD','#1A1D23'),('Dark secondary','#B5AEA2','#111317'),
          ('Dark action','#111317','#D1AC53'),('Dark action highlight','#111317','#DABB76'),
          ('Functional bronze','#80601F','#FCFBF7')]
+for element in ['wood','fire','earth','metal','water']:
+    for variant, surface in [('Light','ivory'),('Dark','jadeCard')]:
+        pairs.append((element+' '+variant, tokens['colors'][element+variant], tokens['colors'][surface]))
 lines = ['# V6 静态核查', '', '| 色对 | 对比度 |', '| --- | ---: |']
 for name,a,b in pairs:
     value = ratio(a,b)

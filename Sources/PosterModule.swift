@@ -4,10 +4,10 @@ import Photos
 
 // MARK: - 命盘海报 v5（定版「宋纸青黛版」为唯一款式，严格对齐《模板规范-2026-10-29.md》）
 
-private let pPaper = Color(red: 0.968, green: 0.949, blue: 0.906) // #F7F2E7 宋纸
-private let pSub = Color(red: 0.478, green: 0.447, blue: 0.408)   // #7A7268 次级
-private let pCin = Color(red: 0.604, green: 0.165, blue: 0.133)   // #9A2A22 故宫红
-private let pTeal = Color(red: 0.153, green: 0.306, blue: 0.361)  // #274E5C 青黛
+private let pPaper = Color(rgb: KanyuV6.Hex.paper) // #F7F2E7 宋纸
+private let pSub = Color(rgb: KanyuV6.Hex.secondaryLight)   // #7A7268 次级
+private let pCin = Color(rgb: KanyuV6.Hex.cinnabar)   // #9A2A22 故宫红
+private let pTeal = Color(rgb: KanyuV6.Hex.indigo)  // #274E5C 青黛
 
 // MARK: - 海报版本：只留一款——宋纸青黛版（定版规范），做到极致；尊享预测单为独立长图产品（不占款式位）
 enum PosterStyle: String, CaseIterable {
@@ -27,6 +27,8 @@ private struct PosterPalette {
     let card: Color
     let cardStroke: Color
     let track: Color
+    var isDark: Bool = false
+    func elementColor(_ name: String) -> Color? { KanyuV6.elementColor(name, dark: isDark) }
 }
 
 private extension PosterStyle {
@@ -37,7 +39,7 @@ private extension PosterStyle {
                 main: Color(rgb: 0xF2EBDD), sub: Color(rgb: 0xB5AEA2),
                 accent: Color(rgb: 0xD1AC53), accentHi: Color(rgb: 0xE98A76),
                 card: Color(rgb: 0x1A1D23), cardStroke: Color(rgb: 0x6F634A),
-                track: Color.white.opacity(0.12))
+                track: Color.white.opacity(0.12), isDark: true)
         case .zhusha:
             return PosterPalette(bg0: Color(rgb: 0xF6F1E6), bg1: Color(rgb: 0xFCFBF7),
                 main: Color(rgb: 0x2B2723), sub: Color(rgb: 0x6D665D),
@@ -45,9 +47,9 @@ private extension PosterStyle {
                 card: Color(rgb: 0xFCFBF7), cardStroke: Color(rgb: 0xC9AD7D),
                 track: Color.black.opacity(0.07))
         case .songQingdai, .yuceDan:
-            let ink = Color(red: 0.18, green: 0.165, blue: 0.15)
-            let cardBg = Color(red: 0.992, green: 0.984, blue: 0.961) // #FDFBF5
-            let line = Color(red: 0.886, green: 0.851, blue: 0.769)   // #E2D9C4
+            let ink = Color(rgb: KanyuV6.Hex.ink)
+            let cardBg = Color(rgb: KanyuV6.Hex.ivory) // #FDFBF5
+            let line = Color(rgb: KanyuV6.Hex.ruleLight)   // #E2D9C4
             return PosterPalette(bg0: pPaper, bg1: cardBg, main: ink, sub: pSub,
                                  accent: pTeal, accentHi: pCin,
                                  card: cardBg, cardStroke: line, track: Color.black.opacity(0.07))
@@ -90,17 +92,11 @@ struct PosterPhotoSaver {
 }
 
 // 降饱和宋韵五行色（对齐《模板规范-2026-10-29.md》）
-private let wxColor: [String: Color] = [
-    "木": Color(red: 0.357, green: 0.498, blue: 0.306), // #5B7F4E
-    "火": Color(red: 0.710, green: 0.314, blue: 0.184), // #B5502F
-    "土": Color(red: 0.643, green: 0.471, blue: 0.392), // #A47864
-    "金": Color(red: 0.557, green: 0.545, blue: 0.510), // #8E8B82
-    "水": Color(red: 0.290, green: 0.420, blue: 0.518), // #4A6B84
-]
+// Element colours are shared with V6; glyph-to-element rules remain in KyV2.
 
-private func posterCharColor(_ ch: Character, fallback: Color) -> Color {
+private func posterCharColor(_ ch: Character, fallback: Color, dark: Bool = false) -> Color {
     let el = KyV2.element(ofChar: ch)
-    return wxColor[el] ?? fallback
+    return KanyuV6.elementColor(el, dark: dark) ?? fallback
 }
 
 
@@ -255,7 +251,7 @@ struct PosterView: View {
     private var pal: PosterPalette {
         let base = style.palette
         guard let accent = accentOverride else { return base }
-        return PosterPalette(bg0: base.bg0, bg1: base.bg1, main: base.main, sub: base.sub, accent: accent, accentHi: base.accentHi, card: base.card, cardStroke: base.cardStroke, track: base.track)
+        return PosterPalette(bg0: base.bg0, bg1: base.bg1, main: base.main, sub: base.sub, accent: accent, accentHi: base.accentHi, card: base.card, cardStroke: base.cardStroke, track: base.track, isDark: base.isDark)
     }
     /// 编辑器标题：有覆盖且非空时用覆盖文案，否则用人物名。
     private var displayName: String {
@@ -423,8 +419,8 @@ struct PosterView: View {
                 HStack(spacing: 12) {
                     ForEach(0..<4, id: \.self) { i in
                         let gz = Array(chart.pillars[i])
-                        let sColor = posterCharColor(gz[0], fallback: pal.main)
-                        let bColor = posterCharColor(gz[1], fallback: pal.main)
+                        let sColor = posterCharColor(gz[0], fallback: pal.main, dark: pal.isDark)
+                        let bColor = posterCharColor(gz[1], fallback: pal.main, dark: pal.isDark)
                         VStack(spacing: 5) {
                             Text(["年柱", "月柱", "日柱", "时柱"][i])
                                 .font(.system(size: 10.5, weight: .medium)).foregroundStyle(pal.sub)
@@ -458,13 +454,13 @@ struct PosterView: View {
                         HStack(spacing: 8) {
                             Text(e)
                                 .font(.system(size: 12, weight: .bold, design: .serif))
-                                .foregroundStyle(wxColor[e] ?? pal.main)
+                                .foregroundStyle(pal.elementColor(e) ?? pal.main)
                                 .frame(width: 16)
                             // 海报画布固定 540 宽（横向留白 54×2），轨道宽定死 364，不用 GeometryReader 量尺寸
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 3).fill(pal.track)
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(wxColor[e] ?? pal.accent)
+                                    .fill(pal.elementColor(e) ?? pal.accent)
                                     .frame(width: max(3, 364 * CGFloat(min(v, 100)) / 100.0))
                             }
                             .frame(width: 364, height: 7)
@@ -695,7 +691,7 @@ ZStack {
 pal.bg0
 // 细线红黑边框
 RoundedRectangle(cornerRadius: 6, style:.continuous)
-.stroke(Color(red: 0.18, green: 0.165, blue: 0.15).opacity(0.8), lineWidth: 1.2)
+.stroke(Color(rgb: KanyuV6.Hex.ink).opacity(0.8), lineWidth: 1.2)
 .padding(14)
 RoundedRectangle(cornerRadius: 4, style:.continuous)
 .stroke(pal.accentHi.opacity(0.4), lineWidth: 0.6)
@@ -867,12 +863,12 @@ let v = chart.wuxingPercents[idx]
 HStack(spacing: 8) {
 Text(e)
 .font(.system(size: 11, weight:.bold, design:.serif))
-.foregroundStyle(wxColor[e] ?? pal.main)
+.foregroundStyle(pal.elementColor(e) ?? pal.main)
 .frame(width: 16)
 ZStack(alignment:.leading) {
 RoundedRectangle(cornerRadius: 3).fill(pal.track)
 RoundedRectangle(cornerRadius: 3)
-.fill(wxColor[e] ?? pal.accent)
+.fill(pal.elementColor(e) ?? pal.accent)
 .frame(width: max(3, 364 * CGFloat(min(v, 100)) / 100.0))
 }
 .frame(width: 364, height: 7)
@@ -994,7 +990,7 @@ let rad = angle * Double.pi / 180.0
 VStack(spacing: 0) {
 Text(String(w.branch))
 .font(.system(size: 13, weight:.bold, design:.serif))
-.foregroundStyle(posterCharColor(w.branch, fallback: pal.main))
+.foregroundStyle(posterCharColor(w.branch, fallback: pal.main, dark: pal.isDark))
 Text("\(String(w.year))")
 .font(.system(size: 9, design:.monospaced)).foregroundStyle(pal.sub)
 Text("\(w.age)岁 \(w.glyph)")
@@ -1184,7 +1180,7 @@ private var wuxingRadar: some View {
         ForEach(0..<5, id: \.self) { i in
             Text("\(Self.wxNames[i])\(Int(pcts[i].rounded()))%")
                 .font(.system(size: 9, weight:.bold, design:.serif))
-                .foregroundStyle(wxColor[Self.wxNames[i]] ?? pal.main)
+                .foregroundStyle(pal.elementColor(Self.wxNames[i]) ?? pal.main)
                 .position(radarPoint(i, scale: 1.18))
         }
     }
@@ -1254,8 +1250,8 @@ private var pillarTable: some View {
 VStack(spacing: 0) {
 pillarRow(label: "", cells: ["年柱", "月柱", "日柱", "时柱"], size: 10, weight: .bold, color: { _ in pal.accent })
 pillarRow(label: "十神", cells: chart.stemShiShen, size: 9.5, weight: .medium, color: { i in i == 2 ? pal.accentHi : pal.accent })
-pillarRow(label: "天干", cells: chart.pillars.map { String($0.first!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].first!, fallback: pal.main) })
-pillarRow(label: "地支", cells: chart.pillars.map { String($0.last!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].last!, fallback: pal.main) })
+pillarRow(label: "天干", cells: chart.pillars.map { String($0.first!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].first!, fallback: pal.main, dark: pal.isDark) })
+pillarRow(label: "地支", cells: chart.pillars.map { String($0.last!) }, size: 20, weight: .bold, color: { i in posterCharColor(chart.pillars[i].last!, fallback: pal.main, dark: pal.isDark) })
 pillarRow(label: "藏干", cells: cangGanCells, size: 8.5, weight: .regular, color: { _ in pal.main })
 pillarRow(label: "长生", cells: chart.diShi, size: 9.5, weight: .regular, color: { _ in pal.sub })
 pillarRow(label: "纳音", cells: chart.pillars.map { BaziTables.naYin($0) }, size: 9.5, weight: .regular, color: { _ in pal.main })
@@ -1993,10 +1989,10 @@ struct HeCanPosterView: View {
                                 .font(.system(size: 10, weight: .medium)).foregroundStyle(pal.sub)
                             Text(String(gz[0]))
                                 .font(.system(size: 28, weight: .bold, design: .serif))
-                                .foregroundStyle(posterCharColor(gz[0], fallback: pal.main))
+                                .foregroundStyle(posterCharColor(gz[0], fallback: pal.main, dark: pal.isDark))
                             Text(String(gz[1]))
                                 .font(.system(size: 28, weight: .bold, design: .serif))
-                                .foregroundStyle(posterCharColor(gz[1], fallback: pal.main))
+                                .foregroundStyle(posterCharColor(gz[1], fallback: pal.main, dark: pal.isDark))
                             Text(i == 2 ? "日主" : bazi.stemShiShen[i])
                                 .font(.system(size: 9.5, weight: .semibold))
                                 .foregroundStyle(i == 2 ? pal.accentHi : pal.accent)
