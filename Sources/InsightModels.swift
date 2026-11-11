@@ -171,6 +171,12 @@ fileSuffix = "-song"
 case.yuceDan:
 webStyleId = "yucedan"
 fileSuffix = "-yucedan"
+case.zhusha:
+webStyleId = "zhusha"
+fileSuffix = "-zhusha"
+case.xuanye:
+webStyleId = "xuanye"
+fileSuffix = "-xuanye"
 }
 }
 

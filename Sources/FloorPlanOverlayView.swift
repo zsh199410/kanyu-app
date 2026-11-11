@@ -147,7 +147,13 @@ Spacer()
 
 HStack(spacing: 4) {
 Text("透视".scriptConverted).font(.caption2).foregroundStyle(Ky.sub)
-Slider(value: $overlayOpacity, in: 0.2...0.9).frame(width: 80)
+Slider(value: $overlayOpacity, in: 0.2...0.9)
+.frame(minWidth: 80, minHeight: 44)
+.accessibilityLabel("飞星图层透明度")
+Text(overlayOpacity, format: .percent.precision(.fractionLength(0)))
+.font(.caption.monospacedDigit())
+.foregroundStyle(Ky.ink)
+.accessibilityHidden(true)
 }
 }
 }

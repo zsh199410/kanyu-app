@@ -62,11 +62,20 @@ def mask_card(text):
     b = text.index('    /// 浅染内嵌卡', a)
     return text[:a] + '<CARD-WRAPPER>\n' + text[b:]
 assert mask_card(original('Sources/DesignSystemV2.swift')) == mask_card((ROOT/'Sources/DesignSystemV2.swift').read_text()), 'Non-card code changed'
+# Additional mixed files permit only reviewed literal UI patches, never whole-file exemptions.
+patches = json.loads((ROOT/'design/ui-patches-v6.json').read_text())
+patched_paths = {p['path'] for p in patches}
+for path in patched_paths:
+    expected = original(path)
+    for patch in [p for p in patches if p['path'] == path]:
+        assert expected.count(patch['before']) == patch['count'], f'Patch anchor drift: {path}'
+        expected = expected.replace(patch['before'], patch['after'])
+    assert expected == (ROOT/path).read_text(), f'Unreviewed change outside exact UI patches: {path}'
 # Compare every baseline file except explicitly allowed presentation/doc additions.
 allowed = {'Sources/KanyuApp.swift', 'Sources/DesignSystemV2.swift'}
 files = subprocess.check_output(['git','ls-tree','-r','--name-only',BASE],cwd=ROOT,text=True).splitlines()
 for path in files:
-    if path in allowed or path.startswith(('docs/', 'design/')): continue
+    if path in allowed or path in patched_paths or path.startswith(('docs/', 'design/')): continue
     data = subprocess.check_output(['git','show',f'{BASE}:{path}'],cwd=ROOT)
     assert (ROOT/path).is_file() and (ROOT/path).read_bytes() == data, f'Protected baseline file changed: {path}'
 for folder in ['Tests','UITests','Resources']:

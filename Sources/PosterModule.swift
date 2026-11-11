@@ -13,6 +13,8 @@ private let pTeal = Color(red: 0.153, green: 0.306, blue: 0.361)  // #274E5C 青
 enum PosterStyle: String, CaseIterable {
     case songQingdai = "宋纸青黛版"
     case yuceDan = "尊享预测单"
+    case zhusha = "宣纸朱砂版"
+    case xuanye = "玄夜墨金版"
 }
 
 private struct PosterPalette {
@@ -30,6 +32,18 @@ private struct PosterPalette {
 private extension PosterStyle {
     var palette: PosterPalette {
         switch self {
+        case .xuanye:
+            return PosterPalette(bg0: Color(rgb: 0x111317), bg1: Color(rgb: 0x1A1D23),
+                main: Color(rgb: 0xF2EBDD), sub: Color(rgb: 0xB5AEA2),
+                accent: Color(rgb: 0xD1AC53), accentHi: Color(rgb: 0xE98A76),
+                card: Color(rgb: 0x1A1D23), cardStroke: Color(rgb: 0x6F634A),
+                track: Color.white.opacity(0.12))
+        case .zhusha:
+            return PosterPalette(bg0: Color(rgb: 0xF6F1E6), bg1: Color(rgb: 0xFCFBF7),
+                main: Color(rgb: 0x2B2723), sub: Color(rgb: 0x6D665D),
+                accent: Color(rgb: 0x9A2A22), accentHi: Color(rgb: 0x80601F),
+                card: Color(rgb: 0xFCFBF7), cardStroke: Color(rgb: 0xC9AD7D),
+                track: Color.black.opacity(0.07))
         case .songQingdai, .yuceDan:
             let ink = Color(red: 0.18, green: 0.165, blue: 0.15)
             let cardBg = Color(red: 0.992, green: 0.984, blue: 0.961) // #FDFBF5
@@ -48,6 +62,8 @@ extension PosterStyle {
         switch self {
         case .songQingdai: return "-song"
         case .yuceDan: return "-yucedan"
+        case .zhusha: return "-zhusha"
+        case .xuanye: return "-xuanye"
         }
     }
 }
@@ -375,7 +391,7 @@ struct PosterView: View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
                 // 宋式极简发丝外框＋底部远山意境
-                RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
+                RoundedRectangle(cornerRadius: 4).strokeBorder(pal.cardStroke, lineWidth: 0.5).padding(17.5)
                 VStack {
                     Spacer()
                     SongMountainHeaderView(accent: pal.accent)
@@ -1252,7 +1268,7 @@ private func pillarRow(label: String, cells: [String], size: CGFloat, weight: Fo
 HStack(spacing: 0) {
 Text(label).font(.system(size: 9, weight:.medium)).foregroundStyle(pal.sub).frame(width: 44, alignment:.trailing).padding(.trailing, 6)
 ForEach(0..<4, id: \.self) { i in
-Text(cells[i]).font(.system(size: size, weight: weight)).foregroundStyle(color(i)).frame(width: 108).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).padding(.vertical, 2)
+Text(cells[i]).font(.system(size: size, weight: weight)).foregroundStyle(color(i)).frame(width: 106.5).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).padding(.vertical, 2)
 }
 }
 }
@@ -1360,11 +1376,15 @@ struct PosterSheetView: View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 // 尊享预测单独立入口（不占款式位）：宋纸青黛与预测单长图二选一
-                Button(style == .yuceDan ? "切换回宋纸青黛海报" : "切换到尊享预测单长图") {
-                    style = style == .yuceDan ? .songQingdai : .yuceDan
+                Picker("海报款式", selection: $style) {
+                    ForEach(PosterStyle.allCases, id: \.self) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: style) { _, _ in
                     fileURL = nil; previewImage = nil; saveMessage = nil
                 }
-                .buttonStyle(.bordered)
 
                 // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）
                 Button("打开海报编辑器（换字／换色）") { showEditor = true }
@@ -1638,7 +1658,7 @@ struct ZiweiPosterView: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-                RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
+                RoundedRectangle(cornerRadius: 4).strokeBorder(pal.cardStroke, lineWidth: 0.5).padding(17.5)
                 VStack {
                     Spacer()
                     SongMountainHeaderView(accent: pal.accent)
@@ -1937,7 +1957,7 @@ struct HeCanPosterView: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [pal.bg1, pal.bg0], startPoint: .top, endPoint: .bottom)
-                RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)
+                RoundedRectangle(cornerRadius: 4).strokeBorder(pal.cardStroke, lineWidth: 0.5).padding(17.5)
                 VStack {
                     Spacer()
                     SongMountainHeaderView(accent: pal.accent)

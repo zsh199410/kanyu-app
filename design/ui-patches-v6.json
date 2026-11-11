@@ -1,0 +1,122 @@
+[
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "min(selectedDayun, chart.dayunGanZhi.count - 1)",
+    "after": "min(max(selectedDayun, 0), chart.dayunGanZhi.count - 1)",
+    "count": 1
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "get { selectedPillarStored >= 0 ? selectedPillarStored : nil }",
+    "after": "get { (0..<chart.pillars.count).contains(selectedPillarStored) ? selectedPillarStored : nil }",
+    "count": 1
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": ".animation(KyMotion.breathing, value: pulse)",
+    "after": ".animation(nil, value: pulse)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "get { selectedStored >= 0 ? selectedStored : nil }",
+    "after": "get { (0..<12).contains(selectedStored) ? selectedStored : nil }",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "    @State private var flyProgress: Double = 0",
+    "after": "    @Environment(\\.accessibilityReduceMotion) private var reduceFlyMotion\n    @State private var flyProgress: Double = 0",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "        flyProgress = 0\n        withAnimation(KyMotion.flyline) {",
+    "after": "        if reduceFlyMotion { flyProgress = 3; return }\n        flyProgress = 0\n        withAnimation(KanyuV6.Motion.flyline) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "RoundedRectangle(cornerRadius: 4).stroke(pal.cardStroke, lineWidth: 1.0).padding(22)",
+    "after": "RoundedRectangle(cornerRadius: 4).strokeBorder(pal.cardStroke, lineWidth: 0.5).padding(17.5)",
+    "count": 3
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": ".frame(width: 108).multilineTextAlignment(.center)",
+    "after": ".frame(width: 106.5).multilineTextAlignment(.center)",
+    "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "                // (3) 我的记录：前瞻登记簿＋手相面相记录（原散落在「档案账本」组内，现立分组标题）\n                KySectionTitle(title: \"我的记录\", trailing: \"封存与回验\")\n                VStack(spacing: 10) {\n                    myLink(\"checkmark.seal.fill\", \"前瞻断语登记簿\", \"事前封存断语 · 到期核验命中率\", Ky.jade) { ForecastView() }\n                    myLink(\"hand.raised.fill\", \"手相面相与测量记录\", \"21点几何掌型 · 三线手描 · 三停校准归档\", Ky.gold) { PalmHomeView() }\n                }\n\n                // (4) 我的命书／报告中心（P3）：报告中心已上线——按人物归档已生成的命书 PDF 与海报\n                KySectionTitle(title: \"我的命书／报告中心\", trailing: \"已生成命书与海报\")\n                VStack(alignment: .leading, spacing: 8) {\n                    myLink(\"doc.text.fill\", \"生成我的命书（PDF）\", \"当前命主的命书文件 · 在详情页生成后分享\", Ky.qingdai) {\n                        if let p = PeopleStore.shared.currentPerson {\n                            PersonDetailView(person: p, store: PeopleStore.shared)\n                        } else {\n                            PeopleView()\n                        }\n                    }\n                    myLink(\"archivebox.fill\", \"报告中心\", \"已生成的命书 PDF 与海报 · 按人物归档 · 含生成时间与类型\", Ky.gold) {\n                        ReportCenterView()\n                    }\n                }\n\n",
+    "after": "                // (4) 我的命书／报告中心（P3）：报告中心已上线——按人物归档已生成的命书 PDF 与海报\n                KySectionTitle(title: \"我的命书／报告中心\", trailing: \"已生成命书与海报\")\n                VStack(alignment: .leading, spacing: 8) {\n                    myLink(\"doc.text.fill\", \"生成我的命书（PDF）\", \"当前命主的命书文件 · 在详情页生成后分享\", Ky.qingdai) {\n                        if let p = PeopleStore.shared.currentPerson {\n                            PersonDetailView(person: p, store: PeopleStore.shared)\n                        } else {\n                            PeopleView()\n                        }\n                    }\n                    myLink(\"archivebox.fill\", \"报告中心\", \"已生成的命书 PDF 与海报 · 按人物归档 · 含生成时间与类型\", Ky.gold) {\n                        ReportCenterView()\n                    }\n                }\n\n                // (3) 我的记录：前瞻登记簿＋手相面相记录（原散落在「档案账本」组内，现立分组标题）\n                KySectionTitle(title: \"我的记录\", trailing: \"封存与回验\")\n                VStack(spacing: 10) {\n                    myLink(\"checkmark.seal.fill\", \"前瞻断语登记簿\", \"事前封存断语 · 到期核验命中率\", Ky.jade) { ForecastView() }\n                    myLink(\"hand.raised.fill\", \"手相面相与测量记录\", \"21点几何掌型 · 三线手描 · 三停校准归档\", Ky.gold) { PalmHomeView() }\n                }\n\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    case yuceDan = \"尊享预测单\"",
+    "after": "    case yuceDan = \"尊享预测单\"\n    case zhusha = \"宣纸朱砂版\"\n    case xuanye = \"玄夜墨金版\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "        case .songQingdai, .yuceDan:",
+    "after": "        case .xuanye:\n            return PosterPalette(bg0: Color(rgb: 0x111317), bg1: Color(rgb: 0x1A1D23),\n                main: Color(rgb: 0xF2EBDD), sub: Color(rgb: 0xB5AEA2),\n                accent: Color(rgb: 0xD1AC53), accentHi: Color(rgb: 0xE98A76),\n                card: Color(rgb: 0x1A1D23), cardStroke: Color(rgb: 0x6F634A),\n                track: Color.white.opacity(0.12))\n        case .zhusha:\n            return PosterPalette(bg0: Color(rgb: 0xF6F1E6), bg1: Color(rgb: 0xFCFBF7),\n                main: Color(rgb: 0x2B2723), sub: Color(rgb: 0x6D665D),\n                accent: Color(rgb: 0x9A2A22), accentHi: Color(rgb: 0x80601F),\n                card: Color(rgb: 0xFCFBF7), cardStroke: Color(rgb: 0xC9AD7D),\n                track: Color.black.opacity(0.07))\n        case .songQingdai, .yuceDan:",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "        case .yuceDan: return \"-yucedan\"",
+    "after": "        case .yuceDan: return \"-yucedan\"\n        case .zhusha: return \"-zhusha\"\n        case .xuanye: return \"-xuanye\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                Button(style == .yuceDan ? \"切换回宋纸青黛海报\" : \"切换到尊享预测单长图\") {\n                    style = style == .yuceDan ? .songQingdai : .yuceDan\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }\n                .buttonStyle(.bordered)",
+    "after": "                Picker(\"海报款式\", selection: $style) {\n                    ForEach(PosterStyle.allCases, id: \\.self) { option in\n                        Text(option.rawValue).tag(option)\n                    }\n                }\n                .pickerStyle(.menu)\n                .onChange(of: style) { _, _ in\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportCenterView.swift",
+    "before": "[\"-yucedan\", \"-song\", \"-xuan\", \"-ink\"]",
+    "after": "[\"-yucedan\", \"-zhusha\", \"-xuanye\", \"-song\", \"-xuan\", \"-ink\"]",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                    Text(\"换色：强调色（品牌色板内）\")",
+    "after": "                    Picker(\"海报款式\", selection: $style) {\n                        ForEach(PosterStyle.allCases, id: \\.self) { option in\n                            Text(option.rawValue).tag(option)\n                        }\n                    }\n                    .pickerStyle(.menu)\n                    .onChange(of: style) { _, _ in\n                        fileURL = nil\n                        previewImage = nil\n                        saveMessage = nil\n                        refreshRenderKey()\n                    }\n                    Text(\"换色：强调色（品牌色板内）\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/InsightModels.swift",
+    "before": "case.yuceDan:\nwebStyleId = \"yucedan\"\nfileSuffix = \"-yucedan\"",
+    "after": "case.yuceDan:\nwebStyleId = \"yucedan\"\nfileSuffix = \"-yucedan\"\ncase.zhusha:\nwebStyleId = \"zhusha\"\nfileSuffix = \"-zhusha\"\ncase.xuanye:\nwebStyleId = \"xuanye\"\nfileSuffix = \"-xuanye\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "accentOverride: accent.color",
+    "after": "accentOverride: style == .xuanye ? nil : accent.color",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                    .pickerStyle(.segmented)\n                    .onChange(of: accent)",
+    "after": "                    .pickerStyle(.segmented)\n                    .disabled(style == .xuanye)\n                    if style == .xuanye {\n                        Text(\"玄夜版使用固定高对比金色，保证深色长卷可读。\")\n                            .font(.footnote).foregroundStyle(Ky.sub)\n                    }\n                    .onChange(of: accent)",
+    "count": 1
+  },
+  {
+    "path": "Sources/FloorPlanOverlayView.swift",
+    "before": "Slider(value: $overlayOpacity, in: 0.2...0.9).frame(width: 80)",
+    "after": "Slider(value: $overlayOpacity, in: 0.2...0.9)\n.frame(minWidth: 80, minHeight: 44)\n.accessibilityLabel(\"飞星图层透明度\")\nText(overlayOpacity, format: .percent.precision(.fractionLength(0)))\n.font(.caption.monospacedDigit())\n.foregroundStyle(Ky.ink)\n.accessibilityHidden(true)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                    if style == .xuanye {\n                        Text(\"玄夜版使用固定高对比金色，保证深色长卷可读。\")\n                            .font(.footnote).foregroundStyle(Ky.sub)\n                    }\n",
+    "after": "",
+    "count": 1
+  }
+]

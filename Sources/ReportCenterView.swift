@@ -131,7 +131,7 @@ enum ReportHistory {
 
     /// 去掉文件名末尾的款式后缀（-song／-yucedan 为现行款；-xuan／-ink 为已砍款式旧文件兼容），余下即命主姓名
     private static func stripStyleSuffix(_ s: String) -> String {
-        for suffix in ["-yucedan", "-song", "-xuan", "-ink"] {
+        for suffix in ["-yucedan", "-zhusha", "-xuanye", "-song", "-xuan", "-ink"] {
             if s.hasSuffix(suffix) { return String(s.dropLast(suffix.count)) }
         }
         return s

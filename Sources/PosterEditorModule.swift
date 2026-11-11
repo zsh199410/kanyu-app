@@ -58,6 +58,18 @@ struct PosterEditorView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    Picker("海报款式", selection: $style) {
+                        ForEach(PosterStyle.allCases, id: \.self) { option in
+                            Text(option.rawValue).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: style) { _, _ in
+                        fileURL = nil
+                        previewImage = nil
+                        saveMessage = nil
+                        refreshRenderKey()
+                    }
                     Text("换色：强调色（品牌色板内）")
                         .font(.headline)
                     Picker("强调色", selection: $accent) {
@@ -66,6 +78,7 @@ struct PosterEditorView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .disabled(style == .xuanye)
                     .onChange(of: accent) { _, _ in
                         fileURL = nil
                         previewImage = nil
@@ -158,7 +171,7 @@ struct PosterEditorView: View {
         Task { @MainActor in
             let titleValue: String? = appliedTitle.isEmpty ? nil : appliedTitle
             let subtitleValue: String? = appliedSubtitle.isEmpty ? nil : appliedSubtitle
-            let view = PosterView(chart: chart, name: name, style: style, titleOverride: titleValue, subtitleOverride: subtitleValue, accentOverride: accent.color)
+            let view = PosterView(chart: chart, name: name, style: style, titleOverride: titleValue, subtitleOverride: subtitleValue, accentOverride: style == .xuanye ? nil : accent.color)
             let renderer = ImageRenderer(content: view.environment(\.colorScheme, .light))
             renderer.scale = 2.0
             guard let img = renderer.uiImage, let data = img.pngData() else { return }
