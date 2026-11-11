@@ -10,7 +10,11 @@ struct ExpectedReport: Decodable {
 // Compare actual XCTest PDFs with the existing engine's complete drawing input.
 // Whitespace/typographic forms and repeated page footers are layout, not missing content.
 func normalized(_ value: String) -> String {
-    value.precomposedStringWithCompatibilityMapping
+    // Core Text can encode two/three em-dashes as the Unicode two/three-em glyphs.
+    // Expand those exact typographic equivalents; retain words, digits and punctuation.
+    value.replacingOccurrences(of: "\u{2E3A}", with: "——")
+        .replacingOccurrences(of: "\u{2E3B}", with: "———")
+        .precomposedStringWithCompatibilityMapping
         .components(separatedBy: .whitespacesAndNewlines).joined()
 }
 
@@ -33,6 +37,7 @@ for report in expected {
     guard let pdf = PDFDocument(url: file), let extracted = pdf.string else {
         fatalError("Unreadable PDF: \(file.lastPathComponent)")
     }
+    try extracted.write(to: directory.appendingPathComponent("pdfkit-text-\(report.tier).txt"), atomically: true, encoding: .utf8)
     let raw = normalized(extracted)
     let text = footer.stringByReplacingMatches(in: raw, range: NSRange(raw.startIndex..<raw.endIndex, in: raw), withTemplate: "")
     let rows = report.lines.enumerated().filter { !normalized($0.element).isEmpty }
@@ -43,7 +48,7 @@ for report in expected {
                     "sourceLines": rows.count, "missingLines": summary,
                     "contentHash": report.contentHash])
 }
-let result: [String: Any] = ["scope": "Full source-line text preservation in the three actual XCTest PDFs; not a visual or physical-device acceptance test",
+let result: [String: Any] = ["scope": "Full source-line preservation in three actual XCTest PDFs; normalize NFKC, whitespace and Unicode two/three-em glyph equivalents only; not visual/device acceptance",
                              "reports": results, "status": failures.isEmpty ? "success" : "failure"]
 let data = try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys])
 try data.write(to: directory.deletingLastPathComponent().appendingPathComponent("report-text-verification.json"))
