@@ -118,5 +118,17 @@
     "before": "                    if style == .xuanye {\n                        Text(\"玄夜版使用固定高对比金色，保证深色长卷可读。\")\n                            .font(.footnote).foregroundStyle(Ky.sub)\n                    }\n",
     "after": "",
     "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "      - name: Preserve verification evidence\n",
+    "after": "      - name: Export UI screenshot evidence\n        if: always()\n        run: |\n          if [ -d build/TestResults.xcresult ]; then\n            xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots\n          else\n            echo \"No test result bundle; screenshot export skipped.\"\n          fi\n\n      - name: Preserve verification evidence\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            build/TestResults.xcresult\n",
+    "after": "            build/TestResults.xcresult\n            build/screenshots\n",
+    "count": 1
   }
 ]
