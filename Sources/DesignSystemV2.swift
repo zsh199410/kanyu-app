@@ -331,17 +331,9 @@ struct KyWorkspaceHeading: View {
 }
 
 extension View {
-    /// iOS 27 120Hz 零掉帧卡片：采用 continuous 连续曲率圆角（18pt）＋精细发丝描边，
-    /// 剔除昂贵的动态离屏高斯阴影（.shadow），确保 ProMotion 滚动满帧丝滑。
+    /// V6 opaque content surface. Frame pacing still requires measurement on target hardware.
     func kyCard() -> some View {
-        self.padding(16)
-            .background(Ky.card)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Ky.line, lineWidth: 1)
-                    .allowsHitTesting(false)
-            )
+        KanyuV6Card { self }
     }
 
     /// 浅染内嵌卡（用于卡片内部二级同心圆角区块，12pt continuous）

@@ -1,0 +1,58 @@
+{
+  "version": "6.1",
+  "direction": "Oriental Precision",
+  "units": {
+    "native": "pt",
+    "web": "CSS px",
+    "poster": "540pt @2x"
+  },
+  "colors": {
+    "paper": "#F6F1E6",
+    "ivory": "#FCFBF7",
+    "ink": "#2B2723",
+    "indigo": "#1F4959",
+    "cinnabar": "#9A2A22",
+    "bronze": "#9E782F",
+    "bronzeText": "#80601F",
+    "obsidian": "#111317",
+    "jadeCard": "#1A1D23",
+    "champagne": "#D1AC53",
+    "nightIndigo": "#6CA2B8",
+    "secondaryLight": "#6D665D",
+    "secondaryDark": "#B5AEA2",
+    "foregroundDark": "#F2EBDD",
+    "highlightLight": "#2C5B6B",
+    "highlightDark": "#DABB76",
+    "elevatedLight": "#EFE9DA",
+    "elevatedDark": "#242830",
+    "ruleLight": "#E2D9C5",
+    "ruleDark": "#3B414B"
+  },
+  "layout": {
+    "pageInset": 20,
+    "sectionGap": 15,
+    "cardInset": 16,
+    "cardRadius": 18,
+    "innerRadius": 12,
+    "buttonRadius": 14,
+    "buttonMinHeight": 52,
+    "hitMin": 44,
+    "hairline": 0.7
+  },
+  "motion": {
+    "pressScale": 0.985,
+    "pressMs": 180,
+    "selectionResponseMs": 280,
+    "selectionDamping": 0.88,
+    "disclosureMs": 240,
+    "flylineMs": 450
+  },
+  "poster": {
+    "canvasPt": 540,
+    "scale": 2,
+    "outputPx": 1080,
+    "innerFrameInsetPt": 18,
+    "textInsetPt": 32,
+    "frameToTextPx": 28
+  }
+}

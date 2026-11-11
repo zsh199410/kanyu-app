@@ -1297,17 +1297,18 @@ extension Color {
 }
 
 enum Ky {
-    static var bg: Color { Color(uiColor: .systemGroupedBackground) }
-    static var card: Color { Color(uiColor: .secondarySystemGroupedBackground) }
-    static var elevated: Color { Color(uiColor: .tertiarySystemGroupedBackground) }
-    static var ink: Color { Color.primary }
-    static var sub: Color { Color.secondary }
-    static var gold: Color { .kyDyn(0x9E782F, 0xD1AC53) }      // 宋式雅金
-    static var cinnabar: Color { .kyDyn(0x9A2A22, 0xE05A47) }  // 故宫朱砂红
-    static var jade: Color { .kyDyn(0x367552, 0x52B788) }      // 松石玉绿
-    static var qingdai: Color { .kyDyn(0x1F4959, 0x6CA2B8) }   // 宋韵青黛（主交互色）
-    static var line: Color { .kyDyn(0xE2D9C5, 0x2E333C) }      // 宋纸发丝线
-    // 仪器页恒深色（罗盘、拍摄、AR）
+    // Compatibility facade; preserve call sites and the existing uiStyle preference.
+    static var bg: Color { .kyDyn(KanyuV6.Hex.paper, KanyuV6.Hex.obsidian) }
+    static var card: Color { .kyDyn(KanyuV6.Hex.ivory, KanyuV6.Hex.jadeCard) }
+    static var elevated: Color { .kyDyn(KanyuV6.Hex.elevatedLight, KanyuV6.Hex.elevatedDark) }
+    static var ink: Color { .kyDyn(KanyuV6.Hex.ink, KanyuV6.Hex.foregroundDark) }
+    static var sub: Color { .kyDyn(KanyuV6.Hex.secondaryLight, KanyuV6.Hex.secondaryDark) }
+    // Legacy gold is frequently used as small text. Original bronze remains an ornament token.
+    static var gold: Color { .kyDyn(KanyuV6.Hex.bronzeText, KanyuV6.Hex.champagne) }
+    static var cinnabar: Color { .kyDyn(KanyuV6.Hex.cinnabar, 0xE05A47) }
+    static var jade: Color { .kyDyn(0x367552, 0x52B788) }
+    static var qingdai: Color { .kyDyn(KanyuV6.Hex.indigo, KanyuV6.Hex.nightIndigo) }
+    static var line: Color { .kyDyn(KanyuV6.Hex.ruleLight, KanyuV6.Hex.ruleDark) }
     static let instBg = Color(rgb: 0x111317)
     static let instGold = Color(rgb: 0xD1AC53)
     static let instCinnabar = Color(rgb: 0xE05A47)
@@ -1324,25 +1325,9 @@ enum KyMotion {
     static let dragSpring = Animation.spring()                   // 拖拽回弹（户型中宫复位）
 }
 
-struct KyPrimaryButton: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(.headline, design: .serif))
-            .fontWeight(.semibold)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .background(isEnabled ? Ky.qingdai : Ky.elevated)
-            .foregroundStyle(isEnabled ? Color.white : Ky.sub)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1.0)
-            .opacity(configuration.isPressed ? 0.86 : 1)
-    }
-}
+// Type alias keeps the existing initializer and installs the style through SwiftUI,
+// so its Environment properties are resolved by the system.
+typealias KyPrimaryButton = KanyuV6PrimaryButton
 
 extension View {
     // Liquid Glass（iOS 26/27+）/ 旧系统回退磨砂材质（仅用于浮动控制层，严禁用于内容卡片）
