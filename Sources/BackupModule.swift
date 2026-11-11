@@ -21,10 +21,10 @@ enum BackupExportPath {
                 let url = directory.appendingPathComponent(name)
                 // Legacy archives may have no manifest: never follow a symlink
                 // outside the extracted payload when deciding what to restore.
-                guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]) else {
+                guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey]) else {
                     return false
                 }
-                return values.isRegularFile == true && values.isSymbolicLink != true
+                return values.isRegularFile == true && values.isSymbolicLink != true && (values.fileSize ?? 0) > 0
             }
     }
 
