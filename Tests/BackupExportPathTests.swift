@@ -73,6 +73,15 @@ final class BackupExportPathTests: XCTestCase {
         XCTAssertFalse(BackupExportPath.containsRestorableData(in: root))
     }
 
+    func testDirectoryNamedLikeBackupDataIsNotRestorable() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("restore-directory-spoof-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        try fm.createDirectory(at: root.appendingPathComponent("people.json"), withIntermediateDirectories: true)
+        XCTAssertFalse(BackupExportPath.containsRestorableData(in: root))
+    }
+
     func testRecognizedBackupDataCanBeRestored() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("restore-valid-\(UUID().uuidString)", isDirectory: true)
