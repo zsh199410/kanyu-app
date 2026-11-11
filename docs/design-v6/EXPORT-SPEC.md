@@ -24,7 +24,8 @@
 | --- | ---: | ---: | --- |
 | 画布宽 | 540 | 1080 | 禁止各变体独立改宽 |
 | 外框离画布边 | 12 | 24 | 外框横向范围 x=12…528 |
-| 内框离画布边 | 18 | 36 | 内框横向范围 x=18…522 |
+| 内框描边矩形 inset | 17.5 | 35 | 0.5pt strokeBorder 向内绘制 |
+| 内框可见内沿离边 | 18 | 36 | 真正留白边界 x=18…522 |
 | 主内容离画布边 | 32 | 64 | 正文横向范围 x=32…508 |
 | 内容距内框最小空白 | 14 | **28** | 满足用户提出的至少 28px；注意 28px 是 14pt，不是 28pt |
 | 主内容最大宽 | 476 | 952 | `540 - 2×32` |
@@ -33,7 +34,7 @@
 | 细盘标签列＋尾距 | 44＋6 | 88＋12 | 共 50pt；不挤占四柱文本区 |
 | 四柱每列 | **106.5** | **213** | `(476 - 50)/4`，四列与标签合计正好 476pt |
 
-屏幕卡片 0.7pt hairline 与海报像素边框分开管理：海报细线建议 0.5pt（2× 导出为 1px），强调外框 1pt（2px）；主 App 卡片继续服从全局 0.7pt。边框使用 inset/strokeBorder 或向内描边，不能让描边半宽侵出安全区。
+屏幕卡片 0.7pt hairline 与海报像素边框分开管理：海报内框细线 0.5pt（2× 导出为 1px）；描边矩形 inset 17.5pt，向内描后内沿正好为 18pt，强调外框 1pt（2px）；主 App 卡片继续服从全局 0.7pt。边框使用 inset/strokeBorder 或向内描边，不能让描边半宽侵出安全区。
 
 ### 当前源码实际检查
 
@@ -42,7 +43,7 @@
 - 标准海报部分内容为 444pt、五行轨道 364pt；预测单大量固定 32pt 边距；紫微小宫格固定 107×92pt。应先引入单一 `PosterMetrics`，逐一换算，不做全仓盲目替换 `.padding(32)`。
 - 现有 `Tests/PosterLayoutTests.swift` 只验证既有四种布局输出宽为 1080px、图高大于宽，并不证明所有字都不压线、所有极长姓名都可读。用户要求本轮不改 Tests，应保留并运行这些现有检查，再另留导出图片人工/工具测量证据。
 
-建议新增纯视觉度量 `Sources/PosterMetrics.swift`：`canvasWidth=540`、`renderScale=2`、`contentInset=32`、`contentWidth=476`、`outerFrameInset=12`、`innerFrameInset=18`、`detailLabelWidth=44`、`detailLabelGap=6`、`detailColumnWidth=106.5`。不在此文件出现任何排盘或打分公式。
+建议新增纯视觉度量 `Sources/PosterMetrics.swift`：`canvasWidth=540`、`renderScale=2`、`contentInset=32`、`contentWidth=476`、`outerFrameInset=12`、`innerFrameInset=17.5`、`innerFrameStroke=0.5`、`innerFrameInnerEdge=18`、`detailLabelWidth=44`、`detailLabelGap=6`、`detailColumnWidth=106.5`。不在此文件出现任何排盘或打分公式。
 
 ## 3. 海报矩阵与稳定命名
 
@@ -56,7 +57,7 @@
 | 玄夜墨金 | 黑曜石底、墨玉分区、米白正文、香槟金路径、青黛数据；控色避免所有字都发金光 | 同一内容骨架的深色 palette；导出明确固定 dark 环境，不跟随当前手机主题 | 新增稳定 `-xuanye` |
 | 紫微全景 | 十二宫完整方盘→图例/四化→三方四正摘要→按实际已有卡片的解释；宫格字太多则把深读放后续段落，不挤格 | `ZiweiPosterView`、`ZiweiMiniCell`、`ZiweiCenterFlyLines` | **保留 `ziwei-poster-` 前缀**；以真实选择的 style 添加上述后缀 |
 | 双术/多术合参 | 同题对照卡→各术实际依据→一致/分歧/条件；只展示既有裁决，不把同源描述伪装独立验证 | `HeCanPosterView`，沿用 `BaziZiweiCrossEngine.verdicts` 的只读结果 | **保留 `hecan-poster-` 前缀** |
-| 命书 PDF | 封面→输入/口径收据→目录→正文分章→依据/术语附录→版本说明 | `ReportBuilder` 绘制函数与布局器 | **保留 `命书-` 前缀、档位、日期和哈希后缀** |
+| 命书 PDF | 封面（含输入/口径收据）→目录（第 2 页起）→正文分章→依据/术语附录→版本说明 | `ReportBuilder` 绘制函数与布局器 | **保留 `命书-` 前缀、档位、日期和哈希后缀** |
 
 新增 enum case 后必须同步所有 `switch`、palette、`fileSuffix`、编辑器选择器、紫微/合参渲染器和报告中心后缀解析。已有 rawValue/文件名不能重命名，旧图片与 PDF 不迁移、不删除。报告中心先保留所有既有识别逻辑，再增加新后缀，不以“换设计”为由让历史文件消失。
 

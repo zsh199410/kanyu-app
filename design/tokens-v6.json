@@ -51,8 +51,10 @@
     "canvasPt": 540,
     "scale": 2,
     "outputPx": 1080,
-    "innerFrameInsetPt": 18,
+    "innerFrameInsetPt": 17.5,
     "textInsetPt": 32,
-    "frameToTextPx": 28
+    "frameToTextPx": 28,
+    "innerFrameStrokePt": 0.5,
+    "innerFrameInnerEdgePt": 18
   }
 }

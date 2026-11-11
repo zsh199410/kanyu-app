@@ -64,7 +64,7 @@ Button("查看完整解读", action: existingAction).buttonStyle(KyPrimaryButton
 ## P3：八字、紫微、奇门及白话解读
 
 - `BaziModule.swift` 只改 View：四柱/时间层/标签/已有 sheet 的版式；天干、地支、十神、神煞的动作绑定到现有详情数据。统一底部抽屉 detents 与读法结构。对已有 `safeDayun`、柱索引等选中状态做 UI 边界防护：先判断数组非空，再 `min(max(index,0),count-1)`；空态不创建假条目。不得触碰排盘函数/取用规则。
-- `ZiweiModule.swift` 只改 `ZiweiView`、宫格、已有 `ZiweiCenterFlyLines`/Canvas 的绘制样式；飞线使用现成关系字段/现有三方四正关系，不凭视觉手写替代安宫算法。选中索引防护与数据版本同步；所有宫位有列表等价入口；角标文字保留真实四化。
+- `ZiweiModule.swift` 只改 `ZiweiBoardView`、宫格及其 `flyLinesOverlay`、`palaceCenter`、`replayFlyLines` 的绘制样式；飞线使用现成关系字段/现有三方四正关系，不凭视觉手写替代安宫算法。选中索引防护与数据版本同步；所有宫位有列表等价入口；角标文字保留真实四化。`PosterModule.swift/ZiweiCenterFlyLines` 是海报组件，留到 P5，不误当本阶段屏幕飞线。
 - `QimenModule.swift` 只改宫格、筛选胶囊、解释容器和 zoom 交互的样式；已有层、局、时间和方位不变，不翻转盘序、不对门/星/神重新排名。
 - `InterpretModule.swift`、`ChartDepthModule.swift` 中若存在渲染 View，只改 View；如果段落产生器与 UI 混杂，先抽出接收现有字符串的只读阅读器。不改原文、规则、条目顺序或生成条件。术语解释用现有词典；缺出处写「未收录原文」，不伪造五典引文。
 - 五行色只替换颜色常量，保留 `KyV2.element(ofChar:)`、`elementIndex` 和占比计算原样；按元素字/图标双编码。旧 `KyMotion` 的循环高光逐个换成选中瞬时反馈，检查 Reduce Motion 与页面离开后的停止。
@@ -93,7 +93,8 @@ Button("查看完整解读", action: existingAction).buttonStyle(KyPrimaryButton
 ```sh
 set -e
 set -o pipefail
-xcodebuild -project Kanyu.xcodeproj -scheme Kanyu -sdk iphoneos -configuration Release -derivedDataPath build/V6-DD CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build/v6-device-build.log
+KANYU_V6_BUILD_NUMBER=$(git rev-list --count HEAD)
+xcodebuild -project Kanyu.xcodeproj -scheme Kanyu -sdk iphoneos -configuration Release CURRENT_PROJECT_VERSION="$KANYU_V6_BUILD_NUMBER" -derivedDataPath build/V6-DD CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build/v6-device-build.log
 KANYU_V6_PACKAGE=$(mktemp -d "${TMPDIR:-/tmp}/kanyu-v6.XXXXXX")
 mkdir -p "$KANYU_V6_PACKAGE/Payload"
 cp -R build/V6-DD/Build/Products/Release-iphoneos/Kanyu.app "$KANYU_V6_PACKAGE/Payload/"
@@ -102,7 +103,7 @@ git rev-parse HEAD > "$KANYU_V6_PACKAGE/commit.txt"
 printf '%s\n' "$KANYU_V6_PACKAGE"
 ```
 
-没有成功 `xcodebuild` 就停止打包；上面的命令在支持环境启用 `set -e`，失败即停；不能跳过失败步骤继续打包。安装需用户自行签名。正式发布优先走现有 `.github/workflows/build.yml`，测试、设备 Release、CRC、SHA 和提交对应后才给新 IPA 链接。
+本地检查用提交数量提供明确的正整数构建号，避免空 CFBundleVersion；正式发布仍用现有 CI 的 github.run_number。没有成功 `xcodebuild` 就停止打包；上面的命令在支持环境启用 `set -e`，失败即停；不能跳过失败步骤继续打包。安装需用户自行签名。正式发布优先走现有 `.github/workflows/build.yml`，测试、设备 Release、CRC、SHA 和提交对应后才给新 IPA 链接。
 
 ## 每批提交与回滚
 

@@ -60,7 +60,8 @@ for key, role in roles.items():
     part = dark_css if key in {'obsidian','jadeCard','foregroundDark','champagne','secondaryDark'} else light_css
     assert f'{role}:{tokens["colors"][key].lower()}' in part, f'CSS palette drift: {key}'
 assert tokens['poster']['textInsetPt']*2 == 64
-assert (tokens['poster']['textInsetPt']-tokens['poster']['innerFrameInsetPt'])*2 >= 28
+assert tokens['poster']['innerFrameInsetPt'] + tokens['poster']['innerFrameStrokePt'] == tokens['poster']['innerFrameInnerEdgePt']
+assert (tokens['poster']['textInsetPt']-tokens['poster']['innerFrameInnerEdgePt'])*tokens['poster']['scale'] >= 28
 
 def luminance(hex_color):
     values = [int(hex_color[i:i+2],16)/255 for i in (1,3,5)]
