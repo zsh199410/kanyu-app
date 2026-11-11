@@ -52,3 +52,11 @@
 - 后续提交 `df636cd8f49d8b9d8841cbb4b99ce776345ce1a6`：导出前清除旧分享 URL，防止新导出失败后仍分享上次 ZIP；更新实际 ZIP 命名说明。**需重新取得精确 SHA 的 XCTest/XCUITest、设备 Release、IPA 校验和 Artifact 证据，暂不合并。**
 - 待专项验证：分享链接在失败重试后消失、实际损坏 ZIP、磁盘空间不足、备份恢复故障注入、真机 iCloud 往返、跨人物标记隔离与重启；CI 成功不能代替上述真机验收。
 - 回滚：对该 PR 每个独立提交使用 `git revert <SHA>`，不删除任何用户档案。
+
+## 2026-11-11 PR #46 CI 阻断记录（不得绕过）
+
+- PR #46 head `37007325ff0dd8a525da7618013359513750bc69`，Actions Run `43034747180`（#295）结论 **failure**。
+- 失败发生在 `Verify protected engines and design contracts`：`design/verify_v6.py` 第 113 行报 `Protected baseline file changed: Sources/BackupModule.swift`。Xcode 选择、XCTest/XCUITest、设备 Release、IPA 打包均因前置门禁失败而 **skipped**，不是测试通过，也不是编译失败。
+- 原因是 V6 受保护基线包含 `Sources/BackupModule.swift`，而本 PR 正在修改备份模块。此处存在设计保护与 P0 数据安全修复之间的流程冲突。**不得删除/跳过门禁，不得直接刷新受保护文件哈希来掩盖未审查改动。**
+- 解除阻断的验收条件：由独立审查核对 BackupModule 的逐行变更及基线保护范围，明确记录获准变更和设计合同的影响；在受保护基线维护流程中按审查结论更新并保留可回滚记录；随后重新运行相同 head 的完整门禁、XCTest/XCUITest、设备 Release 与 IPA 校验。任何基线更新必须是可审计的独立提交，不能与业务修改混为一谈。
+- PR #45 与 #46 重叠，禁止分别合并；#10 跨人物回验隔离、#11 备份恢复故障注入及真机验收仍未关闭。无匹配 SHA 的成功 IPA 证据，不提供安装包。
