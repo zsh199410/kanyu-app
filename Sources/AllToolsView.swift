@@ -23,7 +23,10 @@ struct ContextualToolDestination: View {
                     description: Text("此工具需要出生资料。请先创建或选择人物。"))
                 Button("新建人物档案") { showingNewPerson = true }
                     .buttonStyle(.borderedProminent).padding(.bottom, 24)
+                    .accessibilityIdentifier("tool.createPerson")
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("tool.missing.\(item.id)")
         } else if let person = peopleStore.currentPerson {
             toolDestination(
                 for: item,
@@ -31,6 +34,10 @@ struct ContextualToolDestination: View {
                 chart: BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,
                                          longitude: person.useLongitude ? person.longitude : nil)
             )
+            .id(person)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("tool.context.\(item.id)")
+            .accessibilityValue("\(person.name) · \(DisplayTimeReceipt.beijing(person.birthDate))")
         } else {
             // Independent tools ignore the chart argument. A placeholder is never
             // presented as a person's chart; chart-dependent routes are blocked above.
@@ -38,6 +45,8 @@ struct ContextualToolDestination: View {
             toolDestination(for: item, person: placeholder,
                             chart: BaziEngine.paipan(clock: placeholder.birthDate,
                                                       gender: placeholder.gender, longitude: nil))
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("tool.independent.\(item.id)")
         }
     }
 }
@@ -398,6 +407,7 @@ struct AllToolsView: View {
             }
             .buttonStyle(.plain)
             .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: item.id) })
+            .accessibilityIdentifier("tools.open.\(item.id)")
         }
     }
 

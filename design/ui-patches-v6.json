@@ -904,5 +904,137 @@
     "before": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        return try BackupRestoreTransaction.perform(",
     "after": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        guard try BackupExportArchive.hasRestorablePayload(in: dir, fileManager: fm) else {\n            throw BackupExportArchive.Failure.noData\n        }\n        return try BackupRestoreTransaction.perform(",
     "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "let active = selectedID == p.id",
+    "after": "let active = (selectedID ?? store.currentPerson?.id) == p.id",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "Button { onSelect(p) } label: {",
+    "after": "Button { store.setCurrentPerson(p); onSelect(p) } label: {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": ".padding(.horizontal, 10).padding(.vertical, 6)",
+    "after": ".padding(.horizontal, 10).padding(.vertical, 6)\n                            .frame(minHeight: 44)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "                        }.buttonStyle(.plain)\n",
+    "after": "                        }.buttonStyle(.plain)\n                            .accessibilityLabel(\"调取命主：\\(p.name)\")\n                            .accessibilityValue(active ? \"当前命主\" : \"\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "                    .buttonStyle(.borderedProminent).padding(.bottom, 24)\n            }\n",
+    "after": "                    .buttonStyle(.borderedProminent).padding(.bottom, 24)\n                    .accessibilityIdentifier(\"tool.createPerson\")\n            }\n            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "                                         longitude: person.useLongitude ? person.longitude : nil)\n            )\n",
+    "after": "                                         longitude: person.useLongitude ? person.longitude : nil)\n            )\n            .id(person)\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityValue(\"\\(person.name) · \\(DisplayTimeReceipt.beijing(person.birthDate))\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "            .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: item.id) })\n",
+    "after": "            .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: item.id) })\n            .accessibilityIdentifier(\"tools.open.\\(item.id)\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "struct MyView: View {\n",
+    "after": "struct MyView: View {\n    @EnvironmentObject private var peopleStore: PeopleStore\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "PeopleStore.shared",
+    "after": "peopleStore",
+    "count": 11
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "全本机离线演算 · 零云端追踪",
+    "after": "本机排盘与档案 · 联网功能按需使用",
+    "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "myLink(\"person.2.fill\", \"人物档案管理\", \"家人与命例建档 · 支持数据导入导出备份\", Ky.qingdai) { PeopleView() }",
+    "after": "myLink(\"person.2.fill\", \"人物档案管理\", \"家人与命例建档 · 支持数据导入导出备份\", Ky.qingdai) { PeopleView() }\n                        .accessibilityIdentifier(\"profile.people\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "TextField(\"姓名\", text: $person.name)",
+    "after": "TextField(\"姓名\", text: $person.name).accessibilityIdentifier(\"person.form.name\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "ToolbarItem(placement: .cancellationAction) { Button(\"取消\".scriptConverted) { dismiss() } }",
+    "after": "ToolbarItem(placement: .cancellationAction) { Button(\"取消\".scriptConverted) { dismiss() }.accessibilityIdentifier(\"person.form.cancel\") }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "                    }.disabled(person.name.trimmingCharacters(in: .whitespaces).isEmpty)",
+    "after": "                    }.disabled(person.name.trimmingCharacters(in: .whitespaces).isEmpty)\n                        .accessibilityIdentifier(\"person.form.save\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "            .sheet(isPresented: $showSheet) {",
+    "after": "            .accessibilityIdentifier(\"birth.edit\")\n            .sheet(isPresented: $showSheet) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "TextField(\"1994\", text: $yearText)",
+    "after": "TextField(\"1994\", text: $yearText)\n                .accessibilityIdentifier(\"birth.year\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "                    .fontWeight(.bold)\n                    .foregroundStyle(Ky.qingdai)\n                }\n                ToolbarItemGroup(placement: .keyboard)",
+    "after": "                    .fontWeight(.bold)\n                    .foregroundStyle(Ky.qingdai)\n                    .accessibilityIdentifier(\"birth.confirm\")\n                }\n                ToolbarItemGroup(placement: .keyboard)",
+    "count": 1
+  },
+  {
+    "path": "Sources/DesignSystemV6_Extensions.swift",
+    "before": "                        .buttonStyle(.plain)\n\n                        Button {\n                            KyV6.impact(.light)\n                            onNewPerson()",
+    "after": "                        .buttonStyle(.plain)\n                        .accessibilityLabel(\"切换命主\")\n\n                        Button {\n                            KyV6.impact(.light)\n                            onNewPerson()",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")",
+    "after": "            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "                                                      gender: placeholder.gender, longitude: nil))",
+    "after": "                                                      gender: placeholder.gender, longitude: nil))\n                .accessibilityElement(children: .contain)\n                .accessibilityIdentifier(\"tool.independent.\\(item.id)\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "/// 点一下名字胶囊，即把该人的生辰／性别／出生地经度交给宿主页面，由宿主决定如何带入。",
+    "after": "/// 点名字胶囊会同步全局当前命主，再把生辰／性别／经度交给宿主页面。",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": ".accessibilityValue(active ? \"当前命主\" : \"\")",
+    "after": ".accessibilityValue(active ? \"已选中\" : \"\")",
+    "count": 1
   }
 ]

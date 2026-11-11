@@ -1233,6 +1233,7 @@ struct KanyuSurveyApp: App {
         WindowGroup {
             RootTabView()
                 .modifier(V6ExportQAHost())
+                .modifier(ContextAcceptanceHost())
                 .environmentObject(store)
                 .environmentObject(location)
                 .environmentObject(motion)
@@ -1859,6 +1860,7 @@ struct HomePageView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("选择命主：\(p.name)")
             }
             .navigationTitle(Text("切换命主".scriptConverted))
             .navigationBarTitleDisplayMode(.inline)
@@ -1894,6 +1896,7 @@ struct HomePageView: View {
                         compactBentoTile("sparkles", "星命合参", "八字 × 西洋星盘 · 双术印证", Ky.gold)
                     }.buttonStyle(.plain)
                         .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })
+                        .accessibilityIdentifier("home.astro")
                     NavigationLink { SynastryView() } label: {
                         compactBentoTile("heart.circle.fill", "合盘合婚", "合婚四看 · 喜用互补", Ky.cinnabar)
                     }.buttonStyle(.plain)
@@ -1941,6 +1944,7 @@ struct HomePageView: View {
                     homeChipLabel(item)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("home.recent.\(item.id)")
             }
         }
     }
@@ -2001,6 +2005,7 @@ struct HomePageView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
         }.buttonStyle(.plain)
+            .accessibilityIdentifier("home.alltools")
     }
 
 }

@@ -44,7 +44,23 @@ def refine_home_v6(text):
     text = text.replace(before, '                casesSection')
     before = '            RootTabView()\n'
     assert text.count(before) == 1, "QA host anchor drift"
-    text = text.replace(before, '            RootTabView()\n                .modifier(V6ExportQAHost())\n')
+    text = text.replace(before, '            RootTabView()\n                .modifier(V6ExportQAHost())\n                .modifier(ContextAcceptanceHost())\n')
+    before = '        }.buttonStyle(.plain)\n    }\n\n}\n\n// MARK: - Tab 4：「堪舆」独立工作台'
+    after = '        }.buttonStyle(.plain)\n            .accessibilityIdentifier("home.alltools")\n    }\n\n}\n\n// MARK: - Tab 4：「堪舆」独立工作台'
+    assert text.count(before) == 1, "Context UI anchor drift"
+    text = text.replace(before, after)
+    before = '                .buttonStyle(.plain)\n            }\n            .navigationTitle(Text("切换命主".scriptConverted))'
+    after = '                .buttonStyle(.plain)\n                .accessibilityLabel("选择命主：\\(p.name)")\n            }\n            .navigationTitle(Text("切换命主".scriptConverted))'
+    assert text.count(before) == 1, "Context UI anchor drift"
+    text = text.replace(before, after)
+    before = '                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })'
+    after = '                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })\n                        .accessibilityIdentifier("home.astro")'
+    assert text.count(before) == 1, "Context shortcut anchor drift"
+    text = text.replace(before, after)
+    before = '                NavigationLink { ContextualToolDestination(item: item) } label: {\n                    homeChipLabel(item)\n                }\n                .buttonStyle(.plain)'
+    after = '                NavigationLink { ContextualToolDestination(item: item) } label: {\n                    homeChipLabel(item)\n                }\n                .buttonStyle(.plain)\n                .accessibilityIdentifier("home.recent.\\(item.id)")'
+    assert text.count(before) == 1, "Context shortcut anchor drift"
+    text = text.replace(before, after)
     return text
 
 def home_layout_v6(text):

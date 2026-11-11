@@ -181,6 +181,7 @@ struct BirthInputView: View {
                 .kySubCard()
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("birth.edit")
             .sheet(isPresented: $showSheet) {
                 TimePickerSheet(initial: clock, mode: $mode, useLongitude: useLongitude, longitudeText: $longitudeText) { date, unknown in
                     clock = date; unknownHour = unknown; showSheet = false
@@ -539,6 +540,7 @@ private struct TimePickerSheet: View {
                     }
                     .fontWeight(.bold)
                     .foregroundStyle(Ky.qingdai)
+                    .accessibilityIdentifier("birth.confirm")
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -581,6 +583,7 @@ private struct TimePickerSheet: View {
                     .frame(width: 30, height: 30).background(Ky.elevated).clipShape(Circle())
             }.accessibilityLabel("上一年")
             TextField("1994", text: $yearText)
+                .accessibilityIdentifier("birth.year")
                 .keyboardType(.numberPad)
                 .focused($yearFieldFocused)
                 .font(KyV2.tabular(16, weight: .bold))
