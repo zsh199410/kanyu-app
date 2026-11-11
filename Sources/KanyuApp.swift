@@ -1443,10 +1443,10 @@ struct HomePageView: View {
         ScrollView {
             // Keep the workspace lazy; frame pacing requires device measurement.
             LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
-                brandHeader
-                    .accessibilityIdentifier("workspace.workbench")
                 signBanner
                 personSwitcherCard
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("workspace.workbench")
                 todaySection
                 V6ReadingTopicLinks()
                 primaryBentoGrid
@@ -1474,6 +1474,7 @@ struct HomePageView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 6) {
+                    AppLogoView(size: 24).accessibilityHidden(true)
                     Text("三术合参".scriptConverted)
                         .font(.system(.headline, design: .serif))
                         .fontWeight(.bold)
@@ -1481,17 +1482,22 @@ struct HomePageView: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 8) {
-                    Button { showingNewPerson = true } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.badge.plus")
-                        Text("建档")
+                Button { showingMyView = true } label: {
+                    ZStack {
+                        Circle().fill(Ky.card)
+                        if currentPersonNameForHeader.isEmpty {
+                            Image(systemName: "person.crop.circle")
+                        } else {
+                            Text(String(currentPersonNameForHeader.prefix(1)))
+                                .font(.system(.headline, design: .serif))
+                        }
                     }
-                    .font(.caption).fontWeight(.bold)
                     .foregroundStyle(Ky.qingdai)
+                    .frame(width: 44, height: 44)
+                    .overlay(Circle().strokeBorder(Ky.line, lineWidth: 0.7).allowsHitTesting(false))
                 }
-                .accessibilityLabel("新建人物档案")
-                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("个人中心与全局设置")
             }
         }
         .sheet(isPresented: $showingNewPerson) {
@@ -1634,7 +1640,15 @@ struct HomePageView: View {
                     }
             )
         }
-        return AnyView(TodayFortuneCard(person: nil, chart: nil))
+        return AnyView(
+            HStack(spacing: 10) {
+                Image(systemName: "person.crop.circle.badge.plus").foregroundStyle(Ky.gold)
+                Text("建档后可查看命主专属的今日解读。".scriptConverted)
+                    .font(.subheadline).foregroundStyle(Ky.sub)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .kyCard()
+        )
     }
 
     // 待回验提醒

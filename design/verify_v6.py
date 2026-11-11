@@ -22,6 +22,25 @@ def mask_app(text):
     end = text.index('\n}\n', start) + len('\n}\n')
     tail = text.index('extension View {', end)
     return text[:end] + '<BUTTON-STYLE>\n' + text[tail:]
+def refine_home_v6(text):
+    before = '                brandHeader\n                    .accessibilityIdentifier("workspace.workbench")\n                signBanner\n                personSwitcherCard'
+    after = '                signBanner\n                personSwitcherCard\n                    .accessibilityElement(children: .contain)\n                    .accessibilityIdentifier("workspace.workbench")'
+    assert text.count(before) == 1, "Home UI anchor drift"
+    text = text.replace(before, after)
+    before = '            ToolbarItem(placement: .principal) {\n                HStack(spacing: 6) {\n                    Text("三术合参".scriptConverted)'
+    after = '            ToolbarItem(placement: .principal) {\n                HStack(spacing: 6) {\n                    AppLogoView(size: 24).accessibilityHidden(true)\n                    Text("三术合参".scriptConverted)'
+    assert text.count(before) == 1, "Home UI anchor drift"
+    text = text.replace(before, after)
+    before = '            ToolbarItem(placement: .topBarTrailing) {\n                HStack(spacing: 8) {\n                    Button { showingNewPerson = true } label: {\n                    HStack(spacing: 4) {\n                        Image(systemName: "person.badge.plus")\n                        Text("建档")\n                    }\n                    .font(.caption).fontWeight(.bold)\n                    .foregroundStyle(Ky.qingdai)\n                }\n                .accessibilityLabel("新建人物档案")\n                }\n            }\n        }\n'
+    after = '            ToolbarItem(placement: .topBarTrailing) {\n                Button { showingMyView = true } label: {\n                    ZStack {\n                        Circle().fill(Ky.card)\n                        if currentPersonNameForHeader.isEmpty {\n                            Image(systemName: "person.crop.circle")\n                        } else {\n                            Text(String(currentPersonNameForHeader.prefix(1)))\n                                .font(.system(.headline, design: .serif))\n                        }\n                    }\n                    .foregroundStyle(Ky.qingdai)\n                    .frame(width: 44, height: 44)\n                    .overlay(Circle().strokeBorder(Ky.line, lineWidth: 0.7).allowsHitTesting(false))\n                }\n                .buttonStyle(.plain)\n                .accessibilityLabel("个人中心与全局设置")\n            }\n        }\n'
+    assert text.count(before) == 1, "Home UI anchor drift"
+    text = text.replace(before, after)
+    before = '        return AnyView(TodayFortuneCard(person: nil, chart: nil))'
+    after = '        return AnyView(\n            HStack(spacing: 10) {\n                Image(systemName: "person.crop.circle.badge.plus").foregroundStyle(Ky.gold)\n                Text("建档后可查看命主专属的今日解读。".scriptConverted)\n                    .font(.subheadline).foregroundStyle(Ky.sub)\n            }\n            .frame(maxWidth: .infinity, alignment: .leading)\n            .kyCard()\n        )'
+    assert text.count(before) == 1, "Home UI anchor drift"
+    text = text.replace(before, after)
+    return text
+
 def home_layout_v6(text):
     start=text.index('struct HomePageView: View')
     head, home=text[:start], text[start:]
@@ -53,7 +72,7 @@ def home_layout_v6(text):
     }
 
 '''
-    return head+home[:a]+helper+grid+home[b:]
+    return refine_home_v6(head+home[:a]+helper+grid+home[b:])
 
 patches = json.loads((ROOT/'design/ui-patches-v6.json').read_text())
 def apply_ui_patches(path, value):
