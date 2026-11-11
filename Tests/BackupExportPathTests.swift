@@ -37,4 +37,30 @@ final class BackupExportPathTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: first), firstData)
         XCTAssertEqual(try Data(contentsOf: second), secondData)
     }
+    func testRestoreAttemptsUseIndependentDirectories() {
+        let root = FileManager.default.temporaryDirectory
+        let first = BackupExportPath.restoreDirectory(in: root)
+        let second = BackupExportPath.restoreDirectory(in: root)
+        XCTAssertNotEqual(first, second)
+        XCTAssertEqual(first.deletingLastPathComponent(), root)
+        XCTAssertEqual(second.deletingLastPathComponent(), root)
+        XCTAssertTrue(first.lastPathComponent.hasPrefix("Kanyu-Restore-"))
+    }
+
+    func testFailedUnzipCleanupDoesNotDeleteAnotherRestoreDirectory() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("restore-isolation-\\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        let first = BackupExportPath.restoreDirectory(in: root)
+        let second = BackupExportPath.restoreDirectory(in: root)
+        try fm.createDirectory(at: first, withIntermediateDirectories: true)
+        try fm.createDirectory(at: second, withIntermediateDirectories: true)
+        let marker = second.appendingPathComponent("marker.txt")
+        try Data("preserve".utf8).write(to: marker)
+        try fm.removeItem(at: first)
+        XCTAssertFalse(fm.fileExists(atPath: first.path))
+        XCTAssertEqual(try Data(contentsOf: marker), Data("preserve".utf8))
+    }
+
 }
