@@ -62,12 +62,16 @@ struct BackupView: View {
                     Text("本地备份".scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                     Text("人物 \(peopleStore.people.count) 位 · 前瞻 \(forecastStore.entries.count) 条 · 手相面相 \(palmStore.records.count) 条记录".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
-                    Text("导出为 Kanyu-Backup-日期.zip，可存入系统「文件」或发微信；换机后从文件导入一键恢复。照片原件不在包内。".scriptConverted)
+                    Text("导出为 Kanyu-Backup-日期-唯一标识.zip，可存入系统「文件」或发微信；换机后从文件导入一键恢复。照片原件不在包内。".scriptConverted)
                         .font(.caption).foregroundStyle(Ky.sub)
                     HStack(spacing: 10) {
                         Button {
+                            // Invalidate the previous share target before attempting a new export.
+                            // A failed export must never leave a stale ZIP available to share.
+                            exportURL = nil
+                            note = ""
                             if let u = makeBackup() { exportURL = u; note = "备份包已生成，可分享保存。" }
-                            else { note = "备份失败：没有可备份的数据，或文件复制/打包失败。请检查存储空间。" }
+                            else { note = "备份失败：没有可备份的数据，或文件复制/打包失败。请检查存储空间；本次没有生成可分享的备份。" }
                         } label: {
                             Label("导出备份（ZIP）".scriptConverted, systemImage: "square.and.arrow.up")
                                 .font(.subheadline).fontWeight(.semibold)
@@ -162,7 +166,6 @@ struct BackupView: View {
         }
         let zipURL = BackupExportPath.zipURL(in: fm.temporaryDirectory, date: dateStr)
         do {
-
             try fm.zipItem(at: tmp, to: zipURL)
             try fm.removeItem(at: tmp)
             return zipURL
