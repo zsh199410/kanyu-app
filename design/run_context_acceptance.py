@@ -38,7 +38,8 @@ def command(args, *, log=None, check=True):
     return result
 
 
-def specification(directory):
+def specification(directory, suite="profile"):
+    source = "ProfileContextTests.swift" if suite == "profile" else "PhysiognomyGuideTests.swift"
     return {
         'include': [{'path': str(ROOT / 'project.yml'), 'relativePaths': True}],
         'name': 'KanyuContext',
@@ -50,7 +51,7 @@ def specification(directory):
             },
             'KanyuContextUITests': {
                 'type': 'bundle.ui-testing', 'platform': 'iOS',
-                'sources': [str(ROOT / 'design/acceptance/ProfileContextTests.swift')],
+                'sources': [str(ROOT / 'design/acceptance' / source)],
                 'dependencies': [{'target': 'Kanyu'}],
                 'settings': {'base': {'TEST_TARGET_NAME': 'Kanyu', 'SWIFT_VERSION': '5.9',
                                       'PRODUCT_BUNDLE_IDENTIFIER': BUNDLE + '.tests', 'GENERATE_INFOPLIST_FILE': 'YES'}},
@@ -65,13 +66,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', choices=CASES, required=True)
     parser.add_argument('--generate-only', action='store_true')
+    parser.add_argument('--suite', choices=['profile', 'guides'], default='profile')
     args = parser.parse_args()
     directory = ROOT / 'build/context'
     evidence = ROOT / 'build/context-evidence'
     directory.mkdir(parents=True, exist_ok=True)
     evidence.mkdir(parents=True, exist_ok=True)
     spec = directory / 'project.json'
-    spec.write_text(json.dumps(specification(directory), ensure_ascii=False, indent=2))
+    spec.write_text(json.dumps(specification(directory, args.suite), ensure_ascii=False, indent=2))
     if args.generate_only:
         print(spec)
         return
@@ -80,7 +82,8 @@ def main():
     method, theme, content_size = CASES[args.case]
     commit = command(['git', 'rev-parse', 'HEAD']).stdout.strip()
     report = {'case': args.case, 'commit': commit, 'bundleIdentifier': BUNDLE, 'status': 'failure',
-              'scope': 'Synthetic profile lifecycle through real UI in a separate simulator bundle; not hardware, iCloud or all tool algorithms'}
+              'suite': args.suite,
+              'scope': ('Synthetic profile lifecycle' if args.suite == 'profile' else 'Illustrated hand and face guide navigation') + ' through real UI in a separate simulator bundle; not hardware, iCloud or all tool algorithms'}
     result_bundle = directory / 'Results.xcresult'
     device = None
     try:
@@ -109,17 +112,19 @@ def main():
         info = plistlib.loads((app / 'Info.plist').read_bytes())
         assert info['CFBundleIdentifier'] == BUNDLE, 'Refuse to exercise the normal app bundle'
         command(common + ['test-without-building', '-resultBundlePath', result_bundle,
-                          '-only-testing:KanyuContextUITests/ProfileContextTests/' + method], log=evidence / 'tests.log')
+                          '-only-testing:KanyuContextUITests/' + ('ProfileContextTests' if args.suite == 'profile' else 'PhysiognomyGuideTests') + '/' + method], log=evidence / 'tests.log')
         log = (evidence / 'tests.log').read_text()
         assert re.search(r'Executed 1 test, with 0 failures', log), 'Expected one actually executed acceptance test'
         assert '** TEST SUCCEEDED **' in log or '** TEST EXECUTE SUCCEEDED **' in log
-        container = Path(command(['xcrun', 'simctl', 'get_app_container', device, BUNDLE, 'data']).stdout.strip())
-        people_file = container / 'Documents/people.json'
-        assert people_file.is_file(), 'UI did not persist any profile lifecycle data'
-        people = json.loads(people_file.read_text())
-        assert people == [], 'UI deletion left profile records behind'
-        shutil.copyfile(people_file, evidence / 'people-after.json')
-        report.update(status='success', testsExecuted=1, failures=0, peopleAfterDeletion=0)
+        if args.suite == 'profile':
+            container = Path(command(['xcrun', 'simctl', 'get_app_container', device, BUNDLE, 'data']).stdout.strip())
+            people_file = container / 'Documents/people.json'
+            assert people_file.is_file(), 'UI did not persist any profile lifecycle data'
+            people = json.loads(people_file.read_text())
+            assert people == [], 'UI deletion left profile records behind'
+            shutil.copyfile(people_file, evidence / 'people-after.json')
+            report['peopleAfterDeletion'] = 0
+        report.update(status='success', testsExecuted=1, failures=0)
     except Exception as error:
         report['error'] = str(error)
         raise

@@ -1126,5 +1126,65 @@
     "before": "            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityValue",
     "after": "            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityLabel(\"当前命主\")\n            .accessibilityValue",
     "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "struct PalmHomeView: View {\n    @State private var quickPerson: Person?\n    var body: some View {\n        List {\n            Section {\n                PersonQuickBar(store: PeopleStore.shared) { p in quickPerson = p }\n                if let q = quickPerson {\n                    HStack(spacing: 6) {\n                        Image(systemName: \"person.fill\").foregroundStyle(Ky.qingdai)\n                        Text(\"当前命主：\".scriptConverted + (q.name.isEmpty ? \"未命名\" : q.name) + \"（测量记录按此人归档）\".scriptConverted).font(.caption).foregroundStyle(Ky.ink)\n                    }\n                }\n            }\n            NavigationLink { HandMeasureView(personName: quickPerson?.name ?? \"\") } label: {\n                Label(\"手相 · 测量与描线\".scriptConverted, systemImage: \"hand.raised\")\n            }\n            NavigationLink { FaceMeasureView(personName: quickPerson?.name ?? \"\") } label: {\n                Label(\"面相 · 三停校准\".scriptConverted, systemImage: \"face.smiling\")\n            }\n            NavigationLink { PalmRecordListView() } label: {\n                Label(\"测量记录（按人存档）\".scriptConverted, systemImage: \"archivebox\")\n            }\n            Text(\"用法：手相用掌心正对、光线均匀的照片；面相用正面自然光、无美颜的照片。测量是几何事实，判读为娱乐参考。\".scriptConverted)\n                .font(.caption).foregroundStyle(Ky.sub)\n        }\n        .navigationTitle(\"手相面相\".scriptConverted)\n        .navigationBarTitleDisplayMode(.inline)\n    }\n}\n\n",
+    "after": "struct PalmHomeView: View {\n    @EnvironmentObject private var peopleStore: PeopleStore\n    private var currentName: String { peopleStore.currentPerson?.name ?? \"\" }\n    var body: some View {\n        List {\n            Section {\n                PersonQuickBar(store: peopleStore) { _ in }\n            }\n            Section {\n                NavigationLink { PhysiognomyGuideView(kind: .hand) } label: {\n                    guideRow(\"道家手相图解\", detail: \"三大主线 · 掌丘 · 五指，点图看白话说明\", icon: \"hand.raised\")\n                }\n                .accessibilityIdentifier(\"physiognomy.open.hand\")\n                NavigationLink { PhysiognomyGuideView(kind: .face) } label: {\n                    guideRow(\"面相十二宫图解\", detail: \"十二宫 · 三停，认识位置与传统名称\", icon: \"face.smiling\")\n                }\n                .accessibilityIdentifier(\"physiognomy.open.face\")\n            } header: { Text(\"先读图解 · 无需照片\".scriptConverted) }\n            Section {\n                NavigationLink { HandMeasureView(personName: currentName) } label: {\n                    guideRow(\"手掌照片测量\", detail: \"选择照片 → 校正三线 → 保存测量记录\", icon: \"viewfinder\")\n                }\n                NavigationLink { FaceMeasureView(personName: currentName) } label: {\n                    guideRow(\"面部比例校准\", detail: \"选择正面照片 → 校正标线 → 查看三停比例\", icon: \"person.crop.square\")\n                }\n                NavigationLink { PalmRecordListView() } label: {\n                    Label(\"测量记录（按人存档）\".scriptConverted, systemImage: \"archivebox\")\n                }\n            } header: { Text(\"再做测量 · 手动核对\".scriptConverted) }\n            Section {\n                Text(\"图解是公共示意，不是对你外貌的判定。照片测量用于记录位置、比例与描线；请用掌心正对或正面自然光、无美颜的照片，识别后仍需手动核对。\".scriptConverted)\n                    .font(.subheadline).foregroundStyle(Ky.sub)\n            }\n        }\n        .scrollContentBackground(.hidden).background(Ky.bg)\n        .navigationTitle(\"手相面相\".scriptConverted)\n        .navigationBarTitleDisplayMode(.inline)\n    }\n    private func guideRow(_ title: String, detail: String, icon: String) -> some View {\n        HStack(alignment: .top, spacing: 12) {\n            Image(systemName: icon).font(.title2).foregroundStyle(Ky.qingdai)\n                .frame(width: 32, height: 44)\n            VStack(alignment: .leading, spacing: 6) {\n                Text(title.scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)\n                Text(detail.scriptConverted).font(.subheadline).foregroundStyle(Ky.sub)\n                    .fixedSize(horizontal: false, vertical: true)\n            }.padding(.vertical, 6)\n        }\n    }\n}\n\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "import UIKit\nimport Photos\n\n// MARK: - 海报编辑器基础版（G13，Insight 第 3 批；2026-11-09 精简：只留宋纸青黛一款）\n// 换字（标题／落款副标文案）＋换色（品牌色板内 4 档强调色）；款式选择器已随砍款去掉，编辑器只出宋纸青黛。\n// 导出走 PosterSheetView 同款渲染路径（ImageRenderer，scale 2.0，540pt 画布 → 1080 宽 PNG），\n// 文件名后缀走 PosterStyle.fileSuffix，与既有海报同规格；结论内容只取 PosterView 既有解盘，一字不动。\n// 入口：PosterSheetView 内「打开海报编辑器」按钮，以 .sheet 弹出（禁 fullScreenCover）。\n",
+    "after": "import UIKit\nimport Photos\n\n// MARK: - 海报编辑器（继承当前款式，支持标题／副标与品牌强调色编辑）\n// 玄夜保留原生配色；预测单与标准海报均支持副标覆盖。\n// 导出走 PosterSheetView 同款渲染路径（ImageRenderer，scale 2.0，540pt 画布 → 1080 宽 PNG），\n// 文件名后缀走 PosterStyle.fileSuffix，与既有海报同规格；结论内容只取 PosterView 既有解盘，一字不动。\n// 入口：PosterSheetView 内「打开海报编辑器」按钮，以 .sheet 弹出（禁 fullScreenCover）。\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "    }\n}\n\nstruct PosterEditorView: View {\n    let chart: BaziChart\n    let name: String\n",
+    "after": "    }\n}\n\nprivate struct PosterEditorRenderKey: Hashable {\n    let style: PosterStyle\n    let accent: PosterAccent\n    let title: String\n    let subtitle: String\n}\n\nstruct PosterEditorView: View {\n    let chart: BaziChart\n    let name: String\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "    @State private var appliedSubtitle: String = \"\"\n    @State private var previewImage: UIImage?\n    @State private var fileURL: URL?\n    @State private var renderKey: String\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()\n\n    init(chart: BaziChart, name: String) {\n        self.chart = chart\n        self.name = name\n        _renderKey = State(initialValue: PosterStyle.songQingdai.rawValue + \"-\" + PosterAccent.qingdai.rawValue + \"--\")\n    }\n\n    var body: some View {\n",
+    "after": "    @State private var appliedSubtitle: String = \"\"\n    @State private var previewImage: UIImage?\n    @State private var fileURL: URL?\n    @State private var renderKey: PosterEditorRenderKey\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()\n\n    init(chart: BaziChart, name: String, initialStyle: PosterStyle = .songQingdai) {\n        self.chart = chart\n        self.name = name\n        _style = State(initialValue: initialStyle)\n        _renderKey = State(initialValue: PosterEditorRenderKey(style: initialStyle, accent: .qingdai, title: \"\", subtitle: \"\"))\n    }\n\n    var body: some View {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                    TextField(\"落款副标（留空则用既有副标）\", text: $subtitleDraft)\n                        .textFieldStyle(.roundedBorder)\n                    Button(\"应用并预览\") {\n                        appliedTitle = titleDraft\n                        appliedSubtitle = subtitleDraft\n                        fileURL = nil\n",
+    "after": "                    TextField(\"落款副标（留空则用既有副标）\", text: $subtitleDraft)\n                        .textFieldStyle(.roundedBorder)\n                    Button(\"应用并预览\") {\n                        // 相同内容不会改变 task id；显式重渲染，避免清空后一直等待。\n                        if titleDraft == appliedTitle, subtitleDraft == appliedSubtitle {\n                            render()\n                            return\n                        }\n                        appliedTitle = titleDraft\n                        appliedSubtitle = subtitleDraft\n                        fileURL = nil\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "    }\n\n    private func refreshRenderKey() {\n        renderKey = \"\\(style.rawValue)-\\(accent.rawValue)-\\(appliedTitle)-\\(appliedSubtitle)\"\n    }\n\n    // 与 PosterSheetView.render 同款渲染路径（ImageRenderer 在主线程渲染，完成后展示缓存图）\n",
+    "after": "    }\n\n    private func refreshRenderKey() {\n        renderKey = PosterEditorRenderKey(style: style, accent: accent, title: appliedTitle, subtitle: appliedSubtitle)\n    }\n\n    // 与 PosterSheetView.render 同款渲染路径（ImageRenderer 在主线程渲染，完成后展示缓存图）\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "\n    var body: some View {\n        if style == .yuceDan {\n            YucedanPosterLayout(chart: chart, name: displayName, pal: pal)\n        } else {\n            standardPosterView\n        }\n",
+    "after": "\n    var body: some View {\n        if style == .yuceDan {\n            YucedanPosterLayout(chart: chart, name: displayName, pal: pal, subtitle: subtitleOverride)\n        } else {\n            standardPosterView\n        }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "let name: String\n// pal 必须是 fileprivate：PosterPalette 是 private 类型，internal 属性/初始化器会编译不过\nfileprivate let pal: PosterPalette\n\nfileprivate init(chart: BaziChart, name: String, pal: PosterPalette) {\nself.chart = chart\nself.name = name\nself.pal = pal\n}\n\n// MARK: - 数据（全部逐人现算；喜忌口径见 InterpretEngine.posterXiJi：扶抑初判＋调候优先）\n",
+    "after": "let name: String\n// pal 必须是 fileprivate：PosterPalette 是 private 类型，internal 属性/初始化器会编译不过\nfileprivate let pal: PosterPalette\nprivate let subtitle: String?\n\nfileprivate init(chart: BaziChart, name: String, pal: PosterPalette, subtitle: String? = nil) {\nself.chart = chart\nself.name = name\nself.pal = pal\nself.subtitle = subtitle\n}\n\n// MARK: - 数据（全部逐人现算；喜忌口径见 InterpretEngine.posterXiJi：扶抑初判＋调候优先）\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "VStack(alignment:.leading, spacing: 2) {\nText(\"三术合参 · 堪舆命理院 谨制\")\n.font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accent)\nText(\"据子平五典与天纪三合推演 · 传统命理研习参考\")\n.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)\n.fixedSize(horizontal: false, vertical: true)\nText(\"典籍依据：《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》\")\n",
+    "after": "VStack(alignment:.leading, spacing: 2) {\nText(\"三术合参 · 堪舆命理院 谨制\")\n.font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accent)\nText(subtitle.flatMap { $0.isEmpty ? nil : $0 } ?? \"据子平五典与天纪三合推演 · 传统命理研习参考\")\n.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)\n.fixedSize(horizontal: false, vertical: true)\nText(\"典籍依据：《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）\n                Button(\"打开海报编辑器（换字／换色）\") { showEditor = true }\n                    .buttonStyle(KyPrimaryButton())\n                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name) }\n\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n",
+    "after": "                // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）\n                Button(\"打开海报编辑器（换字／换色）\") { showEditor = true }\n                    .buttonStyle(KyPrimaryButton())\n                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name, initialStyle: style) }\n\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n",
+    "count": 1
   }
 ]

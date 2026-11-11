@@ -10,32 +10,53 @@ import CoreImage
 import MediaPipeTasksVision
 
 struct PalmHomeView: View {
-    @State private var quickPerson: Person?
+    @EnvironmentObject private var peopleStore: PeopleStore
+    private var currentName: String { peopleStore.currentPerson?.name ?? "" }
     var body: some View {
         List {
             Section {
-                PersonQuickBar(store: PeopleStore.shared) { p in quickPerson = p }
-                if let q = quickPerson {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.fill").foregroundStyle(Ky.qingdai)
-                        Text("当前命主：".scriptConverted + (q.name.isEmpty ? "未命名" : q.name) + "（测量记录按此人归档）".scriptConverted).font(.caption).foregroundStyle(Ky.ink)
-                    }
+                PersonQuickBar(store: peopleStore) { _ in }
+            }
+            Section {
+                NavigationLink { PhysiognomyGuideView(kind: .hand) } label: {
+                    guideRow("道家手相图解", detail: "三大主线 · 掌丘 · 五指，点图看白话说明", icon: "hand.raised")
                 }
+                .accessibilityIdentifier("physiognomy.open.hand")
+                NavigationLink { PhysiognomyGuideView(kind: .face) } label: {
+                    guideRow("面相十二宫图解", detail: "十二宫 · 三停，认识位置与传统名称", icon: "face.smiling")
+                }
+                .accessibilityIdentifier("physiognomy.open.face")
+            } header: { Text("先读图解 · 无需照片".scriptConverted) }
+            Section {
+                NavigationLink { HandMeasureView(personName: currentName) } label: {
+                    guideRow("手掌照片测量", detail: "选择照片 → 校正三线 → 保存测量记录", icon: "viewfinder")
+                }
+                NavigationLink { FaceMeasureView(personName: currentName) } label: {
+                    guideRow("面部比例校准", detail: "选择正面照片 → 校正标线 → 查看三停比例", icon: "person.crop.square")
+                }
+                NavigationLink { PalmRecordListView() } label: {
+                    Label("测量记录（按人存档）".scriptConverted, systemImage: "archivebox")
+                }
+            } header: { Text("再做测量 · 手动核对".scriptConverted) }
+            Section {
+                Text("图解是公共示意，不是对你外貌的判定。照片测量用于记录位置、比例与描线；请用掌心正对或正面自然光、无美颜的照片，识别后仍需手动核对。".scriptConverted)
+                    .font(.subheadline).foregroundStyle(Ky.sub)
             }
-            NavigationLink { HandMeasureView(personName: quickPerson?.name ?? "") } label: {
-                Label("手相 · 测量与描线".scriptConverted, systemImage: "hand.raised")
-            }
-            NavigationLink { FaceMeasureView(personName: quickPerson?.name ?? "") } label: {
-                Label("面相 · 三停校准".scriptConverted, systemImage: "face.smiling")
-            }
-            NavigationLink { PalmRecordListView() } label: {
-                Label("测量记录（按人存档）".scriptConverted, systemImage: "archivebox")
-            }
-            Text("用法：手相用掌心正对、光线均匀的照片；面相用正面自然光、无美颜的照片。测量是几何事实，判读为娱乐参考。".scriptConverted)
-                .font(.caption).foregroundStyle(Ky.sub)
         }
+        .scrollContentBackground(.hidden).background(Ky.bg)
         .navigationTitle("手相面相".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
+    }
+    private func guideRow(_ title: String, detail: String, icon: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon).font(.title2).foregroundStyle(Ky.qingdai)
+                .frame(width: 32, height: 44)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title.scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+                Text(detail.scriptConverted).font(.subheadline).foregroundStyle(Ky.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            }.padding(.vertical, 6)
+        }
     }
 }
 

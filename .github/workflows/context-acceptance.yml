@@ -2,7 +2,7 @@ name: Profile context acceptance
 
 on:
   push:
-    branches: ['acceptance/profile-context-*']
+    branches: ['acceptance/profile-context-*', 'feat/illustrated-guides-*']
   workflow_call:
   workflow_dispatch:
     inputs:

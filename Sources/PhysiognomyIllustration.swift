@@ -120,7 +120,8 @@ struct PhysiognomyIllustration: View {
         let selected = selectedID == marker.id
         return Button { onSelect(marker.id) } label: {
             Text(String(number))
-                .font(.body.monospacedDigit().weight(.bold))
+                .font(.system(size: 17, weight: .bold, design: .monospaced))
+                // Fixed diagram indices retain their geometry; the complete legend scales below.
                 .foregroundStyle(selected ? paper : ink)
                 .frame(minWidth: 36, minHeight: 36)
                 .background(selected ? ink : paper, in: Circle())
