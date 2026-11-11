@@ -1211,6 +1211,7 @@ struct PalmPosterSheetView: View {
         saveMessage = nil
         let img = store.image(of: record)
         let view = PalmPosterView(record: record, image: img)
+            .environment(\.colorScheme, .light).environment(\.dynamicTypeSize, .large)
         Task { @MainActor in
             // ImageRenderer and SwiftUI view rendering are MainActor-isolated.
             let renderer = ImageRenderer(content: view)
@@ -1223,6 +1224,8 @@ struct PalmPosterSheetView: View {
             let url = PalmPosterTemporaryFile.url(for: record.id)
             do {
                 try data.write(to: url, options: .atomic)
+                _ = try ReportExportArchive.save(data,
+                    fileName: "palm-poster-\(ReportBuilder.exportName(record.personName)).png")
                 previewImage = out
                 fileURL = url
             } catch {

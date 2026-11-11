@@ -222,7 +222,11 @@ enum ReportBuilder {
         let stamp = stampFormatter.string(from: Date())
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("命书-\(exportName(person.name))-\(tier.displayName)-\(stamp)-\(hashShort).pdf")
-        do { try data.write(to: url, options: .atomic); return url } catch { return nil }
+        do {
+            try data.write(to: url, options: .atomic)
+            _ = try ReportExportArchive.save(data, fileName: url.lastPathComponent)
+            return url
+        } catch { return nil }
     }
 
     /// 一行已排版的正文行（绘制时直接取 y 与 height，不再重算断页）

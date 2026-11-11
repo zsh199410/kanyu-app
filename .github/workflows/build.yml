@@ -54,6 +54,9 @@ jobs:
           test -n "$DEST"
           xcodebuild test -resultBundlePath build/TestResults.xcresult -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/tests.log
 
+      - name: Verify durable report archive from existing tests
+        run: python3 design/verify_archive_outputs.py
+
       - name: Build (unsigned)
         run: |
           set -o pipefail
@@ -88,7 +91,7 @@ jobs:
         run: |
           if [ -d build/TestResults.xcresult ]; then
             xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots
-            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt
+            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt build/report-samples build/archive-verification.json
           else
             echo "No test result bundle; screenshot export skipped."
           fi
@@ -103,6 +106,8 @@ jobs:
             build/commit.txt
             build/TestResults.xcresult
             build/screenshots
+            build/report-samples
+            build/archive-verification.json
           if-no-files-found: warn
           retention-days: 30
 

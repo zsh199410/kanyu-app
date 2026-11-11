@@ -80,7 +80,7 @@ struct V6ReadingTopicView: View {
                                 if let time = item.timeRange, !time.isEmpty {
                                     Label(time, systemImage: "calendar").font(.footnote).foregroundStyle(Ky.sub)
                                 }
-                                if let advice = item.advice, !advice.isEmpty {
+                                if let advice = item.advice, !advice.isEmpty, !item.conclusion.contains(advice) {
                                     Text(advice).font(.body).lineSpacing(5).textSelection(.enabled)
                                 }
                                 DisclosureGroup("依据与原文") {

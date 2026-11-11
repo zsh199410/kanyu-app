@@ -47,6 +47,8 @@ struct PosterEditorView: View {
     @State private var fileURL: URL?
     @State private var renderKey: String
     @State private var saveMessage: String?
+    @State private var renderError: String?
+    @State private var renderRequestID = UUID()
 
     init(chart: BaziChart, name: String) {
         self.chart = chart
@@ -104,7 +106,9 @@ struct PosterEditorView: View {
                         .font(.caption)
                         .foregroundStyle(Ky.sub)
 
-                    if let img = previewImage {
+                    if let renderError {
+                        V6ExportFailureCard(message: renderError, retry: render)
+                    } else if let img = previewImage {
                         Image(uiImage: img)
                             .resizable()
                             .scaledToFit()
@@ -125,7 +129,10 @@ struct PosterEditorView: View {
                         }
                         .buttonStyle(KyPrimaryButton())
                         Button {
-                            PosterPhotoSaver.save(img) { saveMessage = $0 }
+                            let savingKey = renderKey
+                            PosterPhotoSaver.save(img) { message in
+                                if renderKey == savingKey { saveMessage = message }
+                            }
                         } label: {
                             Label("保存到相册", systemImage: "photo.badge.plus")
                                 .font(.headline)
@@ -160,30 +167,33 @@ struct PosterEditorView: View {
     }
 
     // 与 PosterSheetView.render 同款渲染路径（ImageRenderer 在主线程渲染，完成后展示缓存图）
-    private func render() {
-        let chart = chart
-        let name = name
-        let style = style
-        let accent = accent
-        let appliedTitle = appliedTitle
-        let appliedSubtitle = appliedSubtitle
-        let expectedKey = renderKey
+    @MainActor private func render() {
+        let chart = chart, name = name, style = style, accent = accent
+        let title = appliedTitle, subtitle = appliedSubtitle, expectedKey = renderKey
+        let request = UUID()
+        renderRequestID = request
+        fileURL = nil; previewImage = nil; renderError = nil; saveMessage = nil
         Task { @MainActor in
-            let titleValue: String? = appliedTitle.isEmpty ? nil : appliedTitle
-            let subtitleValue: String? = appliedSubtitle.isEmpty ? nil : appliedSubtitle
-            let view = PosterView(chart: chart, name: name, style: style, titleOverride: titleValue, subtitleOverride: subtitleValue, accentOverride: style == .xuanye ? nil : accent.color)
-            let renderer = ImageRenderer(content: view.environment(\.colorScheme, .light))
+            guard self.renderRequestID == request else { return }
+            let view = PosterView(chart: chart, name: name, style: style,
+                titleOverride: title.isEmpty ? nil : title,
+                subtitleOverride: subtitle.isEmpty ? nil : subtitle,
+                accentOverride: style == .xuanye ? nil : accent.color)
+            let scheme: ColorScheme = style == .xuanye ? .dark : .light
+            let renderer = ImageRenderer(content: view.environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
             renderer.scale = 2.0
-            guard let img = renderer.uiImage, let data = img.pngData() else { return }
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
-            do { try data.write(to: url, options: .atomic) }
-            catch {
-                saveMessage = "海报保存失败，请检查剩余空间后重试。"
+            guard let img = renderer.uiImage, let data = img.pngData() else {
+                renderError = "海报生成失败，请重试。"
                 return
             }
-            guard self.renderKey == expectedKey else { return }
-            previewImage = img
-            fileURL = url
+            let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png"
+            do {
+                let url = try ReportExportArchive.save(data, fileName: fileName)
+                guard self.renderRequestID == request, self.renderKey == expectedKey else { return }
+                previewImage = img; fileURL = url
+            } catch {
+                renderError = "海报写入失败，请检查剩余空间后重试。"
+            }
         }
     }
 }

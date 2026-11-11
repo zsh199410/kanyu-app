@@ -1367,6 +1367,8 @@ struct PosterSheetView: View {
     @State private var style: PosterStyle = .songQingdai
     @State private var showEditor = false
     @State private var saveMessage: String?
+    @State private var renderError: String?
+    @State private var renderRequestID = UUID()
 
     var body: some View {
         ScrollView {
@@ -1394,7 +1396,9 @@ struct PosterSheetView: View {
                 }
 
                 // 预览只展示缓存图片：海报矢量树绝不直接进 ScrollView（每帧重算 InterpretEngine.interpret 与 Canvas 重绘是粘滞主因之一）
-                if let img = previewImage {
+                if let renderError {
+                    V6ExportFailureCard(message: renderError, retry: render)
+                } else if let img = previewImage {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFit()
@@ -1412,7 +1416,10 @@ struct PosterSheetView: View {
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
-                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                        let savingStyle = style
+                        PosterPhotoSaver.save(img) { message in
+                            if style == savingStyle { saveMessage = message }
+                        }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
                             .frame(maxWidth: .infinity, minHeight: 44)
@@ -1436,24 +1443,29 @@ struct PosterSheetView: View {
     }
 
     // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图
-    private func render() {
+    @MainActor private func render() {
         let chart = chart, name = name, style = style
+        let request = UUID()
+        renderRequestID = request
+        fileURL = nil; previewImage = nil; renderError = nil; saveMessage = nil
         Task { @MainActor in
-            // P3：海报内含 V6 Ky 组件（预测单的 KyMetricCard／KyHomeSection）时，Ky token 须按浅色定版渲染，
-            // 不随系统深色走；海报自有 palette 为固定色，不受此环境值影响。
-            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style).environment(\.colorScheme, .light))
+            guard self.renderRequestID == request else { return }
+            let scheme: ColorScheme = style == .xuanye ? .dark : .light
+            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style)
+                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
             renderer.scale = 2.0
-            guard let img = renderer.uiImage, let data = img.pngData() else { return }
-            let suffix = style.fileSuffix
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(suffix).png")
-            do { try data.write(to: url, options: .atomic) }
-            catch {
-                saveMessage = "海报保存失败，请检查剩余空间后重试。"
+            guard let img = renderer.uiImage, let data = img.pngData() else {
+                renderError = "海报生成失败，请重试。"
                 return
             }
-            guard self.style == style else { return }
-            previewImage = img
-            fileURL = url
+            let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png"
+            do {
+                let url = try ReportExportArchive.save(data, fileName: fileName)
+                guard self.renderRequestID == request, self.style == style else { return }
+                previewImage = img; fileURL = url
+            } catch {
+                renderError = "海报写入失败，请检查剩余空间后重试。"
+            }
         }
     }
 }
@@ -1786,7 +1798,7 @@ struct ZiweiPosterView: View {
 struct ZiweiPosterSheetView: View {
     let chart: ZiweiChart
     let name: String
-    @State private var renderFailed = false
+    @State private var renderError: String?
     @State private var style: PosterStyle = .songQingdai
     @State private var previewImage: UIImage?
     @State private var saveMessage: String?
@@ -1794,6 +1806,7 @@ struct ZiweiPosterSheetView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
+                V6PosterSkinPicker(style: $style)
                 // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
                 HStack(spacing: 10) {
                     KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
@@ -1809,9 +1822,8 @@ struct ZiweiPosterSheetView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
                     Group {
-                        if renderFailed {
-                            Button("海报生成失败，点此重试") { render() }
-                                .buttonStyle(.bordered)
+                        if let renderError {
+                            V6ExportFailureCard(message: renderError, retry: render)
                         } else {
                             ProgressView("正在生成海报…")
                         }
@@ -1825,7 +1837,10 @@ struct ZiweiPosterSheetView: View {
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
-                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                        let savingStyle = style
+                        PosterPhotoSaver.save(img) { message in
+                            if style == savingStyle { saveMessage = message }
+                        }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
                             .frame(maxWidth: .infinity, minHeight: 44)
@@ -1845,15 +1860,26 @@ struct ZiweiPosterSheetView: View {
         .background(Ky.bg)
         .navigationTitle("紫微命盘海报")
         .navigationBarTitleDisplayMode(.inline)
-        .task { render() }
+        .task(id: style) { render() }
     }
 
     @MainActor private func render() {
-        renderFailed = false
-        let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style))
+        previewImage = nil; renderError = nil; saveMessage = nil
+        let scheme: ColorScheme = style == .xuanye ? .dark : .light
+        let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style)
+            .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
         renderer.scale = 2.0
-        previewImage = renderer.uiImage
-        renderFailed = previewImage == nil
+        guard let image = renderer.uiImage, let data = image.pngData() else {
+            renderError = "海报生成失败，请重试。"
+            return
+        }
+        do {
+            _ = try ReportExportArchive.save(data,
+                fileName: "ziwei-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
+            previewImage = image
+        } catch {
+            renderError = "海报写入失败，请检查剩余空间后重试。"
+        }
     }
 }
 
@@ -2098,7 +2124,7 @@ struct HeCanPosterSheetView: View {
     let ziwei: ZiweiChart
     let name: String
     var palmLines: [String] = []
-    @State private var renderFailed = false
+    @State private var renderError: String?
     @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
     @State private var saveMessage: String?
@@ -2106,6 +2132,7 @@ struct HeCanPosterSheetView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
+                V6PosterSkinPicker(style: $style)
                 // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
                 HStack(spacing: 10) {
                     KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
@@ -2122,9 +2149,8 @@ struct HeCanPosterSheetView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
                     Group {
-                        if renderFailed {
-                            Button("海报生成失败，点此重试") { render() }
-                                .buttonStyle(.bordered)
+                        if let renderError {
+                            V6ExportFailureCard(message: renderError, retry: render)
                         } else {
                             ProgressView("正在生成海报…")
                         }
@@ -2138,7 +2164,10 @@ struct HeCanPosterSheetView: View {
                     }
                     .buttonStyle(KyPrimaryButton())
                     Button {
-                        PosterPhotoSaver.save(img) { saveMessage = $0 }
+                        let savingStyle = style
+                        PosterPhotoSaver.save(img) { message in
+                            if style == savingStyle { saveMessage = message }
+                        }
                     } label: {
                         Label("保存到相册", systemImage: "photo.badge.plus")
                             .frame(maxWidth: .infinity, minHeight: 44)
@@ -2158,14 +2187,25 @@ struct HeCanPosterSheetView: View {
         .background(Ky.bg)
         .navigationTitle("合参海报")
         .navigationBarTitleDisplayMode(.inline)
-        .task { render() }
+        .task(id: style) { render() }
     }
 
     @MainActor private func render() {
-        renderFailed = false
-        let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style))
+        previewImage = nil; renderError = nil; saveMessage = nil
+        let scheme: ColorScheme = style == .xuanye ? .dark : .light
+        let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)
+            .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
         renderer.scale = 2.0
-        previewImage = renderer.uiImage
-        renderFailed = previewImage == nil
+        guard let image = renderer.uiImage, let data = image.pngData() else {
+            renderError = "海报生成失败，请重试。"
+            return
+        }
+        do {
+            _ = try ReportExportArchive.save(data,
+                fileName: "hecan-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
+            previewImage = image
+        } catch {
+            renderError = "海报写入失败，请检查剩余空间后重试。"
+        }
     }
 }
