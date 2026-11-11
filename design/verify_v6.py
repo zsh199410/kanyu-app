@@ -39,6 +39,9 @@ def refine_home_v6(text):
     after = '        return AnyView(\n            HStack(spacing: 10) {\n                Image(systemName: "person.crop.circle.badge.plus").foregroundStyle(Ky.gold)\n                Text("建档后可查看命主专属的今日解读。".scriptConverted)\n                    .font(.subheadline).foregroundStyle(Ky.sub)\n            }\n            .frame(maxWidth: .infinity, alignment: .leading)\n            .kyCard()\n        )'
     assert text.count(before) == 1, "Home UI anchor drift"
     text = text.replace(before, after)
+    before = '                VStack(alignment: .leading, spacing: 10) {\n                    KySectionTitle(title: "勘察案件", trailing: "现场记录")\n                    casesSection\n                }'
+    assert text.count(before) == 1, "Survey UI anchor drift"
+    text = text.replace(before, '                casesSection')
     return text
 
 def home_layout_v6(text):

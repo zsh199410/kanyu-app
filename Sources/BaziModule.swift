@@ -1258,7 +1258,7 @@ Text(text.scriptConverted).font(.caption).foregroundStyle(Ky.ink).fixedSize(hori
                         VStack(alignment: .leading, spacing: 4) {
                             Text(names[idx].scriptConverted).font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             HStack(spacing: 0) {
-                                Text("天干：\(stem)（\(KyV2.element(ofChar: stem)) · ")
+                                Text("天干：\(String(stem))（\(KyV2.element(ofChar: stem)) · ")
                                 TermButton(term: chart.stemShiShen[idx], display: chart.stemShiShen[idx])
                                 Text("）")
                             }

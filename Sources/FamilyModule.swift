@@ -162,7 +162,7 @@ struct FamilyChartView: View {
                 Text("\(p.name) · 四柱 \(ch.pillars.joined(separator: " "))").font(.system(.subheadline, design: .serif)).fontWeight(.semibold).foregroundStyle(Ky.ink)
                 EvidenceChainView(conclusion: "日主\(ch.rizhu) · \(xj.level) · 喜\(xiText.isEmpty ? "流通" : xiText) · 忌\(jiText.isEmpty ? "待定" : jiText)。",
                                   links: [("盘面", "四柱 \(ch.pillars.joined(separator: " "))")])
-                Text("\(year)年 \(rep.gz)年 · \(dayunText) · \(rep.level)：\((rep.lines.first ?? "").scriptConverted)")
+                Text("\(String(year))年 \(rep.gz)年 · \(dayunText) · \(rep.level)：\((rep.lines.first ?? "").scriptConverted)")
                     .font(.callout).foregroundStyle(Ky.ink)
             }
             .kyCard()
@@ -279,7 +279,7 @@ struct FamilyPosterView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(p.name) · \(ch.pillars.joined(separator: " "))").font(.headline).foregroundStyle(Ky.ink)
                     Text("日主\(ch.rizhu) · \(xj.level) · 喜\(xj.xi.map { wxNames[$0] }.joined(separator: "、"))").font(.callout).foregroundStyle(Ky.ink)
-                    Text("\(year)年 \(rep.gz)年 · \(rep.level)：\((rep.lines.first ?? "").scriptConverted)").font(.callout).foregroundStyle(Ky.ink)
+                    Text("\(String(year))年 \(rep.gz)年 · \(rep.level)：\((rep.lines.first ?? "").scriptConverted)").font(.callout).foregroundStyle(Ky.ink)
                 }
                 .padding(12)
                 .background(Ky.card)

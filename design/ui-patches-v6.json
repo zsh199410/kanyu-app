@@ -508,5 +508,53 @@
     "before": "            build/screenshots\n",
     "after": "            build/screenshots\n            build/report-samples\n            build/archive-verification.json\n",
     "count": 1
+  },
+  {
+    "path": "Sources/BlindTestModule.swift",
+    "before": "\\(q.year) 年",
+    "after": "\\(String(q.year)) 年",
+    "count": 1
+  },
+  {
+    "path": "Sources/BlindTestModule.swift",
+    "before": "\\(item.year) 年",
+    "after": "\\(String(item.year)) 年",
+    "count": 1
+  },
+  {
+    "path": "Sources/AnnualReportModule.swift",
+    "before": "Text(\"\\(r.year) · \\(r.gz)年\")",
+    "after": "Text(\"\\(String(r.year)) · \\(r.gz)年\").monospacedDigit()",
+    "count": 1
+  },
+  {
+    "path": "Sources/FamilyModule.swift",
+    "before": "Text(\"\\(year)年 \\(rep.gz)年",
+    "after": "Text(\"\\(String(year))年 \\(rep.gz)年",
+    "count": 2
+  },
+  {
+    "path": "Sources/BaziModule.swift",
+    "before": "Text(\"天干：\\(stem)（\\(KyV2.element(ofChar: stem)) · \")",
+    "after": "Text(\"天干：\\(String(stem))（\\(KyV2.element(ofChar: stem)) · \")",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "Text(\"\\(p.stem)\\(ZiweiCore.DZ[p.branch])\")",
+    "after": "Text(\"\\(String(p.stem))\\(String(ZiweiCore.DZ[p.branch]))\")",
+    "count": 2
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "\\(chart.monthPillar.last ?? \"—\")月",
+    "after": "\\(String(chart.monthPillar.last ?? \"—\"))月",
+    "count": 2
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "Text(\"\\(p.stem)\\(ZiweiCore.DZ[p.branch])\")",
+    "after": "Text(\"\\(String(p.stem))\\(String(ZiweiCore.DZ[p.branch]))\")",
+    "count": 1
   }
 ]

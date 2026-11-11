@@ -83,7 +83,7 @@ struct AnnualReportView: View {
                     let rAge = r.year - chart.birthYear
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
-                            Text("\(r.year) · \(r.gz)年")
+                            Text("\(String(r.year)) · \(r.gz)年").monospacedDigit()
                                 .font(.system(.headline, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                             if rAge >= 0 {
                                 Text("\(rAge) 岁").font(KyV2.tabular(12)).foregroundStyle(Ky.sub)

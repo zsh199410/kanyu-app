@@ -261,7 +261,7 @@ struct BlindTestView: View {
         } else {
             let q = questions[currentIndex]
             VStack(alignment: .leading, spacing: 10) {
-                Text("第 \(currentIndex + 1) / \(questions.count) 题 · \(q.year) 年")
+                Text("第 \(currentIndex + 1) / \(questions.count) 题 · \(String(q.year)) 年")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(Ky.gold)
@@ -414,7 +414,7 @@ struct BlindTestView: View {
                     Text(item.question.scriptConverted)
                         .font(.subheadline)
                         .foregroundStyle(Ky.ink)
-                    Text("命主：\(item.person_name) · \(item.year) 年")
+                    Text("命主：\(item.person_name) · \(String(item.year)) 年")
                         .font(.caption)
                         .foregroundStyle(Ky.sub)
                     Text("你的答案：\(yourText(item))　正确答案：\(item.correct_answers.joined(separator: "、"))")

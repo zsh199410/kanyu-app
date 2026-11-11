@@ -848,7 +848,7 @@ Text(yueLingText)
 .fixedSize(horizontal: false, vertical: true)
 .frame(maxWidth: .infinity, alignment: .leading)
 .lineLimit(nil)
-Text("调候用神（《穷通宝鉴》）：\(tiaoHouNames.isEmpty ? "—" : tiaoHouNames)（\(chart.monthPillar.last ?? "—")月，寒暖燥湿查表，调候优先）")
+Text("调候用神（《穷通宝鉴》）：\(tiaoHouNames.isEmpty ? "—" : tiaoHouNames)（\(String(chart.monthPillar.last ?? "—"))月，寒暖燥湿查表，调候优先）")
 .font(.system(size: 10.5, design:.serif)).foregroundStyle(pal.main)
 .fixedSize(horizontal: false, vertical: true)
 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1113,7 +1113,7 @@ private var xiJiBasis: String {
 if xj.level == "中和" { return "；同党异党接近，贵在流通，不预设固定喜忌"}
 let thNames = xj.tiaoHou.map { Self.wxNames[$0]}.joined(separator: "、")
 if thNames.isEmpty { return ""}
-return "；调候喜\(thNames)（\(chart.monthPillar.last ?? "—")月，调候优先）"
+return "；调候喜\(thNames)（\(String(chart.monthPillar.last ?? "—"))月，调候优先）"
 }
 /// 神煞全表（按柱；太极贵人已入 BaziTables.shenSha）
 private var shenShaList: [[String]] { BaziTables.shenSha(chart) }
@@ -1483,7 +1483,7 @@ private struct ZiweiMiniCell: View {
                 Text(p.name)
                     .font(.system(size: 11, weight: .bold, design: .serif))
                     .foregroundStyle(isMing ? pCin : pal.main)
-                Text("\(p.stem)\(ZiweiCore.DZ[p.branch])")
+                Text("\(String(p.stem))\(String(ZiweiCore.DZ[p.branch]))")
                     .font(.system(size: 8.5)).foregroundStyle(pal.sub)
                 if p.isBody {
                     Text("身").font(.system(size: 8, weight: .bold)).foregroundStyle(pal.accentHi)

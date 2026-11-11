@@ -2048,10 +2048,7 @@ struct KanyuWorkbenchTabView: View {
                 KyWorkspaceHeading(title: "罗盘与现场勘察", detail: "从坐向测量或户型分析开始，在案件中整理现场记录。", icon: "safari")
                     .accessibilityIdentifier("workspace.survey")
                 heroCard
-                VStack(alignment: .leading, spacing: 10) {
-                    KySectionTitle(title: "勘察案件", trailing: "现场记录")
-                    casesSection
-                }
+                casesSection
                 VStack(alignment: .leading, spacing: 10) {
                     KySectionTitle(title: "罗盘工作区", trailing: "二十四山")
                     compassToolCard
