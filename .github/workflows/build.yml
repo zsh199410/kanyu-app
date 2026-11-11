@@ -28,7 +28,9 @@ jobs:
           fetch-depth: 0
 
       - name: Verify protected engines and design contracts
-        run: python3 design/verify_v6.py
+        run: |
+          python3 design/verify_v6.py
+          python3 design/verify_web_source.py
 
       - name: Select Xcode 26 (iOS 26 SDK / Liquid Glass)
         run: |
@@ -86,6 +88,7 @@ jobs:
         run: |
           if [ -d build/TestResults.xcresult ]; then
             xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots
+            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt
           else
             echo "No test result bundle; screenshot export skipped."
           fi
@@ -109,7 +112,9 @@ jobs:
         with:
           tag_name: build-${{ github.run_number }}
           name: 三术合参 未签名 IPA（第 ${{ github.run_number }} 次构建）
-          body: 未签名 IPA：用开发者证书签名后安装（全能签 / ESign / Feather 等）。数据包格式见仓库 README。
+          prerelease: ${{ github.ref != 'refs/heads/main' }}
+          body: 未签名 IPA：自行签名后安装。非 main 分支为预览版本；UI-evidence.zip 含本次测试截图、日志与提交记录。
           files: |
             Kanyu-unsigned.ipa
             Kanyu-unsigned.ipa.sha256
+            UI-evidence.zip

@@ -160,5 +160,29 @@
     "before": "      - uses: actions/checkout@v4\n",
     "after": "      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n\n      - name: Verify protected engines and design contracts\n        run: python3 design/verify_v6.py\n",
     "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "        run: python3 design/verify_v6.py\n",
+    "after": "        run: |\n          python3 design/verify_v6.py\n          python3 design/verify_web_source.py\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots\n",
+    "after": "            xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots\n            zip -qry UI-evidence.zip build/screenshots build/tests.log build/commit.txt\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "          body: 未签名 IPA：用开发者证书签名后安装（全能签 / ESign / Feather 等）。数据包格式见仓库 README。\n",
+    "after": "          prerelease: ${{ github.ref != 'refs/heads/main' }}\n          body: 未签名 IPA：自行签名后安装。非 main 分支为预览版本；UI-evidence.zip 含本次测试截图、日志与提交记录。\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "          files: |\n            Kanyu-unsigned.ipa\n            Kanyu-unsigned.ipa.sha256\n",
+    "after": "          files: |\n            Kanyu-unsigned.ipa\n            Kanyu-unsigned.ipa.sha256\n            UI-evidence.zip\n",
+    "count": 1
   }
 ]
