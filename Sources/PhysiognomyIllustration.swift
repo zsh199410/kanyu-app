@@ -37,14 +37,17 @@ struct PhysiognomyIllustration: View {
                     Canvas { context, size in
                         context.scaleBy(x: size.width / 320, y: size.height / 400)
                         drawBorder(in: &context)
-                        if isHand { drawHand(in: &context) } else { drawFace(in: &context) }
+                        if isHand { drawHand(in: &context) } else {
+                            drawFace(in: &context)
+                            drawFaceLeaders(in: &context)
+                        }
                     }
                     .accessibilityHidden(true)
                     .allowsHitTesting(false)
                     ForEach(Array(markers.enumerated()), id: \.element.id) { index, marker in
                         markerButton(marker, number: index + 1)
-                            .position(x: position(marker.x, length: geometry.size.width),
-                                      y: position(marker.y, length: geometry.size.height))
+                            .position(x: position(isHand ? marker.x : faceMarkerPosition(marker).x, length: geometry.size.width),
+                                      y: position(isHand ? marker.y : faceMarkerPosition(marker).y, length: geometry.size.height))
                     }
                 }
             }
@@ -61,13 +64,51 @@ struct PhysiognomyIllustration: View {
                 }
                 .font(.subheadline)
             }
-            Text(isHand ? "手掌线条为示意，供认识传统名称与位置。" : "古人正面线描为中性示意，供认识传统部位名称。")
+            Text((isHand ? "手掌线条为示意，供认识传统名称与位置。" : "古人正面线描为中性示意，供认识传统部位名称。").scriptConverted)
                 .font(.footnote)
                 .foregroundStyle(ink)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(isHand ? "手掌部位图解，拇指在左" : "面部部位图解，人物正对")
+        .accessibilityLabel((isHand ? "手掌部位图解，拇指在左" : "面部部位图解，人物正对").scriptConverted)
+    }
+
+    /// Side rails keep the face readable. Midline points use the less populated rail.
+    /// Marker numbering always follows the caller's original order.
+    private var faceRails: (left: [PhysiognomyMarker], right: [PhysiognomyMarker]) {
+        var left = markers.filter { $0.x < 0.48 }
+        var right = markers.filter { $0.x > 0.52 }
+        for marker in markers.filter({ $0.x >= 0.48 && $0.x <= 0.52 }) {
+            if left.count <= right.count { left.append(marker) } else { right.append(marker) }
+        }
+        let ordered: (PhysiognomyMarker, PhysiognomyMarker) -> Bool = {
+            $0.y == $1.y ? $0.id < $1.id : $0.y < $1.y
+        }
+        return (left.sorted(by: ordered), right.sorted(by: ordered))
+    }
+
+    private func faceMarkerPosition(_ marker: PhysiognomyMarker) -> CGPoint {
+        let rails = faceRails
+        let isLeft = rails.left.contains { $0.id == marker.id }
+        let rail = isLeft ? rails.left : rails.right
+        let index = rail.firstIndex { $0.id == marker.id } ?? 0
+        let y: CGFloat = rail.count < 2 ? 0.5 : 0.1 + 0.8 * CGFloat(index) / CGFloat(rail.count - 1)
+        return CGPoint(x: isLeft ? 0.075 : 0.925, y: y)
+    }
+
+    private func drawFaceLeaders(in context: inout GraphicsContext) {
+        for marker in markers {
+            let anchor = faceMarkerPosition(marker)
+            let target = CGPoint(x: position(marker.x, length: 320), y: position(marker.y, length: 400))
+            let selected = selectedID == marker.id
+            var leader = Path()
+            leader.move(to: CGPoint(x: anchor.x < 0.5 ? 45 : 275, y: anchor.y * 400))
+            leader.addLine(to: target)
+            stroke(leader, in: &context, color: (selected ? cinnabar : ink).opacity(selected ? 0.85 : 0.42), width: selected ? 1.4 : 0.8)
+            let diameter: CGFloat = selected ? 6 : 4
+            context.fill(Path(ellipseIn: CGRect(x: target.x - diameter / 2, y: target.y - diameter / 2,
+                                               width: diameter, height: diameter)), with: .color(cinnabar))
+        }
     }
 
     private func position(_ value: CGFloat, length: CGFloat) -> CGFloat {
@@ -88,8 +129,9 @@ struct PhysiognomyIllustration: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("图中第\(number)处，\(marker.label)")
-        .accessibilityHint("显示该部位的文字说明")
+        .accessibilityIdentifier("physiognomy.marker.\(marker.id)")
+        .accessibilityLabel("图中第\(number)处，\(marker.label)".scriptConverted)
+        .accessibilityHint("显示该部位的文字说明".scriptConverted)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
         .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: selected)
     }
@@ -105,7 +147,7 @@ struct PhysiognomyIllustration: View {
             Path { path in path.move(to: CGPoint(x: 0, y: 5)); path.addLine(to: CGPoint(x: 23, y: 5)) }
                 .stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: dash))
                 .frame(width: 24, height: 10).accessibilityHidden(true)
-            Text(label).foregroundStyle(ink).fixedSize(horizontal: false, vertical: true)
+            Text(label.scriptConverted).foregroundStyle(ink).fixedSize(horizontal: false, vertical: true)
         }
     }
 
