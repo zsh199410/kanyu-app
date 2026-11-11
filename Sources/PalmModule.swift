@@ -782,6 +782,9 @@ struct FaceMeasureView: View {
                 let ratios = fiveEyesRatios(points: fixed)
                 let hairY = fixed[10].y
                 let corrected = appliedRoll.flatMap { r in regions.flatMap { poseCorrectedFaceMarks(regions: $0, roll: r) } }
+                let presentationPose = pose
+                let presentationRoll = appliedRoll
+                let presentationRollSource = rollSource
                 await MainActor.run {
                     if let r = ratios { fiveEyes = r }
                     marks[0] = Double(hairY); markAuto[0] = true; hairEstimated = true
@@ -799,10 +802,10 @@ struct FaceMeasureView: View {
                             markAuto[3] = true
                         }
                     }
-                    if let p = pose, let ar = appliedRoll {
+                    if let p = presentationPose, let ar = presentationRoll {
                         headPose = p
-                        poseNote = poseSummaryText(pose: p, appliedRoll: ar, rollSource: rollSource)
-                    } else if let ar = appliedRoll {
+                        poseNote = poseSummaryText(pose: p, appliedRoll: ar, rollSource: presentationRollSource)
+                    } else if let ar = presentationRoll {
                         poseNote = "头姿矩阵未输出，已按眼线校正侧倾 \(Int((ar * 180 / Double.pi).rounded()))°"
                     }
                 }
@@ -1132,26 +1135,44 @@ struct PalmPosterView: View {
     }
 }
 
+enum PalmPosterTemporaryFile {
+    /// A fresh filename per render prevents concurrent sheets and retries from overwriting one another.
+    static func url(for recordID: UUID, directory: URL = FileManager.default.temporaryDirectory) -> URL {
+        directory.appendingPathComponent("palm-poster-\(recordID.uuidString)-\(UUID().uuidString).png")
+    }
+}
+
 struct PalmPosterSheetView: View {
     let record: PalmRecord
     @ObservedObject var store: PalmRecordStore
     @State private var fileURL: URL?
     @State private var previewImage: UIImage?
     @State private var saveMessage: String?
+    @State private var renderError: String?
+    @State private var isRendering = false
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                if let img = previewImage {
+                if let renderError {
+                    VStack(spacing: 12) {
+                        Label(renderError, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(Ky.cinnabar)
+                            .multilineTextAlignment(.center)
+                        Button("重新生成海报") { render() }
+                            .buttonStyle(KyPrimaryButton())
+                    }
+                    .accessibilityElement(children: .contain)
+                } else if let img = previewImage {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
-                } else {
+                } else if isRendering {
                     KyLoadingState(title: "正在渲染鉴定海报…")
                 }
-                if fileURL != nil, let img = previewImage {
+                if renderError == nil, fileURL != nil, let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview("手相面相鉴定海报", image: Image(uiImage: img))) {
                         Label("保存 / 分享鉴定海报（1080宽 · 自适应长图）".scriptConverted, systemImage: "square.and.arrow.down")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -1179,18 +1200,33 @@ struct PalmPosterSheetView: View {
         .task { render() }
     }
     private func render() {
+        guard !isRendering else { return }
+        isRendering = true
+        // Clear any previous successful share target before starting another render.
+        fileURL = nil
+        previewImage = nil
+        renderError = nil
+        saveMessage = nil
         let img = store.image(of: record)
         let view = PalmPosterView(record: record, image: img)
-        Task.detached(priority: .userInitiated) {
+        Task { @MainActor in
+            // ImageRenderer and SwiftUI view rendering are MainActor-isolated.
             let renderer = ImageRenderer(content: view)
             renderer.scale = 2.0
-            guard let out = renderer.uiImage, let data = out.pngData() else { return }
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("palm-poster-\(record.id.uuidString).png")
-            try? data.write(to: url, options: .atomic)
-            await MainActor.run {
+            guard let out = renderer.uiImage, let data = out.pngData() else {
+                renderError = "海报生成失败，请重试；没有保存任何文件。"
+                isRendering = false
+                return
+            }
+            let url = PalmPosterTemporaryFile.url(for: record.id)
+            do {
+                try data.write(to: url, options: .atomic)
                 previewImage = out
                 fileURL = url
+            } catch {
+                renderError = "海报写入失败，请检查设备剩余空间后重试。"
             }
+            isRendering = false
         }
     }
 }
