@@ -18,9 +18,13 @@ enum BackupExportPath {
         ["people.json", "forecasts.json", "palm_records.json", "index.json",
          "verify-marks-v2.json", "verify-marks-v1-unassigned.json", "verify-marks.json"]
             .contains { name in
-                let path = directory.appendingPathComponent(name).path
-                var isDirectory: ObjCBool = false
-                return fileManager.fileExists(atPath: path, isDirectory: &isDirectory) && !isDirectory.boolValue
+                let url = directory.appendingPathComponent(name)
+                // Legacy archives may have no manifest: never follow a symlink
+                // outside the extracted payload when deciding what to restore.
+                guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]) else {
+                    return false
+                }
+                return values.isRegularFile == true && values.isSymbolicLink != true
             }
     }
 
