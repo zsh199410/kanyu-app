@@ -1,0 +1,82 @@
+{
+  "build": "300",
+  "version": "4.6",
+  "commit": "bb3c53b83df0e889eed66760c05bd937c0d14e1c",
+  "ipaBytes": 26974613,
+  "sha256": "272442a8fb679f688e3ce4d18d799712f660f0e134469e1e074da12cd1ae567c",
+  "zipCRC": "pass",
+  "releaseExcludesQALaunchFlag": true,
+  "unitTests": 109,
+  "uiSmokeTests": 1,
+  "failures": 0,
+  "pdfReports": [
+    {
+      "tier": "简洁",
+      "pages": 4,
+      "contentHash": "4ea855c3c7433d3c19806baf69335e583957b26ce6541ba44e5dc9aee697794d",
+      "orderedBodyEquality": true,
+      "normalizedBodyCharacters": 527,
+      "outsidePageTextSpans": 0
+    },
+    {
+      "tier": "专业",
+      "pages": 14,
+      "contentHash": "d45cd143e3fc0a27130138ba026a21ec00a6c486970b82babf5b7ef98c69cf49",
+      "orderedBodyEquality": true,
+      "normalizedBodyCharacters": 15282,
+      "outsidePageTextSpans": 0
+    },
+    {
+      "tier": "完整",
+      "pages": 26,
+      "contentHash": "cad6f7c0f220ec9fb23df0366503ab69f79c7e496794c4eb481349e27aafd048",
+      "orderedBodyEquality": true,
+      "normalizedBodyCharacters": 31154,
+      "outsidePageTextSpans": 0
+    }
+  ],
+  "pdfTextScope": "Body pages after cover/contents; normalize NFKC and whitespace, expand two/three-em glyphs, remove exact page footers; ordered equality to complete native drawing inputs",
+  "textBoundsTolerancePt": 0.5,
+  "decodedPosterSamples": 11,
+  "nativeBackupChecks": {
+    "archives": [
+      {
+        "file": "backup-first.zip",
+        "sha256": "6854ebb2dd7c1847eaf12a050c32ed7c6048158b728e75da30d848e55cd6bbc7"
+      },
+      {
+        "file": "backup-second.zip",
+        "sha256": "d252b1f2c58a69ba498f3b4f46a9ba42c61a80138a5f32d90711c30e032e2363"
+      },
+      {
+        "file": "backup-legacy.zip",
+        "sha256": "e9a0362a746238bab36017cf6c2b003808915604bf178e5d9828a80e09aaa40d"
+      }
+    ],
+    "checks": [
+      "same-day exports have distinct ZIP paths",
+      "second export preserves the first ZIP byte-for-byte",
+      "successful exports remove their staging directories",
+      "actual ZIP restores expected synthetic JSON and SHA256 manifest: QA备份人物甲",
+      "actual ZIP restores expected synthetic JSON and SHA256 manifest: QA备份人物乙",
+      "restore attempts have distinct extraction paths",
+      "prepare failure removes partial staging",
+      "ZIP failure removes only its incomplete archive and staging",
+      "prepare, ZIP and no-data failures preserve both previous ZIPs byte-for-byte",
+      "failed exports leave no extra staging directories or archives",
+      "malformed ZIP extraction leaves no partial restore directory",
+      "legacy wrapped ZIP without a manifest resolves its actual JSON payload",
+      "root-level current payload is supported",
+      "linked data is rejected even beside a valid recognized file",
+      "data directories are rejected even beside a valid recognized file",
+      "manifest-only archives have no restorable data",
+      "multiple payload groups are rejected"
+    ],
+    "scope": "Native production local ZIP/extraction/payload helpers with disposable synthetic data and injected failures; not backup UI, iCloud, disk-full or live-store restore testing",
+    "status": "success"
+  },
+  "limits": [
+    "Fixed synthetic samples, not all chart inputs or live profile restore paths",
+    "Not signed installation, sensor, iCloud, VoiceOver or performance acceptance"
+  ]
+}
