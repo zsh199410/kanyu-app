@@ -127,6 +127,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
           name: 三术合参 未签名 IPA（第 ${{ github.run_number }} 次构建）
           prerelease: ${{ github.ref != 'refs/heads/main' }}
           body: 未签名 IPA：自行签名后安装。非 main 分支为预览版本；UI-evidence.zip 含本次测试截图、日志与提交记录。
@@ -134,3 +135,11 @@ jobs:
             Kanyu-unsigned.ipa
             Kanyu-unsigned.ipa.sha256
             UI-evidence.zip
+
+      - name: Verify published source tag
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SOURCE_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/build-${{ github.run_number }}" --jq '.object.sha')
+          test "$SOURCE_SHA" = "$GITHUB_SHA"

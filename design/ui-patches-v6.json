@@ -814,5 +814,17 @@
     "before": "            // ImageRenderer and SwiftUI view rendering are MainActor-isolated.\n            let renderer = ImageRenderer(content: view)\n            renderer.scale = 2.0\n            guard let out = renderer.uiImage, let data = out.pngData() else {\n                renderError = \"海报生成失败，请重试；没有保存任何文件。\"\n                isRendering = false\n                return\n            }",
     "after": "            let output: PosterRasterizer.Output\n            do {\n                output = try PosterRasterizer.render(view)\n            } catch {\n                renderError = error.localizedDescription\n                isRendering = false\n                return\n            }\n            let out = output.image, data = output.pngData",
     "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "          tag_name: build-${{ github.run_number }}\n",
+    "after": "          tag_name: build-${{ github.run_number }}\n          target_commitish: ${{ github.sha }}\n",
+    "count": 1
+  },
+  {
+    "path": ".github/workflows/build.yml",
+    "before": "            UI-evidence.zip\n",
+    "after": "            UI-evidence.zip\n\n      - name: Verify published source tag\n        if: github.event_name != 'pull_request'\n        env:\n          GH_TOKEN: ${{ github.token }}\n        run: |\n          SOURCE_SHA=$(gh api \"repos/${GITHUB_REPOSITORY}/git/ref/tags/build-${{ github.run_number }}\" --jq '.object.sha')\n          test \"$SOURCE_SHA\" = \"$GITHUB_SHA\"\n",
+    "count": 1
   }
 ]
