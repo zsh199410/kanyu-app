@@ -1,0 +1,13 @@
+{
+  "source": "https://bazi.vip668.xin/",
+  "captured": "2026-11-11",
+  "sha256": {
+    "index.html": "e69090d760c913bc1f6c70287b7822241a10c8e505e367cfaefcbee57c844776",
+    "style.css": "8a30514ea91f1af35436a021cc25ef1bb1ddc076c6f662718d9920203a87fc02",
+    "app.js": "42a53dfb39e9982eb8973c9d165553a33b701808f08a45304ba54885f9ac1180",
+    "auth.js": "b8373cd24a42994a9815e6281508163cf5a6a9b811cfe27e84ae197136b470d5",
+    "chartdepth.js": "90fe42f3e112806a482dcd240ccbee9f656b96c0ee9f4ab7be238030d0886c0f",
+    "qrcode.min.js": "bb2365e4902f4f84852cf4025e6f6a60325a682aeafa43fb63b7fc8f098d1ef2",
+    "apple-touch-icon.png": "b00935aecbbce0da84bbf4309e3ea850cb9711a0ad9aba7f6e587f685622684c"
+  }
+}
