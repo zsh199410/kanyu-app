@@ -1229,14 +1229,15 @@ struct PalmPosterSheetView: View {
         let view = PalmPosterView(record: record, image: img)
             .environment(\.colorScheme, .light).environment(\.dynamicTypeSize, .large)
         Task { @MainActor in
-            // ImageRenderer and SwiftUI view rendering are MainActor-isolated.
-            let renderer = ImageRenderer(content: view)
-            renderer.scale = 2.0
-            guard let out = renderer.uiImage, let data = out.pngData() else {
-                renderError = "海报生成失败，请重试；没有保存任何文件。"
+            let output: PosterRasterizer.Output
+            do {
+                output = try PosterRasterizer.render(view)
+            } catch {
+                renderError = error.localizedDescription
                 isRendering = false
                 return
             }
+            let out = output.image, data = output.pngData
             let url = PalmPosterTemporaryFile.url(for: record.id)
             do {
                 try data.write(to: url, options: .atomic)

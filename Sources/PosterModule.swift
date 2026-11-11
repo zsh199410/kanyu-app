@@ -1457,13 +1457,15 @@ struct PosterSheetView: View {
         Task { @MainActor in
             guard self.renderRequestID == request else { return }
             let scheme: ColorScheme = style == .xuanye ? .dark : .light
-            let renderer = ImageRenderer(content: PosterView(chart: chart, name: name, style: style)
-                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
-            renderer.scale = 2.0
-            guard let img = renderer.uiImage, let data = img.pngData() else {
-                renderError = "海报生成失败，请重试。"
+            let output: PosterRasterizer.Output
+            do {
+                output = try PosterRasterizer.render(PosterView(chart: chart, name: name, style: style)
+                    .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+            } catch {
+                renderError = error.localizedDescription
                 return
             }
+            let img = output.image, data = output.pngData
             let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png"
             do {
                 let url = try ReportExportArchive.save(data, fileName: fileName)
@@ -1909,13 +1911,15 @@ struct ZiweiPosterSheetView: View {
     @MainActor private func render() {
         previewImage = nil; renderError = nil; saveMessage = nil
         let scheme: ColorScheme = style == .xuanye ? .dark : .light
-        let renderer = ImageRenderer(content: ZiweiPosterView(chart: chart, name: name, style: style)
-            .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
-        renderer.scale = 2.0
-        guard let image = renderer.uiImage, let data = image.pngData() else {
-            renderError = "海报生成失败，请重试。"
+        let output: PosterRasterizer.Output
+        do {
+            output = try PosterRasterizer.render(ZiweiPosterView(chart: chart, name: name, style: style)
+                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+        } catch {
+            renderError = error.localizedDescription
             return
         }
+        let image = output.image, data = output.pngData
         do {
             _ = try ReportExportArchive.save(data,
                 fileName: "ziwei-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
@@ -2239,13 +2243,15 @@ struct HeCanPosterSheetView: View {
     @MainActor private func render() {
         previewImage = nil; renderError = nil; saveMessage = nil
         let scheme: ColorScheme = style == .xuanye ? .dark : .light
-        let renderer = ImageRenderer(content: HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)
-            .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
-        renderer.scale = 2.0
-        guard let image = renderer.uiImage, let data = image.pngData() else {
-            renderError = "海报生成失败，请重试。"
+        let output: PosterRasterizer.Output
+        do {
+            output = try PosterRasterizer.render(HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)
+                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+        } catch {
+            renderError = error.localizedDescription
             return
         }
+        let image = output.image, data = output.pngData
         do {
             _ = try ReportExportArchive.save(data,
                 fileName: "hecan-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")

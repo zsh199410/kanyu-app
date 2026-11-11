@@ -180,12 +180,14 @@ struct PosterEditorView: View {
                 subtitleOverride: subtitle.isEmpty ? nil : subtitle,
                 accentOverride: style == .xuanye ? nil : accent.color)
             let scheme: ColorScheme = style == .xuanye ? .dark : .light
-            let renderer = ImageRenderer(content: view.environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
-            renderer.scale = 2.0
-            guard let img = renderer.uiImage, let data = img.pngData() else {
-                renderError = "海报生成失败，请重试。"
+            let output: PosterRasterizer.Output
+            do {
+                output = try PosterRasterizer.render(view.environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+            } catch {
+                renderError = error.localizedDescription
                 return
             }
+            let img = output.image, data = output.pngData
             let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png"
             do {
                 let url = try ReportExportArchive.save(data, fileName: fileName)

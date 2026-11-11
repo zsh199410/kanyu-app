@@ -62,6 +62,9 @@ jobs:
       - name: Render all poster variants from the Debug app
         run: python3 design/run_poster_render_qa.py
 
+      - name: Verify complete text in the actual PDF reports
+        run: swift design/verify_report_text.swift build/report-samples build/poster-samples/report-expected-text.json
+
       - name: Build (unsigned)
         run: |
           set -o pipefail
@@ -114,6 +117,7 @@ jobs:
             build/report-samples
             build/archive-verification.json
             build/report-receipts.json
+            build/report-text-verification.json
             build/poster-samples
           if-no-files-found: warn
           retention-days: 30

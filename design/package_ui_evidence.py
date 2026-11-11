@@ -4,7 +4,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 paths = ['build/screenshots', 'build/tests.log', 'build/commit.txt', 'build/report-samples',
-         'build/archive-verification.json', 'build/report-receipts.json', 'build/poster-samples']
+         'build/archive-verification.json', 'build/report-receipts.json', 'build/report-text-verification.json', 'build/poster-samples']
 with ZipFile('UI-evidence.zip', 'w', ZIP_DEFLATED) as archive:
     for name in paths:
         path = Path(name)
