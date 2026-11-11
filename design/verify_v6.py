@@ -95,7 +95,7 @@ def mask_card(text):
     b = text.index('    /// 浅染内嵌卡', a)
     return text[:a] + '<CARD-WRAPPER>\n' + text[b:]
 assert mask_card(apply_ui_patches('Sources/DesignSystemV2.swift', original('Sources/DesignSystemV2.swift'))) == mask_card((ROOT/'Sources/DesignSystemV2.swift').read_text()), 'Non-card code changed'
-# Additional mixed files permit only reviewed literal UI patches, never whole-file exemptions.
+# Additional mixed files permit only reviewed literal UI/export/backup patches, never whole-file exemptions.
 patched_paths = {p['path'] for p in patches}
 for path in patched_paths:
     expected = original(path)
@@ -158,7 +158,7 @@ for name,a,b in pairs:
     value = ratio(a,b)
     assert value>=4.5, (name,value)
     lines.append(f'| {name} | {value:.2f}:1 |')
-lines += ['', '已核对：引擎与非呈现代码不变，Tests/UITests/Resources 文件与基线逐字节相同；Swift/JSON/Web 主要语义色一致；海报几何预算通过。',
+lines += ['', '已核对：排盘引擎保持冻结；其他变更仅限精确合同登记的 UI、导出与备份修复；Tests/UITests/Resources 文件与基线逐字节相同；Swift/JSON/Web 主要语义色一致；海报几何预算通过。',
           '此结果不是 Xcode 编译、截图、VoiceOver 或真机性能验收。']
 (ROOT/'docs/design-v6/STATIC-VERIFICATION.md').write_text('\n'.join(lines)+'\n')
-print('PASS: protected files, UI-only diff, Swift/CSS palette parity, text contrast pairs and export geometry')
+print('PASS: protected files, reviewed exact diff, Swift/CSS palette parity, text contrast pairs and export geometry')
