@@ -35,7 +35,10 @@ final class PosterHighlightSelectionTests: XCTestCase {
         for field in highlighted {
             XCTAssertLessThanOrEqual(field.value.count, 89) // 88 + optional ellipsis
             XCTAssertFalse(field.source.isEmpty)
-            let original = originals.first(where: { $0.title == field.label })
+            let prefix = "InterpretEngine.interpret · "
+            XCTAssertTrue(field.source.hasPrefix(prefix))
+            let exactSourceTitle = String(field.source.dropFirst(prefix.count))
+            let original = originals.first(where: { $0.title == exactSourceTitle })
             XCTAssertNotNil(original)
             let sourceText = original!.conclusion.split(whereSeparator: { $0.isWhitespace })
                 .joined(separator: " ")
