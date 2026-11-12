@@ -9,6 +9,7 @@ on:
       - 'Sources/PosterDynamicTemplateView.swift'
       - 'design/qa/PosterPageLayoutTests.swift'
       - 'design/qa/PosterDynamicSnapshotTests.swift'
+      - 'design/qa/PosterHighlightSelectionTests.swift'
       - '.github/workflows/ios-poster-paging-acceptance.yml'
   push:
     branches:
@@ -41,6 +42,7 @@ jobs:
         run: |
           cp design/qa/PosterPageLayoutTests.swift Tests/PosterPageLayoutTests.swift
           cp design/qa/PosterDynamicSnapshotTests.swift Tests/PosterDynamicSnapshotTests.swift
+          cp design/qa/PosterHighlightSelectionTests.swift Tests/PosterHighlightSelectionTests.swift
           xcodegen generate
       - name: Run exact-head PNG pagination regressions
         run: |
@@ -53,6 +55,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$DEST" \
             -only-testing:KanyuTests/PosterPageLayoutTests \
             -only-testing:KanyuTests/PosterDynamicSnapshotTests \
+            -only-testing:KanyuTests/PosterHighlightSelectionTests \
             -resultBundlePath build/PosterPageTests.xcresult \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
             2>&1 | tee build/poster-paging-tests.log
