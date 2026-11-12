@@ -904,5 +904,29 @@
     "before": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        return try BackupRestoreTransaction.perform(",
     "after": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        guard try BackupExportArchive.hasRestorablePayload(in: dir, fileManager: fm) else {\n            throw BackupExportArchive.Failure.noData\n        }\n        return try BackupRestoreTransaction.perform(",
     "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "        let totalPages = pages.count + 2",
+    "after": "        // TOC may span multiple pages if chapter names or item titles wrap.\n        // paginate() keeps its historical +2 content offset; shift printed page\n        // numbers by extra TOC pages, without changing text or content hashes.\n        let tocPages = ReportTOCPlanner.pages(personName: person.name, chapters: chapters, items: tocItems,\n                                               pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)\n        let pageShift = tocPages.count - 1\n        let totalPages = pages.count + 1 + tocPages.count",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "            ctx.beginPage()\n            drawTOC(ctx: ctx, person: person, chapters: chapters, tocItems: tocItems, total: totalPages, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)\n            drawFooter(ctx: ctx, pageRect: pageRect, page: 2, total: totalPages)\n            for (idx, page) in pages.enumerated() {",
+    "after": "            for (tocIndex, tocPage) in tocPages.enumerated() {\n                ctx.beginPage()\n                drawTOCPage(ctx: ctx, person: person, plan: tocPage, total: totalPages,\n                            pageShift: pageShift, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)\n                drawFooter(ctx: ctx, pageRect: pageRect, page: tocIndex + 2, total: totalPages)\n            }\n            for (idx, page) in pages.enumerated() {",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "drawFooter(ctx: ctx, pageRect: pageRect, page: idx + 3, total: totalPages)",
+    "after": "drawFooter(ctx: ctx, pageRect: pageRect, page: idx + 2 + tocPages.count, total: totalPages)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "    private static func drawTOC(ctx: UIGraphicsPDFRendererContext, person: Person, chapters:",
+    "after": "    /// Render planned TOC pages. The fixed legacy single-page renderer is retained\n    /// below for format audit only and is no longer called by makePDF.\n    private static func drawTOCPage(ctx: UIGraphicsPDFRendererContext, person: Person,\n                                    plan: ReportTOCPlanner.Page, total: Int, pageShift: Int,\n                                    pageRect: CGRect, headFont: UIFont, bodyFont: UIFont) {\n        let inset: CGFloat = 48\n        let width = pageRect.width - inset * 2\n        let ink = UIColor(red: 0.18, green: 0.165, blue: 0.15, alpha: 1)\n        let sub = UIColor(red: 0.478, green: 0.447, blue: 0.408, alpha: 1)\n        let accent = UIColor(red: 0.153, green: 0.306, blue: 0.361, alpha: 1)\n        let itemFont = UIFont(name: \"STSongti-SC-Regular\", size: 10) ?? UIFont.systemFont(ofSize: 10)\n        let colWidth = (width - 16) / 2\n        for placed in plan.rows {\n            let y = placed.y\n            switch placed.kind {\n            case .title:\n                _ = drawLeft(ctx: ctx, text: \"目录\", font: headFont,\n                             y: y, x: inset, width: width, color: ink)\n            case .continued:\n                _ = drawLeft(ctx: ctx, text: \"目录（续）\", font: headFont,\n                             y: y, x: inset, width: width, color: ink)\n            case .summary:\n                _ = drawLeft(ctx: ctx, text: \"命书 · \\(person.name)　共 \\(total) 页\",\n                             font: bodyFont, y: y, x: inset, width: width, color: sub)\n            case .chapter(let entry):\n                _ = drawTOCRow(ctx: ctx, title: entry.title, page: entry.page + pageShift,\n                               y: y, x: inset, width: width, bodyFont: bodyFont,\n                               ink: ink, sub: sub)\n            case .indexHeader(let count):\n                _ = drawLeft(ctx: ctx, text: \"详批条目（\\(count) 条）\",\n                             font: headFont, y: y, x: inset, width: width, color: ink)\n            case .itemPair(let left, let right):\n                drawTOCItemCell(ctx: ctx, title: left.title, page: left.page + pageShift,\n                                y: y, x: inset, width: colWidth, font: itemFont, ink: ink)\n                if let right {\n                    drawTOCItemCell(ctx: ctx, title: right.title, page: right.page + pageShift,\n                                    y: y, x: inset + colWidth + 16, width: colWidth,\n                                    font: itemFont, ink: ink)\n                }\n            case .note:\n                _ = drawLeft(ctx: ctx,\n                             text: \"页码与正文实际分页一致；正文每页页脚亦标页码，可逐页核对。\",\n                             font: bodyFont, y: y, x: inset, width: width, color: accent)\n            }\n        }\n    }\n\n    private static func drawTOC(ctx: UIGraphicsPDFRendererContext, person: Person, chapters:",
+    "count": 1
   }
 ]

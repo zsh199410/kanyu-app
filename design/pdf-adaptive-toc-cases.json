@@ -1,0 +1,38 @@
+{
+  "name": "iOS PDF TOC regression matrix",
+  "scope": "layout only",
+  "required": [
+    {
+      "case": "one-page-TOC",
+      "expected": "content still starts on absolute PDF page 3"
+    },
+    {
+      "case": "very-long-item-titles",
+      "expected": "row height is max of measured left and right plus gap; no 16pt overlap"
+    },
+    {
+      "case": "more-than-one-TOC-page",
+      "expected": "printed chapter/index page numbers shifted by extra TOC page count"
+    },
+    {
+      "case": "no-interpretation-entries",
+      "expected": "chapters and footer note remain valid"
+    },
+    {
+      "case": "4-14-26-content-pages",
+      "expected": "content page count, text and hash unchanged"
+    },
+    {
+      "case": "footer-boundary",
+      "expected": "no content after y=774 (footer starts y=812)"
+    },
+    {
+      "case": "same-person-repeated",
+      "expected": "identical ReportBuilder.lines and contentHash"
+    },
+    {
+      "case": "missing-data",
+      "expected": "no fabricated text or shortened chapters"
+    }
+  ]
+}
