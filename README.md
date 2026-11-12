@@ -40,6 +40,3 @@
 - 3D 摘要加地面层与「关键尺寸现场复核」说明（RoomPlan 平面直角假设）
 
 - Logo 定版：B「定盘针」（用户 2026-10-30 点选）——金针指北＋山形＋水岸、朱砂点睛、炭黑底；1024 图标 Sources/AppIcon.png，空状态页同图展示。A「罗盘盘」备选存 Logo/ 目录。
-
-
-<!-- Independent QA CI trigger 2026-11-12: Profile and Illustrated 4x4 matrix on validated V6 contract-fix tree. QA-only branch; do not merge or release. -->
