@@ -1,0 +1,33 @@
+name: QA artifact verifier tests
+
+on:
+  push:
+    branches:
+      - qa/artifact-integrity-check-20261110
+      - qa/nested-ipa-ci-20261110
+      - qa/close-ipa-hash-handle-20261110
+  pull_request:
+    paths:
+      - 'scripts/verify_ipa_artifact.py'
+      - 'scripts/tests/**'
+      - '.github/workflows/qa-artifact-verifier.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-artifact-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all artifact verifier regression tests (resource warnings are errors)
+        env:
+          PYTHONWARNINGS: error::ResourceWarning
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Syntax compile
+        run: python -m compileall -q scripts/verify_ipa_artifact.py scripts/tests
