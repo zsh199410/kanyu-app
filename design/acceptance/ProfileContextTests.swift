@@ -40,9 +40,14 @@ final class ProfileContextTests: XCTestCase {
         let bottom = app.keyboards.firstMatch.exists
             ? app.keyboards.firstMatch.frame.minY - 30 : frame.maxY - 125
         XCTAssertGreaterThan(bottom, top + 40)
+        // Overlap the visible region on each scroll: large full-screen flicks can
+        // skip short tool rows (e.g. 称骨) between two XCUITest snapshots.
+        let travel = min(CGFloat(330), bottom - top)
         let x = frame.midX
-        let start = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: up ? bottom : top))
-        let end = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: up ? top : bottom))
+        let startY = up ? bottom : top
+        let endY = up ? bottom - travel : top + travel
+        let start = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: startY))
+        let end = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: endY))
         start.press(forDuration: 0.05, thenDragTo: end)
     }
 
@@ -138,9 +143,20 @@ final class ProfileContextTests: XCTestCase {
     private func selectHome(_ name: String) {
         homeTop()
         app.buttons["切换命主"].tap()
+        let picker = app.navigationBars["切换命主"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
         let choice = app.buttons["选择命主：" + name]
         XCTAssertTrue(choice.waitForExistence(timeout: 10))
+        // The row can exist while the medium sheet is still animating. Only tap
+        // once it is hittable, then assert that the actual selection dismissed it.
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "hittable == true"), object: choice)
+        XCTAssertEqual(XCTWaiter.wait(for: [hittable], timeout: 10), .completed)
+        snapshot("picker-before-" + name)
         choice.tap()
+        let dismissed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: picker)
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 10), .completed)
         selectedHome(name)
     }
 
