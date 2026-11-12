@@ -145,7 +145,7 @@ struct PosterConceptGalleryView: View {
                                 longitude: person.useLongitude ? person.longitude : nil),
                             premium: c == .premium))
                     } label: {
-                        Label("当前人物动态排版预览（不保存）", systemImage: "doc.text.image")
+                        Label("查看当前人物重点海报", systemImage: "doc.text.image")
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.bordered)
@@ -153,7 +153,7 @@ struct PosterConceptGalleryView: View {
                     .accessibilityIdentifier("poster.gallery.dynamic.\(c.rawValue)")
                 }
                 exportLink(c)
-                Text("设计图里的姓名、命盘、数值仅供欣赏；动态预览只使用当前命主的真实计算字段，不写入文件或替换原有导出。")
+                Text("设计图里的姓名、命盘、数值仅供欣赏；重点海报只使用当前命主已有数据，可分页导出 ZIP；完整版仍在 App 或 PDF 中查看。")
                     .font(.caption).foregroundStyle(Ky.sub)
                     .fixedSize(horizontal: false, vertical: true)
             }

@@ -174,7 +174,7 @@ struct PosterPrintedPage: View {
             }
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: 4) {
-                Text("重点节选 · 完整解盘与依据请在 App 或 PDF 中查看")
+                Text("重点节选 · 完整内容请在 App 或 PDF 中查看")
                     .font(.system(size: 11))
                 Text("传统文化参考 · 不是已证实的现实预测")
                     .font(.system(size: 10))

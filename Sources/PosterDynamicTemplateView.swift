@@ -49,12 +49,6 @@ struct PosterDynamicSnapshot {
 
     static func bazi(person: Person, chart: BaziChart, premium: Bool) -> Self {
         let items = InterpretEngine.interpret(chart: chart)
-        func item(_ title: String, _ key: String) -> PosterBoundField {
-            let answer = items.first(where: { $0.title == title })?.conclusion ?? ""
-            return .init(id: key, label: title,
-                         value: answer.isEmpty ? "暂无结果" : answer,
-                         source: "InterpretEngine.interpret: " + title)
-        }
         let names = ["年柱", "月柱", "日柱", "时柱"]
         let pillars = names.enumerated().map { i, label in
             PosterBoundField(id: "pillar.\(i)", label: label,
@@ -66,11 +60,6 @@ struct PosterDynamicSnapshot {
                              value: chart.wuxingPercents.indices.contains(i)
                                  ? String(format: "%.1f%%", chart.wuxingPercents[i]) : "暂无结果",
                              source: "BaziChart.wuxingPercents")
-        }
-        let years = chart.dayunGanZhi.prefix(premium ? 8 : 6).enumerated().map { i, value in
-            PosterBoundField(id: "dayun.\(i)",
-                             label: "\(chart.dayunStartYear(i)) 年起",
-                             value: value, source: "BaziChart.dayunGanZhi")
         }
         // Poster-only selection: the complete interpretations remain available
         // in the app and existing full PDF. Only key chart facts and short
@@ -128,7 +117,7 @@ struct PosterDynamicTemplateView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 9) {
-                    Text("三术合参 · 动态结构预览").font(.caption.monospaced())
+                    Text("三术合参 · 命盘重点速览").font(.caption.monospaced())
                     Text(snapshot.kind.title).font(.system(.largeTitle, design: .serif, weight: .bold))
                     Text(snapshot.displayName.isEmpty ? "未命名" : snapshot.displayName).font(.headline)
                     Text("重点速览 · 详细解读留在 App")
@@ -189,7 +178,7 @@ struct PosterDynamicTemplateView: View {
                             exporting = false
                         }
                     } label: {
-                        Label(exporting ? "正在生成完整分页图片……" : "生成全部海报（自动分张）",
+                        Label(exporting ? "正在生成完整分页图片……" : "生成重点海报（自动分张）",
                               systemImage: "square.stack.3d.up")
                             .frame(maxWidth: .infinity, minHeight: 48)
                     }

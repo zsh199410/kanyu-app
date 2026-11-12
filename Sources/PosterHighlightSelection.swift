@@ -24,6 +24,24 @@ enum PosterHighlightSelection {
         return length < chars.count ? text + "…" : text
     }
 
+    private static let plainTitles: [String: String] = [
+        "命局风景": "命盘整体",
+        "喜忌（扶抑初判）": "五行喜忌（初判）",
+        "岁运要点": "年份变化",
+        "性格性情": "性格特点",
+        "事业方向": "事业方向",
+        "财运形态": "财务主题",
+        "婚姻感情": "感情关系",
+        "贵人与人际": "人际与助力",
+        "天赋能力": "个人优势",
+        "工作形态": "工作方式",
+        "学业文书": "学习与考试",
+        "置业田宅": "居住与房产",
+        "健康倾向": "生活与健康提醒",
+        "幸运颜色与数字": "传统颜色与数字",
+        "适合方位": "传统方位"
+    ]
+
     private static let coreTitles = [
         "命局风景", "喜忌（扶抑初判）", "岁运要点"
     ]
@@ -43,7 +61,7 @@ enum PosterHighlightSelection {
             guard let item = items.first(where: { $0.title == title }) else { return nil }
             let value = excerpt(item.conclusion)
             guard !value.isEmpty else { return nil }
-            return .init(id: "highlight." + title, label: title, value: value,
+            return .init(id: "highlight." + title, label: plainTitles[title] ?? title, value: value,
                          source: "InterpretEngine.interpret · " + title)
         }
         return entries.isEmpty ? nil
