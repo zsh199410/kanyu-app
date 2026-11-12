@@ -38,7 +38,17 @@ final class ProfileContextTests: XCTestCase {
         // For All Tools, scroll its actual container rather than the entire app.
         // Root-level swipes can hit floating tabs or unrelated nested scroll views.
         let tools = app.scrollViews["alltools.scroll"]
-        let surface = (app.navigationBars["全部工具"].exists && tools.exists) ? tools : app
+        let home = app.scrollViews["home.scroll"]
+        // Target the real scroll container on either screen. Root-level drags
+        // can hit floating tabs and stall XCUITest accessibility snapshots.
+        let surface: XCUIElement
+        if app.navigationBars["全部工具"].exists && tools.exists && tools.isHittable {
+            surface = tools
+        } else if home.exists && home.isHittable {
+            surface = home
+        } else {
+            surface = app
+        }
         let frame = surface.frame
         let top = max(frame.minY + 75, app.navigationBars.firstMatch.frame.maxY + 20)
         let bottom = app.keyboards.firstMatch.exists
