@@ -1860,6 +1860,9 @@ struct HomePageView: View {
                             Image(systemName: "checkmark.circle.fill").foregroundStyle(Ky.qingdai)
                         }
                     }
+                    // A plain button's Spacer is otherwise not part of its hit target.
+                    // Make the entire profile row tappable, including its center.
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("选择命主：\(p.name)")
