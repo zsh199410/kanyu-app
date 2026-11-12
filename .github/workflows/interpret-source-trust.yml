@@ -1,0 +1,43 @@
+name: Interpret source trust regression
+
+on:
+  pull_request:
+    paths:
+      - 'Sources/InterpretModule.swift'
+      - 'Sources/InterpretSourceLabelPolicy.swift'
+      - 'design/qa/InterpretSourceLabelPolicyCheck.swift'
+      - '.github/workflows/interpret-source-trust.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  swift-foundation-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.2'
+      - name: Compile isolated provenance classifier against real source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/source-trust
+          swift --version
+          swiftc Sources/InterpretSourceLabelPolicy.swift design/qa/InterpretSourceLabelPolicyCheck.swift -o build/source-trust/check
+          build/source-trust/check
+      - name: Confirm production label code calls the policy
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("Sources/InterpretModule.swift").read_text()
+          head = text.split("static func confidenceLabel(", 1)[1].split("// MARK: - G4", 1)[0]
+          assert "InterpretSourceLabelPolicy.label(" in head
+          assert "level = \"五典原文\"" not in head
+          assert 'state = "已验真"' not in head
+          print("PASS: production confidenceLabel uses checked conservative policy")
+          PY
