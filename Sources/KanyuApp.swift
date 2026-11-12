@@ -1476,6 +1476,27 @@ struct HomePageView: View {
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
+            // Always-reachable contextual shortcut: keeps a real tool entry in the
+            // native navigation bar when the workbench has been scrolled deeply.
+            // This avoids forcing users and VoiceOver to search a long lazy grid.
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    if let item = AllToolsData.item(for: "astro") {
+                        ContextualToolDestination(item: item)
+                    }
+                } label: {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Ky.qingdai)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded {
+                    AllToolsData.recordRecent(tool: "astro")
+                })
+                .accessibilityLabel("星命合参")
+                .accessibilityIdentifier("home.astro")
+            }
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 6) {
                     AppLogoView(size: 24).accessibilityHidden(true)
@@ -1903,7 +1924,6 @@ struct HomePageView: View {
                         compactBentoTile("sparkles", "星命合参", "八字 × 西洋星盘 · 双术印证", Ky.gold)
                     }.buttonStyle(.plain)
                         .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })
-                        .accessibilityIdentifier("home.astro")
                     NavigationLink { SynastryView() } label: {
                         compactBentoTile("heart.circle.fill", "合盘合婚", "合婚四看 · 喜用互补", Ky.cinnabar)
                     }.buttonStyle(.plain)
