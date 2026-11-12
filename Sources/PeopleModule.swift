@@ -225,6 +225,9 @@ struct PeopleView: View {
                     .font(.caption).foregroundStyle(Ky.sub)
             }
         }
+        .accessibilityLabel("人物档案：\(p.name)")
+        .accessibilityValue("\(p.gender == "M" ? "男" : "女") · \(DisplayTimeReceipt.beijing(p.birthDate))")
+        .accessibilityHint("打开人物详情；向左轻扫可编辑或删除")
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
                 pendingDeletePerson = p
@@ -241,6 +244,7 @@ struct PersonFormView: View {
     @State private var birth: Date
     @State private var longitudeText: String
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var nameFieldFocused: Bool
     var onSaved: (() -> Void)? = nil
     init(store: PeopleStore, person: Person, onSaved: (() -> Void)? = nil) {
         self.store = store
@@ -255,6 +259,8 @@ struct PersonFormView: View {
         NavigationStack {
             Form {
                 TextField("姓名", text: $person.name)
+                    .focused($nameFieldFocused)
+                    .accessibilityIdentifier("person.form.name")
                 TextField("关系（本人/丈夫/儿子/客户…，可空）", text: $person.relation)
                 TextField("标签（逗号分隔，可搜）", text: $person.tags)
                 Picker("性别".scriptConverted, selection: $person.gender) { Text("男").tag("M"); Text("女").tag("F") }
@@ -266,16 +272,22 @@ struct PersonFormView: View {
             .navigationTitle(isNew ? "新建人物".scriptConverted : "编辑人物".scriptConverted)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消".scriptConverted) { dismiss() } }
+                ToolbarItem(placement: .keyboard) {
+                    Button("收起键盘") { nameFieldFocused = false }
+                        .accessibilityIdentifier("person.form.dismissKeyboard")
+                }
+                ToolbarItem(placement: .cancellationAction) { Button("取消".scriptConverted) { dismiss() }.accessibilityIdentifier("person.form.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存".scriptConverted) {
+                        guard !person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                         var p = person
                         p.birthEpoch = birth.timeIntervalSince1970
                         p.longitude = Double(longitudeText) ?? p.longitude
                         store.upsert(p)
                         onSaved?()
                         dismiss()
-                    }.disabled(person.name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }.disabled(person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .accessibilityIdentifier("person.form.save")
                 }
             }
         }

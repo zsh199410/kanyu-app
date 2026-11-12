@@ -2,8 +2,8 @@ import SwiftUI
 import UIKit
 import Photos
 
-// MARK: - 海报编辑器基础版（G13，Insight 第 3 批；2026-11-09 精简：只留宋纸青黛一款）
-// 换字（标题／落款副标文案）＋换色（品牌色板内 4 档强调色）；款式选择器已随砍款去掉，编辑器只出宋纸青黛。
+// MARK: - 海报编辑器（继承当前款式，支持标题／副标与品牌强调色编辑）
+// 玄夜保留原生配色；预测单与标准海报均支持副标覆盖。
 // 导出走 PosterSheetView 同款渲染路径（ImageRenderer，scale 2.0，540pt 画布 → 1080 宽 PNG），
 // 文件名后缀走 PosterStyle.fileSuffix，与既有海报同规格；结论内容只取 PosterView 既有解盘，一字不动。
 // 入口：PosterSheetView 内「打开海报编辑器」按钮，以 .sheet 弹出（禁 fullScreenCover）。
@@ -32,6 +32,13 @@ enum PosterAccent: String, CaseIterable, Identifiable {
     }
 }
 
+private struct PosterEditorRenderKey: Hashable {
+    let style: PosterStyle
+    let accent: PosterAccent
+    let title: String
+    let subtitle: String
+}
+
 struct PosterEditorView: View {
     let chart: BaziChart
     let name: String
@@ -45,15 +52,16 @@ struct PosterEditorView: View {
     @State private var appliedSubtitle: String = ""
     @State private var previewImage: UIImage?
     @State private var fileURL: URL?
-    @State private var renderKey: String
+    @State private var renderKey: PosterEditorRenderKey
     @State private var saveMessage: String?
     @State private var renderError: String?
     @State private var renderRequestID = UUID()
 
-    init(chart: BaziChart, name: String) {
+    init(chart: BaziChart, name: String, initialStyle: PosterStyle = .songQingdai) {
         self.chart = chart
         self.name = name
-        _renderKey = State(initialValue: PosterStyle.songQingdai.rawValue + "-" + PosterAccent.qingdai.rawValue + "--")
+        _style = State(initialValue: initialStyle)
+        _renderKey = State(initialValue: PosterEditorRenderKey(style: initialStyle, accent: .qingdai, title: "", subtitle: ""))
     }
 
     var body: some View {
@@ -94,6 +102,11 @@ struct PosterEditorView: View {
                     TextField("落款副标（留空则用既有副标）", text: $subtitleDraft)
                         .textFieldStyle(.roundedBorder)
                     Button("应用并预览") {
+                        // 相同内容不会改变 task id；显式重渲染，避免清空后一直等待。
+                        if titleDraft == appliedTitle, subtitleDraft == appliedSubtitle {
+                            render()
+                            return
+                        }
                         appliedTitle = titleDraft
                         appliedSubtitle = subtitleDraft
                         fileURL = nil
@@ -163,7 +176,7 @@ struct PosterEditorView: View {
     }
 
     private func refreshRenderKey() {
-        renderKey = "\(style.rawValue)-\(accent.rawValue)-\(appliedTitle)-\(appliedSubtitle)"
+        renderKey = PosterEditorRenderKey(style: style, accent: accent, title: appliedTitle, subtitle: appliedSubtitle)
     }
 
     // 与 PosterSheetView.render 同款渲染路径（ImageRenderer 在主线程渲染，完成后展示缓存图）

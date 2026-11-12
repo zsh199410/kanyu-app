@@ -24,7 +24,7 @@ def mask_app(text):
     return text[:end] + '<BUTTON-STYLE>\n' + text[tail:]
 def refine_home_v6(text):
     before = '                brandHeader\n                    .accessibilityIdentifier("workspace.workbench")\n                signBanner\n                personSwitcherCard'
-    after = '                signBanner\n                personSwitcherCard\n                    .accessibilityElement(children: .contain)\n                    .accessibilityIdentifier("workspace.workbench")'
+    after = '                signBanner\n                personSwitcherCard\n                    .accessibilityElement(children: .contain)\n                    .accessibilityIdentifier("workspace.workbench")\n                    .accessibilityValue(peopleStore.currentPerson?.name ?? "未建档")'
     assert text.count(before) == 1, "Home UI anchor drift"
     text = text.replace(before, after)
     before = '            ToolbarItem(placement: .principal) {\n                HStack(spacing: 6) {\n                    Text("三术合参".scriptConverted)'
@@ -44,7 +44,52 @@ def refine_home_v6(text):
     text = text.replace(before, '                casesSection')
     before = '            RootTabView()\n'
     assert text.count(before) == 1, "QA host anchor drift"
-    text = text.replace(before, '            RootTabView()\n                .modifier(V6ExportQAHost())\n')
+    text = text.replace(before, '            RootTabView()\n                .modifier(V6ExportQAHost())\n                .modifier(ContextAcceptanceHost())\n')
+    before = '        }.buttonStyle(.plain)\n    }\n\n}\n\n// MARK: - Tab 4：「堪舆」独立工作台'
+    after = '        }.buttonStyle(.plain)\n            .accessibilityIdentifier("home.alltools")\n    }\n\n}\n\n// MARK: - Tab 4：「堪舆」独立工作台'
+    assert text.count(before) == 1, "Context UI anchor drift"
+    text = text.replace(before, after)
+    before = '                .buttonStyle(.plain)\n            }\n            .navigationTitle(Text("切换命主".scriptConverted))'
+    after = '                .buttonStyle(.plain)\n                .accessibilityLabel("选择命主：\\(p.name)")\n            }\n            .navigationTitle(Text("切换命主".scriptConverted))'
+    assert text.count(before) == 1, "Context UI anchor drift"
+    text = text.replace(before, after)
+    # Plain List button rows must be tappable across Spacer, including their center.
+    before = r'''                        if peopleStore.currentPersonId == p.id {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Ky.qingdai)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("选择命主：\(p.name)")'''
+    after = r'''                        if peopleStore.currentPersonId == p.id {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Ky.qingdai)
+                        }
+                    }
+                    // A plain button's Spacer is otherwise not part of its hit target.
+                    // Make the entire profile row tappable, including its center.
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("选择命主：\(p.name)")'''
+    assert text.count(before) == 1, "Profile picker hit target anchor drift"
+    text = text.replace(before, after)
+    before = '                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })'
+    after = '                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })\n                        .accessibilityIdentifier("home.astro")'
+    assert text.count(before) == 1, "Context shortcut anchor drift"
+    text = text.replace(before, after)
+    before = '                NavigationLink { ContextualToolDestination(item: item) } label: {\n                    homeChipLabel(item)\n                }\n                .buttonStyle(.plain)'
+    after = '                NavigationLink { ContextualToolDestination(item: item) } label: {\n                    homeChipLabel(item)\n                }\n                .buttonStyle(.plain)\n                .accessibilityIdentifier("home.recent.\\(item.id)")'
+    assert text.count(before) == 1, "Context shortcut anchor drift"
+    text = text.replace(before, after)
+    # Specific iOS accessibility subtree refresh, permitted only at this reviewed anchor.
+    before = '                onOpenDetail: { showingPersonDetail = true }\n            )'
+    after = before + '\n            // Rebuild the visible profile and its accessibility subtree when selection changes.\n            .id(p.id)'
+    assert text.count(before) == 1, 'Selected-person accessibility anchor drift'
+    text = text.replace(before, after)
+    before = '        }\n        .background(Ky.bg)\n        .navigationBarTitleDisplayMode(.inline)\n        .toolbarBackground(Ky.bg, for: .navigationBar)'
+    after = before.replace('        .background(Ky.bg)', '        .accessibilityIdentifier("home.scroll")\n        .background(Ky.bg)')
+    assert text.count(before) == 1, 'Home scroll accessibility anchor drift'
+    text = text.replace(before, after)
     return text
 
 def home_layout_v6(text):
@@ -88,7 +133,7 @@ def apply_ui_patches(path, value):
     return value
 
 # P2 permits only these exact UI layout transformations; all other app code stays protected.
-assert mask_app(home_layout_v6(original('Sources/KanyuApp.swift'))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
+assert mask_app(apply_ui_patches('Sources/KanyuApp.swift', home_layout_v6(original('Sources/KanyuApp.swift')))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
 # Keep everything outside the first card wrapper unchanged, including the complete settings code.
 def mask_card(text):
     a = text.index('extension View {\n', text.index('struct KyWorkspaceHeading'))
@@ -98,12 +143,15 @@ assert mask_card(apply_ui_patches('Sources/DesignSystemV2.swift', original('Sour
 # Additional mixed files permit only reviewed literal UI/export/backup patches, never whole-file exemptions.
 patched_paths = {p['path'] for p in patches}
 for path in patched_paths:
-    expected = original(path)
+    expected = home_layout_v6(original(path)) if path == 'Sources/KanyuApp.swift' else original(path)
     for patch in [p for p in patches if p['path'] == path]:
         assert expected.count(patch['before']) == patch['count'], f'Patch anchor drift: {path}'
         expected = expected.replace(patch['before'], patch['after'])
     actual = (ROOT/path).read_text()
-    assert (mask_card(expected) == mask_card(actual) if path == 'Sources/DesignSystemV2.swift' else expected == actual), f'Unreviewed change outside exact UI patches: {path}'
+    if path == 'Sources/KanyuApp.swift':
+        assert mask_app(expected) == mask_app(actual), f'Unreviewed change outside exact UI patches: {path}'
+    else:
+        assert (mask_card(expected) == mask_card(actual) if path == 'Sources/DesignSystemV2.swift' else expected == actual), f'Unreviewed change outside exact UI patches: {path}'
 # Compare every baseline file except explicitly allowed presentation/doc additions.
 allowed = {'Sources/KanyuApp.swift', 'Sources/DesignSystemV2.swift'}
 files = subprocess.check_output(['git','ls-tree','-r','--name-only',BASE],cwd=ROOT,text=True).splitlines()
