@@ -42,7 +42,7 @@ private enum PosterConcept: String, CaseIterable, Identifiable {
         if let image = UIImage(named: imageName) { return image }
         let url = Bundle.main.url(forResource: imageName, withExtension: "jpg", subdirectory: "PosterDesignPreviews")
             ?? Bundle.main.url(forResource: imageName, withExtension: "jpg")
-        return url.flatMap { UIImage(contentsOfFile: $0.path) }
+        return url.flatMap { UIImage(contentsOfFile: $0.path) } ?? PosterEmbeddedThumbnails.image(for: imageName)
     }
 }
 
