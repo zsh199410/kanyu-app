@@ -59,7 +59,7 @@ enum PosterPageLayout {
     static func paginate(_ snapshot: PosterDynamicSnapshot) throws -> [Page] {
         guard snapshot.ownerID != nil, snapshot.canArchive else { throw Failure.noOwner }
         guard snapshot.sections.contains(where: { !$0.fields.isEmpty }) else { throw Failure.noContent }
-        let maxContentHeight: CGFloat = 665
+        let maxContentHeight: CGFloat = 710
         var pages: [Page] = []
         var current: [Cell] = []
         var used: CGFloat = 0
@@ -72,28 +72,46 @@ enum PosterPageLayout {
         }
 
         for section in snapshot.sections {
-            for field in section.fields {
-                let pieces = exactChunks(field.value)
-                // Never silently lose or paraphrase the engine's actual conclusion.
+            // Four pillars, five-element percentages and nearby luck periods
+            // are best read as compact factual strips, not twelve separate
+            // explanatory cards. Their values are copied verbatim from the
+            // validated data snapshot.
+            let compactFacts = ["pillars", "elements", "dayun"].contains(section.id)
+            let rows: [PosterBoundField]
+            if compactFacts {
+                let combined = section.fields.map { $0.label + " " + $0.value }
+                    .joined(separator: " · ")
+                let sources = section.fields.map(\.source).filter { !$0.isEmpty }
+                rows = [
+                    PosterBoundField(id: "facts." + section.id,
+                                     label: section.title,
+                                     value: combined,
+                                     source: Array(Set(sources)).sorted().joined(separator: ", "))
+                ]
+            } else {
+                rows = section.fields
+            }
+            for field in rows {
+                let pieces = exactChunks(field.value, limit: compactFacts ? 185 : 120)
+                // This checks characters of what is *selected for the poster*.
+                // Full original reports stay in the app and PDF, by design.
                 guard pieces.joined() == field.value else { throw Failure.noContent }
                 for (index, text) in pieces.enumerated() {
-                    let firstPart = index == 0
-                    let headerHeight: CGFloat = current.last?.sectionTitle == section.title ? 0 : 36
-                    let estimate = CGFloat(138 + Int(ceil(Double(max(1, text.count)) / 24.0)) * 24)
-                        + (firstPart ? 72 : 0) + headerHeight
+                    let headerHeight: CGFloat = current.last?.sectionTitle == section.title ? 0 : 30
+                    let estimatedLines = ceil(Double(max(1, text.count)) / 29.0)
+                    let estimate = CGFloat(compactFacts ? 56 : 78) +
+                        CGFloat(estimatedLines * 24) + headerHeight
                     if !current.isEmpty && used + estimate > maxContentHeight {
                         flush()
-                        // Reject before allocating thousands of extra pages, while
-                        // keeping all original content intact for a PDF fallback.
                         if pages.count >= 120 { throw Failure.tooManyPages }
                     }
                     let cell = Cell(
                         id: field.id + ".part." + String(index + 1),
                         sectionTitle: section.title,
-                        title: field.label + (pieces.count > 1 ? "（第 \(index + 1)/\(pieces.count) 段）" : ""),
+                        title: field.label + (pieces.count > 1 ? " · 续 \(index + 1)/\(pieces.count)" : ""),
                         text: text,
                         source: field.source,
-                        explanation: firstPart ? PosterPlainGuide.explanation(for: field) : nil
+                        explanation: nil
                     )
                     current.append(cell)
                     used += estimate
@@ -117,7 +135,7 @@ struct PosterPrintedPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("三术合参  /  传统命理阅读报告")
+                Text("三术合参  /  命盘重点速览")
                     .font(.system(size: 12, weight: .semibold, design: .serif))
                 Text(snapshot.kind.title)
                     .font(.system(size: 31, weight: .bold, design: .serif))
@@ -132,43 +150,34 @@ struct PosterPrintedPage: View {
             .background(snapshot.kind.ink)
             .clipShape(RoundedRectangle(cornerRadius: 12))
 
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(page.cells) { cell in
-                    VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(page.cells.enumerated()), id: \.element.id) { index, cell in
+                    if index == 0 || page.cells[index - 1].sectionTitle != cell.sectionTitle {
                         Text(cell.sectionTitle)
                             .font(.system(size: 15, weight: .bold, design: .serif))
                             .foregroundStyle(snapshot.kind.ink)
+                    }
+                    VStack(alignment: .leading, spacing: 7) {
                         Text(cell.title)
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(snapshot.kind.ink)
-                        if let explanation = cell.explanation {
-                            Text("先看懂：" + explanation)
-                                .font(.system(size: 14))
-                                .foregroundStyle(Color(red: 0.23, green: 0.25, blue: 0.25))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
                         Text(cell.text)
                             .font(.system(size: 15))
                             .foregroundStyle(Color(red: 0.14, green: 0.16, blue: 0.17))
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("来源：" + cell.source)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(13)
+                    .padding(12)
                     .background(.white.opacity(0.93))
                     .clipShape(RoundedRectangle(cornerRadius: 11))
                 }
             }
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: 4) {
-                Text(snapshot.receipt)
-                    .font(.system(size: 10, design: .monospaced))
-                    .lineLimit(3)
-                Text("传统文化解释不等于现实预测 · 本页只使用已有计算结果")
+                Text("重点节选 · 完整解盘与依据请在 App 或 PDF 中查看")
                     .font(.system(size: 11))
+                Text("传统文化参考 · 不是已证实的现实预测")
+                    .font(.system(size: 10))
             }
             .foregroundStyle(snapshot.kind.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -212,6 +221,8 @@ struct PosterPrintedPage: View {
             }
             let manifest: [String: Any] = [
                 "schema": "ios.poster.batch.v1",
+                "mode": "keyHighlightsOnly",
+                "fullDetailsAvailableInApp": true,
                 "kind": snapshot.kind.rawValue,
                 "ownerID": owner.uuidString,
                 "pageCount": pages.count,
