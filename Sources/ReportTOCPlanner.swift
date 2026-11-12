@@ -79,7 +79,7 @@ enum ReportTOCPlanner {
                     ? Entry(title: items[i + split].title, page: items[i + split].page) : nil
                 let lHeight = textHeight(left.title, font: itemFont, width: colWidth - 40)
                 let rHeight = right.map { textHeight($0.title, font: itemFont, width: colWidth - 40) } ?? 0
-                add(.itemPair(left, right), rowHeight: max(16, lHeight, rHeight), gap: 2)
+                add(.itemPair(left, right), rowHeight: max(16, max(lHeight, rHeight)), gap: 2)
             }
         }
         add(.note, rowHeight: textHeight("页码与正文实际分页一致；正文每页页脚亦标页码，可逐页核对。",
