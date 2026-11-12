@@ -52,9 +52,17 @@ final class ProfileContextTests: XCTestCase {
     }
 
     private func reveal(_ target: XCUIElement, up: Bool = true) {
-        for _ in 0..<22 {
-            if target.exists && target.isHittable { return }
-            drag(up: up)
+        // Tool groups are not always visited in their on-screen order.
+        // Sweep both directions; a forward-only scan can pass an earlier row
+        // and never find it again, especially at accessibility text sizes.
+        for direction in [up, !up] {
+            for _ in 0..<28 {
+                if target.exists && target.isHittable { return }
+                drag(up: direction)
+            }
+        }
+        if !(target.exists && target.isHittable) {
+            snapshot("unreachable-" + target.identifier)
         }
         XCTAssertTrue(target.exists && target.isHittable, "Unreachable element: \(target)")
     }
