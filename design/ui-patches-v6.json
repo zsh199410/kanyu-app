@@ -904,5 +904,41 @@
     "before": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        return try BackupRestoreTransaction.perform(",
     "after": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        guard try BackupExportArchive.hasRestorablePayload(in: dir, fileManager: fm) else {\n            throw BackupExportArchive.Failure.noData\n        }\n        return try BackupRestoreTransaction.perform(",
     "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "    @State private var verifyTick = 0",
+    "after": "    @State private var verifyTick = 0\n    @State private var showNaturalVoiceOptions = false",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "                            let textToRead = filteredIndices.map { \"\\(allItems[$0].title)。\\(allItems[$0].conclusion)\" }.joined(separator: \"。\")",
+    "after": "                            let textToRead = filteredIndices.map { InterpretReadability.narration(title: allItems[$0].title, conclusion: allItems[$0].conclusion) }.joined(separator: \"。\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "                    if VerifyStore.legacyMarkCount() > 0 {",
+    "after": "                    DisclosureGroup(\"自然语音设置\", isExpanded: $showNaturalVoiceOptions) {\n                        InterpretNarrationControls(speaker: speaker)\n                    }\n                    .font(.subheadline)\n                    .foregroundStyle(Ky.ink)\n                    .accessibilityIdentifier(\"interpret.voice.settings\")\n                    if VerifyStore.legacyMarkCount() > 0 {",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "                                EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links, mechanism: allItems[i].mechanism, confidence: allItems[i].confidence, timeRange: allItems[i].timeRange, advice: allItems[i].advice)",
+    "after": "                                InterpretPlainIntro(item: allItems[i])\n                                EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links, mechanism: allItems[i].mechanism, confidence: allItems[i].confidence, timeRange: allItems[i].timeRange, advice: allItems[i].advice)",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "                                        speaker.read(\"\\(allItems[i].title)。\\(allItems[i].conclusion)\")",
+    "after": "                                        speaker.read(InterpretReadability.narration(title: allItems[i].title, conclusion: allItems[i].conclusion))",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {\n    private let synth = AVSpeechSynthesizer()\n    @Published var speaking = false\n    override init() {\n        super.init()\n        synth.delegate = self\n    }\n    func read(_ text: String) {\n        if synth.isSpeaking { synth.stopSpeaking(at: .immediate); speaking = false; return }\n        let u = AVSpeechUtterance(string: text)\n        u.voice = AVSpeechSynthesisVoice(language: \"zh-CN\")\n        u.rate = 0.48\n        speaking = true\n        synth.speak(u)\n    }\n    func stop() { synth.stopSpeaking(at: .immediate); speaking = false }\n    // 朗读自然结束／被取消时复位 speaking（此前只在手动 stop 里复位，播完按钮会一直卡在「停止朗读」）\n    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {\n        DispatchQueue.main.async { self.speaking = false }\n    }\n    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {\n        DispatchQueue.main.async { self.speaking = false }\n    }\n}",
+    "after": "final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {\n    private let synth = AVSpeechSynthesizer()\n    private static let voiceKey = \"interpret.voice.identifier.v1\"\n    private static let rateKey = \"interpret.voice.rate.v1\"\n    @Published var speaking = false\n    @Published var selectedVoiceID = \"\" {\n        didSet { UserDefaults.standard.set(selectedVoiceID, forKey: Self.voiceKey) }\n    }\n    @Published var narrationRate: Double = 0.48 {\n        didSet { UserDefaults.standard.set(narrationRate, forKey: Self.rateKey) }\n    }\n    // Only expose Mandarin voices installed on this device. Premium/enhanced\n    // voices require system installation; do not claim that they always exist.\n    var mandarinVoices: [AVSpeechSynthesisVoice] {\n        AVSpeechSynthesisVoice.speechVoices()\n            .filter { $0.language == \"zh-CN\" }\n            .sorted {\n                if $0.quality.rawValue != $1.quality.rawValue {\n                    return $0.quality.rawValue > $1.quality.rawValue\n                }\n                return $0.name.localizedStandardCompare($1.name) == .orderedAscending\n            }\n    }\n    var activeVoiceDescription: String {\n        let voice = selectedVoice()\n        guard let voice else { return \"系统普通话（设备默认）\" }\n        let quality: String\n        switch voice.quality {\n        case .premium: quality = \"高级\"\n        case .enhanced: quality = \"增强\"\n        default: quality = \"标准\"\n        }\n        return \"\\(voice.name) · \\(quality)\"\n    }\n    override init() {\n        super.init()\n        synth.delegate = self\n        selectedVoiceID = UserDefaults.standard.string(forKey: Self.voiceKey) ?? \"\"\n        let saved = UserDefaults.standard.double(forKey: Self.rateKey)\n        narrationRate = saved == 0 ? 0.48 : min(0.58, max(0.42, saved))\n    }\n    private func selectedVoice() -> AVSpeechSynthesisVoice? {\n        let available = mandarinVoices\n        if let selected = available.first(where: { $0.identifier == selectedVoiceID }) {\n            return selected\n        }\n        return available.first ?? AVSpeechSynthesisVoice(language: \"zh-CN\")\n    }\n    private func speak(_ text: String) {\n        let u = AVSpeechUtterance(string: text)\n        u.voice = selectedVoice()\n        u.rate = Float(narrationRate)\n        u.pitchMultiplier = 1.0\n        u.preUtteranceDelay = 0.08\n        u.postUtteranceDelay = 0.12\n        speaking = true\n        synth.speak(u)\n    }\n    func read(_ text: String) {\n        if synth.isSpeaking { stop(); return }\n        speak(text)\n    }\n    func preview() {\n        if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }\n        speak(\"欢迎收听三术合参。这里先说结论，再解释依据和传统术语。\")\n    }\n    func stop() { synth.stopSpeaking(at: .immediate); speaking = false }\n    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {\n        DispatchQueue.main.async { self.speaking = synthesizer.isSpeaking }\n    }\n    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {\n        DispatchQueue.main.async { self.speaking = synthesizer.isSpeaking }\n    }\n}",
+    "count": 1
   }
 ]
