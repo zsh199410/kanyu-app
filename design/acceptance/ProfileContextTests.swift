@@ -107,6 +107,11 @@ final class ProfileContextTests: XCTestCase {
         XCTAssertTrue(saveExists)
         XCTAssertFalse(save.isEnabled)
         replace(app.textFields["person.form.name"], with: name)
+        let dismissKeyboard = app.buttons["person.form.dismissKeyboard"]
+        XCTAssertTrue(dismissKeyboard.waitForExistence(timeout: 10))
+        dismissKeyboard.tap()
+        let keyboardHidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.keyboards.firstMatch)
+        XCTAssertEqual(XCTWaiter.wait(for: [keyboardHidden], timeout: 10), .completed)
         tap("birth.edit")
         XCTAssertTrue(app.navigationBars["选择出生时间"].waitForExistence(timeout: 10))
         replace(app.textFields["birth.year"], with: year)

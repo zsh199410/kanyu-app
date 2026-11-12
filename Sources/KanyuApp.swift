@@ -1780,6 +1780,8 @@ struct HomePageView: View {
                 onNewPerson: { showingNewPerson = true },
                 onOpenDetail: { showingPersonDetail = true }
             )
+            // Rebuild the visible profile and its accessibility subtree when selection changes.
+            .id(p.id)
         } else {
             Button { showingNewPerson = true } label: {
                 HStack(spacing: 12) {

@@ -115,8 +115,9 @@ final class PhysiognomyGuideTests: XCTestCase {
             predicate: NSPredicate(format: "label == %@", "QA环境 " + theme + " " + size), object: environment)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
         reveal(element("workspace.workbench"), up: false)
-        XCTAssertTrue(app.staticTexts["尚未建立命主档案"].waitForExistence(timeout: 10),
-                      "The guide suite requires an empty installed app sandbox.")
+        XCTAssertTrue(app.staticTexts["添加第一位家人或命主档案"].waitForExistence(timeout: 10),
+                      "The guide suite requires the actual empty-profile home state.")
+        XCTAssertFalse(app.buttons["切换命主"].exists, "No person switcher may appear before creating a profile.")
         snapshot("empty-home")
         // PalmHomeView is a real home bento link; AllToolsData has no palm tool entry.
         let palm = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "手相面相")).firstMatch
@@ -133,7 +134,8 @@ final class PhysiognomyGuideTests: XCTestCase {
                       chapter: "三停", chapterID: "face.section.upper", chapterTitle: "上停")
         back()
         reveal(element("workspace.workbench"), up: false)
-        XCTAssertTrue(app.staticTexts["尚未建立命主档案"].exists)
+        XCTAssertTrue(app.staticTexts["添加第一位家人或命主档案"].exists)
+        XCTAssertFalse(app.buttons["切换命主"].exists)
         snapshot("empty-home-after-guides")
         app.terminate()
     }
