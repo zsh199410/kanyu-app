@@ -267,11 +267,13 @@ struct KanyuPosterPDFLayoutStudy: View {
                 .font(.system(size: 12))
                 .foregroundStyle(muted)
             Rectangle().fill(border).frame(height: 1)
-            ForEach([
+            let chapters = [
                 ("第一章  命盘总览与排盘口径", "03"),
                 ("第二章  命局、十神与大运", "08"),
                 ("第三章  逐年分析与对应依据", "15")
-            ], id: \.0) { row in
+            ]
+            ForEach(chapters.indices, id: \.self) { index in
+                let row = chapters[index]
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(row.0)
                         .font(.system(size: 14, design: .serif))
