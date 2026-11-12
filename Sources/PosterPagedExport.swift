@@ -35,21 +35,23 @@ enum PosterPageLayout {
     static func exactChunks(_ text: String, limit: Int = 200) -> [String] {
         guard !text.isEmpty else { return [""] }
         let limit = max(32, limit)
-        var tail = Array(text)
+        let chars = Array(text)
+        let stops: Set<Character> = ["。", "！", "？", "；", "\n"]
+        var position = 0
         var result: [String] = []
-        while !tail.isEmpty {
-            if tail.count <= limit {
-                result.append(String(tail))
+        while position < chars.count {
+            let available = min(limit, chars.count - position)
+            if available == chars.count - position {
+                result.append(String(chars[position..<chars.count]))
                 break
             }
-            let window = tail.prefix(limit)
-            let stops: Set<Character> = ["。", "！", "？", "；", "\n"]
+            let window = chars[position..<(position + available)]
             let preferred = window.enumerated().compactMap { offset, ch -> Int? in
-                offset >= limit / 2 && stops.contains(ch) ? offset + 1 : nil
+                offset >= available / 2 && stops.contains(ch) ? offset + 1 : nil
             }.last
-            let n = preferred ?? limit
-            result.append(String(tail.prefix(n)))
-            tail.removeFirst(n)
+            let n = preferred ?? available
+            result.append(String(chars[position..<(position + n)]))
+            position += n
         }
         return result
     }
@@ -81,6 +83,9 @@ enum PosterPageLayout {
                         + (firstPart ? 72 : 0) + headerHeight
                     if !current.isEmpty && used + estimate > maxContentHeight {
                         flush()
+                        // Reject before allocating thousands of extra pages, while
+                        // keeping all original content intact for a PDF fallback.
+                        if pages.count >= 120 { throw Failure.tooManyPages }
                     }
                     let cell = Cell(
                         id: field.id + ".part." + String(index + 1),
