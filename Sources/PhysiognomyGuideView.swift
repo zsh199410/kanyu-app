@@ -119,7 +119,8 @@ struct PhysiognomyGuideView: View {
             paragraph("容易误解", entry.commonMisread)
         }
         .foregroundStyle(Ky.ink).frame(maxWidth: .infinity, alignment: .leading).kyCard()
-        .accessibilityIdentifier("physiognomy.explanation")
+        // Keep the title's accessibilityIdentifier visible to UI tests and VoiceOver.
+        // A parent identifier propagates to all child StaticText nodes in SwiftUI.
     }
 
     private func paragraph(_ heading: String, _ text: String) -> some View {
