@@ -904,5 +904,11 @@
     "before": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        return try BackupRestoreTransaction.perform(",
     "after": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        guard try BackupExportArchive.hasRestorablePayload(in: dir, fileManager: fm) else {\n            throw BackupExportArchive.Failure.noData\n        }\n        return try BackupRestoreTransaction.perform(",
     "count": 1
+  },
+  {
+    "path": "Sources/ReportCenterView.swift",
+    "before": "                // G8：年度报告区段——有指定人物时链到该人当年年度报告页；无指定人物时只链档案。",
+    "after": "                KyHomeSection(title: \"海报设计作品库\", trailing: \"4 款\") {\n                    NavigationLink {\n                        PosterConceptGalleryView(person: person)\n                    } label: {\n                        annualEntryRow(icon: \"paintpalette.fill\",\n                                       title: \"查看四款海报设计\",\n                                       subtitle: \"手相／八字／紫微／尊享 · 示例不作为个人报告\")\n                    }\n                    .buttonStyle(.plain)\n                    .accessibilityIdentifier(\"reportCenter.posterGallery\")\n                }\n                // G8：年度报告区段——有指定人物时链到该人当年年度报告页；无指定人物时只链档案。",
+    "count": 1
   }
 ]
