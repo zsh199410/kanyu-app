@@ -160,6 +160,7 @@ struct KyPersonSwitcher: View {
                             .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("切换命主")
 
                         Button {
                             KyV6.impact(.light)

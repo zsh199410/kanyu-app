@@ -1233,6 +1233,7 @@ struct KanyuSurveyApp: App {
         WindowGroup {
             RootTabView()
                 .modifier(V6ExportQAHost())
+                .modifier(ContextAcceptanceHost())
                 .environmentObject(store)
                 .environmentObject(location)
                 .environmentObject(motion)
@@ -1448,6 +1449,7 @@ struct HomePageView: View {
                 personSwitcherCard
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("workspace.workbench")
+                    .accessibilityValue(peopleStore.currentPerson?.name ?? "未建档")
                 todaySection
                 V6ReadingTopicLinks()
                 primaryBentoGrid
@@ -1468,6 +1470,7 @@ struct HomePageView: View {
             .padding(.top, 6)
             .padding(.bottom, 38) // 预留充足底部安全距离，避让 iOS 27 Liquid Glass 悬浮胶囊栏
         }
+        .accessibilityIdentifier("home.scroll")
         .background(Ky.bg)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Ky.bg, for: .navigationBar)
@@ -1779,6 +1782,8 @@ struct HomePageView: View {
                 onNewPerson: { showingNewPerson = true },
                 onOpenDetail: { showingPersonDetail = true }
             )
+            // Rebuild the visible profile and its accessibility subtree when selection changes.
+            .id(p.id)
         } else {
             Button { showingNewPerson = true } label: {
                 HStack(spacing: 12) {
@@ -1857,8 +1862,12 @@ struct HomePageView: View {
                             Image(systemName: "checkmark.circle.fill").foregroundStyle(Ky.qingdai)
                         }
                     }
+                    // A plain button's Spacer is otherwise not part of its hit target.
+                    // Make the entire profile row tappable, including its center.
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("选择命主：\(p.name)")
             }
             .navigationTitle(Text("切换命主".scriptConverted))
             .navigationBarTitleDisplayMode(.inline)
@@ -1894,6 +1903,7 @@ struct HomePageView: View {
                         compactBentoTile("sparkles", "星命合参", "八字 × 西洋星盘 · 双术印证", Ky.gold)
                     }.buttonStyle(.plain)
                         .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })
+                        .accessibilityIdentifier("home.astro")
                     NavigationLink { SynastryView() } label: {
                         compactBentoTile("heart.circle.fill", "合盘合婚", "合婚四看 · 喜用互补", Ky.cinnabar)
                     }.buttonStyle(.plain)
@@ -1941,6 +1951,7 @@ struct HomePageView: View {
                     homeChipLabel(item)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("home.recent.\(item.id)")
             }
         }
     }
@@ -2001,6 +2012,7 @@ struct HomePageView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
         }.buttonStyle(.plain)
+            .accessibilityIdentifier("home.alltools")
     }
 
 }

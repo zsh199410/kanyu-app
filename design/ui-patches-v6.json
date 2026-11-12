@@ -904,5 +904,311 @@
     "before": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        return try BackupRestoreTransaction.perform(",
     "after": "    private func importFiles(from dir: URL) throws -> String {\n        let fm = FileManager.default\n        guard try BackupExportArchive.hasRestorablePayload(in: dir, fileManager: fm) else {\n            throw BackupExportArchive.Failure.noData\n        }\n        return try BackupRestoreTransaction.perform(",
     "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "let active = selectedID == p.id",
+    "after": "let active = (selectedID ?? store.currentPerson?.id) == p.id",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "Button { onSelect(p) } label: {",
+    "after": "Button { store.setCurrentPerson(p); onSelect(p) } label: {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": ".padding(.horizontal, 10).padding(.vertical, 6)",
+    "after": ".padding(.horizontal, 10).padding(.vertical, 6)\n                            .frame(minHeight: 44)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "                        }.buttonStyle(.plain)\n",
+    "after": "                        }.buttonStyle(.plain)\n                            .accessibilityLabel(\"调取命主：\\(p.name)\")\n                            .accessibilityValue(active ? \"当前命主\" : \"\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "                    .buttonStyle(.borderedProminent).padding(.bottom, 24)\n            }\n",
+    "after": "                    .buttonStyle(.borderedProminent).padding(.bottom, 24)\n                    .accessibilityIdentifier(\"tool.createPerson\")\n            }\n            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "                                         longitude: person.useLongitude ? person.longitude : nil)\n            )\n",
+    "after": "                                         longitude: person.useLongitude ? person.longitude : nil)\n            )\n            .id(person)\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityValue(\"\\(person.name) · \\(DisplayTimeReceipt.beijing(person.birthDate))\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "            .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: item.id) })\n",
+    "after": "            .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: item.id) })\n            .accessibilityIdentifier(\"tools.open.\\(item.id)\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "struct MyView: View {\n",
+    "after": "struct MyView: View {\n    @EnvironmentObject private var peopleStore: PeopleStore\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "PeopleStore.shared",
+    "after": "peopleStore",
+    "count": 11
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "全本机离线演算 · 零云端追踪",
+    "after": "本机排盘与档案 · 联网功能按需使用",
+    "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "myLink(\"person.2.fill\", \"人物档案管理\", \"家人与命例建档 · 支持数据导入导出备份\", Ky.qingdai) { PeopleView() }",
+    "after": "myLink(\"person.2.fill\", \"人物档案管理\", \"家人与命例建档 · 支持数据导入导出备份\", Ky.qingdai) { PeopleView() }\n                        .accessibilityIdentifier(\"profile.people\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "TextField(\"姓名\", text: $person.name)",
+    "after": "TextField(\"姓名\", text: $person.name).accessibilityIdentifier(\"person.form.name\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "ToolbarItem(placement: .cancellationAction) { Button(\"取消\".scriptConverted) { dismiss() } }",
+    "after": "ToolbarItem(placement: .cancellationAction) { Button(\"取消\".scriptConverted) { dismiss() }.accessibilityIdentifier(\"person.form.cancel\") }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "                    }.disabled(person.name.trimmingCharacters(in: .whitespaces).isEmpty)",
+    "after": "                    }.disabled(person.name.trimmingCharacters(in: .whitespaces).isEmpty)\n                        .accessibilityIdentifier(\"person.form.save\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "            .sheet(isPresented: $showSheet) {",
+    "after": "            .accessibilityIdentifier(\"birth.edit\")\n            .sheet(isPresented: $showSheet) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "TextField(\"1994\", text: $yearText)",
+    "after": "TextField(\"1994\", text: $yearText)\n                .accessibilityIdentifier(\"birth.year\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "                    .fontWeight(.bold)\n                    .foregroundStyle(Ky.qingdai)\n                }\n                ToolbarItemGroup(placement: .keyboard)",
+    "after": "                    .fontWeight(.bold)\n                    .foregroundStyle(Ky.qingdai)\n                    .accessibilityIdentifier(\"birth.confirm\")\n                }\n                ToolbarItemGroup(placement: .keyboard)",
+    "count": 1
+  },
+  {
+    "path": "Sources/DesignSystemV6_Extensions.swift",
+    "before": "                        .buttonStyle(.plain)\n\n                        Button {\n                            KyV6.impact(.light)\n                            onNewPerson()",
+    "after": "                        .buttonStyle(.plain)\n                        .accessibilityLabel(\"切换命主\")\n\n                        Button {\n                            KyV6.impact(.light)\n                            onNewPerson()",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")",
+    "after": "            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "                                                      gender: placeholder.gender, longitude: nil))",
+    "after": "                                                      gender: placeholder.gender, longitude: nil))\n                .accessibilityElement(children: .contain)\n                .accessibilityIdentifier(\"tool.independent.\\(item.id)\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "/// 点一下名字胶囊，即把该人的生辰／性别／出生地经度交给宿主页面，由宿主决定如何带入。",
+    "after": "/// 点名字胶囊会同步全局当前命主，再把生辰／性别／经度交给宿主页面。",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": ".accessibilityValue(active ? \"当前命主\" : \"\")",
+    "after": ".accessibilityValue(active ? \"已选中\" : \"\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "    @ObservedObject var store: PeopleStore\n",
+    "after": "    @ObservedObject var store: PeopleStore\n    @Environment(\\.colorScheme) private var scheme\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": "        if store.people.isEmpty {",
+    "after": "        let theme = KanyuV6.Theme.resolved(scheme)\n        if store.people.isEmpty {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": ".background(active ? Ky.qingdai : Ky.elevated)\n                            .foregroundStyle(active ? Color.white : Ky.ink)",
+    "after": ".background(active ? theme.action : Ky.elevated)\n                            .foregroundStyle(active ? theme.actionForeground : Ky.ink)",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "        .swipeActions(edge: .trailing) {",
+    "after": "        .accessibilityLabel(\"人物档案：\\(p.name)\")\n        .accessibilityValue(\"\\(p.gender == \"M\" ? \"男\" : \"女\") · \\(DisplayTimeReceipt.beijing(p.birthDate))\")\n        .accessibilityHint(\"打开人物详情；向左轻扫可编辑或删除\")\n        .swipeActions(edge: .trailing) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "    @ViewBuilder private var content: some View {\n        if Self.chartRequiredIDs.contains(item.id), peopleStore.currentPerson == nil {\n            VStack(spacing: 16) {\n                ContentUnavailableView(\"请先选择人物档案\", systemImage: \"person.crop.circle.badge.questionmark\",\n                    description: Text(\"此工具需要出生资料。请先创建或选择人物。\"))\n                Button(\"新建人物档案\") { showingNewPerson = true }\n                    .buttonStyle(.borderedProminent).padding(.bottom, 24)\n                    .accessibilityIdentifier(\"tool.createPerson\")\n            }\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")\n        } else if let person = peopleStore.currentPerson {\n            toolDestination(\n                for: item,\n                person: person,\n                chart: BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,\n                                         longitude: person.useLongitude ? person.longitude : nil)\n            )\n            .id(person)\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityValue(\"\\(person.name) · \\(DisplayTimeReceipt.beijing(person.birthDate))\")\n        } else {\n            // Independent tools ignore the chart argument. A placeholder is never\n            // presented as a person's chart; chart-dependent routes are blocked above.\n            let placeholder = Person(name: \"工具上下文\", relation: \"工具\", gender: \"M\", birthEpoch: 0)\n            toolDestination(for: item, person: placeholder,\n                            chart: BaziEngine.paipan(clock: placeholder.birthDate,\n                                                      gender: placeholder.gender, longitude: nil))\n                .accessibilityElement(children: .contain)\n                .accessibilityIdentifier(\"tool.independent.\\(item.id)\")\n        }\n    }",
+    "after": "    @ViewBuilder private var content: some View {\n        if !Self.chartRequiredIDs.contains(item.id) {\n            // Independent tools never construct a fake person or an unused birth chart.\n            independentToolDestination(for: item)\n                .accessibilityElement(children: .contain)\n                .accessibilityIdentifier(\"tool.independent.\\(item.id)\")\n        } else if let person = peopleStore.currentPerson {\n            toolDestination(\n                for: item,\n                person: person,\n                chart: BaziEngine.cachedPaipan(clock: person.birthDate, gender: person.gender,\n                                         longitude: person.useLongitude ? person.longitude : nil)\n            )\n            .id(person)\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityValue(\"\\(person.name) · \\(DisplayTimeReceipt.beijing(person.birthDate))\")\n        } else {\n            VStack(spacing: 16) {\n                ContentUnavailableView(\"请先选择人物档案\", systemImage: \"person.crop.circle.badge.questionmark\",\n                    description: Text(\"此工具需要出生资料。请先创建或选择人物。\"))\n                Button(\"新建人物档案\") { showingNewPerson = true }\n                    .buttonStyle(.borderedProminent).padding(.bottom, 24)\n                    .accessibilityIdentifier(\"tool.createPerson\")\n            }\n            .accessibilityElement(children: .contain)\n            .accessibilityIdentifier(\"tool.missing.\\(item.id)\")\n        }\n    }",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "@ViewBuilder\nfunc toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> some View {\n    switch item.id {\n    case \"learning\":\n        LearningCenterView()\n    case \"astro\":\n        AstroHomeView(person: person, chart: chart)\n    case \"synastry\":\n        SynastryView()\n    case \"wealth\":\n        WealthView()\n    case \"ganzhi\":\n        GanZhiLookupView()\n    case \"family\":\n        FamilyChartView()\n    case \"sharecard\":\n        SynastryShareCardView()\n    case \"compare\":\n        CompareView()\n    case \"yearly\":\n        YearByYearView(chart: chart, name: person.name)\n    case \"interpret\":\n        InterpretView(chart: chart, name: person.name, verificationOwnerID: \"person:\\(person.id.uuidString)\")\n    case \"chartdepth\":\n        ChartDepthView(person: person, chart: chart)\n    case \"poster\":\n        BaziResultView(chart: chart, name: person.name, verificationOwnerID: \"person:\\(person.id.uuidString)\")\n    case \"reportcenter\":\n        ReportCenterView()\n    case \"almanac\":\n        AlmanacView()\n    case \"monthcal\":\n        MonthCalendarTabView()\n    case \"zeji\":\n        ZejiView()\n    case \"yunqi\":\n        YunQiPageView()\n    case \"chenggu\":\n        ChengguView(person: person, chart: chart)\n    case \"meihua\":\n        MeihuaView()\n    case \"library\":\n        LibraryView()\n    case \"classics\":\n        ClassicsView()\n    case \"academy\":\n        AcademyView()\n    case \"quiz\":\n        QuizView()\n    case \"blindtest\":\n        BlindTestView()\n    case \"celeb\":\n        CelebView()\n    case \"shahandbook\":\n        ShaHandbookView()\n    case \"compass\":\n        CompassStandaloneView()\n    case \"floorplan\":\n        FloorPlanOverlayView()\n    case \"ask\":\n        AskView()\n    case \"lucky\":\n        LuckyGuideView(person: person, chart: chart)\n    case \"annual\":\n        AnnualReportView(chart: chart, name: person.name, initialYear: Calendar.current.component(.year, from: Date()))\n    case \"accessory\":\n        AccessoryListView()\n    case \"forecast\":\n        ForecastView()\n    case \"backtest\":\n        BacktestView()\n    case \"backup\":\n        BackupView()\n    case \"caliber\":\n        CaliberSettingsView()\n    default:\n        EmptyView()\n    }\n}\n\n",
+    "after": "@ViewBuilder\nfunc toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> some View {\n    switch item.id {\n    case \"astro\":\n        AstroHomeView(person: person, chart: chart)\n    case \"yearly\":\n        YearByYearView(chart: chart, name: person.name)\n    case \"interpret\":\n        InterpretView(chart: chart, name: person.name, verificationOwnerID: \"person:\\(person.id.uuidString)\")\n    case \"chartdepth\":\n        ChartDepthView(person: person, chart: chart)\n    case \"poster\":\n        BaziResultView(chart: chart, name: person.name, verificationOwnerID: \"person:\\(person.id.uuidString)\")\n    case \"chenggu\":\n        ChengguView(person: person, chart: chart)\n    case \"lucky\":\n        LuckyGuideView(person: person, chart: chart)\n    case \"annual\":\n        AnnualReportView(chart: chart, name: person.name, initialYear: Calendar.current.component(.year, from: Date()))\n    default:\n        independentToolDestination(for: item)\n    }\n}\n\n/// Routes which do not consume a passed birth chart keep their state when profiles change.\n@ViewBuilder\nfunc independentToolDestination(for item: ToolItem) -> some View {\n    switch item.id {\n    case \"learning\":\n        LearningCenterView()\n    case \"synastry\":\n        SynastryView()\n    case \"wealth\":\n        WealthView()\n    case \"ganzhi\":\n        GanZhiLookupView()\n    case \"family\":\n        FamilyChartView()\n    case \"sharecard\":\n        SynastryShareCardView()\n    case \"compare\":\n        CompareView()\n    case \"reportcenter\":\n        ReportCenterView()\n    case \"almanac\":\n        AlmanacView()\n    case \"monthcal\":\n        MonthCalendarTabView()\n    case \"zeji\":\n        ZejiView()\n    case \"yunqi\":\n        YunQiPageView()\n    case \"meihua\":\n        MeihuaView()\n    case \"library\":\n        LibraryView()\n    case \"classics\":\n        ClassicsView()\n    case \"academy\":\n        AcademyView()\n    case \"quiz\":\n        QuizView()\n    case \"blindtest\":\n        BlindTestView()\n    case \"celeb\":\n        CelebView()\n    case \"shahandbook\":\n        ShaHandbookView()\n    case \"compass\":\n        CompassStandaloneView()\n    case \"floorplan\":\n        FloorPlanOverlayView()\n    case \"ask\":\n        AskView()\n    case \"accessory\":\n        AccessoryListView()\n    case \"forecast\":\n        ForecastView()\n    case \"backtest\":\n        BacktestView()\n    case \"backup\":\n        BackupView()\n    case \"caliber\":\n        CaliberSettingsView()\n    default:\n        EmptyView()\n    }\n}\n\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PersonQuickBar.swift",
+    "before": ".overlay(Capsule().stroke(active ? Ky.qingdai : Ky.line, lineWidth: 0.7))",
+    "after": ".overlay(Capsule().stroke(active ? theme.action : Ky.line, lineWidth: 0.7))",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "Calendar(identifier: .gregorian)",
+    "after": "BirthClockInput.calendar",
+    "count": 11
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "TrueSolarTime.corrected(clock: clock, longitude: lo)",
+    "after": "TrueSolarTime.corrected(clock: clock, longitude: lo, calendar: BirthClockInput.calendar)",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "TrueSolarTime.corrected(clock: d, longitude: lo)",
+    "after": "TrueSolarTime.corrected(clock: d, longitude: lo, calendar: BirthClockInput.calendar)",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "            // 生辰摘要票据卡：点一下弹层改时间",
+    "after": "            DisclosureGroup(\"标准北京时间 UTC+8 · 填写说明\") {\n                Text(\"这里统一按标准北京时间录入。海外出生或使用历史夏令时的记录，请先换算为 UTC+8。经度开关只计算真太阳时校正，不替代法定时区或夏令时换算。\".scriptConverted)\n                    .font(.caption).foregroundStyle(Ky.sub)\n                    .fixedSize(horizontal: false, vertical: true)\n            }\n            .font(.caption).tint(Ky.qingdai)\n            // 生辰摘要票据卡：点一下弹层改时间",
+    "count": 1
+  },
+  {
+    "path": "Sources/BirthInputView.swift",
+    "before": "            .accessibilityIdentifier(\"birth.edit\")",
+    "after": "            .accessibilityLabel(\"修改生辰：\\(summarySolar)，北京时间 UTC+8\")\n            .accessibilityValue(\"农历：\\(summaryLunar)\")\n            .accessibilityIdentifier(\"birth.edit\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "                    Button(\"保存\".scriptConverted) {\n                        var p = person",
+    "after": "                    Button(\"保存\".scriptConverted) {\n                        guard !person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }\n                        var p = person",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "}.disabled(person.name.trimmingCharacters(in: .whitespaces).isEmpty)",
+    "after": "}.disabled(person.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityValue",
+    "after": "            .accessibilityIdentifier(\"tool.context.\\(item.id)\")\n            .accessibilityLabel(\"当前命主\")\n            .accessibilityValue",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "struct PalmHomeView: View {\n    @State private var quickPerson: Person?\n    var body: some View {\n        List {\n            Section {\n                PersonQuickBar(store: PeopleStore.shared) { p in quickPerson = p }\n                if let q = quickPerson {\n                    HStack(spacing: 6) {\n                        Image(systemName: \"person.fill\").foregroundStyle(Ky.qingdai)\n                        Text(\"当前命主：\".scriptConverted + (q.name.isEmpty ? \"未命名\" : q.name) + \"（测量记录按此人归档）\".scriptConverted).font(.caption).foregroundStyle(Ky.ink)\n                    }\n                }\n            }\n            NavigationLink { HandMeasureView(personName: quickPerson?.name ?? \"\") } label: {\n                Label(\"手相 · 测量与描线\".scriptConverted, systemImage: \"hand.raised\")\n            }\n            NavigationLink { FaceMeasureView(personName: quickPerson?.name ?? \"\") } label: {\n                Label(\"面相 · 三停校准\".scriptConverted, systemImage: \"face.smiling\")\n            }\n            NavigationLink { PalmRecordListView() } label: {\n                Label(\"测量记录（按人存档）\".scriptConverted, systemImage: \"archivebox\")\n            }\n            Text(\"用法：手相用掌心正对、光线均匀的照片；面相用正面自然光、无美颜的照片。测量是几何事实，判读为娱乐参考。\".scriptConverted)\n                .font(.caption).foregroundStyle(Ky.sub)\n        }\n        .navigationTitle(\"手相面相\".scriptConverted)\n        .navigationBarTitleDisplayMode(.inline)\n    }\n}\n\n",
+    "after": "struct PalmHomeView: View {\n    @EnvironmentObject private var peopleStore: PeopleStore\n    private var currentName: String { peopleStore.currentPerson?.name ?? \"\" }\n    var body: some View {\n        List {\n            Section {\n                PersonQuickBar(store: peopleStore) { _ in }\n            }\n            Section {\n                NavigationLink { PhysiognomyGuideView(kind: .hand) } label: {\n                    guideRow(\"道家手相图解\", detail: \"三大主线 · 掌丘 · 五指，点图看白话说明\", icon: \"hand.raised\")\n                }\n                .accessibilityIdentifier(\"physiognomy.open.hand\")\n                NavigationLink { PhysiognomyGuideView(kind: .face) } label: {\n                    guideRow(\"面相十二宫图解\", detail: \"十二宫 · 三停，认识位置与传统名称\", icon: \"face.smiling\")\n                }\n                .accessibilityIdentifier(\"physiognomy.open.face\")\n            } header: { Text(\"先读图解 · 无需照片\".scriptConverted) }\n            Section {\n                NavigationLink { HandMeasureView(personName: currentName) } label: {\n                    guideRow(\"手掌照片测量\", detail: \"选择照片 → 校正三线 → 保存测量记录\", icon: \"viewfinder\")\n                }\n                NavigationLink { FaceMeasureView(personName: currentName) } label: {\n                    guideRow(\"面部比例校准\", detail: \"选择正面照片 → 校正标线 → 查看三停比例\", icon: \"person.crop.square\")\n                }\n                NavigationLink { PalmRecordListView() } label: {\n                    Label(\"测量记录（按人存档）\".scriptConverted, systemImage: \"archivebox\")\n                }\n            } header: { Text(\"再做测量 · 手动核对\".scriptConverted) }\n            Section {\n                Text(\"图解是公共示意，不是对你外貌的判定。照片测量用于记录位置、比例与描线；请用掌心正对或正面自然光、无美颜的照片，识别后仍需手动核对。\".scriptConverted)\n                    .font(.subheadline).foregroundStyle(Ky.sub)\n            }\n        }\n        .scrollContentBackground(.hidden).background(Ky.bg)\n        .navigationTitle(\"手相面相\".scriptConverted)\n        .navigationBarTitleDisplayMode(.inline)\n    }\n    private func guideRow(_ title: String, detail: String, icon: String) -> some View {\n        HStack(alignment: .top, spacing: 12) {\n            Image(systemName: icon).font(.title2).foregroundStyle(Ky.qingdai)\n                .frame(width: 32, height: 44)\n            VStack(alignment: .leading, spacing: 6) {\n                Text(title.scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)\n                Text(detail.scriptConverted).font(.subheadline).foregroundStyle(Ky.sub)\n                    .fixedSize(horizontal: false, vertical: true)\n            }.padding(.vertical, 6)\n        }\n    }\n}\n\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "import UIKit\nimport Photos\n\n// MARK: - 海报编辑器基础版（G13，Insight 第 3 批；2026-11-09 精简：只留宋纸青黛一款）\n// 换字（标题／落款副标文案）＋换色（品牌色板内 4 档强调色）；款式选择器已随砍款去掉，编辑器只出宋纸青黛。\n// 导出走 PosterSheetView 同款渲染路径（ImageRenderer，scale 2.0，540pt 画布 → 1080 宽 PNG），\n// 文件名后缀走 PosterStyle.fileSuffix，与既有海报同规格；结论内容只取 PosterView 既有解盘，一字不动。\n// 入口：PosterSheetView 内「打开海报编辑器」按钮，以 .sheet 弹出（禁 fullScreenCover）。\n",
+    "after": "import UIKit\nimport Photos\n\n// MARK: - 海报编辑器（继承当前款式，支持标题／副标与品牌强调色编辑）\n// 玄夜保留原生配色；预测单与标准海报均支持副标覆盖。\n// 导出走 PosterSheetView 同款渲染路径（ImageRenderer，scale 2.0，540pt 画布 → 1080 宽 PNG），\n// 文件名后缀走 PosterStyle.fileSuffix，与既有海报同规格；结论内容只取 PosterView 既有解盘，一字不动。\n// 入口：PosterSheetView 内「打开海报编辑器」按钮，以 .sheet 弹出（禁 fullScreenCover）。\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "    }\n}\n\nstruct PosterEditorView: View {\n    let chart: BaziChart\n    let name: String\n",
+    "after": "    }\n}\n\nprivate struct PosterEditorRenderKey: Hashable {\n    let style: PosterStyle\n    let accent: PosterAccent\n    let title: String\n    let subtitle: String\n}\n\nstruct PosterEditorView: View {\n    let chart: BaziChart\n    let name: String\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "    @State private var appliedSubtitle: String = \"\"\n    @State private var previewImage: UIImage?\n    @State private var fileURL: URL?\n    @State private var renderKey: String\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()\n\n    init(chart: BaziChart, name: String) {\n        self.chart = chart\n        self.name = name\n        _renderKey = State(initialValue: PosterStyle.songQingdai.rawValue + \"-\" + PosterAccent.qingdai.rawValue + \"--\")\n    }\n\n    var body: some View {\n",
+    "after": "    @State private var appliedSubtitle: String = \"\"\n    @State private var previewImage: UIImage?\n    @State private var fileURL: URL?\n    @State private var renderKey: PosterEditorRenderKey\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()\n\n    init(chart: BaziChart, name: String, initialStyle: PosterStyle = .songQingdai) {\n        self.chart = chart\n        self.name = name\n        _style = State(initialValue: initialStyle)\n        _renderKey = State(initialValue: PosterEditorRenderKey(style: initialStyle, accent: .qingdai, title: \"\", subtitle: \"\"))\n    }\n\n    var body: some View {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "                    TextField(\"落款副标（留空则用既有副标）\", text: $subtitleDraft)\n                        .textFieldStyle(.roundedBorder)\n                    Button(\"应用并预览\") {\n                        appliedTitle = titleDraft\n                        appliedSubtitle = subtitleDraft\n                        fileURL = nil\n",
+    "after": "                    TextField(\"落款副标（留空则用既有副标）\", text: $subtitleDraft)\n                        .textFieldStyle(.roundedBorder)\n                    Button(\"应用并预览\") {\n                        // 相同内容不会改变 task id；显式重渲染，避免清空后一直等待。\n                        if titleDraft == appliedTitle, subtitleDraft == appliedSubtitle {\n                            render()\n                            return\n                        }\n                        appliedTitle = titleDraft\n                        appliedSubtitle = subtitleDraft\n                        fileURL = nil\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "    }\n\n    private func refreshRenderKey() {\n        renderKey = \"\\(style.rawValue)-\\(accent.rawValue)-\\(appliedTitle)-\\(appliedSubtitle)\"\n    }\n\n    // 与 PosterSheetView.render 同款渲染路径（ImageRenderer 在主线程渲染，完成后展示缓存图）\n",
+    "after": "    }\n\n    private func refreshRenderKey() {\n        renderKey = PosterEditorRenderKey(style: style, accent: accent, title: appliedTitle, subtitle: appliedSubtitle)\n    }\n\n    // 与 PosterSheetView.render 同款渲染路径（ImageRenderer 在主线程渲染，完成后展示缓存图）\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "\n    var body: some View {\n        if style == .yuceDan {\n            YucedanPosterLayout(chart: chart, name: displayName, pal: pal)\n        } else {\n            standardPosterView\n        }\n",
+    "after": "\n    var body: some View {\n        if style == .yuceDan {\n            YucedanPosterLayout(chart: chart, name: displayName, pal: pal, subtitle: subtitleOverride)\n        } else {\n            standardPosterView\n        }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "let name: String\n// pal 必须是 fileprivate：PosterPalette 是 private 类型，internal 属性/初始化器会编译不过\nfileprivate let pal: PosterPalette\n\nfileprivate init(chart: BaziChart, name: String, pal: PosterPalette) {\nself.chart = chart\nself.name = name\nself.pal = pal\n}\n\n// MARK: - 数据（全部逐人现算；喜忌口径见 InterpretEngine.posterXiJi：扶抑初判＋调候优先）\n",
+    "after": "let name: String\n// pal 必须是 fileprivate：PosterPalette 是 private 类型，internal 属性/初始化器会编译不过\nfileprivate let pal: PosterPalette\nprivate let subtitle: String?\n\nfileprivate init(chart: BaziChart, name: String, pal: PosterPalette, subtitle: String? = nil) {\nself.chart = chart\nself.name = name\nself.pal = pal\nself.subtitle = subtitle\n}\n\n// MARK: - 数据（全部逐人现算；喜忌口径见 InterpretEngine.posterXiJi：扶抑初判＋调候优先）\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "VStack(alignment:.leading, spacing: 2) {\nText(\"三术合参 · 堪舆命理院 谨制\")\n.font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accent)\nText(\"据子平五典与天纪三合推演 · 传统命理研习参考\")\n.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)\n.fixedSize(horizontal: false, vertical: true)\nText(\"典籍依据：《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》\")\n",
+    "after": "VStack(alignment:.leading, spacing: 2) {\nText(\"三术合参 · 堪舆命理院 谨制\")\n.font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accent)\nText(subtitle.flatMap { $0.isEmpty ? nil : $0 } ?? \"据子平五典与天纪三合推演 · 传统命理研习参考\")\n.font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)\n.fixedSize(horizontal: false, vertical: true)\nText(\"典籍依据：《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）\n                Button(\"打开海报编辑器（换字／换色）\") { showEditor = true }\n                    .buttonStyle(KyPrimaryButton())\n                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name) }\n\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n",
+    "after": "                // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）\n                Button(\"打开海报编辑器（换字／换色）\") { showEditor = true }\n                    .buttonStyle(KyPrimaryButton())\n                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name, initialStyle: style) }\n\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "    @Environment(\\.dismiss) private var dismiss\n    var onSaved: (() -> Void)? = nil",
+    "after": "    @Environment(\\.dismiss) private var dismiss\n    @FocusState private var nameFieldFocused: Bool\n    var onSaved: (() -> Void)? = nil",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "TextField(\"姓名\", text: $person.name).accessibilityIdentifier(\"person.form.name\")",
+    "after": "TextField(\"姓名\", text: $person.name)\n                    .focused($nameFieldFocused)\n                    .accessibilityIdentifier(\"person.form.name\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "            .toolbar {\n                ToolbarItem(placement: .cancellationAction) { Button(\"取消\".scriptConverted) { dismiss() }.accessibilityIdentifier(\"person.form.cancel\") }",
+    "after": "            .toolbar {\n                ToolbarItem(placement: .keyboard) {\n                    Button(\"收起键盘\") { nameFieldFocused = false }\n                        .accessibilityIdentifier(\"person.form.dismissKeyboard\")\n                }\n                ToolbarItem(placement: .cancellationAction) { Button(\"取消\".scriptConverted) { dismiss() }.accessibilityIdentifier(\"person.form.cancel\") }",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "        }\n        .background(Ky.bg)\n        .navigationTitle(\"全部工具\".scriptConverted)",
+    "after": "        }\n        .accessibilityIdentifier(\"alltools.scroll\")\n        .background(Ky.bg)\n        .navigationTitle(\"全部工具\".scriptConverted)",
+    "count": 1
   }
 ]
