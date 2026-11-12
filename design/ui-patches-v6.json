@@ -1210,5 +1210,53 @@
     "before": "        }\n        .background(Ky.bg)\n        .navigationTitle(\"全部工具\".scriptConverted)",
     "after": "        }\n        .accessibilityIdentifier(\"alltools.scroll\")\n        .background(Ky.bg)\n        .navigationTitle(\"全部工具\".scriptConverted)",
     "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "    // MARK: - G5 可信度标签（Insight 第 1 批）\n    /// 每条解盘的可信程度，封闭集合：验真状态（已验真／待回验／未打标）＋依据层级。\n    /// 只用已有数据，不编造：\n    ///   验真状态取 VerifyStore 打标（已应验＝true、待回验＝false、未打标＝nil）；\n    ///   依据层级取 mechanism 文本（即 links 首个「根据」／「法则」，G2 已收拢），\n    ///   按文本自身措辞判定，优先级如下——\n    ///     含「纪律」／「回测」→ 本系统回测纪律（如“学历三查（工作室纪律 27…）”）；\n    ///     含《》书名号 → 五典原文（如《子平真诠》《滴天髓》《三命通会》）；\n    ///     含「通说」／「取象」／「类象」／「演绎」→ 流派应用；\n    ///     含「象征」／「民间」／「民俗」→ 民间象征；\n    ///     其余无引文的方法陈述（如“应期看引动…”）只作流派应用，绝不升格为五典原文；\n    ///     mechanism 为空（命局风景／十神看点只有「盘面」＋「口径」链）→ 盘面事实。\n    /// 标签是展示层收口：未打标绝不写成已验证；30 条逐条有值，无留空。\n    static func confidenceLabel(title: String, mechanism: String?, ownerID: String? = nil) -> String {\n        let state: String\n        switch VerifyStore.mark(for: title, ownerID: ownerID) {\n        case true: state = \"已验真\"\n        case false: state = \"待回验\"\n        case nil: state = \"未打标\"\n        }\n        let level: String\n        if let m = mechanism, !m.isEmpty {\n            if m.contains(\"纪律\") || m.contains(\"回测\") {\n                level = \"本系统回测纪律\"\n            } else if m.contains(\"《\") {\n                level = \"五典原文\"\n            } else if m.contains(\"通说\") || m.contains(\"取象\") || m.contains(\"类象\") || m.contains(\"演绎\") {\n                level = \"流派应用\"\n            } else if m.contains(\"象征\") || m.contains(\"民间\") || m.contains(\"民俗\") {\n                level = \"民间象征\"\n            } else {\n                level = \"流派应用\"\n            }\n        } else {\n            level = \"盘面事实\"\n        }\n        return state + \" · \" + level\n    }\n\n",
+    "after": "    // MARK: - G5 可信度标签（Insight 第 1 批）\n    /// User reports are not independent accuracy checks. A book title does not prove\n    /// an original quotation; unverified classical references are always downgraded.\n    /// Keep the legacy VerifyStore v2 person/entry keys unchanged.\n    static func confidenceLabel(title: String, mechanism: String?, ownerID: String? = nil) -> String {\n        InterpretSourceLabelPolicy.label(\n            userMark: VerifyStore.mark(for: title, ownerID: ownerID),\n            mechanism: mechanism\n        )\n    }\n\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "    @State private var verifyTick = 0",
+    "after": "    @State private var verifyTick = 0\n    @State private var showNaturalVoiceOptions = false",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "                            let textToRead = filteredIndices.map { \"\\(allItems[$0].title)。\\(allItems[$0].conclusion)\" }.joined(separator: \"。\")",
+    "after": "                            let textToRead = filteredIndices.map { InterpretReadability.narration(title: allItems[$0].title, conclusion: allItems[$0].conclusion) }.joined(separator: \"。\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "                    if VerifyStore.legacyMarkCount() > 0 {",
+    "after": "                    DisclosureGroup(\"自然语音设置\", isExpanded: $showNaturalVoiceOptions) {\n                        InterpretNarrationControls(speaker: speaker)\n                    }\n                    .font(.subheadline)\n                    .foregroundStyle(Ky.ink)\n                    .accessibilityIdentifier(\"interpret.voice.settings\")\n                    if VerifyStore.legacyMarkCount() > 0 {",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "                                EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links, mechanism: allItems[i].mechanism, confidence: allItems[i].confidence, timeRange: allItems[i].timeRange, advice: allItems[i].advice)",
+    "after": "                                InterpretPlainIntro(item: allItems[i])\n                                EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links, mechanism: allItems[i].mechanism, confidence: allItems[i].confidence, timeRange: allItems[i].timeRange, advice: allItems[i].advice)",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "                                        speaker.read(\"\\(allItems[i].title)。\\(allItems[i].conclusion)\")",
+    "after": "                                        speaker.read(InterpretReadability.narration(title: allItems[i].title, conclusion: allItems[i].conclusion))",
+    "count": 1
+  },
+  {
+    "path": "Sources/InterpretModule.swift",
+    "before": "final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {\n    private let synth = AVSpeechSynthesizer()\n    @Published var speaking = false\n    override init() {\n        super.init()\n        synth.delegate = self\n    }\n    func read(_ text: String) {\n        if synth.isSpeaking { synth.stopSpeaking(at: .immediate); speaking = false; return }\n        let u = AVSpeechUtterance(string: text)\n        u.voice = AVSpeechSynthesisVoice(language: \"zh-CN\")\n        u.rate = 0.48\n        speaking = true\n        synth.speak(u)\n    }\n    func stop() { synth.stopSpeaking(at: .immediate); speaking = false }\n    // 朗读自然结束／被取消时复位 speaking（此前只在手动 stop 里复位，播完按钮会一直卡在「停止朗读」）\n    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {\n        DispatchQueue.main.async { self.speaking = false }\n    }\n    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {\n        DispatchQueue.main.async { self.speaking = false }\n    }\n}",
+    "after": "final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {\n    private let synth = AVSpeechSynthesizer()\n    private static let voiceKey = \"interpret.voice.identifier.v1\"\n    private static let rateKey = \"interpret.voice.rate.v1\"\n    @Published var speaking = false\n    @Published var selectedVoiceID = \"\" {\n        didSet { UserDefaults.standard.set(selectedVoiceID, forKey: Self.voiceKey) }\n    }\n    @Published var narrationRate: Double = 0.48 {\n        didSet { UserDefaults.standard.set(narrationRate, forKey: Self.rateKey) }\n    }\n    // Only expose Mandarin voices installed on this device. Premium/enhanced\n    // voices require system installation; do not claim that they always exist.\n    var mandarinVoices: [AVSpeechSynthesisVoice] {\n        AVSpeechSynthesisVoice.speechVoices()\n            .filter { $0.language == \"zh-CN\" }\n            .sorted {\n                if $0.quality.rawValue != $1.quality.rawValue {\n                    return $0.quality.rawValue > $1.quality.rawValue\n                }\n                return $0.name.localizedStandardCompare($1.name) == .orderedAscending\n            }\n    }\n    var activeVoiceDescription: String {\n        let voice = selectedVoice()\n        guard let voice else { return \"系统普通话（设备默认）\" }\n        let quality: String\n        switch voice.quality {\n        case .premium: quality = \"高级\"\n        case .enhanced: quality = \"增强\"\n        default: quality = \"标准\"\n        }\n        return \"\\(voice.name) · \\(quality)\"\n    }\n    override init() {\n        super.init()\n        synth.delegate = self\n        selectedVoiceID = UserDefaults.standard.string(forKey: Self.voiceKey) ?? \"\"\n        let saved = UserDefaults.standard.double(forKey: Self.rateKey)\n        narrationRate = saved == 0 ? 0.48 : min(0.58, max(0.42, saved))\n    }\n    private func selectedVoice() -> AVSpeechSynthesisVoice? {\n        let available = mandarinVoices\n        if let selected = available.first(where: { $0.identifier == selectedVoiceID }) {\n            return selected\n        }\n        return available.first ?? AVSpeechSynthesisVoice(language: \"zh-CN\")\n    }\n    private func speak(_ text: String) {\n        let u = AVSpeechUtterance(string: text)\n        u.voice = selectedVoice()\n        u.rate = Float(narrationRate)\n        u.pitchMultiplier = 1.0\n        u.preUtteranceDelay = 0.08\n        u.postUtteranceDelay = 0.12\n        speaking = true\n        synth.speak(u)\n    }\n    func read(_ text: String) {\n        if synth.isSpeaking { stop(); return }\n        speak(text)\n    }\n    func preview() {\n        if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }\n        speak(\"欢迎收听三术合参。这里先说结论，再解释依据和传统术语。\")\n    }\n    func stop() { synth.stopSpeaking(at: .immediate); speaking = false }\n    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {\n        DispatchQueue.main.async { self.speaking = synthesizer.isSpeaking }\n    }\n    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {\n        DispatchQueue.main.async { self.speaking = synthesizer.isSpeaking }\n    }\n}",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportCenterView.swift",
+    "before": "                // G8：年度报告区段——有指定人物时链到该人当年年度报告页；无指定人物时只链档案。",
+    "after": "                KyHomeSection(title: \"海报设计作品库\", trailing: \"4 款\") {\n                    NavigationLink {\n                        PosterConceptGalleryView(person: person)\n                    } label: {\n                        annualEntryRow(icon: \"paintpalette.fill\",\n                                       title: \"查看四款海报设计\",\n                                       subtitle: \"手相／八字／紫微／尊享 · 示例不作为个人报告\")\n                    }\n                    .buttonStyle(.plain)\n                    .accessibilityIdentifier(\"reportCenter.posterGallery\")\n                }\n                // G8：年度报告区段——有指定人物时链到该人当年年度报告页；无指定人物时只链档案。",
+    "count": 1
   }
 ]
