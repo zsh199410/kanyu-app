@@ -62,8 +62,8 @@ def refine_home_v6(text):
     assert text.count(before) == 1, "Context shortcut anchor drift"
     text = text.replace(before, after)
     # Specific iOS accessibility subtree refresh, permitted only at this reviewed anchor.
-    before = '                onOpenDetail: { showingPersonDetail = true }\\n            )'
-    after = before + '\\n            // Rebuild the visible profile and its accessibility subtree when selection changes.\\n            .id(p.id)'
+    before = '                onOpenDetail: { showingPersonDetail = true }\n            )'
+    after = before + '\n            // Rebuild the visible profile and its accessibility subtree when selection changes.\n            .id(p.id)'
     assert text.count(before) == 1, 'Selected-person accessibility anchor drift'
     text = text.replace(before, after)
     return text
