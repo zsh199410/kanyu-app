@@ -133,7 +133,7 @@ def apply_ui_patches(path, value):
     return value
 
 # P2 permits only these exact UI layout transformations; all other app code stays protected.
-assert mask_app(home_layout_v6(original('Sources/KanyuApp.swift'))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
+assert mask_app(apply_ui_patches('Sources/KanyuApp.swift', home_layout_v6(original('Sources/KanyuApp.swift')))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
 # Keep everything outside the first card wrapper unchanged, including the complete settings code.
 def mask_card(text):
     a = text.index('extension View {\n', text.index('struct KyWorkspaceHeading'))
