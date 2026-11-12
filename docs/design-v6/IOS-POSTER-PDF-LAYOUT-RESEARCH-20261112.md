@@ -73,3 +73,31 @@
 每次提交都需：精确 SHA 的 Xcode 原生 Release + 原有 XCTests/UITests + 11 项历史 PNG + 三档 PDF 文字/页边距/目录/CRC/SHA256 + iPhone 深浅、VoiceOver 和超长姓名截图；新增极端样本不弱化旧断言。
 
 **目前未验证**：DEBUG 样张是否可编译、实际 PDF/PNG 视觉输出、目录极端页数、系统文件分享、真实设备缓存/签名安装、PDF/UA 标签、同名人物隔离与备份；此工作不代表“导出升级完成”。
+
+
+## 七、排版研究第二轮：PDF 目录与文件保存（2026-11-12）
+
+已增加独立 DEBUG 样张中的 PDF 目录和文件保存两个状态演示。它们使用虚拟标题和模拟按钮，未生成任何生产 PDF/PNG。
+
+### 目录：已定位的边界风险
+- 现有 ReportModule 的 drawTOCItemCell 对标题实测高度，但双栏外层循环固定把 y 增加 16pt。长标题若超过一行，下一条可能叠印。
+- 动态目录行高应取 max(左标题实测高、右标题实测高、16pt) + 行间距。目录超出 A4 版心时继续新增目录页，不能裁字或覆盖页脚。
+- 目录完整分页后，再计算内容的绝对页码。旧样本目录仍为 1 页时，保持第 2 页为目录、正文从第 3 页的现有行为；超长目录样本另有独立验证。
+- 既有 4/14/26 页全文、原始内容哈希、engineVersion、报告档位、历史导出解析和原有测试断言均保留。所有真实变化由独立实现 PR 逐项验证。
+- PDF 可选中全文只是第一个门禁，语义标签、阅读顺序及 PDF/UA 不因此自动达标。
+
+### 本地文件保存与分享
+- 显示的状态应为：准备、渲染、格式校验、持久写盘、文件可用、系统分享、失败、取消。
+- 成功的定义是目标文件真实持久写入、格式校验通过，并且人物归属及版本收据匹配；不能仅因打开了分享面板就提示“下载成功”。
+- PDF 用 PDFKit 浏览可选文本；分享以文件 URL 为准，不把 PDF 截屏作为 PDF。海报可另存相册。
+- 用户取消、权限拒绝、磁盘不足或其他写盘失败时，应保留最后一个已验证文件，错误可重试。
+- 同名人物归属问题必须在独立数据可靠性工作流处理，不借 UI 改版悄悄变更身份映射。
+
+### 参考
+Apple UIGraphicsPDFRenderer: https://developer.apple.com/documentation/uikit/uigraphicspdfrenderer
+Apple PDFKit PDFView: https://developer.apple.com/documentation/pdfkit/pdfview
+Apple ShareLink: https://developer.apple.com/documentation/swiftui/sharelink
+PDF Association Tagged PDF: https://pdfa.org/resource/tagged-pdf-q-a/
+2026 装帧研究（题签、章印与现代语义层级）：https://cbyys.sppc.edu.cn/article/doi/10.19619/j.issn.1007-1938.2026.00.059
+
+新文件内容仍是研究与可运行候选样张，未修改 ReportModule、PosterEditorModule 或 ReportCenterView。未取得新 SHA 的原生编译和实际 UI 截图前，不将其标为完成验收。

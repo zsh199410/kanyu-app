@@ -7,11 +7,14 @@ private enum ExportStudyPage: String, CaseIterable, Identifiable {
     case poster = "长图画报"
     case cover = "PDF 封面"
     case content = "PDF 正文"
+    case toc = "PDF 目录"
+    case save = "文件保存"
     var id: String { rawValue }
 }
 
 struct KanyuPosterPDFLayoutStudy: View {
     @State private var selection: ExportStudyPage = .poster
+    @State private var simulatedSaveState = 0
     private let paper = Color(rgb: KanyuV6.Hex.paper)
     private let card = Color(rgb: KanyuV6.Hex.ivory)
     private let ink = Color(rgb: KanyuV6.Hex.ink)
@@ -39,6 +42,8 @@ struct KanyuPosterPDFLayoutStudy: View {
                         case .poster: posterStudy
                         case .cover: pdfCoverStudy
                         case .content: pdfContentStudy
+                        case .toc: pdfTOCStudy
+                        case .save: exportFlowStudy
                         }
                     }
                     .accessibilityIdentifier("export.study.preview")
@@ -252,6 +257,130 @@ struct KanyuPosterPDFLayoutStudy: View {
         .background(card)
         .accessibilityElement(children: .contain)
     }
+    /// Demo only: variable-height TOC rows, no production PDF rendering.
+    private var pdfTOCStudy: some View {
+        VStack(alignment: .leading, spacing: 17) {
+            Text("目 录")
+                .font(.system(size: 27, design: .serif).weight(.semibold))
+                .foregroundStyle(indigo)
+            Text("A4 · 标题换行与目录分栏示意")
+                .font(.system(size: 12))
+                .foregroundStyle(muted)
+            Rectangle().fill(border).frame(height: 1)
+            ForEach([
+                ("第一章  命盘总览与排盘口径", "03"),
+                ("第二章  命局、十神与大运", "08"),
+                ("第三章  逐年分析与对应依据", "15")
+            ], id: \.0) { row in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(row.0)
+                        .font(.system(size: 14, design: .serif))
+                        .foregroundStyle(ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 6)
+                    Text(row.1)
+                        .font(.system(size: 12).monospacedDigit())
+                        .foregroundStyle(indigo)
+                }
+            }
+            sectionTitle("肆", "逐条解读索引")
+            let names = [
+                "月令格局与候选口径",
+                "喜忌初判与适用范围",
+                "岁运引动和时间收据",
+                "来源等级与传统依据",
+                "长标题多行时完整显示",
+                "内容版本及术语附录"
+            ]
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 16),
+                                GridItem(.flexible(), spacing: 16)],
+                      alignment: .leading, spacing: 13) {
+                ForEach(names.indices, id: \.self) { index in
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text(names[index])
+                            .font(.system(size: 11, design: .serif))
+                            .foregroundStyle(ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Text("\(index + 18)")
+                            .font(.system(size: 10).monospacedDigit())
+                            .foregroundStyle(indigo)
+                    }
+                }
+            }
+            Rectangle().fill(border).frame(height: 0.7)
+            Text("页码仅为占位：真实报告需先确定目录页数，再计算正文绝对页码。")
+                .font(.system(size: 11))
+                .foregroundStyle(muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(36)
+        .frame(maxWidth: 595, alignment: .leading)
+        .background(card)
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Demo state machine only. No file is written or shared.
+    private var exportFlowStudy: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("预览 · 保存 · 分享")
+                .font(.system(size: 24, design: .serif).weight(.semibold))
+                .foregroundStyle(indigo)
+            Text("以下均为合成数据演示，不会生成真实 PDF 或 PNG。")
+                .font(.caption)
+                .foregroundStyle(muted)
+            Picker("模拟保存状态", selection: $simulatedSaveState) {
+                Text("准备预览").tag(0)
+                Text("正在写盘").tag(1)
+                Text("保存成功").tag(2)
+                Text("保存失败").tag(3)
+            }
+            .pickerStyle(.menu)
+            .accessibilityIdentifier("export.study.simulated.state")
+            VStack(alignment: .leading, spacing: 7) {
+                Text("命书-示例档案-专业.pdf")
+                    .font(.headline)
+                    .foregroundStyle(ink)
+                Text("A4 · 页数依据真实排版统计 · 人物及版本需由生产数据填入")
+                    .font(.caption)
+                    .foregroundStyle(muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(card)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            Group {
+                switch simulatedSaveState {
+                case 1:
+                    Label("模拟：正在校验文件并写入本地", systemImage: "hourglass")
+                case 2:
+                    Label("模拟：已保存，可启用系统分享", systemImage: "checkmark.circle")
+                case 3:
+                    Label("模拟：写入失败，旧文件不应被删除", systemImage: "exclamationmark.triangle")
+                default:
+                    Label("模拟：先预览，再保存或分享", systemImage: "doc.text.magnifyingglass")
+                }
+            }
+            .font(.subheadline)
+            .foregroundStyle(ink)
+            .fixedSize(horizontal: false, vertical: true)
+            Button("切换模拟状态（不保存文件）") {
+                simulatedSaveState = (simulatedSaveState + 1) % 4
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(indigo)
+            Text("正式版只有在持久文件已写入并经过格式验证后，才能共享文件 URL；不能把出现分享面板视为已保存。")
+                .font(.footnote)
+                .foregroundStyle(muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(paper)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(border, lineWidth: 0.8))
+    }
+
 }
 
 #Preview("导出版式 · 浅色 App") {

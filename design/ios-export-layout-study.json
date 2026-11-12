@@ -51,7 +51,16 @@
     "evidence_pt": 10.5,
     "toc_first_page": 2,
     "body_hash_must_remain_identical": true,
-    "engine_version_must_remain_identical": true
+    "engine_version_must_remain_identical": true,
+    "toc_layout": {
+      "status": "DESIGN_ONLY",
+      "first_toc_page": 2,
+      "first_content_page_formula": "1 + tocPageCount + oneBasedContentPageIndex",
+      "toc_row_strategy": "measured title height; row=max(left,right,16pt)+gap",
+      "allow_multiline": true,
+      "overflow": "paginate TOC onto additional pages, never overlap bottom or footer",
+      "preserve_current_page_counts_if_single_toc_page": true
+    }
   },
   "flow": [
     "preview",
@@ -70,7 +79,10 @@
     "real_pdfkit_text_selectable",
     "sha256_crc",
     "same_name_person_isolation",
-    "iphone_voiceover_and_long_names"
+    "iphone_voiceover_and_long_names",
+    "adaptive_toc_multiline_and_overflow",
+    "export_failed_write_keeps_prior_valid_file",
+    "share_disabled_until_validated_persistent_file_exists"
   ],
   "not_verified": [
     "real_ios_render",
@@ -78,5 +90,23 @@
     "iphone_export_or_share",
     "new_head_ci",
     "same_name_person_isolation"
-  ]
+  ],
+  "export_ui_contract": {
+    "status": "DESIGN_ONLY",
+    "states": [
+      "idle",
+      "rendering",
+      "validating",
+      "persisting",
+      "ready",
+      "sharing",
+      "failed",
+      "cancelled"
+    ],
+    "preview": "PDFKit PDFView and full-resolution poster preview",
+    "ready_only_after": "durable file exists, PNG/PDF validates, person and version receipt match",
+    "share": "validated persistent file URL through ShareLink / system sheet",
+    "failure": "preserve previous valid artifact; retry without silent content loss",
+    "cross_person": "do not reuse across different person IDs, separate data-workflow gate"
+  }
 }
