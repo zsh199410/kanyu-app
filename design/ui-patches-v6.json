@@ -1186,5 +1186,23 @@
     "before": "                // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）\n                Button(\"打开海报编辑器（换字／换色）\") { showEditor = true }\n                    .buttonStyle(KyPrimaryButton())\n                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name) }\n\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n",
     "after": "                // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）\n                Button(\"打开海报编辑器（换字／换色）\") { showEditor = true }\n                    .buttonStyle(KyPrimaryButton())\n                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name, initialStyle: style) }\n\n                // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）\n                HStack(spacing: 10) {\n",
     "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "    @Environment(\\.dismiss) private var dismiss\n    var onSaved: (() -> Void)? = nil",
+    "after": "    @Environment(\\.dismiss) private var dismiss\n    @FocusState private var nameFieldFocused: Bool\n    var onSaved: (() -> Void)? = nil",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "TextField(\"姓名\", text: $person.name).accessibilityIdentifier(\"person.form.name\")",
+    "after": "TextField(\"姓名\", text: $person.name)\n                    .focused($nameFieldFocused)\n                    .accessibilityIdentifier(\"person.form.name\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "            .toolbar {\n                ToolbarItem(placement: .cancellationAction) { Button(\"取消\".scriptConverted) { dismiss() }.accessibilityIdentifier(\"person.form.cancel\") }",
+    "after": "            .toolbar {\n                ToolbarItem(placement: .keyboard) {\n                    Button(\"收起键盘\") { nameFieldFocused = false }\n                        .accessibilityIdentifier(\"person.form.dismissKeyboard\")\n                }\n                ToolbarItem(placement: .cancellationAction) { Button(\"取消\".scriptConverted) { dismiss() }.accessibilityIdentifier(\"person.form.cancel\") }",
+    "count": 1
   }
 ]
