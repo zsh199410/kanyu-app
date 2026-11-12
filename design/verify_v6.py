@@ -111,10 +111,21 @@ for path in files:
     if path in allowed or path in patched_paths or path.startswith(('docs/', 'design/')): continue
     data = subprocess.check_output(['git','show',f'{BASE}:{path}'],cwd=ROOT)
     assert (ROOT/path).is_file() and (ROOT/path).read_bytes() == data, f'Protected baseline file changed: {path}'
+# Permit only these independently reviewed, newly added regression tests.
+# Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
+new_test_blobs = {
+    'Tests/PosterDynamicSnapshotTests.swift': '4bf2f9f9a43268ffa3a93966b7b8bfc764d21714',
+    'Tests/ReportTOCPlannerTests.swift': 'c8ed22652c7e90fcf831b999cf2e5bba4323e796',
+}
 for folder in ['Tests','UITests','Resources']:
-    tracked = [x for x in files if x.startswith(folder+'/')]
-    actual = [str(x.relative_to(ROOT)) for x in (ROOT/folder).rglob('*') if x.is_file()]
-    assert set(actual) == set(tracked), f'Protected folder file list changed: {folder}'
+    tracked = {x for x in files if x.startswith(folder+'/')}
+    actual = {str(x.relative_to(ROOT)) for x in (ROOT/folder).rglob('*') if x.is_file()}
+    extras = actual - tracked
+    permitted = {path for path in new_test_blobs if path.startswith(folder+'/')}
+    assert extras <= permitted and tracked <= actual, f'Protected folder file list changed: {folder}'
+    for path in extras:
+        actual_blob = subprocess.check_output(['git', 'hash-object', path], cwd=ROOT, text=True).strip()
+        assert actual_blob == new_test_blobs[path], f'Unreviewed new test content: {path}'
 tokens = json.loads((ROOT/'design/tokens-v6.json').read_text())
 swift = (ROOT/'Sources/DesignSystemV6.swift').read_text()
 for key, value in tokens['colors'].items():
