@@ -64,7 +64,7 @@ struct PosterDynamicSnapshot {
         let elements = ["木", "火", "土", "金", "水"].enumerated().map { i, label in
             PosterBoundField(id: "element.\(i)", label: label,
                              value: chart.wuxingPercents.indices.contains(i)
-                                 ? String(format: "%.1f%%", chart.wuxingPercents[i] * 100) : "暂无结果",
+                                 ? String(format: "%.1f%%", chart.wuxingPercents[i]) : "暂无结果",
                              source: "BaziChart.wuxingPercents")
         }
         let years = chart.dayunGanZhi.prefix(premium ? 8 : 6).enumerated().map { i, value in
