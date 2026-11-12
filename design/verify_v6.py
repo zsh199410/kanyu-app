@@ -53,6 +53,26 @@ def refine_home_v6(text):
     after = '                .buttonStyle(.plain)\n                .accessibilityLabel("选择命主：\\(p.name)")\n            }\n            .navigationTitle(Text("切换命主".scriptConverted))'
     assert text.count(before) == 1, "Context UI anchor drift"
     text = text.replace(before, after)
+    # Plain List button rows must be tappable across Spacer, including their center.
+    before = r'''                        if peopleStore.currentPersonId == p.id {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Ky.qingdai)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("选择命主：\(p.name)")'''
+    after = r'''                        if peopleStore.currentPersonId == p.id {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Ky.qingdai)
+                        }
+                    }
+                    // A plain button's Spacer is otherwise not part of its hit target.
+                    // Make the entire profile row tappable, including its center.
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("选择命主：\(p.name)")'''
+    assert text.count(before) == 1, "Profile picker hit target anchor drift"
+    text = text.replace(before, after)
     before = '                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })'
     after = '                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })\n                        .accessibilityIdentifier("home.astro")'
     assert text.count(before) == 1, "Context shortcut anchor drift"
