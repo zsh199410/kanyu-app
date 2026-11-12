@@ -72,51 +72,12 @@ struct PosterDynamicSnapshot {
                              label: "\(chart.dayunStartYear(i)) 年起",
                              value: value, source: "BaziChart.dayunGanZhi")
         }
-        // Every engine interpretation is retained. We never select only a
-        // handful of topics and silently drop the rest of the original report.
-        let completeReading = items.enumerated().map { index, item in
-            PosterBoundField(id: "reading.\(index)", label: item.title,
-                             value: item.conclusion.isEmpty ? "本项暂无解读内容。" : item.conclusion,
-                             source: "InterpretEngine.interpret · \(item.title)")
-        }
-        var sections = [
-            PosterBoundSection(id: "pillars", title: "① 出生四柱 · 排盘信息", fields: pillars),
-            PosterBoundSection(id: "elements", title: "② 五行分布 · 看占比", fields: elements),
-            PosterBoundSection(id: "dayun", title: "③ 大运 · 按十年划分", fields: years),
-            PosterBoundSection(id: "reading", title: "④ 完整解盘 · 共 \(completeReading.count) 项", fields: completeReading)
-        ]
-        if premium {
-            // Premium includes all evidence supplied by the existing engine;
-            // no new events, dates, numerical scores or quotes are invented.
-            var evidence: [PosterBoundField] = []
-            for (index, entry) in items.enumerated() {
-                if let text = entry.mechanism, !text.isEmpty {
-                    evidence.append(.init(id: "evidence.\(index).mechanism",
-                                          label: "\(entry.title) · 依据",
-                                          value: text, source: "InterpretItem.mechanism"))
-                }
-                if let text = entry.timeRange, !text.isEmpty {
-                    evidence.append(.init(id: "evidence.\(index).time",
-                                          label: "\(entry.title) · 时间范围",
-                                          value: text, source: "InterpretItem.timeRange"))
-                }
-                if let text = entry.advice, !text.isEmpty {
-                    evidence.append(.init(id: "evidence.\(index).advice",
-                                          label: "\(entry.title) · 现有建议",
-                                          value: text, source: "InterpretItem.advice"))
-                }
-                for (linkIndex, link) in entry.links.enumerated() where !link.text.isEmpty {
-                    evidence.append(.init(id: "evidence.\(index).link.\(linkIndex)",
-                                          label: "\(entry.title) · \(link.label)",
-                                          value: link.text,
-                                          source: "InterpretItem.links · \(link.label)"))
-                }
-            }
-            if !evidence.isEmpty {
-                sections.append(.init(id: "evidence", title: "⑤ 详细依据与建议 · 共 \(evidence.count) 项",
-                                      fields: evidence))
-            }
-        }
+        // Poster-only selection: the complete interpretations remain available
+        // in the app and existing full PDF. Only key chart facts and short
+        // excerpts belong on the shareable image.
+        let sections = PosterHighlightSelection.baziSections(
+            chart: chart, items: items, pillars: pillars,
+            elements: elements, premium: premium)
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd HH:mm"
         df.locale = Locale(identifier: "zh_CN")
@@ -125,7 +86,7 @@ struct PosterDynamicSnapshot {
                      ownerID: person.id, displayName: person.name,
                      receipt: "人物 UUID \(person.id.uuidString) · 生日钟表时间 \(df.string(from: person.birthDate))（北京口径）",
                      sections: sections,
-                     caution: "仅展示既有引擎的字段和文字；传统命理解读不是已验证的现实预测。此预览不生成文件。")
+                     caution: "重点摘录仅用于快速阅读。完整解盘、规则和建议请在 App 或 PDF 中查看；传统命理不是已证实的现实预测。")
     }
 
     // Other domains require their actual record/chart and an explicit owner UUID.
@@ -170,7 +131,9 @@ struct PosterDynamicTemplateView: View {
                     Text("三术合参 · 动态结构预览").font(.caption.monospaced())
                     Text(snapshot.kind.title).font(.system(.largeTitle, design: .serif, weight: .bold))
                     Text(snapshot.displayName.isEmpty ? "未命名" : snapshot.displayName).font(.headline)
-                    Text(snapshot.receipt).font(.caption).fixedSize(horizontal: false, vertical: true)
+                    Text("重点速览 · 详细解读留在 App")
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
                     if !snapshot.canArchive {
                         Label("缺少稳定身份：禁止正式导出", systemImage: "exclamationmark.shield")
                             .font(.caption)
@@ -189,23 +152,10 @@ struct PosterDynamicTemplateView: View {
                         ForEach(section.fields) { field in
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(field.label).font(.subheadline.weight(.semibold)).foregroundStyle(snapshot.kind.ink)
-                                Label("先用大白话解释", systemImage: "text.bubble")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(snapshot.kind.ink)
-                                Text(PosterPlainGuide.explanation(for: field))
-                                    .font(.subheadline)
-                                    .foregroundStyle(Color(red: 0.24, green: 0.24, blue: 0.23))
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Text("本盘完整原文")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(snapshot.kind.ink)
                                 Text(field.value)
                                     .font(.body)
                                     .foregroundStyle(.black)
                                     .fixedSize(horizontal: false, vertical: true)
-                                Text("来源：\(field.source)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(12)
@@ -221,7 +171,7 @@ struct PosterDynamicTemplateView: View {
                     .font(.footnote)
                     .foregroundStyle(snapshot.kind.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("说明：以上是实际命主的数据预览；原始文字完整保留，示例海报 JPG 不参与导出。")
+                Text("本海报仅保留重要盘面数据和重点节选；完整版、解释依据及详细建议请在 App 或 PDF 中查看。")
                     .font(.caption)
                     .foregroundStyle(snapshot.kind.ink)
                 if snapshot.canArchive {
