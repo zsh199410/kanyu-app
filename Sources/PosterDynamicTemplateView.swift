@@ -160,6 +160,9 @@ struct PosterDynamicSnapshot {
 }
 struct PosterDynamicTemplateView: View {
     let snapshot: PosterDynamicSnapshot
+    @State private var exporting = false
+    @State private var archiveURL: URL?
+    @State private var exportMessage: String?
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -218,8 +221,58 @@ struct PosterDynamicTemplateView: View {
                     .font(.footnote)
                     .foregroundStyle(snapshot.kind.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Label("只读预览 · 不保存 · 不分享示例图", systemImage: "lock.doc")
+                Text("说明：以上是实际命主的数据预览；原始文字完整保留，示例海报 JPG 不参与导出。")
                     .font(.caption)
+                    .foregroundStyle(snapshot.kind.ink)
+                if snapshot.canArchive {
+                    Button {
+                        guard !exporting else { return }
+                        exporting = true
+                        archiveURL = nil
+                        exportMessage = nil
+                        Task {
+                            do {
+                                archiveURL = try await PosterPagedArchive.export(snapshot)
+                            } catch {
+                                exportMessage = error.localizedDescription
+                            }
+                            exporting = false
+                        }
+                    } label: {
+                        Label(exporting ? "正在生成完整分页图片……" : "生成全部海报（自动分张）",
+                              systemImage: "square.stack.3d.up")
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(snapshot.kind.ink)
+                    .disabled(exporting)
+                    .accessibilityIdentifier("poster.dynamic.exportAll")
+                    if exporting {
+                        ProgressView("正在渲染并校验所有 PNG 页面")
+                            .accessibilityIdentifier("poster.dynamic.exportProgress")
+                    }
+                    if let archiveURL {
+                        ShareLink(item: archiveURL) {
+                            Label("保存或分享全部图片 ZIP", systemImage: "square.and.arrow.up")
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(snapshot.kind.ink)
+                        .accessibilityIdentifier("poster.dynamic.shareZIP")
+                    }
+                    if let exportMessage {
+                        Text("导出失败：" + exportMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("poster.dynamic.exportError")
+                    }
+                } else {
+                    Label("尚未可靠关联人物身份，本报告不能保存或分享。",
+                          systemImage: "person.crop.circle.badge.exclamationmark")
+                        .font(.footnote)
+                        .foregroundStyle(snapshot.kind.ink)
+                }
             }
             .padding(18)
             .frame(maxWidth: 620)

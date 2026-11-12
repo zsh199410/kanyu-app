@@ -195,10 +195,8 @@ struct PosterPrintedPage: View {
                 let image = try PosterRasterizer.render(view, scale: 2)
                 let png = image.pngData
                 guard let src = CGImageSourceCreateWithData(png as CFData, nil),
-                      let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
-                      let width = props[kCGImagePropertyPixelWidth] as? Int,
-                      let height = props[kCGImagePropertyPixelHeight] as? Int,
-                      width == 1080, height == 2100 else {
+                      let raster = CGImageSourceCreateImageAtIndex(src, 0, nil),
+                      raster.width == 1080, raster.height == 2100 else {
                     throw PosterRasterizer.Failure.encodingFailed(1080, 2100)
                 }
                 let name = String(format: "Poster-%03d-of-%03d.png", page.id, pages.count)
