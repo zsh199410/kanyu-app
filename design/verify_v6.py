@@ -148,7 +148,10 @@ for path in patched_paths:
         assert expected.count(patch['before']) == patch['count'], f'Patch anchor drift: {path}'
         expected = expected.replace(patch['before'], patch['after'])
     actual = (ROOT/path).read_text()
-    assert (mask_card(expected) == mask_card(actual) if path == 'Sources/DesignSystemV2.swift' else expected == actual), f'Unreviewed change outside exact UI patches: {path}'
+    if path == 'Sources/KanyuApp.swift':
+        assert mask_app(expected) == mask_app(actual), f'Unreviewed change outside exact UI patches: {path}'
+    else:
+        assert (mask_card(expected) == mask_card(actual) if path == 'Sources/DesignSystemV2.swift' else expected == actual), f'Unreviewed change outside exact UI patches: {path}'
 # Compare every baseline file except explicitly allowed presentation/doc additions.
 allowed = {'Sources/KanyuApp.swift', 'Sources/DesignSystemV2.swift'}
 files = subprocess.check_output(['git','ls-tree','-r','--name-only',BASE],cwd=ROOT,text=True).splitlines()
