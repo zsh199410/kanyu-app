@@ -141,42 +141,14 @@ enum InterpretEngine {
     }
 
     // MARK: - G5 可信度标签（Insight 第 1 批）
-    /// 每条解盘的可信程度，封闭集合：验真状态（已验真／待回验／未打标）＋依据层级。
-    /// 只用已有数据，不编造：
-    ///   验真状态取 VerifyStore 打标（已应验＝true、待回验＝false、未打标＝nil）；
-    ///   依据层级取 mechanism 文本（即 links 首个「根据」／「法则」，G2 已收拢），
-    ///   按文本自身措辞判定，优先级如下——
-    ///     含「纪律」／「回测」→ 本系统回测纪律（如“学历三查（工作室纪律 27…）”）；
-    ///     含《》书名号 → 五典原文（如《子平真诠》《滴天髓》《三命通会》）；
-    ///     含「通说」／「取象」／「类象」／「演绎」→ 流派应用；
-    ///     含「象征」／「民间」／「民俗」→ 民间象征；
-    ///     其余无引文的方法陈述（如“应期看引动…”）只作流派应用，绝不升格为五典原文；
-    ///     mechanism 为空（命局风景／十神看点只有「盘面」＋「口径」链）→ 盘面事实。
-    /// 标签是展示层收口：未打标绝不写成已验证；30 条逐条有值，无留空。
+    /// User reports are not independent accuracy checks. A book title does not prove
+    /// an original quotation; unverified classical references are always downgraded.
+    /// Keep the legacy VerifyStore v2 person/entry keys unchanged.
     static func confidenceLabel(title: String, mechanism: String?, ownerID: String? = nil) -> String {
-        let state: String
-        switch VerifyStore.mark(for: title, ownerID: ownerID) {
-        case true: state = "已验真"
-        case false: state = "待回验"
-        case nil: state = "未打标"
-        }
-        let level: String
-        if let m = mechanism, !m.isEmpty {
-            if m.contains("纪律") || m.contains("回测") {
-                level = "本系统回测纪律"
-            } else if m.contains("《") {
-                level = "五典原文"
-            } else if m.contains("通说") || m.contains("取象") || m.contains("类象") || m.contains("演绎") {
-                level = "流派应用"
-            } else if m.contains("象征") || m.contains("民间") || m.contains("民俗") {
-                level = "民间象征"
-            } else {
-                level = "流派应用"
-            }
-        } else {
-            level = "盘面事实"
-        }
-        return state + " · " + level
+        InterpretSourceLabelPolicy.label(
+            userMark: VerifyStore.mark(for: title, ownerID: ownerID),
+            mechanism: mechanism
+        )
     }
 
     // MARK: - G4 反向定位：结论 → 干支／十神所在柱（Insight 第 1 批）
