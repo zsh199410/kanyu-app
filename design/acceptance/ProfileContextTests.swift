@@ -35,8 +35,12 @@ final class ProfileContextTests: XCTestCase {
     }
 
     private func drag(up: Bool) {
-        let frame = app.frame
-        let top = max(frame.minY + 125, app.navigationBars.firstMatch.frame.maxY + 35)
+        // For All Tools, scroll its actual container rather than the entire app.
+        // Root-level swipes can hit floating tabs or unrelated nested scroll views.
+        let tools = app.scrollViews["alltools.scroll"]
+        let surface = (app.navigationBars["全部工具"].exists && tools.exists) ? tools : app
+        let frame = surface.frame
+        let top = max(frame.minY + 75, app.navigationBars.firstMatch.frame.maxY + 20)
         let bottom = app.keyboards.firstMatch.exists
             ? app.keyboards.firstMatch.frame.minY - 30 : frame.maxY - 125
         XCTAssertGreaterThan(bottom, top + 40)
@@ -79,11 +83,21 @@ final class ProfileContextTests: XCTestCase {
         button.tap()
     }
 
-    private func homeTop() { reveal(element("workspace.workbench"), up: false) }
+    private func homeTop() {
+        let scroll = app.scrollViews["home.scroll"]
+        XCTAssertTrue(scroll.waitForExistence(timeout: 10), "Missing native home ScrollView")
+        let card = element("workspace.workbench")
+        for _ in 0..<12 {
+            if card.exists && card.isHittable { return }
+            scroll.swipeDown()
+        }
+        XCTAssertTrue(card.exists && card.isHittable, "Home profile card not reachable")
+    }
 
     private func allTools() {
         tap("home.alltools")
         XCTAssertTrue(app.navigationBars["全部工具"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.scrollViews["alltools.scroll"].waitForExistence(timeout: 10))
     }
 
     private func openTool(_ id: String) { tap("tools.open." + id) }
@@ -143,7 +157,14 @@ final class ProfileContextTests: XCTestCase {
 
     private func selectedHome(_ name: String) {
         homeTop()
-        XCTAssertTrue(element("workspace.workbench").staticTexts[name].waitForExistence(timeout: 10))
+        let card = element("workspace.workbench")
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        // Identity is read from the real selected-person card, not an unrelated
+        // "QA-B" string elsewhere on a long lazy home page.
+        let identity = card.value as? String ?? ""
+        XCTAssertEqual(identity, name, "Current-person card must match selected profile")
+        XCTAssertTrue(app.staticTexts[name].waitForExistence(timeout: 10),
+                      "Selected name must also be visible in the active home UI")
     }
 
     private func openAstroFromHome() { tap("home.astro") }

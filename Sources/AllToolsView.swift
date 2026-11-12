@@ -327,6 +327,7 @@ struct AllToolsView: View {
             .padding(.top, 6)
             .padding(.bottom, 100)
         }
+        .accessibilityIdentifier("alltools.scroll")
         .background(Ky.bg)
         .navigationTitle("全部工具".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)

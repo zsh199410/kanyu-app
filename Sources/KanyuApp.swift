@@ -1449,6 +1449,7 @@ struct HomePageView: View {
                 personSwitcherCard
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("workspace.workbench")
+                    .accessibilityValue(peopleStore.currentPerson?.name ?? "未建档")
                 todaySection
                 V6ReadingTopicLinks()
                 primaryBentoGrid
@@ -1469,6 +1470,7 @@ struct HomePageView: View {
             .padding(.top, 6)
             .padding(.bottom, 38) // 预留充足底部安全距离，避让 iOS 27 Liquid Glass 悬浮胶囊栏
         }
+        .accessibilityIdentifier("home.scroll")
         .background(Ky.bg)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Ky.bg, for: .navigationBar)

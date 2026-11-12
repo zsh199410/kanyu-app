@@ -24,7 +24,7 @@ def mask_app(text):
     return text[:end] + '<BUTTON-STYLE>\n' + text[tail:]
 def refine_home_v6(text):
     before = '                brandHeader\n                    .accessibilityIdentifier("workspace.workbench")\n                signBanner\n                personSwitcherCard'
-    after = '                signBanner\n                personSwitcherCard\n                    .accessibilityElement(children: .contain)\n                    .accessibilityIdentifier("workspace.workbench")'
+    after = '                signBanner\n                personSwitcherCard\n                    .accessibilityElement(children: .contain)\n                    .accessibilityIdentifier("workspace.workbench")\n                    .accessibilityValue(peopleStore.currentPerson?.name ?? "未建档")'
     assert text.count(before) == 1, "Home UI anchor drift"
     text = text.replace(before, after)
     before = '            ToolbarItem(placement: .principal) {\n                HStack(spacing: 6) {\n                    Text("三术合参".scriptConverted)'
@@ -85,6 +85,10 @@ def refine_home_v6(text):
     before = '                onOpenDetail: { showingPersonDetail = true }\n            )'
     after = before + '\n            // Rebuild the visible profile and its accessibility subtree when selection changes.\n            .id(p.id)'
     assert text.count(before) == 1, 'Selected-person accessibility anchor drift'
+    text = text.replace(before, after)
+    before = '        }\n        .background(Ky.bg)\n        .navigationBarTitleDisplayMode(.inline)\n        .toolbarBackground(Ky.bg, for: .navigationBar)'
+    after = before.replace('        .background(Ky.bg)', '        .accessibilityIdentifier("home.scroll")\n        .background(Ky.bg)')
+    assert text.count(before) == 1, 'Home scroll accessibility anchor drift'
     text = text.replace(before, after)
     return text
 
