@@ -72,23 +72,50 @@ struct PosterDynamicSnapshot {
                              label: "\(chart.dayunStartYear(i)) 年起",
                              value: value, source: "BaziChart.dayunGanZhi")
         }
+        // Every engine interpretation is retained. We never select only a
+        // handful of topics and silently drop the rest of the original report.
+        let completeReading = items.enumerated().map { index, item in
+            PosterBoundField(id: "reading.\(index)", label: item.title,
+                             value: item.conclusion.isEmpty ? "本项暂无解读内容。" : item.conclusion,
+                             source: "InterpretEngine.interpret · \(item.title)")
+        }
         var sections = [
-            PosterBoundSection(id: "pillars", title: "四柱命盘", fields: pillars),
-            PosterBoundSection(id: "elements", title: "五行构成", fields: elements),
-            PosterBoundSection(id: "dayun", title: "十年大运", fields: years),
-            PosterBoundSection(id: "reading", title: "原局解释", fields: [
-                item("命局风景", "interpret.overview"),
-                item("月令格局（候选）", "interpret.pattern"),
-                item("喜忌（扶抑初判）", "interpret.fuyi"),
-                item("岁运要点", "interpret.yun")])
+            PosterBoundSection(id: "pillars", title: "① 出生四柱 · 排盘信息", fields: pillars),
+            PosterBoundSection(id: "elements", title: "② 五行分布 · 看占比", fields: elements),
+            PosterBoundSection(id: "dayun", title: "③ 大运 · 按十年划分", fields: years),
+            PosterBoundSection(id: "reading", title: "④ 完整解盘 · 共 \(completeReading.count) 项", fields: completeReading)
         ]
         if premium {
-            sections.append(.init(id: "deep", title: "尊享深读", fields: [
-                item("事业方向", "interpret.career"),
-                item("财运形态", "interpret.wealth"),
-                item("婚姻感情", "interpret.relationship"),
-                item("幸运颜色与数字", "interpret.lucky"),
-                item("注意事项", "interpret.caution")]))
+            // Premium includes all evidence supplied by the existing engine;
+            // no new events, dates, numerical scores or quotes are invented.
+            var evidence: [PosterBoundField] = []
+            for (index, entry) in items.enumerated() {
+                if let text = entry.mechanism, !text.isEmpty {
+                    evidence.append(.init(id: "evidence.\(index).mechanism",
+                                          label: "\(entry.title) · 依据",
+                                          value: text, source: "InterpretItem.mechanism"))
+                }
+                if let text = entry.timeRange, !text.isEmpty {
+                    evidence.append(.init(id: "evidence.\(index).time",
+                                          label: "\(entry.title) · 时间范围",
+                                          value: text, source: "InterpretItem.timeRange"))
+                }
+                if let text = entry.advice, !text.isEmpty {
+                    evidence.append(.init(id: "evidence.\(index).advice",
+                                          label: "\(entry.title) · 现有建议",
+                                          value: text, source: "InterpretItem.advice"))
+                }
+                for (linkIndex, link) in entry.links.enumerated() where !link.text.isEmpty {
+                    evidence.append(.init(id: "evidence.\(index).link.\(linkIndex)",
+                                          label: "\(entry.title) · \(link.label)",
+                                          value: link.text,
+                                          source: "InterpretItem.links · \(link.label)"))
+                }
+            }
+            if !evidence.isEmpty {
+                sections.append(.init(id: "evidence", title: "⑤ 详细依据与建议 · 共 \(evidence.count) 项",
+                                      fields: evidence))
+            }
         }
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd HH:mm"
@@ -159,6 +186,16 @@ struct PosterDynamicTemplateView: View {
                         ForEach(section.fields) { field in
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(field.label).font(.subheadline.weight(.semibold)).foregroundStyle(snapshot.kind.ink)
+                                Label("先用大白话解释", systemImage: "text.bubble")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(snapshot.kind.ink)
+                                Text(PosterPlainGuide.explanation(for: field))
+                                    .font(.subheadline)
+                                    .foregroundStyle(Color(red: 0.24, green: 0.24, blue: 0.23))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text("本盘完整原文")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(snapshot.kind.ink)
                                 Text(field.value)
                                     .font(.body)
                                     .foregroundStyle(.black)
