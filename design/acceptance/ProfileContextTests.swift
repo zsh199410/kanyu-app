@@ -60,8 +60,12 @@ final class ProfileContextTests: XCTestCase {
         let x = frame.midX
         let startY = up ? bottom : top
         let endY = up ? bottom - travel : top + travel
-        let start = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: startY))
-        let end = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: endY))
+        // Anchor the gesture to the selected scroll view, not the root app.
+        // Offset coordinates are local to the chosen view's frame.
+        let anchor = surface.coordinate(withNormalizedOffset: .zero)
+        let localX = x - frame.minX
+        let start = anchor.withOffset(CGVector(dx: localX, dy: startY - frame.minY))
+        let end = anchor.withOffset(CGVector(dx: localX, dy: endY - frame.minY))
         start.press(forDuration: 0.05, thenDragTo: end)
     }
 
