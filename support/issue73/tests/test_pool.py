@@ -49,7 +49,9 @@ class PoolTests(unittest.TestCase):
         self.assertEqual(pool.state(self.cx,self.cx.execute('SELECT * FROM nodes WHERE name="B"').fetchone(),self.now)[0],'RETIRED')
     def test_vps_gate(self):
         node=self.cx.execute('SELECT * FROM nodes WHERE name="B"').fetchone()
-        self.assertEqual(pool.vps_gate(node),'PASS')
+        self.assertEqual(pool.vps_gate(node,self.now),'PASS')
+        self.assertEqual(pool.vps_gate(node,self.now+90000),'UNKNOWN')
+        self.assertEqual(len(pool.shortlist(self.cx,self.now)),1)
     def test_expired_mobile_excluded(self):
         self.observe('B',160)
         self.assertFalse(pool.publish(self.cx,str(Path(self.tmp.name)/'feed'),now=self.now+86500)['updated'])
