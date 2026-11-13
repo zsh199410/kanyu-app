@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import PDFKit
 @testable import Kanyu
 
 /// P0-4 UUID 隔离与旧姓名键迁移：同名不同 ID 的人物，手相／前瞻／报告按 UUID 互不可见；
@@ -162,64 +163,39 @@ final class PersonUUIDIsolationTests: XCTestCase {
     }
 
     func testPDFPersonIDMetadata() {
-        let id = UUID()
-        let format = UIGraphicsPDFRendererFormat()
-        // P0-4 修正：Keywords 必须与生产 makePDF 的格式一致（全 ASCII，tier 用 fileCode）。
-        // 旧版写了 tier=专业（中文），与生产格式不符，CGPDFStringCopyTextString 读回为 nil。
-        format.documentInfo = ["Keywords": "contentHash=abcdef1234567890;tier=professional;engine=v1;personID=\(id.uuidString)"]
-        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842), format: format)
-        let data = renderer.pdfData { ctx in ctx.beginPage() }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("p04-pdf-\(UUID().uuidString).pdf")
-        try! data.write(to: url)
+        // Positive: production makePDF writes /Keywords; the reader must read personID back.
+        // Raw bytes must contain /Keywords (guards against the name fallback masking a missing key).
+        let person = makePerson(name: "QA-PDF", relation: "本人")
+        guard let url = ReportBuilder.makePDF(for: person, tier: .concise) else {
+            XCTFail("makePDF nil")
+            return
+        }
         tempFiles.append(url)
-        XCTAssertEqual(ReportHistory.pdfPersonID(for: url), id)
-        // 无 personID 键的 PDF 返回 nil
+        let out = try! Data(contentsOf: url)
+        XCTAssertNotNil(out.range(of: "/Keywords".data(using: .ascii)!), "bytes must contain /Keywords")
+        XCTAssertEqual(ReportHistory.pdfPersonID(for: url), person.id)
+        // Negative: Keywords present but no personID returns nil.
+        // The renderer drops Keywords, so build this PDF via PDFKit post-process
+        // (the same write path production now uses).
+        let keywordNoID = "contentHash=abcdef1234567890"
         let format2 = UIGraphicsPDFRendererFormat()
-        format2.documentInfo = ["Keywords": "contentHash=abcdef1234567890"]
-        let data2 = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842), format: format2).pdfData { ctx in ctx.beginPage() }
+        format2.documentInfo = ["Keywords": keywordNoID]
+        let raw2 = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842), format: format2).pdfData { ctx in ctx.beginPage() }
+        guard let doc2 = PDFDocument(data: raw2) else {
+            XCTFail("PDFDocument load failed")
+            return
+        }
+        var attrs2 = doc2.documentAttributes ?? [:]
+        attrs2[.keywordsAttribute] = [keywordNoID]
+        doc2.documentAttributes = attrs2
+        guard let out2 = doc2.dataRepresentation() else {
+            XCTFail("dataRepresentation nil")
+            return
+        }
         let url2 = FileManager.default.temporaryDirectory.appendingPathComponent("p04-pdf-\(UUID().uuidString).pdf")
-        try! data2.write(to: url2)
+        try! out2.write(to: url2)
         tempFiles.append(url2)
         XCTAssertNil(ReportHistory.pdfPersonID(for: url2))
     }
 
-    /// P0-4 诊断 v3：v2 已证实原始 PDF 字节里根本没有 /Keywords（写侧问题，非读侧）。
-    /// 本轮一次查清渲染器到底写了哪些 documentInfo 键：Title、Author、Subject、Keywords
-    /// 各写一个可区分的值，搜原始字节，一条断言同时报四键的有无。
-    /// 若仅 Keywords 缺失→该键被单独丢弃；若四键全缺→documentInfo 整段被忽略，须换写法。
-    /// 找到根因并修好后，本测试可删。
-    func testPDFReaderDiagnostics() {
-        let id = UUID()
-        let format = UIGraphicsPDFRendererFormat()
-        format.documentInfo = [
-            "Title": "diag-title-\(id.uuidString)",
-            "Author": "diag-author",
-            "Subject": "diag-subject",
-            "Keywords": "contentHash=abcdef1234567890;tier=professional;engine=v1;personID=\(id.uuidString)"
-        ]
-        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842), format: format)
-        let data = renderer.pdfData { ctx in ctx.beginPage() }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("p04-diag-\(UUID().uuidString).pdf")
-        try! data.write(to: url)
-        tempFiles.append(url)
-        let hasTitle = data.range(of: "/Title".data(using: .ascii)!) != nil
-        let hasAuthor = data.range(of: "/Author".data(using: .ascii)!) != nil
-        let hasSubject = data.range(of: "/Subject".data(using: .ascii)!) != nil
-        let hasKW = data.range(of: "/Keywords".data(using: .ascii)!) != nil
-        XCTAssertTrue(hasTitle && hasAuthor && hasSubject && hasKW,
-                      "diag: info keys in raw bytes: title=\(hasTitle) author=\(hasAuthor) subject=\(hasSubject) keywords=\(hasKW)")
-        guard hasKW else { return }
-        guard let doc = CGPDFDocument(url as CFURL), let info = doc.info else {
-            XCTFail("diag: doc/info nil")
-            return
-        }
-        var value: CGPDFStringRef?
-        XCTAssertTrue(CGPDFDictionaryGetString(info, "Keywords", &value), "diag: GetString Keywords false")
-        guard let value = value, let text = CGPDFStringCopyTextString(value) as String? else {
-            XCTFail("diag: CopyTextString nil")
-            return
-        }
-        XCTAssertTrue(text.contains("personID="), "diag: text missing personID")
-        XCTAssertEqual(ReportHistory.pdfPersonID(for: url), id, "diag: pdfPersonID nil but text ok")
-    }
 }
