@@ -164,7 +164,9 @@ final class PersonUUIDIsolationTests: XCTestCase {
     func testPDFPersonIDMetadata() {
         let id = UUID()
         let format = UIGraphicsPDFRendererFormat()
-        format.documentInfo = ["Keywords": "contentHash=abcdef1234567890;tier=专业;engine=v1;personID=\(id.uuidString)"]
+        // P0-4 修正：Keywords 必须与生产 makePDF 的格式一致（全 ASCII，tier 用 fileCode）。
+        // 旧版写了 tier=专业（中文），与生产格式不符，CGPDFStringCopyTextString 读回为 nil。
+        format.documentInfo = ["Keywords": "contentHash=abcdef1234567890;tier=professional;engine=v1;personID=\(id.uuidString)"]
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842), format: format)
         let data = renderer.pdfData { ctx in ctx.beginPage() }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("p04-pdf-\(UUID().uuidString).pdf")
