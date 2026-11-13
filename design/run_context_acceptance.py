@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,7 +63,27 @@ def specification(directory, suite="profile"):
     }
 
 
-def main():
+def _sample_loop(evidence, stop_event):
+    """Sample the QA app main thread while the test runs; best effort, never fails the run.
+    
+    Keeps a ring of the 8 most recent samples so the hang window survives long runs.
+    """
+    count = 0
+    while not stop_event.wait(10):
+        try:
+            found = subprocess.run(['pgrep', '-f', 'Kanyu.app/Kanyu'],
+                                   capture_output=True, text=True, timeout=10)
+            for pid in (found.stdout or '').split():
+                if pid.isdigit():
+                    target = evidence / f'main-thread-sample-{count % 8:02d}.txt'
+                    subprocess.run(['sample', pid, '5', '-file', str(target)],
+                                   capture_output=True, timeout=30)
+                    count += 1
+                    break
+        except Exception:
+            pass
+        
+            def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', choices=CASES, required=True)
     parser.add_argument('--generate-only', action='store_true')
@@ -111,6 +132,8 @@ def main():
         app = directory / 'DD/Build/Products/Debug-iphonesimulator/Kanyu.app'
         info = plistlib.loads((app / 'Info.plist').read_bytes())
         assert info['CFBundleIdentifier'] == BUNDLE, 'Refuse to exercise the normal app bundle'
+        sampler_stop = threading.Event()
+        threading.Thread(target=_sample_loop, args=(evidence, sampler_stop), daemon=True).start()
         command(common + ['test-without-building', '-resultBundlePath', result_bundle,
                           '-only-testing:KanyuContextUITests/' + ('ProfileContextTests' if args.suite == 'profile' else 'PhysiognomyGuideTests') + '/' + method], log=evidence / 'tests.log')
         log = (evidence / 'tests.log').read_text()
@@ -129,6 +152,10 @@ def main():
         report['error'] = str(error)
         raise
     finally:
+        try:
+            samplerstop.set()
+        except NameError:
+            pass
         if result_bundle.exists():
             command(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', result_bundle,
                      '--output-path', evidence / 'screenshots'], check=False)
