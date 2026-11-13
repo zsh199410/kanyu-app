@@ -166,7 +166,7 @@ new_test_blobs = {
     'Tests/PersonIsolationTests.swift': 'ef72047459e4278a5bd466ad2836d6677c14a97e',
     'Tests/PeopleStoreTests.swift': '117f02ef7595c3163fa4b9bf9cb337c1bca944d8',
     'Tests/PersonCascadeTests.swift': 'bb525aaa33ea13ef07086fbdde942872a5de916f',
-    'Tests/PersonUUIDIsolationTests.swift': 'e6bbcc41fc6cd0128358a260b97483e9e44552d4',
+    'Tests/PersonUUIDIsolationTests.swift': 'e349425538d36f01381c3b2243b1b20d5790b95e',
 }
 for folder in ['Tests','UITests','Resources']:
     tracked = {x for x in files if x.startswith(folder+'/')}
