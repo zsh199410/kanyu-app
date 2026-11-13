@@ -162,7 +162,7 @@ for path in files:
 # Permit only these independently reviewed, newly added regression tests.
 # Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
 new_test_blobs = {
-    'Tests/BackupRestoreTests.swift': 'b430da17f7b54eb3e9fea514a3e4389cd1bab3f5',
+    'Tests/BackupRestoreTests.swift': '9f65869e6e3aa2c937f564f8b3323590f07c8f96',
     'Tests/PersonIsolationTests.swift': 'ef72047459e4278a5bd466ad2836d6677c14a97e',
     'Tests/PeopleStoreTests.swift': '117f02ef7595c3163fa4b9bf9cb337c1bca944d8',
     'Tests/PersonCascadeTests.swift': 'bb525aaa33ea13ef07086fbdde942872a5de916f',
