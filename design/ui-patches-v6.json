@@ -1222,5 +1222,17 @@
     "before": "                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: \"astro\") })\n                        .accessibilityIdentifier(\"home.astro\")",
     "after": "                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: \"astro\") })",
     "count": 1
+  },
+  {
+    "path": "Sources/KanyuApp.swift",
+    "before": "            let recents = AllToolsData.recentEntries(people: peopleStore.people)\n            if recents.isEmpty {\n                Text(\"打开任意工具或人物后，这里会显示最近使用，方便一键回到上次的盘。\".scriptConverted)\n                    .font(.caption).foregroundStyle(Ky.sub)\n                    .padding(.horizontal, 2)\n            } else {\n                ScrollView(.horizontal, showsIndicators: false) {\n                    HStack(spacing: 10) {\n                        ForEach(recents) { entry in homeRecentChip(entry) }\n                    }\n                }\n            }",
+    "after": "            // Keep the astro shortcut mounted independently of the changing person recents.\n            // A stable link avoids rebuilding the queried accessibility node during return navigation.\n            NavigationLink {\n                if let item = AllToolsData.item(for: \"astro\") {\n                    ContextualToolDestination(item: item)\n                }\n            } label: {\n                if let item = AllToolsData.item(for: \"astro\") {\n                    homeChipLabel(item)\n                }\n            }\n            .buttonStyle(.plain)\n            .simultaneousGesture(TapGesture().onEnded {\n                AllToolsData.recordRecent(tool: \"astro\")\n            })\n            .accessibilityIdentifier(\"home.recent.astro\")\n            let recents = AllToolsData.recentEntries(people: peopleStore.people)\n                .filter { $0.id != \"astro\" }\n            if !recents.isEmpty {\n                ScrollView(.horizontal, showsIndicators: false) {\n                    HStack(spacing: 10) {\n                        ForEach(recents) { entry in homeRecentChip(entry) }\n                    }\n                }\n            }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PeopleModule.swift",
+    "before": "    func remove(_ p: Person) {\n        people.removeAll { $0.id == p.id }\n        if currentPersonId == p.id { currentPersonId = nil }\n        save()\n    }",
+    "after": "    func remove(_ p: Person) {\n        // Drop stale recent-person references before publishing the changed people array.\n        let key = \"recentTools.v1\"\n        if let recent = UserDefaults.standard.stringArray(forKey: key) {\n            let deletedKey = \"person:\" + p.id.uuidString\n            let kept = recent.filter { $0 != deletedKey }\n            if kept.count != recent.count {\n                UserDefaults.standard.set(kept, forKey: key)\n            }\n        }\n        people.removeAll { $0.id == p.id }\n        if currentPersonId == p.id { currentPersonId = nil }\n        save()\n    }",
+    "count": 1
   }
 ]

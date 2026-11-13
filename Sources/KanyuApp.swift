@@ -1905,12 +1905,25 @@ struct HomePageView: View {
     private var recentToolsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             KySectionTitle(title: "最近使用", trailing: "最近打开的人物与工具")
+            // Keep the astro shortcut mounted independently of the changing person recents.
+            // A stable link avoids rebuilding the queried accessibility node during return navigation.
+            NavigationLink {
+                if let item = AllToolsData.item(for: "astro") {
+                    ContextualToolDestination(item: item)
+                }
+            } label: {
+                if let item = AllToolsData.item(for: "astro") {
+                    homeChipLabel(item)
+                }
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded {
+                AllToolsData.recordRecent(tool: "astro")
+            })
+            .accessibilityIdentifier("home.recent.astro")
             let recents = AllToolsData.recentEntries(people: peopleStore.people)
-            if recents.isEmpty {
-                Text("打开任意工具或人物后，这里会显示最近使用，方便一键回到上次的盘。".scriptConverted)
-                    .font(.caption).foregroundStyle(Ky.sub)
-                    .padding(.horizontal, 2)
-            } else {
+                .filter { $0.id != "astro" }
+            if !recents.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(recents) { entry in homeRecentChip(entry) }
