@@ -85,13 +85,19 @@ final class BackupRestoreTests: XCTestCase {
 
         let backup = try makeValidBackup()
         let extracted = try BackupExportArchive.extract(from: backup, in: directory)
-        try Data("tampered".utf8).write(to: extracted.appendingPathComponent("people.json"))
+        // P0-4 修正：必须先经 payloadDirectory 定位真正的载荷目录再篡改。
+        // 直接改 extract 返回的根目录只会在顶层新建一个 people.json，载荷里的
+        // manifest.json 仍在子目录里，validate 会把无清单的目录当作旧版格式
+        // 返回 nil（不抛错），测不到篡改。改载荷目录里的文件并重打该目录的包，
+        // 才能让 validate 真正比对到被篡改的 people.json。
+        let payload = try BackupExportArchive.payloadDirectory(in: extracted)
+        try Data("tampered".utf8).write(to: payload.appendingPathComponent("people.json"))
         let tamperedZip = directory.appendingPathComponent("tampered.zip")
-        try FileManager.default.zipItem(at: extracted, to: tamperedZip)
+        try FileManager.default.zipItem(at: payload, to: tamperedZip)
 
         let extractedTampered = try BackupExportArchive.extract(from: tamperedZip, in: directory)
-        let payload = try BackupExportArchive.payloadDirectory(in: extractedTampered)
-        XCTAssertThrowsError(try BackupIntegrity.validate(in: payload)) { error in
+        let payloadTampered = try BackupExportArchive.payloadDirectory(in: extractedTampered)
+        XCTAssertThrowsError(try BackupIntegrity.validate(in: payloadTampered)) { error in
             XCTAssertEqual(error as? BackupIntegrityError, .checksumMismatch("people.json"))
         }
 
