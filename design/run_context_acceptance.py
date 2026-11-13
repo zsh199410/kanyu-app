@@ -83,7 +83,7 @@ def _sample_loop(evidence, stop_event):
         except Exception:
             pass
         
-    def main():
+def main():
         parser = argparse.ArgumentParser(description=__doc__)
         parser.add_argument('--case', choices=CASES, required=True)
         parser.add_argument('--generate-only', action='store_true')
