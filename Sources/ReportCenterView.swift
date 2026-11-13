@@ -42,6 +42,10 @@ enum ReportHistory {
                 if name.hasPrefix("poster-") && u.pathExtension == "png" { urls.append(u) }
                 if name.hasPrefix("ziwei-poster-") && u.pathExtension == "png" { urls.append(u) }
                 if name.hasPrefix("hecan-poster-") && u.pathExtension == "png" { urls.append(u) }
+                // P0-4 修正：临时/文稿顶层也要收 palm-poster-（与归档枚举的 .palmPoster 一致，
+                // 与 ziwei/hecan 同口径）。缺这一行时，临时目录里的手相海报进不了 scan，
+                // 删人级联删不到它，残留一张该人的海报。
+                if name.hasPrefix("palm-poster-") && u.pathExtension == "png" { urls.append(u) }
             }
         }
         var archived: [URL] = []
