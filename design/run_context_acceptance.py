@@ -76,12 +76,12 @@ def _sample_loop(evidence, stop_event):
             for pid in (found.stdout or '').split():
                 if pid.isdigit():
                     target = evidence / f'main-thread-sample-{count % 8:02d}.txt'
-                        subprocess.run(['sample', pid, '5', '-file', str(target)],
-                                       capture_output=True, timeout=30)
-                        count += 1
-                        break
-            except Exception:
-                pass
+                    subprocess.run(['sample', pid, '5', '-file', str(target)],
+                                   capture_output=True, timeout=30)
+                    count += 1
+                    break
+        except Exception:
+            pass
         
     def main():
         parser = argparse.ArgumentParser(description=__doc__)
