@@ -186,7 +186,7 @@ final class PersonUUIDIsolationTests: XCTestCase {
             return
         }
         var attrs2 = doc2.documentAttributes ?? [:]
-        attrs2[.keywordsAttribute] = [keywordNoID]
+        attrs2[PDFDocumentAttribute.keywordsAttribute] = [keywordNoID]
         doc2.documentAttributes = attrs2
         guard let out2 = doc2.dataRepresentation() else {
             XCTFail("dataRepresentation nil")
