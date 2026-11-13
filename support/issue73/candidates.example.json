@@ -1,0 +1,13 @@
+[
+  {
+    "name": "demo-trojan",
+    "line": "demo-trojan = trojan, test.invalid, 443, password=REPLACE_ME",
+    "class": "pinned",
+    "vps_checks": [
+      {"ts": 1794560000, "handshake_ok": true, "latency_ms": 120, "http_ok": true},
+      {"ts": 1794559800, "handshake_ok": true, "latency_ms": 130, "http_ok": true},
+      {"ts": 1794559600, "handshake_ok": false, "latency_ms": null, "http_ok": false}
+    ]
+  }
+]
+
