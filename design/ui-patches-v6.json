@@ -1234,5 +1234,11 @@
     "before": "    func remove(_ p: Person) {\n        people.removeAll { $0.id == p.id }\n        if currentPersonId == p.id { currentPersonId = nil }\n        save()\n    }",
     "after": "    func remove(_ p: Person) {\n        // Drop stale recent-person references before publishing the changed people array.\n        let key = \"recentTools.v1\"\n        if let recent = UserDefaults.standard.stringArray(forKey: key) {\n            let deletedKey = \"person:\" + p.id.uuidString\n            let kept = recent.filter { $0 != deletedKey }\n            if kept.count != recent.count {\n                UserDefaults.standard.set(kept, forKey: key)\n            }\n        }\n        people.removeAll { $0.id == p.id }\n        if currentPersonId == p.id { currentPersonId = nil }\n        save()\n    }",
     "count": 1
-  }
+  },
+    {
+        "path": "Sources/KanyuApp.swift",
+        "before": "            // Keep the workspace lazy; frame pacing requires device measurement.\n            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {",
+        "after": "            // P0: eager VStack — LazyVStack placement stalled the main thread 60s+ on scroll (see #33); 9 fixed sections only.\n            VStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {",
+        "count": 1
+    }
 ]

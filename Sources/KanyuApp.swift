@@ -1443,8 +1443,8 @@ struct HomePageView: View {
 
     var body: some View {
         ScrollView {
-            // Keep the workspace lazy; frame pacing requires device measurement.
-            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
+            // P0: eager VStack — LazyVStack placement stalled the main thread 60s+ on scroll (see #33); 9 fixed sections only.
+            VStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
                 signBanner
                 personSwitcherCard
                     .accessibilityElement(children: .contain)
