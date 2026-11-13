@@ -98,6 +98,15 @@ final class PeopleStore: ObservableObject {
         save()
     }
     func remove(_ p: Person) {
+        // Drop stale recent-person references before publishing the changed people array.
+        let key = "recentTools.v1"
+        if let recent = UserDefaults.standard.stringArray(forKey: key) {
+            let deletedKey = "person:" + p.id.uuidString
+            let kept = recent.filter { $0 != deletedKey }
+            if kept.count != recent.count {
+                UserDefaults.standard.set(kept, forKey: key)
+            }
+        }
         people.removeAll { $0.id == p.id }
         if currentPersonId == p.id { currentPersonId = nil }
         save()
