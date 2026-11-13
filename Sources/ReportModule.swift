@@ -226,7 +226,7 @@ enum ReportBuilder {
         var finalData = data
         if let doc = PDFDocument(data: data) {
             var attrs = doc.documentAttributes ?? [:]
-            attrs[.keywordsAttribute] = [keywordString]
+            attrs[PDFDocumentAttribute.keywordsAttribute] = [keywordString]
             doc.documentAttributes = attrs
             if let out = doc.dataRepresentation() {
                 finalData = out
