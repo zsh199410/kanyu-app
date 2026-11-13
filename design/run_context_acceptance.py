@@ -132,6 +132,14 @@ def main():
         if result_bundle.exists():
             command(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', result_bundle,
                      '--output-path', evidence / 'screenshots'], check=False)
+            # Keep the full result bundle: attachments alone carry no main-thread stack.
+        shutil.copytree(result_bundle, evidence / 'Results.xcresult', dirs_exist_ok=True)
+        # Sample the app once while it is still alive; best effort, never fails the run.
+        found = command(['pgrep', '-f', 'Kanyu.app/Kanyu'], check=False)
+        for pid in (found.stdout or '').split():
+            if pid.isdigit():
+                command(['sample', pid, '5', '-file', str(evidence / 'main-thread-sample.txt')], check=False)
+                break
         (evidence / 'manifest.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
         (evidence / 'commit.txt').write_text(commit + '\n')
         if device:
