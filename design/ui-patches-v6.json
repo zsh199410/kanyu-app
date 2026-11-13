@@ -1492,5 +1492,11 @@
   "before": "        let url = FileManager.default.temporaryDirectory\n            .appendingPathComponent(\"命书-\\(exportName(person.name))-\\(tier.displayName)-\\(stamp)-\\(hashShort).pdf\")\n        do {\n            try data.write(to: url, options: .atomic)\n            _ = try ReportExportArchive.save(data, fileName: url.lastPathComponent)\n            return url\n        } catch { return nil }\n    }\n",
   "after": "        let url = FileManager.default.temporaryDirectory\n            .appendingPathComponent(\"命书-\\(exportName(person.name))-\\(tier.displayName)-\\(stamp)-\\(hashShort).pdf\")\n        do {\n            try finalData.write(to: url, options: .atomic)\n            _ = try ReportExportArchive.save(finalData, fileName: url.lastPathComponent)\n            return url\n        } catch { return nil }\n    }\n",
   "count": 1
+ },
+ {
+  "path": "Sources/ReportModule.swift",
+  "before": "        var finalData = data\n        if let doc = PDFDocument(data: data) {\n            var attrs = doc.documentAttributes ?? [:]\n            attrs[.keywordsAttribute] = [keywordString]\n            doc.documentAttributes = attrs\n            if let out = doc.dataRepresentation() {\n                finalData = out\n",
+  "after": "        var finalData = data\n        if let doc = PDFDocument(data: data) {\n            var attrs = doc.documentAttributes ?? [:]\n            attrs[PDFDocumentAttribute.keywordsAttribute] = [keywordString]\n            doc.documentAttributes = attrs\n            if let out = doc.dataRepresentation() {\n                finalData = out\n",
+  "count": 1
  }
 ]
