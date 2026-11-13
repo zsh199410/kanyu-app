@@ -252,7 +252,6 @@ enum ReportBuilder {
         context.translateBy(x: 0, y: pageRect.height)
         context.scaleBy(x: 1, y: -1)
     }
-    }
 
     /// 一行已排版的正文行（绘制时直接取 y 与 height，不再重算断页）
     private struct PlacedLine {
