@@ -183,9 +183,10 @@ final class PersonUUIDIsolationTests: XCTestCase {
         XCTAssertNil(ReportHistory.pdfPersonID(for: url2))
     }
 
-    /// P0-4 诊断：逐步拆解 pdfPersonID 的读取链，定位哪一步返回 nil。
-    /// 中文 tier 假说已死（ASCII 轮仍失败），生产 makePDF 与本测试用同一生成写法，
-    /// 故读链本身是首要嫌疑。找到根因并修好读取器后，本测试可删。
+    /// P0-4 诊断 v2：定位读取链断点。v1 已证实断在 GetString(Keywords) 返回 false；
+    /// 本轮分三步：① 原始 PDF 字节里有没有 /Keywords 与 personID=（定写侧还是读侧）；
+    /// ② GetObject 取 Keywords 的对象类型（键缺失还是值非字符串）；③ 原读链复核。
+    /// 找到根因并修好读取器后，本测试可删。
     func testPDFReaderDiagnostics() {
         let id = UUID()
         let format = UIGraphicsPDFRendererFormat()
@@ -195,6 +196,13 @@ final class PersonUUIDIsolationTests: XCTestCase {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("p04-diag-\(UUID().uuidString).pdf")
         try! data.write(to: url)
         tempFiles.append(url)
+        // 探针 1：原始字节里有没有 /Keywords（键名恒为 ASCII）与 personID=（值若为 UTF-16 hex 则搜不到 ASCII）。
+        let hasKW = data.range(of: "/Keywords".data(using: .ascii)!) != nil
+        XCTAssertTrue(hasKW, "diag: raw bytes lack /Keywords")
+        guard hasKW else { return }
+        let hasPID = data.range(of: "personID=".data(using: .ascii)!) != nil
+        XCTAssertTrue(hasPID, "diag: raw bytes lack personID= (value may be hex-encoded)")
+        // 探针 2：GetObject 取 Keywords，看键在不在、值是什么类型。
         guard let doc = CGPDFDocument(url as CFURL) else {
             XCTFail("diag: CGPDFDocument nil")
             return
@@ -203,6 +211,13 @@ final class PersonUUIDIsolationTests: XCTestCase {
             XCTFail("diag: info nil")
             return
         }
+        var obj: CGPDFObjectRef?
+        let gotObj = CGPDFDictionaryGetObject(info, "Keywords", &obj)
+        XCTAssertTrue(gotObj, "diag: GetObject Keywords false")
+        guard gotObj, let obj = obj else { return }
+        let type = CGPDFObjectGetType(obj)
+        XCTAssertTrue(type == .string, "diag: Keywords type is \(type)")
+        // 探针 3：原读链复核。
         var value: CGPDFStringRef?
         let found = CGPDFDictionaryGetString(info, "Keywords", &value)
         XCTAssertTrue(found, "diag: GetString Keywords false")
