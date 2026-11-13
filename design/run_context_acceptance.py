@@ -69,13 +69,13 @@ def _sample_loop(evidence, stop_event):
     Keeps a ring of the 8 most recent samples so the hang window survives long runs.
     """
     count = 0
-        while not stop_event.wait(10):
-            try:
-                found = subprocess.run(['pgrep', '-f', 'Kanyu.app/Kanyu'],
-                                       capture_output=True, text=True, timeout=10)
-                for pid in (found.stdout or '').split():
-                    if pid.isdigit():
-                        target = evidence / f'main-thread-sample-{count % 8:02d}.txt'
+    while not stop_event.wait(10):
+        try:
+            found = subprocess.run(['pgrep', '-f', 'Kanyu.app/Kanyu'],
+                                   capture_output=True, text=True, timeout=10)
+            for pid in (found.stdout or '').split():
+                if pid.isdigit():
+                    target = evidence / f'main-thread-sample-{count % 8:02d}.txt'
                         subprocess.run(['sample', pid, '5', '-file', str(target)],
                                        capture_output=True, timeout=30)
                         count += 1
