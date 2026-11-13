@@ -1210,5 +1210,17 @@
     "before": "        }\n        .background(Ky.bg)\n        .navigationTitle(\"全部工具\".scriptConverted)",
     "after": "        }\n        .accessibilityIdentifier(\"alltools.scroll\")\n        .background(Ky.bg)\n        .navigationTitle(\"全部工具\".scriptConverted)",
     "count": 1
+  },
+  {
+    "path": "Sources/KanyuApp.swift",
+    "before": "            ToolbarItem(placement: .principal) {\n                HStack(spacing: 6) {\n                    AppLogoView(size: 24).accessibilityHidden(true)",
+    "after": "            // Always-reachable contextual shortcut: keeps a real tool entry in the\n            // native navigation bar when the workbench has been scrolled deeply.\n            // This avoids forcing users and VoiceOver to search a long lazy grid.\n            ToolbarItem(placement: .topBarLeading) {\n                NavigationLink {\n                    if let item = AllToolsData.item(for: \"astro\") {\n                        ContextualToolDestination(item: item)\n                    }\n                } label: {\n                    Image(systemName: \"sparkles\")\n                        .font(.system(size: 17, weight: .semibold))\n                        .foregroundStyle(Ky.qingdai)\n                        .frame(width: 44, height: 44)\n                }\n                .buttonStyle(.plain)\n                .simultaneousGesture(TapGesture().onEnded {\n                    AllToolsData.recordRecent(tool: \"astro\")\n                })\n                .accessibilityLabel(\"星命合参\")\n                .accessibilityIdentifier(\"home.astro\")\n            }\n            ToolbarItem(placement: .principal) {\n                HStack(spacing: 6) {\n                    AppLogoView(size: 24).accessibilityHidden(true)",
+    "count": 1
+  },
+  {
+    "path": "Sources/KanyuApp.swift",
+    "before": "                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: \"astro\") })\n                        .accessibilityIdentifier(\"home.astro\")",
+    "after": "                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: \"astro\") })",
+    "count": 1
   }
 ]

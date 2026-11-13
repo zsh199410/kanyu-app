@@ -114,7 +114,34 @@ final class ProfileContextTests: XCTestCase {
         XCTAssertTrue(app.scrollViews["alltools.scroll"].waitForExistence(timeout: 10))
     }
 
-    private func openTool(_ id: String) { tap("tools.open." + id) }
+    /// Scope the entry search before tapping so lazy offscreen rows do not force
+    /// dozens of global accessibility snapshots. All original lifecycle assertions
+    /// (missing/identity/receipt/deletion) stay intact.
+    private func focusTool(_ id: String) {
+        let terms: [String: String] = [
+            "astro": "星命合参", "yearly": "逐年四查", "interpret": "30 维详批",
+            "chartdepth": "深度图表", "poster": "海报导出", "chenggu": "称骨",
+            "lucky": "开运指南", "annual": "年度报告", "learning": "白话使用指南",
+            "almanac": "万年历", "compass": "罗盘实测"
+        ]
+        guard let term = terms[id] else {
+            XCTFail("Missing exact search fixture for " + id)
+            return
+        }
+        let search = app.textFields["搜索功能或用途，如：PDF、指南针、入门"]
+        XCTAssertTrue(search.waitForExistence(timeout: 10), "All Tools search must be available")
+        search.tap()
+        let clear = app.buttons["清除搜索"]
+        if clear.exists { clear.tap() }
+        search.typeText(term)
+        XCTAssertTrue(element("tools.open." + id).waitForExistence(timeout: 10),
+                      "Search must return exact tool id: " + id)
+    }
+
+    private func openTool(_ id: String) {
+        focusTool(id)
+        tap("tools.open." + id)
+    }
 
     private func assertMissing(_ id: String) {
         XCTAssertTrue(element("tool.missing." + id).waitForExistence(timeout: 10), id)
@@ -259,6 +286,7 @@ final class ProfileContextTests: XCTestCase {
             snapshot("missing-" + id)
             back()
         }
+        focusTool("learning")
         reveal(element("tools.open.learning"), up: false)
         for id in ["learning", "almanac", "compass"] {
             openTool(id)

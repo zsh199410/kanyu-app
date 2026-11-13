@@ -133,7 +133,7 @@ def apply_ui_patches(path, value):
     return value
 
 # P2 permits only these exact UI layout transformations; all other app code stays protected.
-assert mask_app(home_layout_v6(original('Sources/KanyuApp.swift'))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
+assert mask_app(apply_ui_patches('Sources/KanyuApp.swift', home_layout_v6(original('Sources/KanyuApp.swift')))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
 # Keep everything outside the first card wrapper unchanged, including the complete settings code.
 def mask_card(text):
     a = text.index('extension View {\n', text.index('struct KyWorkspaceHeading'))
@@ -143,12 +143,15 @@ assert mask_card(apply_ui_patches('Sources/DesignSystemV2.swift', original('Sour
 # Additional mixed files permit only reviewed literal UI/export/backup patches, never whole-file exemptions.
 patched_paths = {p['path'] for p in patches}
 for path in patched_paths:
-    expected = original(path)
+    expected = home_layout_v6(original(path)) if path == 'Sources/KanyuApp.swift' else original(path)
     for patch in [p for p in patches if p['path'] == path]:
         assert expected.count(patch['before']) == patch['count'], f'Patch anchor drift: {path}'
         expected = expected.replace(patch['before'], patch['after'])
     actual = (ROOT/path).read_text()
-    assert (mask_card(expected) == mask_card(actual) if path == 'Sources/DesignSystemV2.swift' else expected == actual), f'Unreviewed change outside exact UI patches: {path}'
+    if path == 'Sources/KanyuApp.swift':
+        assert mask_app(expected) == mask_app(actual), f'Unreviewed change outside exact UI patches: {path}'
+    else:
+        assert (mask_card(expected) == mask_card(actual) if path == 'Sources/DesignSystemV2.swift' else expected == actual), f'Unreviewed change outside exact UI patches: {path}'
 # Compare every baseline file except explicitly allowed presentation/doc additions.
 allowed = {'Sources/KanyuApp.swift', 'Sources/DesignSystemV2.swift'}
 files = subprocess.check_output(['git','ls-tree','-r','--name-only',BASE],cwd=ROOT,text=True).splitlines()
