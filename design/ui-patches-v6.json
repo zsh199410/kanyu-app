@@ -1462,5 +1462,11 @@
     "before": "\n    static func legacyMarkCount(defaults: UserDefaults = .standard) -> Int {\n        (defaults.dictionary(forKey: legacyKey) as? [String: Bool])?.count ?? 0\n    }\n}\n\n",
     "after": "\n    static func legacyMarkCount(defaults: UserDefaults = .standard) -> Int {\n        (defaults.dictionary(forKey: legacyKey) as? [String: Bool])?.count ?? 0\n    }\n\n    /// P0-4 级联删除：清掉某一命主（ownerID \"person:<uuid>\"）的全部回验标记。\n    /// 只删该 owner 的 v2 键（\"person:<uuid>|<itemID>\"）；不归属任何人的 v1 旧标记不动。\n    /// 空 ownerID 不做任何事（避免误清全局键）。\n    static func clearAll(ownerID: String?, defaults: UserDefaults = .standard) {\n        guard let ownerID, !ownerID.isEmpty else { return }\n        var marks = (defaults.dictionary(forKey: key) as? [String: Bool]) ?? [:]\n        let prefix = ownerID + \"|\"\n        marks = marks.filter { !$0.key.hasPrefix(prefix) }\n        defaults.set(marks, forKey: key)\n    }\n}\n\n",
     "count": 1
+  },
+  {
+    "path": "Sources/ReportCenterView.swift",
+    "before": "                if name.hasPrefix(\"poster-\") && u.pathExtension == \"png\" { urls.append(u) }\n                if name.hasPrefix(\"ziwei-poster-\") && u.pathExtension == \"png\" { urls.append(u) }\n                if name.hasPrefix(\"hecan-poster-\") && u.pathExtension == \"png\" { urls.append(u) }\n            }\n        }\n        var archived: [URL] = []\n",
+    "after": "                if name.hasPrefix(\"poster-\") && u.pathExtension == \"png\" { urls.append(u) }\n                if name.hasPrefix(\"ziwei-poster-\") && u.pathExtension == \"png\" { urls.append(u) }\n                if name.hasPrefix(\"hecan-poster-\") && u.pathExtension == \"png\" { urls.append(u) }\n                // P0-4 修正：临时/文稿顶层也要收 palm-poster-（与归档枚举的 .palmPoster 一致，\n                // 与 ziwei/hecan 同口径）。缺这一行时，临时目录里的手相海报进不了 scan，\n                // 删人级联删不到它，残留一张该人的海报。\n                if name.hasPrefix(\"palm-poster-\") && u.pathExtension == \"png\" { urls.append(u) }\n            }\n        }\n        var archived: [URL] = []\n",
+    "count": 1
   }
 ]
