@@ -162,18 +162,18 @@ for path in files:
 # Permit only these independently reviewed, newly added regression tests.
 # Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
 new_test_blobs = {
-        'Tests/BackupRestoreTests.swift': 'b430da17f7b54eb3e9fea514a3e4389cd1bab3f5',
+    'Tests/BackupRestoreTests.swift': 'b430da17f7b54eb3e9fea514a3e4389cd1bab3f5',
     'Tests/PersonIsolationTests.swift': 'ef72047459e4278a5bd466ad2836d6677c14a97e',
 }
 for folder in ['Tests','UITests','Resources']:
-        tracked = {x for x in files if x.startswith(folder+'/')}
+    tracked = {x for x in files if x.startswith(folder+'/')}
     actual = {str(x.relative_to(ROOT)) for x in (ROOT/folder).rglob('*') if x.is_file()}
-extras = actual - tracked
-permitted = {path for path in new_test_blobs if path.startswith(folder+'/')}
-assert extras <= permitted and tracked <= actual, f'Protected folder file list changed: {folder}'
-for path in extras:
+    extras = actual - tracked
+    permitted = {path for path in new_test_blobs if path.startswith(folder+'/')}
+    assert extras <= permitted and tracked <= actual, f'Protected folder file list changed: {folder}'
+    for path in extras:
         actual_blob = subprocess.check_output(['git', 'hash-object', path], cwd=ROOT, text=True).strip()
-    assert actual_blob == new_test_blobs[path], f'Unreviewed new test content: {path}'
+        assert actual_blob == new_test_blobs[path], f'Unreviewed new test content: {path}'
     tokens = json.loads((ROOT/'design/tokens-v6.json').read_text())
 swift = (ROOT/'Sources/DesignSystemV6.swift').read_text()
 for key, value in tokens['colors'].items():
