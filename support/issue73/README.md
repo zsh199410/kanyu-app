@@ -11,7 +11,7 @@
 |---|---|---|
 | P0 | 手机 `$httpAPI(GET, /v1/policy_groups/test_results)`、HTTPS Bearer 回传、严格校验、SQLite 去重、只上传已识别且有时间戳的逐节点结果 | 手机实际 JSON 结构、真实字段含义、测试时间戳、蜂窝网络识别、后台定时执行与上传连通性 |
 | P1 | 钉选与轮换统一以最近 **24h** 手机合格记录准入，取消永久特权 | 21 条钉选的真实手机结果 |
-| P2 | 导入 VPS 握手成功率 / 真正的代理 HTTP 成功率 / 延迟 P90 / 24h 样本数，`status` 标注 PASS/FAIL/UNKNOWN | 现有 sing-box 检测产生真实 `http_ok` 的接入；暂不以 VPS PASS 代替手机验证 |
+| P2 | 导入 VPS 握手成功率 / 真正的代理 HTTP 成功率 / 延迟 P90 / 24h 样本数，`status` 标注 PASS/FAIL/UNKNOWN | 现有 sing-box 检测产生真实 `http_ok` 的接入；新增 `shortlist` 输出 VPS 合格的新候选名称；不以 VPS PASS 代替手机验证 |
 | P3 | `PENDING -> VERIFIED -> PROBATION -> QUARANTINED -> RETIRED` 状态、排除无验证节点、原子输出、无有效节点不覆盖旧发布 | 72 小时在真实重庆移动网络上验收、故障回滚、历史结果的生命周期 |
 | P4 | 没有默认接入 VLESS | iOS Surge >= 6.0.0 后小批灰度、转换格式和实际测试 |
 
@@ -39,6 +39,7 @@ python3 pool.py --db ./trial.sqlite3 import ./candidates.example.json
 python3 pool.py --db ./trial.sqlite3 serve --host 127.0.0.1 --port 8765
 # 另一个终端：在确认有手机记录后再运行
 python3 pool.py --db ./trial.sqlite3 status
+python3 pool.py --db ./trial.sqlite3 shortlist
 python3 pool.py --db ./trial.sqlite3 publish ./trial.surge.list
 ```
 
@@ -48,7 +49,7 @@ python3 pool.py --db ./trial.sqlite3 publish ./trial.surge.list
 
 ### 候选数据约定
 
-每个候选必须提供 `name`、完整 `line`、`class` (`pinned`/`rotating`) 和真实的 `vps_checks`；每条检测包含 Unix 秒 `ts`、布尔 `handshake_ok`、毫秒 `latency_ms`、布尔 `http_ok`。这里的 `http_ok` 必须是**经该代理转发的目标 HTTP 成功**，不是仅与代理服务器握手。连续时间窗只评估最近 24h，少于 3 次返回 `UNKNOWN`。具体阈值在 72 小时手机结果统计后再调。
+每个候选必须提供 `name`、完整 `line`、`class` (`pinned`/`rotating`) 和真实的 `vps_checks`；每条检测包含 Unix 秒 `ts`、布尔 `handshake_ok`、毫秒 `latency_ms`、布尔 `http_ok`。这里的 `http_ok` 必须是**经该代理转发的目标 HTTP 成功**，不是仅与代理服务器握手。连续时间窗只评估最近 24h，少于 3 次或超过 24 小时返回 `UNKNOWN`；`shortlist` 只供上游候选探索，**绝不直接作为手机合格生产清单**。具体阈值在 72 小时手机结果统计后再调。
 
 ### 当前状态规则
 
