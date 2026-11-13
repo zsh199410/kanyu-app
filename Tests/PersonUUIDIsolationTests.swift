@@ -183,50 +183,43 @@ final class PersonUUIDIsolationTests: XCTestCase {
         XCTAssertNil(ReportHistory.pdfPersonID(for: url2))
     }
 
-    /// P0-4 诊断 v2：定位读取链断点。v1 已证实断在 GetString(Keywords) 返回 false；
-    /// 本轮分三步：① 原始 PDF 字节里有没有 /Keywords 与 personID=（定写侧还是读侧）；
-    /// ② GetObject 取 Keywords 的对象类型（键缺失还是值非字符串）；③ 原读链复核。
-    /// 找到根因并修好读取器后，本测试可删。
+    /// P0-4 诊断 v3：v2 已证实原始 PDF 字节里根本没有 /Keywords（写侧问题，非读侧）。
+    /// 本轮一次查清渲染器到底写了哪些 documentInfo 键：Title、Author、Subject、Keywords
+    /// 各写一个可区分的值，搜原始字节，一条断言同时报四键的有无。
+    /// 若仅 Keywords 缺失→该键被单独丢弃；若四键全缺→documentInfo 整段被忽略，须换写法。
+    /// 找到根因并修好后，本测试可删。
     func testPDFReaderDiagnostics() {
         let id = UUID()
         let format = UIGraphicsPDFRendererFormat()
-        format.documentInfo = ["Keywords": "contentHash=abcdef1234567890;tier=professional;engine=v1;personID=\(id.uuidString)"]
+        format.documentInfo = [
+            "Title": "diag-title-\(id.uuidString)",
+            "Author": "diag-author",
+            "Subject": "diag-subject",
+            "Keywords": "contentHash=abcdef1234567890;tier=professional;engine=v1;personID=\(id.uuidString)"
+        ]
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842), format: format)
         let data = renderer.pdfData { ctx in ctx.beginPage() }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("p04-diag-\(UUID().uuidString).pdf")
         try! data.write(to: url)
         tempFiles.append(url)
-        // 探针 1：原始字节里有没有 /Keywords（键名恒为 ASCII）与 personID=（值若为 UTF-16 hex 则搜不到 ASCII）。
+        let hasTitle = data.range(of: "/Title".data(using: .ascii)!) != nil
+        let hasAuthor = data.range(of: "/Author".data(using: .ascii)!) != nil
+        let hasSubject = data.range(of: "/Subject".data(using: .ascii)!) != nil
         let hasKW = data.range(of: "/Keywords".data(using: .ascii)!) != nil
-        XCTAssertTrue(hasKW, "diag: raw bytes lack /Keywords")
+        XCTAssertTrue(hasTitle && hasAuthor && hasSubject && hasKW,
+                      "diag: info keys in raw bytes: title=\(hasTitle) author=\(hasAuthor) subject=\(hasSubject) keywords=\(hasKW)")
         guard hasKW else { return }
-        let hasPID = data.range(of: "personID=".data(using: .ascii)!) != nil
-        XCTAssertTrue(hasPID, "diag: raw bytes lack personID= (value may be hex-encoded)")
-        // 探针 2：GetObject 取 Keywords，看键在不在、值是什么类型。
-        guard let doc = CGPDFDocument(url as CFURL) else {
-            XCTFail("diag: CGPDFDocument nil")
+        guard let doc = CGPDFDocument(url as CFURL), let info = doc.info else {
+            XCTFail("diag: doc/info nil")
             return
         }
-        guard let info = doc.info else {
-            XCTFail("diag: info nil")
-            return
-        }
-        var obj: CGPDFObjectRef?
-        let gotObj = CGPDFDictionaryGetObject(info, "Keywords", &obj)
-        XCTAssertTrue(gotObj, "diag: GetObject Keywords false")
-        guard gotObj, let obj = obj else { return }
-        let type = CGPDFObjectGetType(obj)
-        XCTAssertTrue(type == .string, "diag: Keywords type is \(type)")
-        // 探针 3：原读链复核。
         var value: CGPDFStringRef?
-        let found = CGPDFDictionaryGetString(info, "Keywords", &value)
-        XCTAssertTrue(found, "diag: GetString Keywords false")
-        guard found, let value = value else { return }
-        guard let text = CGPDFStringCopyTextString(value) as String? else {
+        XCTAssertTrue(CGPDFDictionaryGetString(info, "Keywords", &value), "diag: GetString Keywords false")
+        guard let value = value, let text = CGPDFStringCopyTextString(value) as String? else {
             XCTFail("diag: CopyTextString nil")
             return
         }
-        XCTAssertTrue(text.contains("personID="), "diag: text missing personID, text=\(text)")
+        XCTAssertTrue(text.contains("personID="), "diag: text missing personID")
         XCTAssertEqual(ReportHistory.pdfPersonID(for: url), id, "diag: pdfPersonID nil but text ok")
     }
 }
