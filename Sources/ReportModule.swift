@@ -178,6 +178,7 @@ enum ReportBuilder {
     /// 绘制循环不再另算断页，故目录页码与实际分页不可能错位。
     /// G1：默认档位为专业（等于改版前输出）；文件名带档位＋时间戳＋内容哈希短码，
     /// PDF 元数据 Keywords 内写全量 contentHash（64 位 hex）＋档位码＋引擎口径版本。
+    /// P0-4：Keywords 再加 personID=<uuid>（命书按人物 UUID 归属；文件名不动，G1 解析口径不变）。
     static func makePDF(for person: Person, tier: ReportTier = .professional) -> URL? {
         let lines = lines(for: person, tier: tier)
         let hash = contentHash(lines: lines, tier: tier)
@@ -189,7 +190,7 @@ enum ReportBuilder {
             "Author": "三术合参",
             "Creator": "三术合参 \(engineVersion)",
             "Subject": "档位：\(tier.displayName)",
-            "Keywords": "contentHash=\(hash);tier=\(tier.fileCode);engine=\(engineVersion)"
+            "Keywords": "contentHash=\(hash);tier=\(tier.fileCode);engine=\(engineVersion);personID=\(person.id.uuidString)"
         ]
         let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
         let titleFont = UIFont(name: "STSongti-SC-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)

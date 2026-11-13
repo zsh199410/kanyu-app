@@ -63,6 +63,17 @@ enum VerifyStore {
     static func legacyMarkCount(defaults: UserDefaults = .standard) -> Int {
         (defaults.dictionary(forKey: legacyKey) as? [String: Bool])?.count ?? 0
     }
+
+    /// P0-4 级联删除：清掉某一命主（ownerID "person:<uuid>"）的全部回验标记。
+    /// 只删该 owner 的 v2 键（"person:<uuid>|<itemID>"）；不归属任何人的 v1 旧标记不动。
+    /// 空 ownerID 不做任何事（避免误清全局键）。
+    static func clearAll(ownerID: String?, defaults: UserDefaults = .standard) {
+        guard let ownerID, !ownerID.isEmpty else { return }
+        var marks = (defaults.dictionary(forKey: key) as? [String: Bool]) ?? [:]
+        let prefix = ownerID + "|"
+        marks = marks.filter { !$0.key.hasPrefix(prefix) }
+        defaults.set(marks, forKey: key)
+    }
 }
 
 enum InterpretEngine {
