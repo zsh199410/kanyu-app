@@ -136,8 +136,12 @@ def ingest(cx, payload, now=None):
     return accepted
 
 
-def vps_gate(node):
-    """Diagnostic only. Never claims to predict cellular latency."""
+def vps_gate(node, now=None):
+    """Gate new unverified candidates, never overwrite genuine phone evidence."""
+    now = int(time.time() if now is None else now)
+    if (node['vps_last'] is None or now-node['vps_last'] > 86400
+            or node['vps_last'] > now+60):
+        return 'UNKNOWN'
     if node['vps_count'] < MIN_VPS_CHECKS or node['vps_ratio'] is None:
         return 'UNKNOWN'
     if (node['vps_ratio'] >= 0.7 and node['vps_http_ratio'] is not None
@@ -197,6 +201,14 @@ def publish(cx, output, now=None):
     return {'updated':True,'published':len(verified),'sha256':hashlib.sha256(payload.encode()).hexdigest(),'stats':stats}
 
 
+def shortlist(cx, now=None):
+    """Feed for the old collector's trial-candidate decision, NOT production."""
+    now = int(time.time() if now is None else now)
+    return [{'name': n['name'], 'class': n['class'], 'protocol': n['protocol']}
+            for n in cx.execute('SELECT * FROM nodes ORDER BY name')
+            if vps_gate(n, now) == 'PASS']
+
+
 def handler_factory(db_path, token):
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
@@ -230,6 +242,7 @@ def main():
     i=sub.add_parser('import'); i.add_argument('file')
     o=sub.add_parser('publish'); o.add_argument('output')
     s=sub.add_parser('serve'); s.add_argument('--host',default='127.0.0.1'); s.add_argument('--port',type=int,default=8765)
+    sub.add_parser('shortlist')
     q=sub.add_parser('status')
     args=p.parse_args()
     with connect(args.db) as cx:
@@ -238,6 +251,8 @@ def main():
             print(json.dumps({'imported':import_candidates(cx,data)},ensure_ascii=False)); return
         if args.command == 'publish':
             print(json.dumps(publish(cx,args.output),ensure_ascii=False)); return
+        if args.command == 'shortlist':
+            print(json.dumps(shortlist(cx),ensure_ascii=False)); return
         if args.command == 'status':
             entries=[dict(name=n['name'],state=state(cx,n,int(time.time()))[0],
                           vps_ratio=n['vps_ratio'],vps_p90=n['vps_p90'],vps_gate=vps_gate(n))
