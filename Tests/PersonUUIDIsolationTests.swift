@@ -182,4 +182,36 @@ final class PersonUUIDIsolationTests: XCTestCase {
         tempFiles.append(url2)
         XCTAssertNil(ReportHistory.pdfPersonID(for: url2))
     }
+
+    /// P0-4 诊断：逐步拆解 pdfPersonID 的读取链，定位哪一步返回 nil。
+    /// 中文 tier 假说已死（ASCII 轮仍失败），生产 makePDF 与本测试用同一生成写法，
+    /// 故读链本身是首要嫌疑。找到根因并修好读取器后，本测试可删。
+    func testPDFReaderDiagnostics() {
+        let id = UUID()
+        let format = UIGraphicsPDFRendererFormat()
+        format.documentInfo = ["Keywords": "contentHash=abcdef1234567890;tier=professional;engine=v1;personID=\(id.uuidString)"]
+        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842), format: format)
+        let data = renderer.pdfData { ctx in ctx.beginPage() }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("p04-diag-\(UUID().uuidString).pdf")
+        try! data.write(to: url)
+        tempFiles.append(url)
+        guard let doc = CGPDFDocument(url as CFURL) else {
+            XCTFail("diag: CGPDFDocument nil")
+            return
+        }
+        guard let info = doc.info else {
+            XCTFail("diag: info nil")
+            return
+        }
+        var value: CGPDFStringRef?
+        let found = CGPDFDictionaryGetString(info, "Keywords", &value)
+        XCTAssertTrue(found, "diag: GetString Keywords false")
+        guard found, let value = value else { return }
+        guard let text = CGPDFStringCopyTextString(value) as String? else {
+            XCTFail("diag: CopyTextString nil")
+            return
+        }
+        XCTAssertTrue(text.contains("personID="), "diag: text missing personID, text=\(text)")
+        XCTAssertEqual(ReportHistory.pdfPersonID(for: url), id, "diag: pdfPersonID nil but text ok")
+    }
 }
