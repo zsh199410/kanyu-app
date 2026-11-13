@@ -164,6 +164,9 @@ for path in files:
 new_test_blobs = {
     'Tests/BackupRestoreTests.swift': 'b430da17f7b54eb3e9fea514a3e4389cd1bab3f5',
     'Tests/PersonIsolationTests.swift': 'ef72047459e4278a5bd466ad2836d6677c14a97e',
+    'Tests/PeopleStoreTests.swift': '117f02ef7595c3163fa4b9bf9cb337c1bca944d8',
+    'Tests/PersonCascadeTests.swift': 'bb525aaa33ea13ef07086fbdde942872a5de916f',
+    'Tests/PersonUUIDIsolationTests.swift': 'b5c63b338f7d8fb852d0b6a4dd69521a94639495',
 }
 for folder in ['Tests','UITests','Resources']:
     tracked = {x for x in files if x.startswith(folder+'/')}
