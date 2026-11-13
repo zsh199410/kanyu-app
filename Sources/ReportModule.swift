@@ -4,6 +4,7 @@ import SwiftUI
 import UIKit
 import CryptoKit
 import CoreText
+import PDFKit
 
 /// 命书三档（G1 报告体系）：档位只做章节取舍，不改任何结论文案与引擎口径。
 /// 简洁＝总纲＋核心结论＋要点；专业＝现行全部 6 章（默认档位，等于改版前输出）；
@@ -184,13 +185,14 @@ enum ReportBuilder {
         let hash = contentHash(lines: lines, tier: tier)
         let hashShort = String(hash.prefix(12))
         let pageRect = CGRect(x: 0, y: 0, width: 595, height: 842)   // A4 @72dpi
+        let keywordString = "contentHash=\(hash);tier=\(tier.fileCode);engine=\(engineVersion);personID=\(person.id.uuidString)"
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = [
             "Title": "命书 · \(person.name)",
             "Author": "三术合参",
             "Creator": "三术合参 \(engineVersion)",
             "Subject": "档位：\(tier.displayName)",
-            "Keywords": "contentHash=\(hash);tier=\(tier.fileCode);engine=\(engineVersion);personID=\(person.id.uuidString)"
+            "Keywords": keywordString
         ]
         let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
         let titleFont = UIFont(name: "STSongti-SC-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)
@@ -217,6 +219,19 @@ enum ReportBuilder {
                 drawFooter(ctx: ctx, pageRect: pageRect, page: idx + 3, total: totalPages)
             }
         }
+        // P0-4 fix: UIGraphicsPDFRenderer drops the Keywords key (diagnosed v3:
+        // Title/Author/Subject written, Keywords missing from raw bytes).
+        // Re-attach via PDFKit, whose keywordsAttribute is officially supported.
+        // Fall back to raw data if PDFKit fails, so PDF generation never breaks.
+        var finalData = data
+        if let doc = PDFDocument(data: data) {
+            var attrs = doc.documentAttributes ?? [:]
+            attrs[.keywordsAttribute] = [keywordString]
+            doc.documentAttributes = attrs
+            if let out = doc.dataRepresentation() {
+                finalData = out
+            }
+        }
         let stampFormatter = DateFormatter()
         stampFormatter.dateFormat = "yyyyMMdd-HHmmss"
         stampFormatter.timeZone = TimeZone(secondsFromGMT: 8 * 3600)
@@ -224,8 +239,8 @@ enum ReportBuilder {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("命书-\(exportName(person.name))-\(tier.displayName)-\(stamp)-\(hashShort).pdf")
         do {
-            try data.write(to: url, options: .atomic)
-            _ = try ReportExportArchive.save(data, fileName: url.lastPathComponent)
+            try finalData.write(to: url, options: .atomic)
+            _ = try ReportExportArchive.save(finalData, fileName: url.lastPathComponent)
             return url
         } catch { return nil }
     }
