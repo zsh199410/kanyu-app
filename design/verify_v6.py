@@ -177,7 +177,7 @@ for folder in ['Tests','UITests','Resources']:
     for path in extras:
         actual_blob = subprocess.check_output(['git', 'hash-object', path], cwd=ROOT, text=True).strip()
         assert actual_blob == new_test_blobs[path], f'Unreviewed new test content: {path}'
-    tokens = json.loads((ROOT/'design/tokens-v6.json').read_text())
+tokens = json.loads((ROOT/'design/tokens-v6.json').read_text())
 swift = (ROOT/'Sources/DesignSystemV6.swift').read_text()
 for key, value in tokens['colors'].items():
     assert f'static let {key}: UInt32 = 0x{value[1:]}' in swift, f'Palette drift: {key}'
