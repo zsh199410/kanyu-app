@@ -1,0 +1,88 @@
+--- /opt/free-node-program/pool/cli.py	2026-11-09 01:03:23.740783292 +0800
++++ pool/cli.py	2026-11-14 00:41:34.210361034 +0800
+@@ -526,6 +526,76 @@
+         kept_old = [x for x in kept_old if (x[1], x[2], x[3]) not in drop]
+         lines = keep_pinned + [t for _n, _p, _h, _po, t in kept_old] + new_lines
+         lines = lines[:max_lines]
++    # ---- P2-P3 D0 phone gate (single choke point) ----
++    # Pinned and rotation are treated equally: only fingerprints whose MOST
++    # RECENT phone measurement is a cellular (pdp_ip) success with
++    # second_ms < threshold and second_status == 204, within TTL, publish.
++    # History is NOT deleted; the gate only filters this publish run.
++    # If zero fingerprints qualify, publishing is REFUSED and the old
++    # subscription is kept untouched (conservative hold, NOT claimed
++    # compliant). If the gate keeps zero lines despite a non-empty admitted
++    # set, that is a mapping failure and also fails closed.
++    gate_enabled = bool(cfg.get("phone_gate_enabled", True))
++    gate_counts = {"gate_enabled": gate_enabled, "gate_admitted": 0,
++                   "gate_kept": 0, "gate_dropped": 0, "gate_error": ""}
++    if gate_enabled:
++        from .phone_gate import gate_lines, load_verified
++        probe_db = cfg.get("phone_gate_probe_db",
++                           "/opt/probe-service/data/probe.db")
++        threshold_ms = int(cfg.get("phone_gate_threshold_ms", 280))
++        ttl_seconds = int(cfg.get("phone_gate_ttl_seconds", 86400))
++        admitted, gdiag = load_verified(probe_db, threshold_ms=threshold_ms,
++                                        ttl_seconds=ttl_seconds, now=started)
++        gate_counts["gate_admitted"] = gdiag.get("admitted", 0)
++        gate_counts["gate_error"] = gdiag.get("error", "")
++        gate_counts["gate_reasons"] = gdiag.get("reasons", {})
++        if gdiag.get("error") or not admitted:
++            err_zero = ("phone_gate_zero_qualified admitted=%d error=%s"
++                        % (len(admitted), gdiag.get("error", "")))
++            zero_counts = {"pinned": 0,
++                           "pinned_db_only": len(db_pinned_lines),
++                           "pinned_uri_missing": pinned_uri_missing,
++                           "kept_old": len(kept_old), "new": len(new_lines),
++                           "total": 0, "capped": capped,
++                           "build_failed": build_failed,
++                           "winner_clean_enabled": wc_enabled,
++                           "winner_clean_removed": len(wc_removed),
++                           "winner_days": wc_days, **gate_counts}
++            dbmod.log_run(conn, "publish", started, zero_counts,
++                          ok=False, error=err_zero)
++            conn.commit()
++            log.error("publish refused by phone gate: %s", err_zero)
++            print(json.dumps(
++                {"ok": False, "error": err_zero,
++                 "zero_qualified_safe_state":
++                 "old subscription kept, not claimed compliant",
++                 **zero_counts}, ensure_ascii=False))
++            return 1
++        lines, gline_diag = gate_lines(lines, admitted)
++        gate_counts["gate_kept"] = gline_diag.get("kept", 0)
++        gate_counts["gate_dropped"] = gline_diag.get("dropped", 0)
++        gate_counts["gate_line_reasons"] = gline_diag.get("reasons", {})
++        if not lines:
++            err_map = ("phone_gate_mapping_failure admitted=%d kept=0"
++                       % len(admitted))
++            map_counts = {"pinned": 0,
++                          "pinned_db_only": len(db_pinned_lines),
++                          "pinned_uri_missing": pinned_uri_missing,
++                          "kept_old": len(kept_old), "new": len(new_lines),
++                          "total": 0, "capped": capped,
++                          "build_failed": build_failed,
++                          "winner_clean_enabled": wc_enabled,
++                          "winner_clean_removed": len(wc_removed),
++                          "winner_days": wc_days, **gate_counts}
++            dbmod.log_run(conn, "publish", started, map_counts,
++                          ok=False, error=err_map)
++            conn.commit()
++            log.error("publish refused by phone gate: %s", err_map)
++            print(json.dumps({"ok": False, "error": err_map,
++                              "zero_qualified_safe_state":
++                              "old subscription kept, not claimed compliant",
++                              **map_counts}, ensure_ascii=False))
++            return 1
+     ok, err = self_check(lines, private, max_lines)
+     counts = {"pinned": len([1 for _n, _p, _h, _po, _t in pinned_lines
+                              if (_p, _h, _po) not in blocked]) + len(db_pinned_lines),
+@@ -535,7 +605,7 @@
+               "total": len(lines), "capped": capped, "build_failed": build_failed,
+               "winner_clean_enabled": wc_enabled,
+               "winner_clean_removed": len(wc_removed),
+-              "winner_days": wc_days}
++              "winner_days": wc_days, **gate_counts}
+     if not ok:
+         dbmod.log_run(conn, "publish", started, counts, ok=False, error=err)
+         conn.commit()

@@ -1,0 +1,123 @@
+=== DIFF phone_gate.py (pre-strict -> strict) ===
+--- pool/phone_gate.py.bak-pre-ts-strict	2026-11-14 16:16:25.365233167 +0800
++++ pool/phone_gate.py	2026-11-14 16:16:26.097244049 +0800
+@@ -11,8 +11,11 @@
+   - second_status == 204 (the generate_204 probe URL returned 204)
+   - interface starts with 'pdp_ip' (Chongqing Mobile cellular interface)
+   - ts within TTL_SECONDS (default 24 h) of now, and ts sane
+-    (0 < ts <= now + 600 s, mirroring the P0 ingest bound; a far-future
+-    ts is rejected, not treated as fresh)
++    (0 < ts <= now; ANY future ts is rejected outright -- no clock-skew
++    allowance. GPT second review item 1, 2026-11-14: the old +600 s
++    allowance mirrored P0 ingest, but the gate has no server-side
++    receive-time to double-check against, so any future ts is
++    untrustworthy and fails closed.)
+   - the probe_nodes row for the fingerprint exists and its state is
+     'verified' (cross-check; a mismatch fails closed for that fingerprint)
+ 
+@@ -39,10 +42,15 @@
+ # it is NOT an official standard and does NOT guarantee native < 300 ms.
+ DEFAULT_THRESHOLD_MS = 280
+ DEFAULT_TTL_SECONDS = 24 * 3600
+-# Max clock-skew allowance for probe timestamps, mirroring P0 ingest
+-# (probe_service.py rejects ts <= 0 and ts > now + 600 at ingest time).
+-# The gate reads the DB directly, so it re-checks the same bound here.
+-MAX_FUTURE_SKEW_SECONDS = 600
++# Timestamp rule (GPT second review item 1, 2026-11-14): STRICT.
++# A report timestamp must satisfy 0 < ts <= now. ANY future ts is
++# rejected outright -- there is NO clock-skew allowance. The old
++# +600 s allowance mirrored P0 ingest, but the gate reads the DB
++# directly and has no server-side receive-time to double-check a
++# future ts against, so a future ts is untrustworthy by definition.
++# If a skew allowance is ever needed again, it MUST come with a
++# server-side receive-time double check and the reason written here;
++# the default is no allowance.
+ # The probe URL is fixed in the phone probe script (generate_204). A 204
+ # status on the second request is the observable proof that the expected
+ # probe URL was used and answered.
+@@ -98,10 +106,16 @@
+     """Return the most recent probe report row for a fingerprint, or None.
+ 
+     Row: (ts, success, second_ms, second_status, interface, error).
++    Deterministic tie-break: ORDER BY ts DESC, id DESC. id is
++    INTEGER PRIMARY KEY AUTOINCREMENT in probe_reports, so a larger id
++    is always a later insertion. The production table also has
++    UNIQUE(fingerprint, ts), so same-ts duplicates cannot occur there;
++    the id tie-break is a defensive determinism guarantee (it also
++    covers any future schema/import path that drops the UNIQUE bound).
+     """
+     row = conn.execute(
+         """SELECT ts, success, second_ms, second_status, interface, error
+-           FROM probe_reports WHERE fingerprint=? ORDER BY ts DESC LIMIT 1""",
++           FROM probe_reports WHERE fingerprint=? ORDER BY ts DESC, id DESC LIMIT 1""",
+         (fingerprint,),
+     ).fetchone()
+     return row
+@@ -183,13 +197,13 @@
+             diag["reasons"]["latest_interface_not_cellular"] = diag["reasons"].get("latest_interface_not_cellular", 0) + 1
+             diag["rejected_prefixes"][prefix] = "latest_interface=%s" % (interface,)
+             continue
+-        # Timestamp sanity (fail closed). Without this, a far-future ts
+-        # passed the TTL test below (negative age) and was admitted as
+-        # "fresh" until TTL had elapsed after the future instant -- up
+-        # to TTL + the future offset of wrongful admission. P0 ingest
+-        # already rejects ts <= 0 and ts > now + 600, but the gate reads
+-        # the DB directly, so the bound is re-checked here.
+-        if ts is None or ts <= 0 or ts > now + MAX_FUTURE_SKEW_SECONDS:
++        # Timestamp sanity, STRICT (fail closed). Without this, a
++        # far-future ts passed the TTL test below (negative age) and was
++        # admitted as "fresh" until TTL had elapsed after the future
++        # instant -- up to TTL + the future offset of wrongful admission.
++        # Rule (GPT second review item 1): 0 < ts <= now, no allowance.
++        # A future ts is rejected even if it is only 1 second ahead.
++        if ts is None or ts <= 0 or ts > now:
+             diag["rejected"] += 1
+             diag["reasons"]["latest_ts_invalid"] = diag["reasons"].get("latest_ts_invalid", 0) + 1
+             diag["rejected_prefixes"][prefix] = "latest_ts_invalid"
+=== DIFF test_timestamp_priority.py (pre-strict -> strict) ===
+--- tests/test_timestamp_priority.py.bak-pre-strict	2026-11-14 16:16:25.369233226 +0800
++++ tests/test_timestamp_priority.py	2026-11-14 16:16:27.473264502 +0800
+@@ -185,8 +185,10 @@
+     # far-future ts (1h ahead) must be rejected, not treated as fresh
+     add_report(conn, fp_future_far, "e-future-far", now + 3600, 1, 120, 204,
+                "pdp_ip0")
+-    # small future skew (5 min) is admitted: P0 ingest itself allows
+-    # ts <= now + 600, so the gate mirrors that allowance
++    # small future skew (5 min) is REJECTED under the strict rule
++    # (GPT second review item 1, 2026-11-14): 0 < ts <= now, no
++    # allowance. The old +600 s allowance mirrored P0 ingest; the
++    # gate now rejects ANY future ts outright.
+     add_report(conn, fp_future_skew, "e-future-skew", now + 300, 1, 120, 204,
+                "pdp_ip0")
+     add_report(conn, fp_ts_zero, "e-ts-zero", 0, 1, 120, 204, "pdp_ip0")
+@@ -221,15 +223,16 @@
+     check("admit_cellular_pdp_ip1", fp_cell_other in admitted)
+     # (e)
+     check("reject_future_ts_far", fp_future_far not in admitted)
+-    check("admit_future_ts_within_skew", fp_future_skew in admitted)
++    check("reject_future_ts_within_skew", fp_future_skew not in admitted)
+     check("reject_ts_zero", fp_ts_zero not in admitted)
+     check("reject_stale_far_past", fp_stale_far not in admitted)
+     check("admit_ttl_boundary_exact", fp_ttl_edge_ok in admitted)
+     check("reject_ttl_boundary_over", fp_ttl_edge_over not in admitted)
+-    # totals: 20 nodes in this DB; admitted 7 (a-good-after, b-good-after,
+-    # c-good-after, d-good-after, d-pdp-ip1, e-future-skew, e-ttl-edge-ok);
+-    # rejected 13. (Scenarios f and g use separate DBs below.)
+-    check("diag_counts", diag["admitted"] == 7 and diag["rejected"] == 13)
++    # totals: 20 nodes in this DB; admitted 6 (a-good-after, b-good-after,
++    # c-good-after, d-good-after, d-pdp-ip1, e-ttl-edge-ok); rejected 14.
++    # e-future-skew is now REJECTED under the strict ts <= now rule
++    # (GPT second review item 1). (Scenarios f and g use separate DBs below.)
++    check("diag_counts", diag["admitted"] == 6 and diag["rejected"] == 14)
+     check("diag_reason_latest_failed",
+           diag["reasons"].get("latest_failed", 0) == 2)
+     check("diag_reason_latest_slow",
+@@ -237,7 +240,7 @@
+     check("diag_reason_latest_interface",
+           diag["reasons"].get("latest_interface_not_cellular", 0) == 3)
+     check("diag_reason_latest_ts_invalid",
+-          diag["reasons"].get("latest_ts_invalid", 0) == 2)
++          diag["reasons"].get("latest_ts_invalid", 0) == 3)
+     check("diag_reason_latest_stale",
+           diag["reasons"].get("latest_stale", 0) == 2)
+ 
