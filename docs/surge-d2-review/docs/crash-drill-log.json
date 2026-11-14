@@ -1,0 +1,11 @@
+{
+  "drill": "crash-recovery",
+  "reacquire_seconds": 0.0,
+  "reacquire_under_2s": true,
+  "file_sha_unchanged": true,
+  "file_lines": 14,
+  "before_sha_prefix": "6074082847c3",
+  "after_sha_prefix": "6074082847c3",
+  "ok": true,
+  "at_cst": "2026-11-14 19:42:17 CST"
+}
