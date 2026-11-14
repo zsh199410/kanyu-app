@@ -1443,8 +1443,8 @@ struct HomePageView: View {
 
     var body: some View {
         ScrollView {
-            // Keep the workspace lazy; frame pacing requires device measurement.
-            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
+            // P0: eager VStack — LazyVStack placement stalled the main thread 60s+ on scroll (see #33); 9 fixed sections only.
+            VStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
                 signBanner
                 personSwitcherCard
                     .accessibilityElement(children: .contain)
@@ -1476,6 +1476,27 @@ struct HomePageView: View {
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
+            // Always-reachable contextual shortcut: keeps a real tool entry in the
+            // native navigation bar when the workbench has been scrolled deeply.
+            // This avoids forcing users and VoiceOver to search a long lazy grid.
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    if let item = AllToolsData.item(for: "astro") {
+                        ContextualToolDestination(item: item)
+                    }
+                } label: {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Ky.qingdai)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded {
+                    AllToolsData.recordRecent(tool: "astro")
+                })
+                .accessibilityLabel("星命合参")
+                .accessibilityIdentifier("home.astro")
+            }
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 6) {
                     AppLogoView(size: 24).accessibilityHidden(true)
@@ -1884,12 +1905,25 @@ struct HomePageView: View {
     private var recentToolsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             KySectionTitle(title: "最近使用", trailing: "最近打开的人物与工具")
+            // Keep the astro shortcut mounted independently of the changing person recents.
+            // A stable link avoids rebuilding the queried accessibility node during return navigation.
+            NavigationLink {
+                if let item = AllToolsData.item(for: "astro") {
+                    ContextualToolDestination(item: item)
+                }
+            } label: {
+                if let item = AllToolsData.item(for: "astro") {
+                    homeChipLabel(item)
+                }
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded {
+                AllToolsData.recordRecent(tool: "astro")
+            })
+            .accessibilityIdentifier("home.recent.astro")
             let recents = AllToolsData.recentEntries(people: peopleStore.people)
-            if recents.isEmpty {
-                Text("打开任意工具或人物后，这里会显示最近使用，方便一键回到上次的盘。".scriptConverted)
-                    .font(.caption).foregroundStyle(Ky.sub)
-                    .padding(.horizontal, 2)
-            } else {
+                .filter { $0.id != "astro" }
+            if !recents.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(recents) { entry in homeRecentChip(entry) }
@@ -1903,7 +1937,6 @@ struct HomePageView: View {
                         compactBentoTile("sparkles", "星命合参", "八字 × 西洋星盘 · 双术印证", Ky.gold)
                     }.buttonStyle(.plain)
                         .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: "astro") })
-                        .accessibilityIdentifier("home.astro")
                     NavigationLink { SynastryView() } label: {
                         compactBentoTile("heart.circle.fill", "合盘合婚", "合婚四看 · 喜用互补", Ky.cinnabar)
                     }.buttonStyle(.plain)

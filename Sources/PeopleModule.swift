@@ -39,6 +39,23 @@ struct Person: Codable, Identifiable, Equatable, Hashable {
     var birthDate: Date { Date(timeIntervalSince1970: birthEpoch) }
 }
 
+/// P0-4 迁移口径（供手相/前瞻/报告三处共用）：
+/// - 从 people.json 直读人物列表（不依赖 PeopleStore 单例，store 初始化时也能用）；
+/// - 姓名精确匹配到唯一现有人物时返回其 UUID，否则返回 nil（零个或多个都留孤儿，宁可孤儿不串人）。
+extension Person {
+    static func loadPeopleForMigration(directory: URL? = nil) -> [Person] {
+        let dir = directory ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let url = dir.appendingPathComponent("people.json")
+        guard let data = try? Data(contentsOf: url),
+              let list = try? JSONDecoder().decode([Person].self, from: data) else { return [] }
+        return list
+    }
+    static func uniqueID(forName name: String, in people: [Person]) -> UUID? {
+        let matches = people.filter { $0.name == name }
+        return matches.count == 1 ? matches[0].id : nil
+    }
+}
+
 @MainActor
 final class PeopleStore: ObservableObject {
     // 全局唯一单例：人物档案只读一次盘（people.json），各页共用同一份内存数据；
@@ -46,7 +63,8 @@ final class PeopleStore: ObservableObject {
     static let shared = PeopleStore()
     @Published var people: [Person] = []
     // UI 2.0 全局当前命主（单点穿透数据源）：显式选择存 UserDefaults 键 "currentPersonId"（UUID 字符串）；
-    // @AppStorage 不能与 @Published 叠加，故用 didSet 同键持久化。PersonDetailView 内的局部 currentPerson 只是详情页 @State，不可复用。
+    // @AppStorage 不能与 @Published 叠加，故用 didSet 同键持久化。PersonDetailView 的「换人」已接上
+    // setCurrentPerson（P0-4），局部 currentPerson 只作本页显示，与全局 currentPersonId 同步改动。
     @Published var currentPersonId: Person.ID? {
         didSet {
             if let id = currentPersonId {
@@ -63,11 +81,11 @@ final class PeopleStore: ObservableObject {
     }
     func setCurrentPerson(_ p: Person?) { currentPersonId = p?.id }
     private(set) var loadedSchemaVersion = 0   // 读档时 meta 的版本（无 meta 的旧档为 0）；将来改形状时按此分支迁移
-    private var fileURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("people.json")
-    }
-    init() {
+    /// P0-4：可注入目录（默认仍为真实 Documents），只为让单元测试能用临时目录；默认行为不变。
+    private let directory: URL
+    private var fileURL: URL { directory.appendingPathComponent("people.json") }
+    init(directory: URL? = nil) {
+        self.directory = directory ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         load()
         if let s = UserDefaults.standard.string(forKey: "currentPersonId"),
            let id = UUID(uuidString: s),
@@ -98,6 +116,24 @@ final class PeopleStore: ObservableObject {
         save()
     }
     func remove(_ p: Person) {
+        // P0-4 级联删除：先删该人的全部归属数据，再删档案本身。
+        // 顺序重要：删档案前先算好同名是否共享——旧姓名键记录与旧报告只在
+        // 姓名唯一时才按名删（同名时宁可留孤儿，不可串到另一个同名人物身上）；
+        // 各 store 的迁移/归属判定都以删除前的完整人物列表为准。
+        let nameIsShared = people.contains { $0.id != p.id && $0.name == p.name }
+        VerifyStore.clearAll(ownerID: "person:\(p.id.uuidString)")
+        PalmRecordStore.removeAll(for: p, nameIsShared: nameIsShared, in: directory)
+        ForecastStore.removeAll(for: p, nameIsShared: nameIsShared, in: directory)
+        ReportHistory.deleteAll(for: p, nameIsShared: nameIsShared, documents: directory)
+        // Drop stale recent-person references before publishing the changed people array.
+        let key = "recentTools.v1"
+        if let recent = UserDefaults.standard.stringArray(forKey: key) {
+            let deletedKey = "person:" + p.id.uuidString
+            let kept = recent.filter { $0 != deletedKey }
+            if kept.count != recent.count {
+                UserDefaults.standard.set(kept, forKey: key)
+            }
+        }
         people.removeAll { $0.id == p.id }
         if currentPersonId == p.id { currentPersonId = nil }
         save()
@@ -202,7 +238,7 @@ struct PeopleView: View {
             Button("取消".scriptConverted, role: .cancel) { pendingDeletePerson = nil }
         } message: {
             if let p = pendingDeletePerson {
-                Text("将删除「\(p.name)」的人物档案，出生时间只能凭记忆重建；恢复只依赖手动导出的备份包。".scriptConverted)
+                Text("将删除「\(p.name)」的人物档案，同时清掉该人的回验标记、手相面相记录、前瞻登记与已生成的报告文件；出生时间只能凭记忆重建；恢复只依赖手动导出的备份包。".scriptConverted)
             }
         }
     }
@@ -304,6 +340,7 @@ struct PersonDetailView: View {
     @State private var pdfURL: URL?
     @State private var generatingPDF = false
 
+    // P0-4：局部 currentPerson 只作本页显示；「换人」菜单同时调 setCurrentPerson 切换全局命主。
     private var activePerson: Person { currentPerson ?? person }
 
     var body: some View {
@@ -391,6 +428,9 @@ struct PersonDetailView: View {
                     Menu {
                         ForEach(store.people) { candidate in
                             Button {
+                                // P0-4：换人即切换全局命主（setCurrentPerson），同时刷新本页
+                                // 的局部显示；局部 @State 只作显示，不再自立门户。
+                                store.setCurrentPerson(candidate)
                                 currentPerson = candidate
                                 pdfURL = nil
                             } label: {
@@ -472,8 +512,9 @@ struct PersonDetailView: View {
         let birthYear = Calendar.current.component(.year, from: p.birthDate)
         let age = now - birthYear + 1
         let curPalace = zw.palaces.first { ($0.decadal.first ?? 0) <= age && age <= ($0.decadal.last ?? 0) }
-        let palms = palmStore.records(for: p.name)
-        let fcs = forecastStore.entries.filter { $0.personName == p.name }
+        // P0-4：手相/前瞻按人物 UUID 归属（同名不同人互不可见；旧姓名键记录已在读档时尽力迁移）。
+        let palms = palmStore.records(for: p)
+        let fcs = forecastStore.entries(for: p)
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 KySectionTitle(title: "三术合参总览", trailing: "\(p.gender == "M" ? "乾造" : "坤造") · 日主\(ch.rizhu)")

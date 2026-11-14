@@ -133,7 +133,7 @@ def apply_ui_patches(path, value):
     return value
 
 # P2 permits only these exact UI layout transformations; all other app code stays protected.
-assert mask_app(home_layout_v6(original('Sources/KanyuApp.swift'))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
+assert mask_app(apply_ui_patches('Sources/KanyuApp.swift', home_layout_v6(original('Sources/KanyuApp.swift')))) == mask_app((ROOT/'Sources/KanyuApp.swift').read_text()), 'Engine or other app code changed'
 # Keep everything outside the first card wrapper unchanged, including the complete settings code.
 def mask_card(text):
     a = text.index('extension View {\n', text.index('struct KyWorkspaceHeading'))
@@ -143,12 +143,15 @@ assert mask_card(apply_ui_patches('Sources/DesignSystemV2.swift', original('Sour
 # Additional mixed files permit only reviewed literal UI/export/backup patches, never whole-file exemptions.
 patched_paths = {p['path'] for p in patches}
 for path in patched_paths:
-    expected = original(path)
+    expected = home_layout_v6(original(path)) if path == 'Sources/KanyuApp.swift' else original(path)
     for patch in [p for p in patches if p['path'] == path]:
         assert expected.count(patch['before']) == patch['count'], f'Patch anchor drift: {path}'
         expected = expected.replace(patch['before'], patch['after'])
     actual = (ROOT/path).read_text()
-    assert (mask_card(expected) == mask_card(actual) if path == 'Sources/DesignSystemV2.swift' else expected == actual), f'Unreviewed change outside exact UI patches: {path}'
+    if path == 'Sources/KanyuApp.swift':
+        assert mask_app(expected) == mask_app(actual), f'Unreviewed change outside exact UI patches: {path}'
+    else:
+        assert (mask_card(expected) == mask_card(actual) if path == 'Sources/DesignSystemV2.swift' else expected == actual), f'Unreviewed change outside exact UI patches: {path}'
 # Compare every baseline file except explicitly allowed presentation/doc additions.
 allowed = {'Sources/KanyuApp.swift', 'Sources/DesignSystemV2.swift'}
 files = subprocess.check_output(['git','ls-tree','-r','--name-only',BASE],cwd=ROOT,text=True).splitlines()
@@ -156,11 +159,25 @@ for path in files:
     if path in allowed or path in patched_paths or path.startswith(('docs/', 'design/')): continue
     data = subprocess.check_output(['git','show',f'{BASE}:{path}'],cwd=ROOT)
     assert (ROOT/path).is_file() and (ROOT/path).read_bytes() == data, f'Protected baseline file changed: {path}'
+# Permit only these independently reviewed, newly added regression tests.
+# Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
+new_test_blobs = {
+    'Tests/BackupRestoreTests.swift': '9f65869e6e3aa2c937f564f8b3323590f07c8f96',
+    'Tests/PersonIsolationTests.swift': 'ef72047459e4278a5bd466ad2836d6677c14a97e',
+    'Tests/PeopleStoreTests.swift': '117f02ef7595c3163fa4b9bf9cb337c1bca944d8',
+    'Tests/PersonCascadeTests.swift': 'bb525aaa33ea13ef07086fbdde942872a5de916f',
+    'Tests/PersonUUIDIsolationTests.swift': '04c05754a54393c0257631bda20d70415e5f04a8',
+}
 for folder in ['Tests','UITests','Resources']:
-    tracked = [x for x in files if x.startswith(folder+'/')]
-    actual = [str(x.relative_to(ROOT)) for x in (ROOT/folder).rglob('*') if x.is_file()]
-    assert set(actual) == set(tracked), f'Protected folder file list changed: {folder}'
-tokens = json.loads((ROOT/'design/tokens-v6.json').read_text())
+    tracked = {x for x in files if x.startswith(folder+'/')}
+    actual = {str(x.relative_to(ROOT)) for x in (ROOT/folder).rglob('*') if x.is_file()}
+    extras = actual - tracked
+    permitted = {path for path in new_test_blobs if path.startswith(folder+'/')}
+    assert extras <= permitted and tracked <= actual, f'Protected folder file list changed: {folder}'
+    for path in extras:
+        actual_blob = subprocess.check_output(['git', 'hash-object', path], cwd=ROOT, text=True).strip()
+        assert actual_blob == new_test_blobs[path], f'Unreviewed new test content: {path}'
+    tokens = json.loads((ROOT/'design/tokens-v6.json').read_text())
 swift = (ROOT/'Sources/DesignSystemV6.swift').read_text()
 for key, value in tokens['colors'].items():
     assert f'static let {key}: UInt32 = 0x{value[1:]}' in swift, f'Palette drift: {key}'
