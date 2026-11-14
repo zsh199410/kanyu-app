@@ -29,8 +29,12 @@ let footer = try NSRegularExpression(pattern: "三术合参·命书[—–-]第[
 var results: [[String: Any]] = []
 var failures: [String] = []
 for report in expected {
-    let matches = files.filter { $0.lastPathComponent.contains("-\(report.tier)-") }
-    precondition(matches.count == 1, "Need one real XCTest PDF for tier \(report.tier)")
+    // Select by tier AND content hash: the suite archives more than one
+    // concise PDF (ExportCompassRegressionTests and PersonUUIDIsolationTests
+    // both call makePDF(.concise) for different persons), so tier alone is
+    // ambiguous. The fixture hash picks the expected report's own PDF.
+    let matches = files.filter { $0.lastPathComponent.contains("-\(report.tier)-") && $0.lastPathComponent.hasSuffix("-\(report.contentHash.prefix(12)).pdf") }
+    precondition(matches.count == 1, "Need one real XCTest PDF for tier \(report.tier) with content hash \(report.contentHash.prefix(12))")
     let file = matches[0]
     precondition(file.lastPathComponent.hasSuffix("-\(report.contentHash.prefix(12)).pdf"),
                  "Native drawing inputs differ from the PDF fixture's content hash: \(report.tier)")

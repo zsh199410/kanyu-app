@@ -178,55 +178,79 @@ enum ReportBuilder {
     /// 绘制循环不再另算断页，故目录页码与实际分页不可能错位。
     /// G1：默认档位为专业（等于改版前输出）；文件名带档位＋时间戳＋内容哈希短码，
     /// PDF 元数据 Keywords 内写全量 contentHash（64 位 hex）＋档位码＋引擎口径版本。
+    /// P0-4：Keywords 再加 personID=<uuid>（命书按人物 UUID 归属；文件名不动，G1 解析口径不变）。
     static func makePDF(for person: Person, tier: ReportTier = .professional) -> URL? {
         let lines = lines(for: person, tier: tier)
         let hash = contentHash(lines: lines, tier: tier)
         let hashShort = String(hash.prefix(12))
         let pageRect = CGRect(x: 0, y: 0, width: 595, height: 842)   // A4 @72dpi
-        let format = UIGraphicsPDFRendererFormat()
-        format.documentInfo = [
-            "Title": "命书 · \(person.name)",
-            "Author": "三术合参",
-            "Creator": "三术合参 \(engineVersion)",
-            "Subject": "档位：\(tier.displayName)",
-            "Keywords": "contentHash=\(hash);tier=\(tier.fileCode);engine=\(engineVersion)"
-        ]
-        let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
+        let keywordString = "contentHash=\(hash);tier=\(tier.fileCode);engine=\(engineVersion);personID=\(person.id.uuidString)"
         let titleFont = UIFont(name: "STSongti-SC-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)
         let bodyFont = UIFont(name: "STSongti-SC-Regular", size: 11.5) ?? UIFont.systemFont(ofSize: 11.5)
         let headFont = UIFont(name: "STSongti-SC-Bold", size: 12.5) ?? UIFont.boldSystemFont(ofSize: 12.5)
         let (pages, chapters, tocItems) = paginate(lines: lines, titleFont: titleFont, bodyFont: bodyFont, headFont: headFont, pageRect: pageRect)
         let totalPages = pages.count + 2
-        let data = renderer.pdfData { ctx in
-            ctx.beginPage()
-            drawCover(ctx: ctx, lines: lines, pageRect: pageRect, tier: tier, hashShort: hashShort)
-            drawFooter(ctx: ctx, pageRect: pageRect, page: 1, total: totalPages)
-            ctx.beginPage()
-            drawTOC(ctx: ctx, person: person, chapters: chapters, tocItems: tocItems, total: totalPages, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)
-            drawFooter(ctx: ctx, pageRect: pageRect, page: 2, total: totalPages)
-            for (idx, page) in pages.enumerated() {
-                ctx.beginPage()
-                for placed in page.lines {
-                    let style = NSMutableParagraphStyle()
-                    style.lineSpacing = 3
-                    let attr: [NSAttributedString.Key: Any] = [.font: placed.font, .paragraphStyle: style]
-                    (placed.text as NSString).draw(with: CGRect(x: 48, y: placed.y, width: pageRect.width - 96, height: placed.height),
-                                                    options: [.usesLineFragmentOrigin], attributes: attr, context: nil)
-                }
-                drawFooter(ctx: ctx, pageRect: pageRect, page: idx + 3, total: totalPages)
-            }
-        }
         let stampFormatter = DateFormatter()
         stampFormatter.dateFormat = "yyyyMMdd-HHmmss"
         stampFormatter.timeZone = TimeZone(secondsFromGMT: 8 * 3600)
         let stamp = stampFormatter.string(from: Date())
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("命书-\(exportName(person.name))-\(tier.displayName)-\(stamp)-\(hashShort).pdf")
+        // P0-4 fix: write the PDF in a single pass via CGPDFContext so /Keywords
+        // lands in the file. UIGraphicsPDFRenderer drops Keywords, and PDFKit
+        // re-serialization breaks CJK text extraction (readability test).
+        // The aux dict uses the official kCGPDFContext* constants.
+        var mediaBox = pageRect
+        let aux: [String: Any] = [
+            kCGPDFContextTitle as String: "命书 · \(person.name)",
+            kCGPDFContextAuthor as String: "三术合参",
+            kCGPDFContextCreator as String: "三术合参 \(engineVersion)",
+            kCGPDFContextSubject as String: "档位：\(tier.displayName)",
+            kCGPDFContextKeywords as String: keywordString
+        ]
+        guard let context = CGContext(url as CFURL, mediaBox: &mediaBox, aux as CFDictionary) else { return nil }
+        context.beginPDFPage(nil)
+        flipForUIKit(context: context, pageRect: pageRect)
+        UIGraphicsPushContext(context)
+        drawCover(ctx: context, lines: lines, pageRect: pageRect, tier: tier, hashShort: hashShort)
+        drawFooter(ctx: context, pageRect: pageRect, page: 1, total: totalPages)
+        UIGraphicsPopContext()
+        context.endPDFPage()
+        context.beginPDFPage(nil)
+        flipForUIKit(context: context, pageRect: pageRect)
+        UIGraphicsPushContext(context)
+        drawTOC(ctx: context, person: person, chapters: chapters, tocItems: tocItems, total: totalPages, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)
+        drawFooter(ctx: context, pageRect: pageRect, page: 2, total: totalPages)
+        UIGraphicsPopContext()
+        context.endPDFPage()
+        for (idx, page) in pages.enumerated() {
+            context.beginPDFPage(nil)
+            flipForUIKit(context: context, pageRect: pageRect)
+            UIGraphicsPushContext(context)
+            for placed in page.lines {
+                let style = NSMutableParagraphStyle()
+                style.lineSpacing = 3
+                let attr: [NSAttributedString.Key: Any] = [.font: placed.font, .paragraphStyle: style]
+                (placed.text as NSString).draw(with: CGRect(x: 48, y: placed.y, width: pageRect.width - 96, height: placed.height),
+                                                options: [.usesLineFragmentOrigin], attributes: attr, context: nil)
+            }
+            drawFooter(ctx: context, pageRect: pageRect, page: idx + 3, total: totalPages)
+            UIGraphicsPopContext()
+            context.endPDFPage()
+        }
+        context.closePDF()
         do {
-            try data.write(to: url, options: .atomic)
+            let data = try Data(contentsOf: url)
             _ = try ReportExportArchive.save(data, fileName: url.lastPathComponent)
             return url
         } catch { return nil }
+    }
+
+    /// Flip a raw CGPDFContext to UIKit coordinates (origin top-left) so the
+    /// existing NSString.draw calls land at the intended positions, upright.
+    private static func flipForUIKit(context: CGContext, pageRect: CGRect) {
+        context.translateBy(x: 0, y: pageRect.height)
+        context.scaleBy(x: 1, y: -1)
     }
 
     /// 一行已排版的正文行（绘制时直接取 y 与 height，不再重算断页）
@@ -358,7 +382,7 @@ enum ReportBuilder {
     }
 
     /// 居中画一行并返回下一行 y（行高按实际 bounding 高度取，不写死）
-    private static func drawCentered(ctx: UIGraphicsPDFRendererContext, text: String, font: UIFont, y: CGFloat, width: CGFloat, color: UIColor) -> CGFloat {
+    private static func drawCentered(ctx: CGContext, text: String, font: UIFont, y: CGFloat, width: CGFloat, color: UIColor) -> CGFloat {
         let style = NSMutableParagraphStyle()
         style.alignment = NSTextAlignment.center
         style.lineSpacing = 3
@@ -371,7 +395,7 @@ enum ReportBuilder {
     }
 
     /// 左对齐画一行并返回下一行 y
-    private static func drawLeft(ctx: UIGraphicsPDFRendererContext, text: String, font: UIFont, y: CGFloat, x: CGFloat, width: CGFloat, color: UIColor) -> CGFloat {
+    private static func drawLeft(ctx: CGContext, text: String, font: UIFont, y: CGFloat, x: CGFloat, width: CGFloat, color: UIColor) -> CGFloat {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = 3
         let attr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: style]
@@ -384,7 +408,7 @@ enum ReportBuilder {
 
     /// 封面（第 1 页）：品牌＋命书名＋生辰／四柱收据＋朱砂印＋日期；只取 lines() 前三行原文，不另编断语。
     /// G1：封面底部加档位与内容哈希短码（与 PDF 元数据 Keywords 内全量哈希同源），版本可目视核对。
-    private static func drawCover(ctx: UIGraphicsPDFRendererContext, lines: [String], pageRect: CGRect, tier: ReportTier, hashShort: String) {
+    private static func drawCover(ctx: CGContext, lines: [String], pageRect: CGRect, tier: ReportTier, hashShort: String) {
         let brandFont = UIFont(name: "STSongti-SC-Bold", size: 28) ?? UIFont.boldSystemFont(ofSize: 28)
         let nameFont = UIFont(name: "STSongti-SC-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)
         let bodyFont = UIFont(name: "STSongti-SC-Regular", size: 11.5) ?? UIFont.systemFont(ofSize: 11.5)
@@ -409,8 +433,8 @@ enum ReportBuilder {
         // 朱砂印（64×64，红底白字「三术合参」两行，与海报印章同款）
         let sealSize: CGFloat = 64
         let sealRect = CGRect(x: (pageRect.width - sealSize) / 2, y: y + 18, width: sealSize, height: sealSize)
-        ctx.cgContext.setFillColor(cinnabar.cgColor)
-        ctx.cgContext.fill(sealRect)
+        ctx.setFillColor(cinnabar.cgColor)
+        ctx.fill(sealRect)
         let sealFont = UIFont(name: "STSongti-SC-Bold", size: 16) ?? UIFont.boldSystemFont(ofSize: 16)
         let sealStyle = NSMutableParagraphStyle()
         sealStyle.alignment = NSTextAlignment.center
@@ -430,7 +454,7 @@ enum ReportBuilder {
     /// 另注总页数，页码与正文逐页绘制顺序一致。
     /// G1：章节之下加条目级目录（tocItems，与 chapters 同源、同偏移，页码同样构造性保证），
     /// 30 条分两栏紧凑排布，仍在一页内；简洁档只列总纲条目（实际数），完整档不重复列附录。
-    private static func drawTOC(ctx: UIGraphicsPDFRendererContext, person: Person, chapters: [(title: String, page: Int)], tocItems: [(title: String, page: Int)], total: Int, pageRect: CGRect, headFont: UIFont, bodyFont: UIFont) {
+    private static func drawTOC(ctx: CGContext, person: Person, chapters: [(title: String, page: Int)], tocItems: [(title: String, page: Int)], total: Int, pageRect: CGRect, headFont: UIFont, bodyFont: UIFont) {
         let inset: CGFloat = 48
         let width = pageRect.width - inset * 2
         let ink = UIColor(red: 0.18, green: 0.165, blue: 0.15, alpha: 1)
@@ -469,7 +493,7 @@ enum ReportBuilder {
     }
 
     /// 目录条目级小格（两栏用）：标题左对齐、页码右对齐，无发丝线；单行高度固定 16pt
-    private static func drawTOCItemCell(ctx: UIGraphicsPDFRendererContext, title: String, page: Int, y: CGFloat, x: CGFloat, width: CGFloat, font: UIFont, ink: UIColor) {
+    private static func drawTOCItemCell(ctx: CGContext, title: String, page: Int, y: CGFloat, x: CGFloat, width: CGFloat, font: UIFont, ink: UIColor) {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = 3
         let titleAttr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: ink, .paragraphStyle: style]
@@ -486,7 +510,7 @@ enum ReportBuilder {
     }
 
     /// 目录一行：标题左对齐、页码右对齐、行下发丝线；返回下一行 y
-    private static func drawTOCRow(ctx: UIGraphicsPDFRendererContext, title: String, page: Int, y: CGFloat, x: CGFloat, width: CGFloat, bodyFont: UIFont, ink: UIColor, sub: UIColor) -> CGFloat {
+    private static func drawTOCRow(ctx: CGContext, title: String, page: Int, y: CGFloat, x: CGFloat, width: CGFloat, bodyFont: UIFont, ink: UIColor, sub: UIColor) -> CGFloat {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = 3
         let titleAttr: [NSAttributedString.Key: Any] = [.font: bodyFont, .foregroundColor: ink, .paragraphStyle: style]
@@ -500,16 +524,16 @@ enum ReportBuilder {
         let pageAttr: [NSAttributedString.Key: Any] = [.font: bodyFont, .foregroundColor: ink, .paragraphStyle: pageStyle]
         (pageText as NSString).draw(with: CGRect(x: x + width - 50, y: y, width: 50, height: h),
                                      options: [.usesLineFragmentOrigin], attributes: pageAttr, context: nil)
-        ctx.cgContext.setStrokeColor(sub.withAlphaComponent(0.4).cgColor)
-        ctx.cgContext.setLineWidth(0.5)
-        ctx.cgContext.move(to: CGPoint(x: x, y: y + h + 4))
-        ctx.cgContext.addLine(to: CGPoint(x: x + width, y: y + h + 4))
-        ctx.cgContext.strokePath()
+        ctx.setStrokeColor(sub.withAlphaComponent(0.4).cgColor)
+        ctx.setLineWidth(0.5)
+        ctx.move(to: CGPoint(x: x, y: y + h + 4))
+        ctx.addLine(to: CGPoint(x: x + width, y: y + h + 4))
+        ctx.strokePath()
         return y + h + 6
     }
 
     /// 页脚（每页）：「三术合参 · 命书 — 第 N 页（共 M 页）」居中，画在正文区（y ≤ 794）之外，不参与分页。
-    private static func drawFooter(ctx: UIGraphicsPDFRendererContext, pageRect: CGRect, page: Int, total: Int) {
+    private static func drawFooter(ctx: CGContext, pageRect: CGRect, page: Int, total: Int) {
         let font = UIFont(name: "STSongti-SC-Regular", size: 9) ?? UIFont.systemFont(ofSize: 9)
         let color = UIColor(red: 0.478, green: 0.447, blue: 0.408, alpha: 1)
         let style = NSMutableParagraphStyle()

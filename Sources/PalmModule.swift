@@ -10,32 +10,52 @@ import CoreImage
 import MediaPipeTasksVision
 
 struct PalmHomeView: View {
-    @State private var quickPerson: Person?
+    @EnvironmentObject private var peopleStore: PeopleStore
     var body: some View {
         List {
             Section {
-                PersonQuickBar(store: PeopleStore.shared) { p in quickPerson = p }
-                if let q = quickPerson {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.fill").foregroundStyle(Ky.qingdai)
-                        Text("当前命主：".scriptConverted + (q.name.isEmpty ? "未命名" : q.name) + "（测量记录按此人归档）".scriptConverted).font(.caption).foregroundStyle(Ky.ink)
-                    }
+                PersonQuickBar(store: peopleStore) { _ in }
+            }
+            Section {
+                NavigationLink { PhysiognomyGuideView(kind: .hand) } label: {
+                    guideRow("道家手相图解", detail: "三大主线 · 掌丘 · 五指，点图看白话说明", icon: "hand.raised")
                 }
+                .accessibilityIdentifier("physiognomy.open.hand")
+                NavigationLink { PhysiognomyGuideView(kind: .face) } label: {
+                    guideRow("面相十二宫图解", detail: "十二宫 · 三停，认识位置与传统名称", icon: "face.smiling")
+                }
+                .accessibilityIdentifier("physiognomy.open.face")
+            } header: { Text("先读图解 · 无需照片".scriptConverted) }
+            Section {
+                NavigationLink { HandMeasureView(person: peopleStore.currentPerson) } label: {
+                    guideRow("手掌照片测量", detail: "选择照片 → 校正三线 → 保存测量记录", icon: "viewfinder")
+                }
+                NavigationLink { FaceMeasureView(person: peopleStore.currentPerson) } label: {
+                    guideRow("面部比例校准", detail: "选择正面照片 → 校正标线 → 查看三停比例", icon: "person.crop.square")
+                }
+                NavigationLink { PalmRecordListView() } label: {
+                    Label("测量记录（按人存档）".scriptConverted, systemImage: "archivebox")
+                }
+            } header: { Text("再做测量 · 手动核对".scriptConverted) }
+            Section {
+                Text("图解是公共示意，不是对你外貌的判定。照片测量用于记录位置、比例与描线；请用掌心正对或正面自然光、无美颜的照片，识别后仍需手动核对。".scriptConverted)
+                    .font(.subheadline).foregroundStyle(Ky.sub)
             }
-            NavigationLink { HandMeasureView(personName: quickPerson?.name ?? "") } label: {
-                Label("手相 · 测量与描线".scriptConverted, systemImage: "hand.raised")
-            }
-            NavigationLink { FaceMeasureView(personName: quickPerson?.name ?? "") } label: {
-                Label("面相 · 三停校准".scriptConverted, systemImage: "face.smiling")
-            }
-            NavigationLink { PalmRecordListView() } label: {
-                Label("测量记录（按人存档）".scriptConverted, systemImage: "archivebox")
-            }
-            Text("用法：手相用掌心正对、光线均匀的照片；面相用正面自然光、无美颜的照片。测量是几何事实，判读为娱乐参考。".scriptConverted)
-                .font(.caption).foregroundStyle(Ky.sub)
         }
+        .scrollContentBackground(.hidden).background(Ky.bg)
         .navigationTitle("手相面相".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
+    }
+    private func guideRow(_ title: String, detail: String, icon: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon).font(.title2).foregroundStyle(Ky.qingdai)
+                .frame(width: 32, height: 44)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title.scriptConverted).font(.system(.headline, design: .serif)).foregroundStyle(Ky.ink)
+                Text(detail.scriptConverted).font(.subheadline).foregroundStyle(Ky.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            }.padding(.vertical, 6)
+        }
     }
 }
 
@@ -397,8 +417,9 @@ struct HandMeasureView: View {
         [CGPoint(x: 0.30, y: 0.36), CGPoint(x: 0.24, y: 0.55), CGPoint(x: 0.30, y: 0.74), CGPoint(x: 0.48, y: 0.88)],
     ]
     @State private var selectedLine = 0
-    @State private var personName = ""
-    init(personName: String = "") { _personName = State(initialValue: personName) }
+    /// P0-4：测量归档到当前命主（由手相首页传入）；无当前命主时不可保存，须先去人物档案建人并设为当前命主。
+    let person: Person?
+    init(person: Person? = nil) { self.person = person }
     @State private var savedTip = false
     private let lineCards = [
         "感情线看情感表达的方式：走向、深浅、终点位置三项，须以你修正后的描线为准细读。",
@@ -438,18 +459,19 @@ struct HandMeasureView: View {
                 if let m = measure { measureCard(m) }
                 if box.image != nil && measure != nil {
                     VStack(alignment: .leading, spacing: 8) {
-                        TextField("姓名（按人归档）", text: $personName)
-                            .textFieldStyle(.roundedBorder)
+                        // P0-4：归档到当前命主，不再自由填姓名（自由文本姓名会串人）。
+                        Text(person.map { "归档到：\($0.name)" } ?? "请先在人物档案里建好人物并设为当前命主，再回来保存")
+                            .font(.subheadline).foregroundStyle(person == nil ? Ky.cinnabar : Ky.ink)
                         Button(savedTip ? "已保存到测量记录" : "保存记录（照片＋描线＋测量值）") {
                             let flat = lines.flatMap { $0.flatMap { [$0.x, $0.y] } }
                             let mm = measure!; let sum = "\(mm.palmType)；掌宽/掌长 \(String(format: "%.2f", mm.palmWidth / mm.palmLen))；食指/无名指 \(String(format: "%.2f", mm.ratio24))"
                             Task { @MainActor in
-                                PalmRecordStore().add(PalmRecord(personName: personName, kind: "手相",
+                                PalmRecordStore().add(PalmRecord(personID: person?.id, personName: person?.name ?? "", kind: "手相",
                                                                  summary: sum, linesFlat: flat.map { Double($0) }),
                                                       image: box.image)
                                 savedTip = true
                             }
-                        }.buttonStyle(KyPrimaryButton()).disabled(savedTip)
+                        }.buttonStyle(KyPrimaryButton()).disabled(savedTip || person == nil)
                     }
                     .kyCard()
                 }
@@ -621,8 +643,9 @@ struct HandMeasureView: View {
 struct FaceMeasureView: View {
     @StateObject private var box = PhotoBox()
     @State private var item: PhotosPickerItem?
-    @State private var personName = ""
-    init(personName: String = "") { _personName = State(initialValue: personName) }
+    /// P0-4：测量归档到当前命主（由手相首页传入）；无当前命主时不可保存，须先去人物档案建人并设为当前命主。
+    let person: Person?
+    init(person: Person? = nil) { self.person = person }
     @State private var savedTip = false
     @State private var marks: [Double] = [0.14, 0.40, 0.63, 0.93]  // 发际/眉/鼻底/下颌（相对图高）
     @State private var markAuto: [Bool] = [false, false, false, false]
@@ -668,19 +691,20 @@ struct FaceMeasureView: View {
                     if !poseNote.isEmpty { Text(poseNote.scriptConverted).font(.caption).foregroundStyle(Ky.sub) }
                     if !faceNote.isEmpty { Text(faceNote.scriptConverted).font(.caption).foregroundStyle(Ky.cinnabar) }
                     VStack(alignment: .leading, spacing: 8) {
-                        TextField("姓名（按人归档）", text: $personName)
-                            .textFieldStyle(.roundedBorder)
+                        // P0-4：归档到当前命主，不再自由填姓名（自由文本姓名会串人）。
+                        Text(person.map { "归档到：\($0.name)" } ?? "请先在人物档案里建好人物并设为当前命主，再回来保存")
+                            .font(.subheadline).foregroundStyle(person == nil ? Ky.cinnabar : Ky.ink)
                         Button(savedTip ? "已保存到测量记录" : "保存记录（照片＋三停比例）") {
                             let up = marks[1] - marks[0]; let mid = marks[2] - marks[1]; let low = marks[3] - marks[2]
                             let t = up + mid + low
                             let sum = String(format: "三停 上 %.0f%% · 中 %.0f%% · 下 %.0f%%",
                                              t > 0 ? up / t * 100 : 0, t > 0 ? mid / t * 100 : 0, t > 0 ? low / t * 100 : 0)
                             Task { @MainActor in
-                                PalmRecordStore().add(PalmRecord(personName: personName, kind: "面相", summary: sum),
+                                PalmRecordStore().add(PalmRecord(personID: person?.id, personName: person?.name ?? "", kind: "面相", summary: sum),
                                                       image: box.image)
                                 savedTip = true
                             }
-                        }.buttonStyle(KyPrimaryButton()).disabled(savedTip)
+                        }.buttonStyle(KyPrimaryButton()).disabled(savedTip || person == nil)
                     }
                     .kyCard()
                 }
@@ -849,6 +873,8 @@ struct FaceMeasureView: View {
 // MARK: - 测量记录（描线资产化：照片＋修正点位＋测量值全部落盘，按人归档）
 struct PalmRecord: Codable, Identifiable {
     var id: UUID = UUID()
+    /// P0-4：归属人物 UUID（可选，兼容旧档；旧档 personID 为空，读档时按姓名尽力迁移）。
+    var personID: UUID? = nil
     var personName: String
     var kind: String                    // 手相 / 面相
     var createdEpoch: Double = Date().timeIntervalSince1970
@@ -862,20 +888,33 @@ struct PalmExport: Codable { var schemaVersion: Int; var records: [PalmRecord] }
 @MainActor
 final class PalmRecordStore: ObservableObject {
     @Published var records: [PalmRecord] = []
-    private var dir: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("PalmPhotos", isDirectory: true)
-    }
-    private var indexURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("palm_records.json")
-    }
-    init() {
+    /// P0-4：可注入目录（默认仍为真实 Documents），只为让单元测试能用临时目录；默认行为不变。
+    private let directory: URL
+    private var dir: URL { directory.appendingPathComponent("PalmPhotos", isDirectory: true) }
+    private var indexURL: URL { directory.appendingPathComponent("palm_records.json") }
+    init(directory: URL? = nil) {
+        self.directory = directory ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         if let data = try? Data(contentsOf: indexURL) {
-            if let list = try? JSONDecoder().decode([PalmRecord].self, from: data) { records = list }
+            if let list = try? JSONDecoder().decode([PalmRecord].self, from: data) {
+                records = list
+                migratePersonIDs()
+            }
             else { try? FileManager.default.copyItem(at: indexURL, to: indexURL.deletingPathExtension().appendingPathExtension("corrupt.json")) }
         }
+    }
+    /// P0-4 尽力迁移：personID 为空且 personName 精确匹配到唯一现有人物时挂上该人 UUID；
+    /// 匹配到零个或多个时留作孤儿（personID 保持空）。改动过才回写，幂等。
+    private func migratePersonIDs() {
+        let people = Person.loadPeopleForMigration(directory: directory)
+        var changed = false
+        for i in records.indices {
+            if records[i].personID == nil, let id = Person.uniqueID(forName: records[i].personName, in: people) {
+                records[i].personID = id
+                changed = true
+            }
+        }
+        if changed { save() }
     }
     func save() {
         do {
@@ -907,7 +946,28 @@ final class PalmRecordStore: ObservableObject {
         if !r.photoFile.isEmpty { try? FileManager.default.removeItem(at: dir.appendingPathComponent(r.photoFile)) }
         records.removeAll { $0.id == r.id }; save()
     }
+    /// P0-4：按人物 UUID 取记录（同名不同人互不可见；孤儿 personID 为空，不属于任何人）。
+    func records(for person: Person) -> [PalmRecord] { records.filter { $0.personID == person.id } }
+    /// 旧版按姓名取记录（仅供手动录入八字页等只有姓名字符串的旧调用点兼容；同名会串人，慎用）。
     func records(for name: String) -> [PalmRecord] { records.filter { $0.personName == name } }
+
+    /// P0-4 级联删除：删掉该人的全部记录（personID 归属的必删；旧姓名键记录只在
+    /// 姓名唯一时才按名删，同名时留孤儿）。照片文件随记录一并删除。
+    func removeAll(for person: Person, nameIsShared: Bool) {
+        let doomed = records.filter {
+            $0.personID == person.id || (!nameIsShared && $0.personID == nil && $0.personName == person.name)
+        }
+        for r in doomed where !r.photoFile.isEmpty {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(r.photoFile))
+        }
+        let doomedIDs = Set(doomed.map { $0.id })
+        records.removeAll { doomedIDs.contains($0.id) }
+        if !doomed.isEmpty { save() }
+    }
+    /// 供 PeopleStore.remove() 级联调用（用一次性实例，不碰任何共享 store 的内存状态）。
+    static func removeAll(for person: Person, nameIsShared: Bool, in directory: URL) {
+        PalmRecordStore(directory: directory).removeAll(for: person, nameIsShared: nameIsShared)
+    }
 }
 
 struct PalmRecordListView: View {
@@ -919,7 +979,7 @@ struct PalmRecordListView: View {
     var body: some View {
         List {
             if store.records.isEmpty {
-                KyEmptyState(icon: "archivebox", title: "还没有记录", message: "在手相/面相测量页填上姓名、描准线条后点「保存记录」，描线和测量值会按人存档在这里。")
+                KyEmptyState(icon: "archivebox", title: "还没有记录", message: "在手相/面相测量页选好当前命主、描准线条后点「保存记录」，描线和测量值会按人存档在这里。")
             }
             ForEach(store.records) { r in
                 NavigationLink { PalmRecordDetailView(store: store, record: r) } label: {
@@ -1241,8 +1301,11 @@ struct PalmPosterSheetView: View {
             let url = PalmPosterTemporaryFile.url(for: record.id)
             do {
                 try data.write(to: url, options: .atomic)
+                // P0-4：手相海报文件名带人物 UUID（-pid<32位小写hex>），报告中心按 UUID 归属；
+                // 旧记录 personID 为空时保持旧文件名，报告中心再按姓名尽力迁移。
+                let pidSuffix = record.personID.map { "-pid" + $0.uuidString.replacingOccurrences(of: "-", with: "") } ?? ""
                 _ = try ReportExportArchive.save(data,
-                    fileName: "palm-poster-\(ReportBuilder.exportName(record.personName)).png")
+                    fileName: "palm-poster-\(ReportBuilder.exportName(record.personName))\(pidSuffix).png")
                 previewImage = out
                 fileURL = url
             } catch {

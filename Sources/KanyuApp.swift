@@ -1233,6 +1233,7 @@ struct KanyuSurveyApp: App {
         WindowGroup {
             RootTabView()
                 .modifier(V6ExportQAHost())
+                .modifier(ContextAcceptanceHost())
                 .environmentObject(store)
                 .environmentObject(location)
                 .environmentObject(motion)
@@ -1442,12 +1443,13 @@ struct HomePageView: View {
 
     var body: some View {
         ScrollView {
-            // Keep the workspace lazy; frame pacing requires device measurement.
-            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
+            // P0: eager VStack — LazyVStack placement stalled the main thread 60s+ on scroll (see #33); 9 fixed sections only.
+            VStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {
                 signBanner
                 personSwitcherCard
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("workspace.workbench")
+                    .accessibilityValue(peopleStore.currentPerson?.name ?? "未建档")
                 todaySection
                 V6ReadingTopicLinks()
                 primaryBentoGrid
@@ -1468,11 +1470,33 @@ struct HomePageView: View {
             .padding(.top, 6)
             .padding(.bottom, 38) // 预留充足底部安全距离，避让 iOS 27 Liquid Glass 悬浮胶囊栏
         }
+        .accessibilityIdentifier("home.scroll")
         .background(Ky.bg)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Ky.bg, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
+            // Always-reachable contextual shortcut: keeps a real tool entry in the
+            // native navigation bar when the workbench has been scrolled deeply.
+            // This avoids forcing users and VoiceOver to search a long lazy grid.
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    if let item = AllToolsData.item(for: "astro") {
+                        ContextualToolDestination(item: item)
+                    }
+                } label: {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Ky.qingdai)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded {
+                    AllToolsData.recordRecent(tool: "astro")
+                })
+                .accessibilityLabel("星命合参")
+                .accessibilityIdentifier("home.astro")
+            }
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 6) {
                     AppLogoView(size: 24).accessibilityHidden(true)
@@ -1779,6 +1803,8 @@ struct HomePageView: View {
                 onNewPerson: { showingNewPerson = true },
                 onOpenDetail: { showingPersonDetail = true }
             )
+            // Rebuild the visible profile and its accessibility subtree when selection changes.
+            .id(p.id)
         } else {
             Button { showingNewPerson = true } label: {
                 HStack(spacing: 12) {
@@ -1857,8 +1883,12 @@ struct HomePageView: View {
                             Image(systemName: "checkmark.circle.fill").foregroundStyle(Ky.qingdai)
                         }
                     }
+                    // A plain button's Spacer is otherwise not part of its hit target.
+                    // Make the entire profile row tappable, including its center.
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("选择命主：\(p.name)")
             }
             .navigationTitle(Text("切换命主".scriptConverted))
             .navigationBarTitleDisplayMode(.inline)
@@ -1875,12 +1905,25 @@ struct HomePageView: View {
     private var recentToolsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             KySectionTitle(title: "最近使用", trailing: "最近打开的人物与工具")
+            // Keep the astro shortcut mounted independently of the changing person recents.
+            // A stable link avoids rebuilding the queried accessibility node during return navigation.
+            NavigationLink {
+                if let item = AllToolsData.item(for: "astro") {
+                    ContextualToolDestination(item: item)
+                }
+            } label: {
+                if let item = AllToolsData.item(for: "astro") {
+                    homeChipLabel(item)
+                }
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded {
+                AllToolsData.recordRecent(tool: "astro")
+            })
+            .accessibilityIdentifier("home.recent.astro")
             let recents = AllToolsData.recentEntries(people: peopleStore.people)
-            if recents.isEmpty {
-                Text("打开任意工具或人物后，这里会显示最近使用，方便一键回到上次的盘。".scriptConverted)
-                    .font(.caption).foregroundStyle(Ky.sub)
-                    .padding(.horizontal, 2)
-            } else {
+                .filter { $0.id != "astro" }
+            if !recents.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(recents) { entry in homeRecentChip(entry) }
@@ -1941,6 +1984,7 @@ struct HomePageView: View {
                     homeChipLabel(item)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("home.recent.\(item.id)")
             }
         }
     }
@@ -2001,6 +2045,7 @@ struct HomePageView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
         }.buttonStyle(.plain)
+            .accessibilityIdentifier("home.alltools")
     }
 
 }
