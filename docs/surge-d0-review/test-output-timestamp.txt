@@ -1,0 +1,125 @@
+=== test_phone_gate.py ===
+PASS fingerprint_matches_probe_service
+PASS fingerprint_param_order_invariant
+PASS parse_surge_line_ok
+PASS parse_excludes_name_from_fp
+PASS parse_rejects_bad_proto
+PASS parse_rejects_malformed
+PASS admit_good
+PASS admit_recovered
+PASS admit_boundary_280
+PASS reject_latest_failed
+PASS reject_latest_slow
+PASS reject_stale
+PASS reject_wifi
+PASS reject_status200
+PASS reject_state_pending
+PASS reject_no_report
+PASS admitted_count_is_3
+PASS diag_counts
+PASS gate_keeps_good_and_recovered
+PASS gate_drops_failed
+PASS gate_drops_unparsable
+PASS gate_same_fp_twice_kept
+PASS missing_db_fails_closed
+
+phone_gate: 23 passed, 0 failed
+EXIT=0
+
+=== test_select_publish.py ===
+PASS no_gate_keeps_all
+PASS no_gate_stats
+PASS gate_keeps_only_allowed
+PASS gate_keeps_verified_pinned
+PASS gate_drops_unverified_pinned
+PASS gate_keeps_verified_rotation
+PASS gate_drops_unverified_rotation
+PASS gate_skipped_count
+PASS gate_empty_set_publishes_nothing
+PASS gate_empty_set_counts
+PASS blocklist_still_wins
+PASS blocklist_counted
+PASS same_name_distinguished_by_fp
+PASS same_name_other_dropped
+
+select_publish: 14 passed, 0 failed
+EXIT=0
+
+=== test_cmd_publish_gate.py ===
+{
+  "ok": true,
+  "pinned": 2,
+  "pinned_db_only": 0,
+  "pinned_uri_missing": 0,
+  "kept_old": 1,
+  "new": 0,
+  "total": 2,
+  "capped": 0,
+  "build_failed": 0,
+  "winner_clean_enabled": false,
+  "winner_clean_removed": 0,
+  "winner_days": null,
+  "gate_enabled": true,
+  "gate_admitted": 2,
+  "gate_kept": 2,
+  "gate_dropped": 1,
+  "gate_error": "",
+  "gate_reasons": {
+    "state_not_verified": 1
+  },
+  "gate_line_reasons": {
+    "not_verified": 1
+  }
+}
+PASS gate_on_publish_rc0
+PASS gate_on_keeps_verified_pinned
+PASS gate_on_keeps_verified_rotation
+PASS gate_on_drops_unverified_pinned
+PASS gate_on_total_is_2
+PASS published_first_only_kept
+PASS zero_qualified_refuses_rc1
+PASS zero_qualified_keeps_old_file
+PASS zero_qualified_reports_safe_state
+PASS gate_off_restores_old_behaviour
+PASS gate_off_keeps_unverified_pinned
+
+cmd_publish_gate: 11 passed, 0 failed
+EXIT=0
+
+=== test_timestamp_priority.py ===
+PASS reject_fail_after_good
+PASS admit_good_after_fail
+PASS reject_timeout_after_good
+PASS reject_timeout_flag_missing_ms
+PASS admit_good_after_timeout
+PASS reject_slow_310_after_good
+PASS reject_slow_500_after_good
+PASS reject_slow_281_after_good
+PASS admit_good_after_slow
+PASS reject_wifi_after_good
+PASS reject_iface_empty_after_good
+PASS reject_iface_none_after_good
+PASS admit_good_after_wifi
+PASS admit_cellular_pdp_ip1
+PASS reject_future_ts_far
+PASS admit_future_ts_within_skew
+PASS reject_ts_zero
+PASS reject_stale_far_past
+PASS admit_ttl_boundary_exact
+PASS reject_ttl_boundary_over
+PASS diag_counts
+PASS diag_reason_latest_failed
+PASS diag_reason_latest_slow
+PASS diag_reason_latest_interface
+PASS diag_reason_latest_ts_invalid
+PASS diag_reason_latest_stale
+PASS fp_change_old_fp_admitted
+PASS fp_change_port_dropped
+PASS fp_change_param_dropped
+PASS fp_change_old_line_kept
+PASS insert_order_ids_misleading
+PASS reject_insert_order_bad_wins
+PASS admit_insert_order_good_wins
+
+timestamp_priority: 33 passed, 0 failed
+EXIT=0

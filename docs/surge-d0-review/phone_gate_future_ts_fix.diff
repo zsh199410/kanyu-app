@@ -1,0 +1,44 @@
+--- /opt/p2p3-d0/pool/phone_gate.py.bak-pre-ts-fix	2026-11-14 10:35:04.864594414 +0800
++++ /opt/p2p3-d0/pool/phone_gate.py	2026-11-14 10:35:30.236858814 +0800
+@@ -10,7 +10,9 @@
+     the native Surge speed test will be < 300 ms)
+   - second_status == 204 (the generate_204 probe URL returned 204)
+   - interface starts with 'pdp_ip' (Chongqing Mobile cellular interface)
+-  - ts within TTL_SECONDS (default 24 h) of now
++  - ts within TTL_SECONDS (default 24 h) of now, and ts sane
++    (0 < ts <= now + 600 s, mirroring the P0 ingest bound; a far-future
++    ts is rejected, not treated as fresh)
+   - the probe_nodes row for the fingerprint exists and its state is
+     'verified' (cross-check; a mismatch fails closed for that fingerprint)
+ 
+@@ -37,6 +39,10 @@
+ # it is NOT an official standard and does NOT guarantee native < 300 ms.
+ DEFAULT_THRESHOLD_MS = 280
+ DEFAULT_TTL_SECONDS = 24 * 3600
++# Max clock-skew allowance for probe timestamps, mirroring P0 ingest
++# (probe_service.py rejects ts <= 0 and ts > now + 600 at ingest time).
++# The gate reads the DB directly, so it re-checks the same bound here.
++MAX_FUTURE_SKEW_SECONDS = 600
+ # The probe URL is fixed in the phone probe script (generate_204). A 204
+ # status on the second request is the observable proof that the expected
+ # probe URL was used and answered.
+@@ -177,7 +183,18 @@
+             diag["reasons"]["latest_interface_not_cellular"] = diag["reasons"].get("latest_interface_not_cellular", 0) + 1
+             diag["rejected_prefixes"][prefix] = "latest_interface=%s" % (interface,)
+             continue
+-        if ts is None or now - ts > ttl_seconds:
++        # Timestamp sanity (fail closed). Without this, a far-future ts
++        # passed the TTL test below (negative age) and was admitted as
++        # "fresh" until TTL had elapsed after the future instant -- up
++        # to TTL + the future offset of wrongful admission. P0 ingest
++        # already rejects ts <= 0 and ts > now + 600, but the gate reads
++        # the DB directly, so the bound is re-checked here.
++        if ts is None or ts <= 0 or ts > now + MAX_FUTURE_SKEW_SECONDS:
++            diag["rejected"] += 1
++            diag["reasons"]["latest_ts_invalid"] = diag["reasons"].get("latest_ts_invalid", 0) + 1
++            diag["rejected_prefixes"][prefix] = "latest_ts_invalid"
++            continue
++        if now - ts > ttl_seconds:
+             diag["rejected"] += 1
+             diag["reasons"]["latest_stale"] = diag["reasons"].get("latest_stale", 0) + 1
+             diag["rejected_prefixes"][prefix] = "latest_age_s=%s" % ((now - ts) if ts else None,)

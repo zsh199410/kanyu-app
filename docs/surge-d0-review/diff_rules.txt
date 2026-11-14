@@ -1,0 +1,78 @@
+--- /opt/free-node-program/pool/rules.py	2026-11-05 00:46:53.000000000 +0800
++++ pool/rules.py	2026-11-14 00:41:32.634346388 +0800
+@@ -5,6 +5,29 @@
+ from .crawler import AEAD_METHODS, parse_surge_line
+ from .geo import IpApi, code_to_flag, display_name, hint_to_code, is_cf_or_reserved
+ 
++try:
++    # P2-P3 D0 phone gate helpers (same fingerprint algorithm as P0).
++    # rules.py works without them when allowed_fingerprints is not used.
++    from .phone_gate import fingerprint_of as _gate_fingerprint_of
++    from .phone_gate import parse_surge_line as _gate_parse_line
++except Exception:  # pragma: no cover - import fallback for standalone use
++    _gate_fingerprint_of = None
++    _gate_parse_line = None
++
++
++def _line_fingerprint(text):
++    """Fingerprint of a built Surge line, or None if unparsable.
++
++    Uses the P0-compatible parse (params included, display name excluded).
++    """
++    if _gate_parse_line is None or _gate_fingerprint_of is None:
++        return None
++    parsed = _gate_parse_line(text)
++    if parsed is None:
++        return None
++    _name, proto, host, port, params = parsed
++    return _gate_fingerprint_of(proto, host, port, params)
++
+ 
+ def load_private_hosts(path):
+     hosts = set()
+@@ -140,13 +163,19 @@
+ 
+ 
+ def select_publish(pinned_lines, rotation_items, blocked, private_hosts,
+-                   per_country_cap, publish_max_lines, ipapi):
++                   per_country_cap, publish_max_lines, ipapi,
++                   allowed_fingerprints=None):
+     """pinned_lines: [(name, proto, host, port, line_text)]（原文，原样输出）。
+     rotation_items: [(record, pass_rate, first_seen)]（已过滤为 DB 最近一次通过）。
++    allowed_fingerprints: 可选的 32-hex 指纹集合（P2-P3 手机门禁）。
++        提供时，钉选与轮换一视同仁：只有指纹在集合内的行才发布，
++        其余记 gate_skipped；不提供时行为与旧版完全一致（便于回滚/单测）。
+     返回 (lines, stats)。"""
+     lines = []
+     stats = {"pinned": 0, "rotation": 0, "by_country": {}, "by_protocol": {},
+-             "capped": 0, "build_failed": 0, "blocked_skipped": 0}
++             "capped": 0, "build_failed": 0, "blocked_skipped": 0,
++             "gate_skipped": 0}
++    gate_on = allowed_fingerprints is not None
+     pinned_keys = set()
+     for name, proto, host, port, text in pinned_lines:
+         key = (proto, host, port)
+@@ -154,6 +183,11 @@
+         if key in blocked:
+             stats["blocked_skipped"] += 1
+             continue
++        if gate_on:
++            fp = _line_fingerprint(text)
++            if fp is None or fp not in allowed_fingerprints:
++                stats["gate_skipped"] += 1
++                continue
+         lines.append(text)
+         stats["pinned"] += 1
+         stats["by_protocol"][proto] = stats["by_protocol"].get(proto, 0) + 1
+@@ -178,6 +212,11 @@
+         except ValueError:
+             stats["build_failed"] += 1
+             continue
++        if gate_on:
++            fp = _line_fingerprint(line)
++            if fp is None or fp not in allowed_fingerprints:
++                stats["gate_skipped"] += 1
++                continue
+         lines.append(line)
+         country_count[c] = country_count.get(c, 0) + 1
+         stats["rotation"] += 1
