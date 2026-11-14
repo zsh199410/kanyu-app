@@ -11,8 +11,11 @@ A fingerprint is admitted ONLY if its MOST RECENT probe report satisfies ALL:
   - second_status == 204 (the generate_204 probe URL returned 204)
   - interface starts with 'pdp_ip' (Chongqing Mobile cellular interface)
   - ts within TTL_SECONDS (default 24 h) of now, and ts sane
-    (0 < ts <= now + 600 s, mirroring the P0 ingest bound; a far-future
-    ts is rejected, not treated as fresh)
+    (0 < ts <= now; ANY future ts is rejected outright -- no clock-skew
+    allowance. GPT second review item 1, 2026-11-14: the old +600 s
+    allowance mirrored P0 ingest, but the gate has no server-side
+    receive-time to double-check against, so any future ts is
+    untrustworthy and fails closed.)
   - the probe_nodes row for the fingerprint exists and its state is
     'verified' (cross-check; a mismatch fails closed for that fingerprint)
 
@@ -39,10 +42,15 @@ import time
 # it is NOT an official standard and does NOT guarantee native < 300 ms.
 DEFAULT_THRESHOLD_MS = 280
 DEFAULT_TTL_SECONDS = 24 * 3600
-# Max clock-skew allowance for probe timestamps, mirroring P0 ingest
-# (probe_service.py rejects ts <= 0 and ts > now + 600 at ingest time).
-# The gate reads the DB directly, so it re-checks the same bound here.
-MAX_FUTURE_SKEW_SECONDS = 600
+# Timestamp rule (GPT second review item 1, 2026-11-14): STRICT.
+# A report timestamp must satisfy 0 < ts <= now. ANY future ts is
+# rejected outright -- there is NO clock-skew allowance. The old
+# +600 s allowance mirrored P0 ingest, but the gate reads the DB
+# directly and has no server-side receive-time to double-check a
+# future ts against, so a future ts is untrustworthy by definition.
+# If a skew allowance is ever needed again, it MUST come with a
+# server-side receive-time double check and the reason written here;
+# the default is no allowance.
 # The probe URL is fixed in the phone probe script (generate_204). A 204
 # status on the second request is the observable proof that the expected
 # probe URL was used and answered.
@@ -98,10 +106,16 @@ def _most_recent_report(conn, fingerprint):
     """Return the most recent probe report row for a fingerprint, or None.
 
     Row: (ts, success, second_ms, second_status, interface, error).
+    Deterministic tie-break: ORDER BY ts DESC, id DESC. id is
+    INTEGER PRIMARY KEY AUTOINCREMENT in probe_reports, so a larger id
+    is always a later insertion. The production table also has
+    UNIQUE(fingerprint, ts), so same-ts duplicates cannot occur there;
+    the id tie-break is a defensive determinism guarantee (it also
+    covers any future schema/import path that drops the UNIQUE bound).
     """
     row = conn.execute(
         """SELECT ts, success, second_ms, second_status, interface, error
-           FROM probe_reports WHERE fingerprint=? ORDER BY ts DESC LIMIT 1""",
+           FROM probe_reports WHERE fingerprint=? ORDER BY ts DESC, id DESC LIMIT 1""",
         (fingerprint,),
     ).fetchone()
     return row
@@ -183,13 +197,13 @@ def load_verified(probe_db_path, threshold_ms=DEFAULT_THRESHOLD_MS,
             diag["reasons"]["latest_interface_not_cellular"] = diag["reasons"].get("latest_interface_not_cellular", 0) + 1
             diag["rejected_prefixes"][prefix] = "latest_interface=%s" % (interface,)
             continue
-        # Timestamp sanity (fail closed). Without this, a far-future ts
-        # passed the TTL test below (negative age) and was admitted as
-        # "fresh" until TTL had elapsed after the future instant -- up
-        # to TTL + the future offset of wrongful admission. P0 ingest
-        # already rejects ts <= 0 and ts > now + 600, but the gate reads
-        # the DB directly, so the bound is re-checked here.
-        if ts is None or ts <= 0 or ts > now + MAX_FUTURE_SKEW_SECONDS:
+        # Timestamp sanity, STRICT (fail closed). Without this, a
+        # far-future ts passed the TTL test below (negative age) and was
+        # admitted as "fresh" until TTL had elapsed after the future
+        # instant -- up to TTL + the future offset of wrongful admission.
+        # Rule (GPT second review item 1): 0 < ts <= now, no allowance.
+        # A future ts is rejected even if it is only 1 second ahead.
+        if ts is None or ts <= 0 or ts > now:
             diag["rejected"] += 1
             diag["reasons"]["latest_ts_invalid"] = diag["reasons"].get("latest_ts_invalid", 0) + 1
             diag["rejected_prefixes"][prefix] = "latest_ts_invalid"
