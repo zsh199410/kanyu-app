@@ -1,0 +1,19 @@
+name: iOS release candidate acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Sources/**'
+      - 'design/**'
+      - '.github/workflows/ios-rc-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    uses: ./.github/workflows/context-acceptance.yml
+  illustrated:
+    uses: ./.github/workflows/illustrated-acceptance.yml

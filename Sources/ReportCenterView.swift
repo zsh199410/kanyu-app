@@ -339,6 +339,17 @@ struct ReportCenterView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                KyHomeSection(title: "海报设计作品库", trailing: "4 款") {
+                    NavigationLink {
+                        PosterConceptGalleryView(person: person)
+                    } label: {
+                        annualEntryRow(icon: "paintpalette.fill",
+                                       title: "查看四款海报设计",
+                                       subtitle: "手相／八字／紫微／尊享 · 示例不作为个人报告")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("reportCenter.posterGallery")
+                }
                 // G8：年度报告区段——有指定人物时链到该人当年年度报告页；无指定人物时只链档案。
                 KyHomeSection(title: "年度报告", trailing: "") {
                     VStack(spacing: 8) {
