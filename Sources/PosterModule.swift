@@ -378,7 +378,7 @@ struct PosterView: View {
 
     var body: some View {
         if style == .yuceDan {
-            YucedanPosterLayout(chart: chart, name: displayName, pal: pal)
+            YucedanPosterLayout(chart: chart, name: displayName, pal: pal, subtitle: subtitleOverride)
         } else {
             standardPosterView
         }
@@ -606,11 +606,13 @@ let chart: BaziChart
 let name: String
 // pal 必须是 fileprivate：PosterPalette 是 private 类型，internal 属性/初始化器会编译不过
 fileprivate let pal: PosterPalette
+private let subtitle: String?
 
-fileprivate init(chart: BaziChart, name: String, pal: PosterPalette) {
+fileprivate init(chart: BaziChart, name: String, pal: PosterPalette, subtitle: String? = nil) {
 self.chart = chart
 self.name = name
 self.pal = pal
+self.subtitle = subtitle
 }
 
 // MARK: - 数据（全部逐人现算；喜忌口径见 InterpretEngine.posterXiJi：扶抑初判＋调候优先）
@@ -1065,7 +1067,7 @@ HStack(alignment:.bottom, spacing: 10) {
 VStack(alignment:.leading, spacing: 2) {
 Text("三术合参 · 堪舆命理院 谨制")
 .font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accent)
-Text("据子平五典与天纪三合推演 · 传统命理研习参考")
+Text(subtitle.flatMap { $0.isEmpty ? nil : $0 } ?? "据子平五典与天纪三合推演 · 传统命理研习参考")
 .font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
 .fixedSize(horizontal: false, vertical: true)
 Text("典籍依据：《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》")
@@ -1393,7 +1395,7 @@ struct PosterSheetView: View {
                 // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）
                 Button("打开海报编辑器（换字／换色）") { showEditor = true }
                     .buttonStyle(KyPrimaryButton())
-                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name) }
+                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name, initialStyle: style) }
 
                 // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
                 HStack(spacing: 10) {

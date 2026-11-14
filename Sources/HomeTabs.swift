@@ -513,6 +513,7 @@ struct YunQiPageView: View {
 
 // MARK: - 我的与系统设置页
 struct MyView: View {
+    @EnvironmentObject private var peopleStore: PeopleStore
     // G1 每日运势本地通知：默认关闭；开关＋时间（默认 07:30），只存本机偏好
     @AppStorage("todayNotify.enabled") private var notifyEnabled = false
     @AppStorage("todayNotify.hour") private var notifyHour = 7
@@ -534,7 +535,7 @@ struct MyView: View {
                 notifyHour = c.hour ?? 7
                 notifyMinute = c.minute ?? 30
                 if notifyEnabled {
-                    let p = PeopleStore.shared.people.first(where: { $0.relation == "本人" }) ?? PeopleStore.shared.people.first
+                    let p = peopleStore.people.first(where: { $0.relation == "本人" }) ?? peopleStore.people.first
                     TodayNotificationManager.scheduleDaily(person: p)
                 }
             }
@@ -542,15 +543,15 @@ struct MyView: View {
     }
 
     @MainActor private func rescheduleTodayNotification() {
-        let p = PeopleStore.shared.people.first(where: { $0.relation == "本人" }) ?? PeopleStore.shared.people.first
+        let p = peopleStore.people.first(where: { $0.relation == "本人" }) ?? peopleStore.people.first
         TodayNotificationManager.scheduleDaily(person: p)
     }
 
     /// (1) 个人资料：全局当前命主卡片 → PersonDetailView；无档案时进 PeopleView 建档
     @ViewBuilder
     private var personalProfileSection: some View {
-        if let p = PeopleStore.shared.currentPerson {
-            NavigationLink { PersonDetailView(person: p, store: PeopleStore.shared) } label: {
+        if let p = peopleStore.currentPerson {
+            NavigationLink { PersonDetailView(person: p, store: peopleStore) } label: {
                 HStack(spacing: 12) {
                     Text(currentPersonAvatarText)
                         .font(.system(size: 16, weight: .bold, design: .serif))
@@ -593,17 +594,17 @@ struct MyView: View {
     }
 
     private var currentPersonAvatarText: String {
-        if let p = PeopleStore.shared.currentPerson, !p.name.isEmpty { return String(p.name.prefix(1)) }
+        if let p = peopleStore.currentPerson, !p.name.isEmpty { return String(p.name.prefix(1)) }
         return "命"
     }
 
     private var currentPersonDisplayName: String {
-        if let p = PeopleStore.shared.currentPerson, !p.name.isEmpty { return p.name }
+        if let p = peopleStore.currentPerson, !p.name.isEmpty { return p.name }
         return "未命名"
     }
 
     private var currentPersonSubtitle: String {
-        if let p = PeopleStore.shared.currentPerson {
+        if let p = peopleStore.currentPerson {
             var lon: Double? = nil
             if p.useLongitude { lon = p.longitude }
             let chart = BaziEngine.cachedPaipan(clock: p.birthDate, gender: p.gender, longitude: lon)
@@ -623,7 +624,7 @@ struct MyView: View {
                         Text("三术合参".scriptConverted).font(.system(.title3, design: .serif)).fontWeight(.bold).foregroundStyle(Ky.ink)
                         Text("子平五典 · 天纪斗数 · 统宗奇门 · 堪舆勘察".scriptConverted)
                             .font(.caption).foregroundStyle(Ky.qingdai)
-                        Text("全本机离线演算 · 零云端追踪".scriptConverted)
+                        Text("本机排盘与档案 · 联网功能按需使用".scriptConverted)
                             .font(.caption2).foregroundStyle(Ky.sub)
                     }
                     Spacer()
@@ -637,14 +638,15 @@ struct MyView: View {
                 KySectionTitle(title: "人物档案", trailing: "本机持久化存储")
                 VStack(spacing: 10) {
                     myLink("person.2.fill", "人物档案管理", "家人与命例建档 · 支持数据导入导出备份", Ky.qingdai) { PeopleView() }
+                        .accessibilityIdentifier("profile.people")
                 }
 
                 // (4) 我的命书／报告中心（P3）：报告中心已上线——按人物归档已生成的命书 PDF 与海报
                 KySectionTitle(title: "我的命书／报告中心", trailing: "已生成命书与海报")
                 VStack(alignment: .leading, spacing: 8) {
                     myLink("doc.text.fill", "生成我的命书（PDF）", "当前命主的命书文件 · 在详情页生成后分享", Ky.qingdai) {
-                        if let p = PeopleStore.shared.currentPerson {
-                            PersonDetailView(person: p, store: PeopleStore.shared)
+                        if let p = peopleStore.currentPerson {
+                            PersonDetailView(person: p, store: peopleStore)
                         } else {
                             PeopleView()
                         }
