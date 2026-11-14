@@ -1,0 +1,553 @@
+{
+  "format": "native-results-v1",
+  "runs": [
+    {
+      "version_sha": "f6083ad90eacb422af5cc1dbc84d616864fc5e2071a0931ddc6672c379b468ed",
+      "tested_at": 1794673362,
+      "tested_at_cst": "2026-11-14 16:22:42 CST",
+      "mirrors_native_test": "2026-11-14 13:24 CST, ts 1794633840, 44-line pool SHA 1360ab7c... (fixture SHA differs: synthetic connection params)",
+      "network": "5G cellular pdp_ip0, no Wi-Fi",
+      "surge": "6.100.0 build 4025",
+      "results": [
+        {
+          "fingerprint": "183b0da50f5ef47ee0efc73683dbc1f7",
+          "name": "T01 美国9 🇺🇸",
+          "success": true,
+          "ms": 232
+        },
+        {
+          "fingerprint": "f2b49c3fce0ebf035a0b1e24c6e3ef70",
+          "name": "T02 美国11 🇺🇸",
+          "success": true,
+          "ms": 271
+        },
+        {
+          "fingerprint": "7cdfa36cd32f346f26d43f56445a4d77",
+          "name": "T03 美国12 🇺🇸",
+          "success": true,
+          "ms": 265
+        },
+        {
+          "fingerprint": "be706aa85624ea89b534bc0196f602d8",
+          "name": "T04 香港 🇭🇰",
+          "success": true,
+          "ms": 119
+        },
+        {
+          "fingerprint": "17fad68808618e8f2ad3461da4e4143d",
+          "name": "T05 美国1 🇺🇸",
+          "success": true,
+          "ms": 240
+        },
+        {
+          "fingerprint": "540a54c20f1fef761372c86c9c072119",
+          "name": "T06 美国7 🇺🇸",
+          "success": true,
+          "ms": 264
+        },
+        {
+          "fingerprint": "945eec91b2bfd44b67bbc5ca9d4c4a20",
+          "name": "T07 美国10 🇺🇸",
+          "success": true,
+          "ms": 242
+        },
+        {
+          "fingerprint": "8911fdf31bbacf687e8d298da430bef4",
+          "name": "T08 美国5 🇺🇸",
+          "success": true,
+          "ms": 280
+        },
+        {
+          "fingerprint": "7bffae93433e727413000e06035abc3e",
+          "name": "T09 美国2 🇺🇸",
+          "success": true,
+          "ms": 260
+        },
+        {
+          "fingerprint": "302ef916bee7a8dc2a2a6513a18ba3f5",
+          "name": "T10 香港2 🇭🇰",
+          "success": true,
+          "ms": 131
+        },
+        {
+          "fingerprint": "2a82c2c744dc0d9f19e726321407d275",
+          "name": "T11 美国3 🇺🇸",
+          "success": true,
+          "ms": 320
+        },
+        {
+          "fingerprint": "84ebf315e5fea6478a5438c1ceaae493",
+          "name": "T12 美国13 🇺🇸",
+          "success": true,
+          "ms": 264
+        },
+        {
+          "fingerprint": "aceb75387592e8f84ce8c31baf943772",
+          "name": "T13 美国8 🇺🇸",
+          "success": true,
+          "ms": 232
+        },
+        {
+          "fingerprint": "628feb946e3367dbc17187d81fb5128c",
+          "name": "T14 美国4 🇺🇸",
+          "success": true,
+          "ms": 264
+        },
+        {
+          "fingerprint": "a736018a675b8ec0552a89539ccca58b",
+          "name": "T15 美国6 🇺🇸",
+          "success": true,
+          "ms": 1018
+        },
+        {
+          "fingerprint": "291fc76ce698f8ffeb665c76c49e3e75",
+          "name": "T16 香港8 🇭🇰",
+          "success": true,
+          "ms": 983
+        },
+        {
+          "fingerprint": "2e5a8deed420209b52808ddff7c8d07e",
+          "name": "T17 香港24 🇭🇰",
+          "success": true,
+          "ms": 321
+        },
+        {
+          "fingerprint": "05389ead5e8729ff43443c84539d5bf5",
+          "name": "T18 香港25 🇭🇰",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "674ed7dbe5e1b7df6f7e29a70c1c82ae",
+          "name": "T19 香港34 🇭🇰",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "d9e3987ae3c713219672f008e00302f8",
+          "name": "T20 香港36 🇭🇰",
+          "success": true,
+          "ms": 75
+        },
+        {
+          "fingerprint": "5c541bcb6e51b2f2fcc1a52c891991d8",
+          "name": "T21 香港39 🇭🇰",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "2305d520f5cd204269445fd0cdd9ff87",
+          "name": "T22 美国14 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "761766241ff731ca736914ae204b7c77",
+          "name": "T23 伊朗5 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "3ecb3822188665c897af003739fec384",
+          "name": "T24 美国20 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "9029096a8e1817e739cc7d0db356ca12",
+          "name": "T25 伊朗9 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "e41d3c49084357e100dffaabdc544de7",
+          "name": "T26 美国30 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "b28d07499456ec51c5a91b7c8c870da0",
+          "name": "T27 伊朗10 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "5092f8b134a32ecd487fc5866b3970c2",
+          "name": "T28 伊朗13 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "d1eed54cfaf4610a07797b463e187e46",
+          "name": "T29 美国34 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "bf2cf49431af73a1dcd124669acc1c0e",
+          "name": "T30 美国35 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "d59f0ef7d0adaf6ad7c7c7c2c10088e2",
+          "name": "T31 美国36 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "63db9e2a54126a81787e4f7c332c5873",
+          "name": "T32 美国40 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "e6436050420868b64b83fef2ccde6f8a",
+          "name": "T33 伊朗3 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "3a924716459cb02d8a016844adbfcd23",
+          "name": "T34 美国 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "c276943641067df2b578920e5289d52b",
+          "name": "T35 伊朗 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "0e42bc7008f2a40277f268dd28129849",
+          "name": "T36 美国15 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "6cb56e8a0e104c639a87396b16f709ee",
+          "name": "T37 美国16 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "ee2393f5fa17fe12b9ca3306276bebd1",
+          "name": "T38 伊朗2 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "0039a708714850a5bec9cb5680197d06",
+          "name": "T39 美国17 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "708ca73c36ccb1cca5c776b415802e67",
+          "name": "T40 美国18 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "eee6c7116fc06fbbb5b36511e2424409",
+          "name": "T41 伊朗4 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "b530923a2436847eec7ed23b30d188ca",
+          "name": "T42 美国19 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "fa1708d50be2d1d270a340098f4c4ad1",
+          "name": "T43 伊朗6 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "4b885b93f1a99f26e8c00c61b5acf034",
+          "name": "T44 美国21 🇺🇸",
+          "success": false,
+          "ms": null
+        }
+      ]
+    },
+    {
+      "version_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "tested_at": 1794676962,
+      "tested_at_cst": "2026-11-14 17:22:42 CST",
+      "mirrors_native_test": "2026-11-14 13:24 CST, ts 1794633840, 44-line pool SHA 1360ab7c... (fixture SHA differs: synthetic connection params)",
+      "network": "5G cellular pdp_ip0, no Wi-Fi",
+      "surge": "6.100.0 build 4025",
+      "results": [
+        {
+          "fingerprint": "183b0da50f5ef47ee0efc73683dbc1f7",
+          "name": "T01 美国9 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "f2b49c3fce0ebf035a0b1e24c6e3ef70",
+          "name": "T02 美国11 🇺🇸",
+          "success": true,
+          "ms": 271
+        },
+        {
+          "fingerprint": "7cdfa36cd32f346f26d43f56445a4d77",
+          "name": "T03 美国12 🇺🇸",
+          "success": true,
+          "ms": 265
+        },
+        {
+          "fingerprint": "be706aa85624ea89b534bc0196f602d8",
+          "name": "T04 香港 🇭🇰",
+          "success": true,
+          "ms": 119
+        },
+        {
+          "fingerprint": "17fad68808618e8f2ad3461da4e4143d",
+          "name": "T05 美国1 🇺🇸",
+          "success": true,
+          "ms": 240
+        },
+        {
+          "fingerprint": "540a54c20f1fef761372c86c9c072119",
+          "name": "T06 美国7 🇺🇸",
+          "success": true,
+          "ms": 264
+        },
+        {
+          "fingerprint": "945eec91b2bfd44b67bbc5ca9d4c4a20",
+          "name": "T07 美国10 🇺🇸",
+          "success": true,
+          "ms": 242
+        },
+        {
+          "fingerprint": "8911fdf31bbacf687e8d298da430bef4",
+          "name": "T08 美国5 🇺🇸",
+          "success": true,
+          "ms": 280
+        },
+        {
+          "fingerprint": "7bffae93433e727413000e06035abc3e",
+          "name": "T09 美国2 🇺🇸",
+          "success": true,
+          "ms": 260
+        },
+        {
+          "fingerprint": "302ef916bee7a8dc2a2a6513a18ba3f5",
+          "name": "T10 香港2 🇭🇰",
+          "success": true,
+          "ms": 131
+        },
+        {
+          "fingerprint": "2a82c2c744dc0d9f19e726321407d275",
+          "name": "T11 美国3 🇺🇸",
+          "success": true,
+          "ms": 320
+        },
+        {
+          "fingerprint": "84ebf315e5fea6478a5438c1ceaae493",
+          "name": "T12 美国13 🇺🇸",
+          "success": true,
+          "ms": 264
+        },
+        {
+          "fingerprint": "aceb75387592e8f84ce8c31baf943772",
+          "name": "T13 美国8 🇺🇸",
+          "success": true,
+          "ms": 232
+        },
+        {
+          "fingerprint": "628feb946e3367dbc17187d81fb5128c",
+          "name": "T14 美国4 🇺🇸",
+          "success": true,
+          "ms": 264
+        },
+        {
+          "fingerprint": "a736018a675b8ec0552a89539ccca58b",
+          "name": "T15 美国6 🇺🇸",
+          "success": true,
+          "ms": 1018
+        },
+        {
+          "fingerprint": "291fc76ce698f8ffeb665c76c49e3e75",
+          "name": "T16 香港8 🇭🇰",
+          "success": true,
+          "ms": 983
+        },
+        {
+          "fingerprint": "2e5a8deed420209b52808ddff7c8d07e",
+          "name": "T17 香港24 🇭🇰",
+          "success": true,
+          "ms": 321
+        },
+        {
+          "fingerprint": "05389ead5e8729ff43443c84539d5bf5",
+          "name": "T18 香港25 🇭🇰",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "674ed7dbe5e1b7df6f7e29a70c1c82ae",
+          "name": "T19 香港34 🇭🇰",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "d9e3987ae3c713219672f008e00302f8",
+          "name": "T20 香港36 🇭🇰",
+          "success": true,
+          "ms": 75
+        },
+        {
+          "fingerprint": "5c541bcb6e51b2f2fcc1a52c891991d8",
+          "name": "T21 香港39 🇭🇰",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "2305d520f5cd204269445fd0cdd9ff87",
+          "name": "T22 美国14 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "761766241ff731ca736914ae204b7c77",
+          "name": "T23 伊朗5 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "3ecb3822188665c897af003739fec384",
+          "name": "T24 美国20 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "9029096a8e1817e739cc7d0db356ca12",
+          "name": "T25 伊朗9 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "e41d3c49084357e100dffaabdc544de7",
+          "name": "T26 美国30 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "b28d07499456ec51c5a91b7c8c870da0",
+          "name": "T27 伊朗10 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "5092f8b134a32ecd487fc5866b3970c2",
+          "name": "T28 伊朗13 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "d1eed54cfaf4610a07797b463e187e46",
+          "name": "T29 美国34 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "bf2cf49431af73a1dcd124669acc1c0e",
+          "name": "T30 美国35 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "d59f0ef7d0adaf6ad7c7c7c2c10088e2",
+          "name": "T31 美国36 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "63db9e2a54126a81787e4f7c332c5873",
+          "name": "T32 美国40 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "e6436050420868b64b83fef2ccde6f8a",
+          "name": "T33 伊朗3 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "3a924716459cb02d8a016844adbfcd23",
+          "name": "T34 美国 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "c276943641067df2b578920e5289d52b",
+          "name": "T35 伊朗 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "0e42bc7008f2a40277f268dd28129849",
+          "name": "T36 美国15 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "6cb56e8a0e104c639a87396b16f709ee",
+          "name": "T37 美国16 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "ee2393f5fa17fe12b9ca3306276bebd1",
+          "name": "T38 伊朗2 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "0039a708714850a5bec9cb5680197d06",
+          "name": "T39 美国17 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "708ca73c36ccb1cca5c776b415802e67",
+          "name": "T40 美国18 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "eee6c7116fc06fbbb5b36511e2424409",
+          "name": "T41 伊朗4 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "b530923a2436847eec7ed23b30d188ca",
+          "name": "T42 美国19 🇺🇸",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "fa1708d50be2d1d270a340098f4c4ad1",
+          "name": "T43 伊朗6 🇮🇷",
+          "success": false,
+          "ms": null
+        },
+        {
+          "fingerprint": "4b885b93f1a99f26e8c00c61b5acf034",
+          "name": "T44 美国21 🇺🇸",
+          "success": false,
+          "ms": null
+        }
+      ]
+    }
+  ]
+}
