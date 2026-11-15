@@ -1,0 +1,14 @@
+[Unit]
+Description=Free node pool: gated publish (D3 gate, Issue #73)
+Documentation=file:///opt/pool-gate/switch-runbook.md
+After=network-online.target probe-service.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/pool-gate
+ExecStart=/opt/pool-gate/gate-publish.sh
+# No Restart: a refused gate (rc=1) is the SAFE state when the current
+# version has no fresh native evidence, not a crash to retry.
+# StandardOutput goes to the journal; the wrapper also appends JSON
+# to /opt/pool-gate/logs/gate-publish.log.
