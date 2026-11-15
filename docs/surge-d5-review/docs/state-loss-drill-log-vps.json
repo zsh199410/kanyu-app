@@ -1,0 +1,139 @@
+{
+  "scenarios": [
+    {
+      "scenario": "S1 kill -9 mid-write",
+      "tmp_leftover": true,
+      "state_sha_unchanged": true,
+      "publish_rc": 0,
+      "pass": true
+    },
+    {
+      "scenario": "S1b torn write (state missing + .tmp present)",
+      "attempts": {
+        "publish": {
+          "rc": 1,
+          "error": "recovery_state_write_interrupted"
+        },
+        "sync": {
+          "rc": 1,
+          "error": "recovery_state_write_interrupted"
+        },
+        "rollback": {
+          "rc": 1,
+          "error": "recovery_state_write_interrupted"
+        }
+      },
+      "pass": true,
+      "expected_error": "recovery_state_write_interrupted"
+    },
+    {
+      "scenario": "S2 truncate state file (0 bytes)",
+      "attempts": {
+        "publish": {
+          "rc": 1,
+          "error": "recovery_state_corrupt"
+        },
+        "sync": {
+          "rc": 1,
+          "error": "recovery_state_corrupt"
+        },
+        "rollback": {
+          "rc": 1,
+          "error": "recovery_state_corrupt"
+        }
+      },
+      "pass": true,
+      "expected_error": "recovery_state_corrupt"
+    },
+    {
+      "scenario": "S2b init refuses corrupt state file",
+      "init_rc": 1,
+      "init_error": "init_refused_unreadable_state",
+      "pass": true
+    },
+    {
+      "scenario": "S3 unreadable state file (directory replacement (root: chmod 000 is not a block))",
+      "attempts": {
+        "publish": {
+          "rc": 1,
+          "error": "recovery_state_unreadable"
+        },
+        "sync": {
+          "rc": 1,
+          "error": "recovery_state_unreadable"
+        },
+        "rollback": {
+          "rc": 1,
+          "error": "recovery_state_unreadable"
+        }
+      },
+      "pass": true,
+      "expected_error": "recovery_state_unreadable"
+    },
+    {
+      "scenario": "S4 STOP + state file deleted",
+      "attempts": {
+        "publish": {
+          "rc": 1,
+          "error": "recovery_state_missing_stop_recorded"
+        },
+        "sync": {
+          "rc": 1,
+          "error": "recovery_state_missing_stop_recorded"
+        },
+        "rollback": {
+          "rc": 1,
+          "error": "recovery_state_missing_stop_recorded"
+        }
+      },
+      "pass": true,
+      "expected_error": "recovery_state_missing_stop_recorded"
+    },
+    {
+      "scenario": "S4b init cannot launder STOP",
+      "init_rc": 1,
+      "init_error": "init_refused_stop_recorded",
+      "pass": true
+    },
+    {
+      "scenario": "S4c manual restore (confirmation string)",
+      "rc": 0,
+      "pass": true
+    },
+    {
+      "scenario": "S4d clear_stop with fresh native evidence",
+      "rc": 0,
+      "pass": true
+    },
+    {
+      "scenario": "S4e gate back to ok, publish works",
+      "state": "ok",
+      "pass": true
+    },
+    {
+      "scenario": "S4f publish/sync/rollback after recovery",
+      "attempts": {
+        "publish": {
+          "rc": 0,
+          "error": null
+        },
+        "sync": {
+          "rc": 0,
+          "error": null
+        },
+        "rollback": {
+          "rc": 0,
+          "error": null
+        }
+      },
+      "pass": true,
+      "expected_error": null
+    }
+  ],
+  "workdir": "/tmp/d3-state-loss-_narza1f",
+  "seed": {
+    "publish_sha": "6074082847c3deee566313c625445579fad8c345c6ad5815a3655fa4a0c55286",
+    "served_sha": "6074082847c3deee566313c625445579fad8c345c6ad5815a3655fa4a0c55286"
+  },
+  "all_pass": true
+}
