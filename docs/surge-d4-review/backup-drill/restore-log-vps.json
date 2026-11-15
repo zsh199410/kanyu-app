@@ -1,0 +1,60 @@
+{
+ "drill": "backup_restore",
+ "snapshot": "/opt/p2p3-d4/backup-drill/snapshot-20261115-080044",
+ "checks": [
+  {
+   "check": "restore_sha_matches_manifest",
+   "ok": true,
+   "detail": "files=24"
+  },
+  {
+   "check": "pool.db_opens_counts_match",
+   "ok": true,
+   "detail": "{'nodes': 7359, 'sources': 10, 'runs': 654, 'node_tests': 134720, 'pinned': 25, 'blocklist': 11, 'config': 11, 'audit': 22, 'winner_reports': 30, 'scheme_a_batches': 1, 'scheme_a_winners': 0, 'published_first': 44}"
+  },
+  {
+   "check": "probe.db_opens_counts_match",
+   "ok": true,
+   "detail": "{'probe_nodes': 59, 'probe_reports': 179, 'probe_meta': 0}"
+  },
+  {
+   "check": "publish_parses_like_manifest",
+   "ok": true,
+   "detail": "{'lines': 65, 'pinned': 21, 'rotation': 44, 'blocked': 0, 'unparsed': 0}"
+  },
+  {
+   "check": "config_keys_match_live",
+   "ok": true,
+   "detail": "keys=17"
+  },
+  {
+   "check": "gate_dry_run_restored_equals_live",
+   "ok": true,
+   "detail": "restored rc=1 err=phone_gate_zero_qualified | live rc=1 err=phone_gate_zero_qualified"
+  },
+  {
+   "check": "gate_dry_run_expected_refusal",
+   "ok": true,
+   "detail": "rc=1 err=phone_gate_zero_qualified (diag reasons carry native_version_mismatch)"
+  },
+  {
+   "check": "p1p3_pool_db_opens",
+   "ok": true,
+   "detail": "age_h=36.9 tables=12 nodes=7268 pinned=25"
+  },
+  {
+   "check": "p1p3_subscription_parses",
+   "ok": true,
+   "detail": "lines=47 age_h=36.9"
+  },
+  {
+   "check": "p1p3_has_manifest",
+   "ok": false,
+   "detail": "manifest_or_checksums_present=False (expected False: no self-check)"
+  }
+ ],
+ "passed": 9,
+ "total": 10,
+ "ok": true,
+ "note": "p1p3_has_manifest is informational, not a pass/fail gate: the old backup has no manifest by construction."
+}
