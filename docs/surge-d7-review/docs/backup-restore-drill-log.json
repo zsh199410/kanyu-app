@@ -1,0 +1,175 @@
+{
+ "drill": "backup_restore_drill_d5",
+ "synthetic": true,
+ "root": "/home/hatch/workspace/p2p3-d7/drills/_d5_work",
+ "code_dir": "/home/hatch/workspace/p2p3-d7",
+ "started_at_cst": "2026-11-16 16:43:32",
+ "finished_at_cst": "2026-11-16 16:43:32",
+ "checks": [
+  {
+   "check": "synth_live_built",
+   "ok": true,
+   "informational": false,
+   "detail": "pool_db={'nodes': 12, 'pinned': 3, 'blocklist': 2, 'tests': 20} probe_db={'probe_nodes': 5, 'probe_reports': 10} publish={'lines': 8, 'pinned': 3, 'rotation': 5, 'blocked': 0, 'unparsed': 0} live_-wal_bytes=4152"
+  },
+  {
+   "check": "snapshot_manifest_complete",
+   "ok": true,
+   "informational": false,
+   "detail": "rc=0 files=15 stdout={\"ok\": true, \"snapshot\": \"/home/hatch/workspace/p2p3-d7/drills/_d5_work/snapshot\", \"files\": 15, \"pool_db_counts\": {\"nodes\": 12, \"pinned\": 3, \"blocklist\": 2, \"tests\": 20}, \"probe_db_counts\": {\"probe_no stderr="
+  },
+  {
+   "check": "wal_snapshot_consistent_uncheckpointed_rows",
+   "ok": true,
+   "informational": false,
+   "detail": "snapshot_nodes=12 after_checkpoint_nodes=12 checkpoint=(0, 0, 0)"
+  },
+  {
+   "check": "wal_stale_sidecar_cleared_before_restore",
+   "ok": true,
+   "informational": false,
+   "detail": "removed_stale_sidecars={'-wal': 22, '-shm': 22} restored_nodes=12 sidecars_after={'-wal': None, '-shm': None}"
+  },
+  {
+   "check": "wal_replay_then_checkpoint",
+   "ok": true,
+   "informational": false,
+   "detail": "replayed_nodes=12 after_checkpoint_nodes=12 sidecars_after_close={'-wal': None, '-shm': None}"
+  },
+  {
+   "check": "wal_open_sidecar_reproduced_and_cleaned",
+   "ok": true,
+   "informational": false,
+   "detail": "sidecars_in_snapshot_before_open=[] ro_nodes=12 sidecars_observed={'-wal': 0, '-shm': 32768} snapshot_listing_equals_manifest=True sha_still_matches_manifest=True"
+  },
+  {
+   "check": "live_loss_simulated_and_restored",
+   "ok": true,
+   "informational": false,
+   "detail": "sequence=stop timers (desktop simulation only: no real systemctl call) > restore DB first (pool.db, probe.db; stale sidecars cleared first) > restore publish files, config, units, wrapper scripts (re-apply +x to wrappers: snapshot stores mode 600) > daemon-reload (desktop simulation only: no real systemctl call) > start timers (desktop simulation only: no real systemctl call) stale_sidecars_removed_on_db_restore={'pool.db': {}, 'probe.db': {}}"
+  },
+  {
+   "check": "restore_sha_matches_manifest",
+   "ok": true,
+   "informational": false,
+   "detail": "files=15 mismatches=[]"
+  },
+  {
+   "check": "restored_db_counts_match",
+   "ok": true,
+   "informational": false,
+   "detail": "pool_db={'nodes': 12, 'pinned': 3, 'blocklist': 2, 'tests': 20} probe_db={'probe_nodes': 5, 'probe_reports': 10}"
+  },
+  {
+   "check": "restored_publish_parses",
+   "ok": true,
+   "informational": false,
+   "detail": "{'lines': 8, 'pinned': 3, 'rotation': 5, 'blocked': 0, 'unparsed': 0}"
+  },
+  {
+   "check": "restored_config_keys_match",
+   "ok": true,
+   "informational": false,
+   "detail": "keys=['pool_name', 'pinned_protected', 'publish_limit', 'probe_interval_s', 'version'] pinned_protected=['pinned_protected: false']"
+  },
+  {
+   "check": "gate_dry_run_restored_equals_snapshot",
+   "ok": true,
+   "informational": false,
+   "detail": "snapshot rc=1 err=phone_gate_zero_qualified | restored rc=1 err=phone_gate_zero_qualified (expected rc=1 phone_gate_zero_qualified: fixture native record is for a different version)"
+  },
+  {
+   "check": "units_scripts_sha_match_and_verify",
+   "ok": true,
+   "informational": false,
+   "detail": "sha_mismatches=[] verify_failures=[] wrappers_not_executable=[] per_unit_exit={'pool-gate-publish.service': 0, 'pool-gate-sync.service': 0, 'pool-gate-publish.timer': 0, 'pool-gate-sync.timer': 0}"
+  },
+  {
+   "check": "legacy_no_manifest",
+   "ok": false,
+   "informational": true,
+   "detail": "exists, pool_db opens (nodes=12), subscription parses (lines=8), manifest_present=False -> conclusion: exists, recoverable, but NO manifest self-proof (informational item, not a pass/fail gate; same treatment as D4 9/10)"
+  }
+ ],
+ "passed": 13,
+ "failed": 0,
+ "total_passfail": 13,
+ "informational": 1,
+ "ok": true,
+ "wal": {
+  "live_wal_bytes_before_snapshot": 4152,
+  "check3_verification_read_sidecars_cleaned": 2,
+  "snapshot_nodes": 12,
+  "after_checkpoint_nodes": 12,
+  "stale_sidecars_removed_bytes": {
+   "-wal": 22,
+   "-shm": 22
+  },
+  "stale_restore_nodes": 12,
+  "replay_nodes": 12,
+  "replay_after_checkpoint_nodes": 12,
+  "open_sidecars_observed": {
+   "-wal": 0,
+   "-shm": 32768
+  },
+  "sidecars_in_snapshot_before_open": []
+ },
+ "gate_dry_run": {
+  "snapshot": {
+   "rc": 1,
+   "error": "phone_gate_zero_qualified"
+  },
+  "restored": {
+   "rc": 1,
+   "error": "phone_gate_zero_qualified"
+  },
+  "identical": true
+ },
+ "systemd_verify": {
+  "pool-gate-publish.service": {
+   "exit": 0,
+   "stderr_lines": 4,
+   "relevant_lines": []
+  },
+  "pool-gate-sync.service": {
+   "exit": 0,
+   "stderr_lines": 4,
+   "relevant_lines": []
+  },
+  "pool-gate-publish.timer": {
+   "exit": 0,
+   "stderr_lines": 4,
+   "relevant_lines": []
+  },
+  "pool-gate-sync.timer": {
+   "exit": 0,
+   "stderr_lines": 4,
+   "relevant_lines": []
+  }
+ },
+ "restore_sequence": [
+  "stop timers (desktop simulation only: no real systemctl call)",
+  "restore DB first (pool.db, probe.db; stale sidecars cleared first)",
+  "restore publish files, config, units, wrapper scripts (re-apply +x to wrappers: snapshot stores mode 600)",
+  "daemon-reload (desktop simulation only: no real systemctl call)",
+  "start timers (desktop simulation only: no real systemctl call)"
+ ],
+ "spec_counts": {
+  "nodes_total": 12,
+  "nodes_checkpointed": 8,
+  "nodes_in_wal": 4,
+  "pinned": 3,
+  "blocklist": 2,
+  "tests": 20,
+  "probe_nodes": 5,
+  "probe_reports": 10,
+  "publish_lines": 8,
+  "publish_pinned": 3,
+  "publish_rotation": 5,
+  "publish_prev_lines": 7,
+  "publish_history_lines": 6
+ },
+ "manifest_files": 15,
+ "publish_sha_prefix": "174c9558ff11",
+ "note": "All data synthetic (TEST-NET 192.0.2.x, TEST-ONLY-NOT-A-REAL-NODE). No production paths touched; no real systemctl start/stop issued."
+}
