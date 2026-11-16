@@ -7,6 +7,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 from pool.publish_lock import atomic_publish_locked, sha256_file
 
@@ -56,6 +57,46 @@ class DistinctRollbackAnchorTests(unittest.TestCase):
                 {sha256_file(os.path.join(history, name)) for name in snaps},
                 {sha_a, sha_b})
 
+
+    def test_noop_rename_tamper_restores_target_without_erasing_prev(self):
+        """A corrupted no-op rename must recover B, but retain distinct A."""
+        a = ["Test A = ss, 192.0.2.1, 443"]
+        b = ["Test B = ss, 192.0.2.2, 443"]
+        with tempfile.TemporaryDirectory() as root:
+            pub = os.path.join(root, "publish")
+            lock = os.path.join(root, "lock", "publish.lock")
+            target = os.path.join(pub, "pool-new.txt")
+            prev = target + ".prev"
+            def publish(lines, version):
+                return atomic_publish_locked(
+                    pub, "pool-new.txt", lines, lock,
+                    source_version_sha=version * 64)
+            publish(a, "a")
+            sha_a = sha256_file(target)
+            publish(b, "b")
+            sha_b = sha256_file(target)
+            real_rename = os.rename
+            injected = []
+            def tamper_once(src, dst):
+                if (not injected and isinstance(src, str)
+                        and src == target + ".tmp" and dst == target):
+                    injected.append(True)
+                    with open(src, "ab") as fh:
+                        fh.write(b"CORRUPTED\\n")
+                return real_rename(src, dst)
+            with mock.patch("os.rename", side_effect=tamper_once):
+                with self.assertRaisesRegex(
+                        Exception, "publish_postwrite_verify_failed"):
+                    publish(b, "b")
+            self.assertEqual(len(injected), 1)
+            self.assertTrue(os.path.isfile(target))
+            self.assertEqual(sha256_file(target), sha_b)
+            self.assertEqual(sha256_file(prev), sha_a)
+            with open(prev + ".meta.json", encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh)["source_version_sha"], "a" * 64)
+            history = os.path.join(pub, "history")
+            self.assertEqual(len([n for n in os.listdir(history)
+                                  if n.endswith(".txt")]), 1)
 
 if __name__ == "__main__":
     unittest.main()
