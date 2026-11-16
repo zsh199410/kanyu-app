@@ -347,13 +347,20 @@ def _atomic_write_inner(publish_dir, filename, lines, keep=HISTORY_KEEP_DEFAULT,
     target = os.path.join(publish_dir, filename)
     prev = target + ".prev"
     tmp = target + ".tmp"
-    # Snapshot the CURRENT file before overwriting, with its own version
-    # meta (read from the current file's sidecar, if any).
+    # Preserve a DISTINCT rollback anchor on repeated identical publishes.
+    # Without this check, hourly no-op writes can replace .prev and prune
+    # history with duplicate bytes, destroying the last recoverable version.
+    current_manifest = file_manifest(target)
+    same_bytes = (current_manifest is not None
+                  and current_manifest["sha256"] == expected_sha)
     current_meta = read_version_meta(publish_dir, filename)
-    snap_path, snap_manifest = snapshot_current(
-        publish_dir, filename, keep=keep,
-        source_version_sha=(current_meta or {}).get("source_version_sha"),
-        version_chain=(current_meta or {}).get("version_chain"))
+    if same_bytes:
+        snap_path, snap_manifest = None, None
+    else:
+        snap_path, snap_manifest = snapshot_current(
+            publish_dir, filename, keep=keep,
+            source_version_sha=(current_meta or {}).get("source_version_sha"),
+            version_chain=(current_meta or {}).get("version_chain"))
     prev_manifest_before = file_manifest(prev)
     with open(tmp, "w", encoding="utf-8") as f:
         for line in lines:
@@ -375,7 +382,9 @@ def _atomic_write_inner(publish_dir, filename, lines, keep=HISTORY_KEEP_DEFAULT,
             except OSError:
                 pass
             raise
-    if os.path.exists(target):
+    # Do not overwrite .prev with the currently served bytes on a no-op.
+    # It must keep the previous distinct version when one is available.
+    if os.path.exists(target) and not same_bytes:
         shutil.copyfile(target, prev)
         try:
             os.chmod(prev, 0o600)
