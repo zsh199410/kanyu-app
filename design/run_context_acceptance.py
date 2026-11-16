@@ -132,6 +132,13 @@ def main():
             app = directory / 'DD/Build/Products/Debug-iphonesimulator/Kanyu.app'
             info = plistlib.loads((app / 'Info.plist').read_bytes())
             assert info['CFBundleIdentifier'] == BUNDLE, 'Refuse to exercise the normal app bundle'
+            # RC #8: pre-grant location so the system permission alert never
+            # appears during the acceptance run (it blocked the QA environment
+            # label read in dark-accessibility). Install first so the grant has
+            # a bundle to attach to; a reinstall by xcodebuild preserves the
+            # TCC entry (only uninstall clears it).
+            command(['xcrun', 'simctl', 'install', device, app])
+            command(['xcrun', 'simctl', 'privacy', device, 'grant', 'location', BUNDLE])
             sampler_stop = threading.Event()
             threading.Thread(target=_sample_loop, args=(evidence, sampler_stop), daemon=True).start()
             command(common + ['test-without-building', '-resultBundlePath', result_bundle,
