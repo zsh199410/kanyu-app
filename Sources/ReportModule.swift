@@ -196,14 +196,23 @@ enum ReportBuilder {
         let bodyFont = UIFont(name: "STSongti-SC-Regular", size: 11.5) ?? UIFont.systemFont(ofSize: 11.5)
         let headFont = UIFont(name: "STSongti-SC-Bold", size: 12.5) ?? UIFont.boldSystemFont(ofSize: 12.5)
         let (pages, chapters, tocItems) = paginate(lines: lines, titleFont: titleFont, bodyFont: bodyFont, headFont: headFont, pageRect: pageRect)
-        let totalPages = pages.count + 2
+        // TOC may span multiple pages if chapter names or item titles wrap.
+        // paginate() keeps its historical +2 content offset; shift printed page
+        // numbers by extra TOC pages, without changing text or content hashes.
+        let tocPages = ReportTOCPlanner.pages(personName: person.name, chapters: chapters, items: tocItems,
+                                               pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)
+        let pageShift = tocPages.count - 1
+        let totalPages = pages.count + 1 + tocPages.count
         let data = renderer.pdfData { ctx in
             ctx.beginPage()
             drawCover(ctx: ctx, lines: lines, pageRect: pageRect, tier: tier, hashShort: hashShort)
             drawFooter(ctx: ctx, pageRect: pageRect, page: 1, total: totalPages)
-            ctx.beginPage()
-            drawTOC(ctx: ctx, person: person, chapters: chapters, tocItems: tocItems, total: totalPages, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)
-            drawFooter(ctx: ctx, pageRect: pageRect, page: 2, total: totalPages)
+            for (tocIndex, tocPage) in tocPages.enumerated() {
+                ctx.beginPage()
+                drawTOCPage(ctx: ctx, person: person, plan: tocPage, total: totalPages,
+                            pageShift: pageShift, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)
+                drawFooter(ctx: ctx, pageRect: pageRect, page: tocIndex + 2, total: totalPages)
+            }
             for (idx, page) in pages.enumerated() {
                 ctx.beginPage()
                 for placed in page.lines {
@@ -213,7 +222,7 @@ enum ReportBuilder {
                     (placed.text as NSString).draw(with: CGRect(x: 48, y: placed.y, width: pageRect.width - 96, height: placed.height),
                                                     options: [.usesLineFragmentOrigin], attributes: attr, context: nil)
                 }
-                drawFooter(ctx: ctx, pageRect: pageRect, page: idx + 3, total: totalPages)
+                drawFooter(ctx: ctx, pageRect: pageRect, page: idx + 2 + tocPages.count, total: totalPages)
             }
         }
         let stampFormatter = DateFormatter()
@@ -430,6 +439,53 @@ enum ReportBuilder {
     /// 另注总页数，页码与正文逐页绘制顺序一致。
     /// G1：章节之下加条目级目录（tocItems，与 chapters 同源、同偏移，页码同样构造性保证），
     /// 30 条分两栏紧凑排布，仍在一页内；简洁档只列总纲条目（实际数），完整档不重复列附录。
+    /// Render planned TOC pages. The fixed legacy single-page renderer is retained
+    /// below for format audit only and is no longer called by makePDF.
+    private static func drawTOCPage(ctx: UIGraphicsPDFRendererContext, person: Person,
+                                    plan: ReportTOCPlanner.Page, total: Int, pageShift: Int,
+                                    pageRect: CGRect, headFont: UIFont, bodyFont: UIFont) {
+        let inset: CGFloat = 48
+        let width = pageRect.width - inset * 2
+        let ink = UIColor(red: 0.18, green: 0.165, blue: 0.15, alpha: 1)
+        let sub = UIColor(red: 0.478, green: 0.447, blue: 0.408, alpha: 1)
+        let accent = UIColor(red: 0.153, green: 0.306, blue: 0.361, alpha: 1)
+        let itemFont = UIFont(name: "STSongti-SC-Regular", size: 10) ?? UIFont.systemFont(ofSize: 10)
+        let colWidth = (width - 16) / 2
+        for placed in plan.rows {
+            let y = placed.y
+            switch placed.kind {
+            case .title:
+                _ = drawLeft(ctx: ctx, text: "目录", font: headFont,
+                             y: y, x: inset, width: width, color: ink)
+            case .continued:
+                _ = drawLeft(ctx: ctx, text: "目录（续）", font: headFont,
+                             y: y, x: inset, width: width, color: ink)
+            case .summary:
+                _ = drawLeft(ctx: ctx, text: "命书 · \(person.name)　共 \(total) 页",
+                             font: bodyFont, y: y, x: inset, width: width, color: sub)
+            case .chapter(let entry):
+                _ = drawTOCRow(ctx: ctx, title: entry.title, page: entry.page + pageShift,
+                               y: y, x: inset, width: width, bodyFont: bodyFont,
+                               ink: ink, sub: sub)
+            case .indexHeader(let count):
+                _ = drawLeft(ctx: ctx, text: "详批条目（\(count) 条）",
+                             font: headFont, y: y, x: inset, width: width, color: ink)
+            case .itemPair(let left, let right):
+                drawTOCItemCell(ctx: ctx, title: left.title, page: left.page + pageShift,
+                                y: y, x: inset, width: colWidth, font: itemFont, ink: ink)
+                if let right {
+                    drawTOCItemCell(ctx: ctx, title: right.title, page: right.page + pageShift,
+                                    y: y, x: inset + colWidth + 16, width: colWidth,
+                                    font: itemFont, ink: ink)
+                }
+            case .note:
+                _ = drawLeft(ctx: ctx,
+                             text: "页码与正文实际分页一致；正文每页页脚亦标页码，可逐页核对。",
+                             font: bodyFont, y: y, x: inset, width: width, color: accent)
+            }
+        }
+    }
+
     private static func drawTOC(ctx: UIGraphicsPDFRendererContext, person: Person, chapters: [(title: String, page: Int)], tocItems: [(title: String, page: Int)], total: Int, pageRect: CGRect, headFont: UIFont, bodyFont: UIFont) {
         let inset: CGFloat = 48
         let width = pageRect.width - inset * 2
