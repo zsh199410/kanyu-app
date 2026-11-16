@@ -1,0 +1,107 @@
+{
+ "drill": "d7_stop_restore_start",
+ "sha": {
+  "clean14": "6074082847c3"
+ },
+ "steps": [
+  {
+   "step": "snapshot taken",
+   "detail": "5 files + manifest (SHA per file + DB counts)",
+   "clean_sha": "6074082847c3",
+   "error": ""
+  },
+  {
+   "step": "service started",
+   "detail": "GET returns live SHA clean14",
+   "sha": "6074082847c3",
+   "error": ""
+  },
+  {
+   "step": "service stopped",
+   "detail": "port refuses connections",
+   "error": ""
+  },
+  {
+   "step": "restored from snapshot",
+   "detail": "all 5 files SHA == manifest; DB counts match",
+   "error": ""
+  },
+  {
+   "step": "service restarted",
+   "detail": "GET returns restored SHA clean14 (round 1 complete)",
+   "sha": "6074082847c3",
+   "error": ""
+  },
+  {
+   "step": "round 2 complete",
+   "detail": "loss -> stop -> restore -> start repeats cleanly",
+   "sha": "6074082847c3",
+   "error": ""
+  }
+ ],
+ "checks": [
+  {
+   "check": "snapshot_manifest_complete",
+   "ok": true,
+   "detail": "files=5 counts={'nodes': 5, 'meta': 2}"
+  },
+  {
+   "check": "snapshot_perms_700_600",
+   "ok": true,
+   "detail": "dir 700, files 600 (D4 procedure)"
+  },
+  {
+   "check": "service_serves_live_sha",
+   "ok": true,
+   "detail": "http=200 sha=6074082847c3"
+  },
+  {
+   "check": "loss_simulated",
+   "ok": true,
+   "detail": "publish file deleted, DB corrupted"
+  },
+  {
+   "check": "service_stopped_port_refuses",
+   "ok": true,
+   "detail": "GET after stop -> connection refused (code 0)"
+  },
+  {
+   "check": "restore_sha_matches_manifest",
+   "ok": true,
+   "detail": "mismatches=[]"
+  },
+  {
+   "check": "restored_db_counts_match",
+   "ok": true,
+   "detail": "counts={'nodes': 5, 'meta': 2}"
+  },
+  {
+   "check": "restored_publish_is_clean14",
+   "ok": true,
+   "detail": "sha=6074082847c3"
+  },
+  {
+   "check": "service_restarted_serves_restored_sha",
+   "ok": true,
+   "detail": "http=200 sha=6074082847c3"
+  },
+  {
+   "check": "round2_service_stopped",
+   "ok": true,
+   "detail": "port refuses"
+  },
+  {
+   "check": "round2_restore_sha_matches",
+   "ok": true,
+   "detail": "mismatches=[]"
+  },
+  {
+   "check": "round2_service_serves_restored_sha",
+   "ok": true,
+   "detail": "http=200 sha=6074082847c3"
+  }
+ ],
+ "passed": 12,
+ "total": 12,
+ "ok": true
+}

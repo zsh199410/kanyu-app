@@ -1,0 +1,124 @@
+{
+  "drill": "recovery",
+  "scenarios": [
+    "s1-ttl-expired",
+    "s2-missing-native-results",
+    "s3-production-broken-rollback-refused"
+  ],
+  "checks": [
+    {
+      "check": "s1-rollback-ttl-expired-refuses",
+      "ok": true,
+      "detail": "rc=1 error=rollback_gate_zero_qualified"
+    },
+    {
+      "check": "s1-recovery-plan-names-last-verified-safe",
+      "ok": true,
+      "detail": "action=manual-recovery"
+    },
+    {
+      "check": "s1-enter-degraded",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "s1-publish-refuses-while-stopped",
+      "ok": true,
+      "detail": "rc=1"
+    },
+    {
+      "check": "s1-sync-refuses-while-stopped",
+      "ok": true,
+      "detail": "rc=1"
+    },
+    {
+      "check": "s1-manual-restore-wrong-ack-refuses",
+      "ok": true,
+      "detail": "rc=1"
+    },
+    {
+      "check": "s1-manual-restore-restores-clean",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "s1-restored-flagged-unverified",
+      "ok": true,
+      "detail": "live=manual-restored-unverified"
+    },
+    {
+      "check": "s1-clear-stop-without-fresh-evidence-refuses",
+      "ok": true,
+      "detail": "rc=1"
+    },
+    {
+      "check": "s1-clear-stop-after-fresh-evidence",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "s1-publish-works-after-clear",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "s2-rollback-missing-record-refuses",
+      "ok": true,
+      "detail": "rc=1 error=rollback_chain_chain_native_record_native_record_missing"
+    },
+    {
+      "check": "s2-recovery-plan-says-rebuild",
+      "ok": true,
+      "detail": "action=rebuild-from-fresh-native-test"
+    },
+    {
+      "check": "s2-enter-degraded",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "s2-manual-restore-without-evidence-refuses",
+      "ok": true,
+      "detail": "rc=1 error=anchor_not_restorable"
+    },
+    {
+      "check": "s3-rollback-refused-on-broken-prod",
+      "ok": true,
+      "detail": "rc=1"
+    },
+    {
+      "check": "s3-enter-degraded",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "s3-served-flagged-broken",
+      "ok": true,
+      "detail": "live=broken-unqualified"
+    },
+    {
+      "check": "s3-manual-restore-serves-clean",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "s3-restored-flagged-unverified",
+      "ok": true,
+      "detail": "live=manual-restored-unverified"
+    },
+    {
+      "check": "s3-clear-stop-after-fresh-evidence",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "s3-final-sync-converges",
+      "ok": true,
+      "detail": "rc=0"
+    }
+  ],
+  "passed": 22,
+  "total": 22,
+  "ok": true,
+  "at_cst": "2026-11-15 07:40:15 CST"
+}
