@@ -1,0 +1,161 @@
+{
+ "drill": "d7a_cycles_latch",
+ "sha": {
+  "clean14": "6074082847c3",
+  "polluted": "7737d85e5d1e"
+ },
+ "steps": [
+  {
+   "step": "C1 healthy cycle",
+   "detail": ":07 publish rc=0, :15 sync+bridge rc=0, all targets clean14",
+   "error": ""
+  },
+  {
+   "step": "C2 healthy again",
+   "detail": "second consecutive cycle healthy (idempotent)",
+   "error": ""
+  },
+  {
+   "step": "C3 STOP latched across cycles",
+   "detail": "gate-block rc=1, next :07 refuses pool_stopped, next :15 refuses again; served/bridge + HTTP entry unchanged (verified clean14)",
+   "bridge_sha": "6074082847c3",
+   "legacy_sha": "7737d85e5d1e",
+   "error": ""
+  },
+  {
+   "step": "C4 repair + recheck + clear_stop",
+   "detail": "repair rc=0, HTTP recheck green, STOP still latched until clear_stop; cycle healthy again",
+   "error": ""
+  },
+  {
+   "step": "C5 stable healthy cycle",
+   "detail": "one more full cycle healthy after recovery",
+   "error": ""
+  }
+ ],
+ "checks": [
+  {
+   "check": "c1_07_publish_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c1_15_sync_bridge_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c1_all_targets_clean14",
+   "ok": true,
+   "detail": "served=6074082847c3 bridge=6074082847c3 legacy=6074082847c3"
+  },
+  {
+   "check": "c2_07_publish_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c2_15_sync_bridge_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c3_http_entry_verified_at_latch",
+   "ok": true,
+   "detail": "http=200 entry_sha=6074082847c3"
+  },
+  {
+   "check": "c3_15_gate_block_rc1",
+   "ok": true,
+   "detail": "rc=1 error=targets_inconsistent detail=legacy_sha_mismatch"
+  },
+  {
+   "check": "c3_stop_latched",
+   "ok": true,
+   "detail": "gate_check error=pool_stopped"
+  },
+  {
+   "check": "c3_next_07_publish_refuses",
+   "ok": true,
+   "detail": "rc=1 error=pool_stopped"
+  },
+  {
+   "check": "c3_next_15_gate_block_refuses_again",
+   "ok": true,
+   "detail": "rc=1"
+  },
+  {
+   "check": "c3_next_15_sync_refuses_pool_stopped",
+   "ok": true,
+   "detail": "rc=1 error=pool_stopped"
+  },
+  {
+   "check": "c3_served_bridge_sha_unchanged_through_latch",
+   "ok": true,
+   "detail": "served=6074082847c3 bridge=6074082847c3"
+  },
+  {
+   "check": "c3_http_entry_still_verified_during_stop",
+   "ok": true,
+   "detail": "http=200 entry_sha=6074082847c3"
+  },
+  {
+   "check": "c4_repair_rc0",
+   "ok": true,
+   "detail": "rc=0 error=None"
+  },
+  {
+   "check": "c4_verify_targets_consistent",
+   "ok": true,
+   "detail": "detail=all_targets_match_published_sha"
+  },
+  {
+   "check": "c4_http_recheck_green_after_repair",
+   "ok": true,
+   "detail": "rc=0 ok=True"
+  },
+  {
+   "check": "c4_stop_still_latched_before_clear",
+   "ok": true,
+   "detail": "repair alone does not clear STOP"
+  },
+  {
+   "check": "c4_clear_stop_rc0",
+   "ok": true,
+   "detail": "rc=0 error=None"
+  },
+  {
+   "check": "c4_07_publish_rc0_after_clear",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c4_15_gate_block_rc0_after_clear",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c4_15_sync_bridge_rc0_after_clear",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c5_07_publish_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c5_15_sync_bridge_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c5_all_targets_still_clean14",
+   "ok": true,
+   "detail": "served=6074082847c3 bridge=6074082847c3 legacy=6074082847c3"
+  }
+ ],
+ "passed": 24,
+ "total": 24,
+ "ok": true
+}

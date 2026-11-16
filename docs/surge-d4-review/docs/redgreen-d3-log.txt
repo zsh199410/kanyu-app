@@ -1,0 +1,43 @@
+D3 red->green log
+====================
+
+RED: tests/test_d3.py run against the D2 tree (scratch copy /tmp/d2-red)
+python3 -m unittest tests.test_d3 -v
+
+FAIL: test_init_audit_entry (tests.test_d3.TestExplicitInit.test_init_audit_entry)
+FAIL: test_init_cannot_launder_stop (tests.test_d3.TestExplicitInit.test_init_cannot_launder_stop)
+FAIL: test_init_rebuild_anchor_when_anchor_lost (tests.test_d3.TestExplicitInit.test_init_rebuild_anchor_when_anchor_lost)
+FAIL: test_init_rebuild_from_anchor (tests.test_d3.TestExplicitInit.test_init_rebuild_from_anchor)
+FAIL: test_init_refuses_unreadable_state (tests.test_d3.TestExplicitInit.test_init_refuses_unreadable_state)
+FAIL: test_init_refuses_when_served_changed (tests.test_d3.TestExplicitInit.test_init_refuses_when_served_changed)
+FAIL: test_init_requires_owner_ack (tests.test_d3.TestExplicitInit.test_init_requires_owner_ack)
+FAIL: test_uninitialized_fresh_deployment_refuses (tests.test_d3.TestExplicitInit.test_uninitialized_fresh_deployment_refuses)
+FAIL: test_anchor_missing_refuses_all_three (tests.test_d3.TestFailClosedModes.test_anchor_missing_refuses_all_three)
+FAIL: test_checksum_mismatch_refuses_all_three (tests.test_d3.TestFailClosedModes.test_checksum_mismatch_refuses_all_three)
+FAIL: test_corrupt_state_file_refuses_all_three (tests.test_d3.TestFailClosedModes.test_corrupt_state_file_refuses_all_three)
+FAIL: test_illegal_state_value_refuses_all_three (tests.test_d3.TestFailClosedModes.test_illegal_state_value_refuses_all_three)
+FAIL: test_is_stopped_is_fail_closed (tests.test_d3.TestFailClosedModes.test_is_stopped_is_fail_closed)
+FAIL: test_missing_state_file_refuses_all_three (tests.test_d3.TestFailClosedModes.test_missing_state_file_refuses_all_three)
+FAIL: test_read_state_raises_on_missing (tests.test_d3.TestFailClosedModes.test_read_state_raises_on_missing)
+FAIL: test_rollback_consults_gate (tests.test_d3.TestFailClosedModes.test_rollback_consults_gate)
+FAIL: test_stale_state_file_replaced_by_older_copy_refuses (tests.test_d3.TestFailClosedModes.test_stale_state_file_replaced_by_older_copy_refuses)
+FAIL: test_stop_survives_state_file_deletion (tests.test_d3.TestFailClosedModes.test_stop_survives_state_file_deletion)
+FAIL: test_torn_write_refuses_all_three (tests.test_d3.TestFailClosedModes.test_torn_write_refuses_all_three)
+FAIL: test_unreadable_state_file_refuses_all_three (tests.test_d3.TestFailClosedModes.test_unreadable_state_file_refuses_all_three)
+FAIL: test_gate_check_reports_precise_errors (tests.test_d3.TestGateCheck.test_gate_check_reports_precise_errors)
+FAIL: test_read_state_strict_reports_modes (tests.test_d3.TestGateCheck.test_read_state_strict_reports_modes)
+
+Ran 23 tests in 0.089s
+
+FAILED (failures=22, skipped=1)
+
+GREEN: same file in the D3 tree
+python3 -m unittest tests.test_d3
+
+Ran 23 tests in 0.140s
+
+OK (skipped=1)
+
+RED/GREEN DEMO (redgreen_d3_demo.py):
+D2 tree: seed rc=0, state file deleted, attack rc=0 error=None -> RED-defect-reproduced
+D3 tree: init rc=0 fresh, seed rc=0, state file deleted, attack rc=1 error=recovery_state_missing -> GREEN-refused

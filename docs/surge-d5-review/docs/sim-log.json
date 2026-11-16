@@ -1,0 +1,92 @@
+{
+  "drill": "sim_timers",
+  "cycles": 3,
+  "clean_sha256": "6074082847c3deee566313c625445579fad8c345c6ad5815a3655fa4a0c55286",
+  "clean_lines": 14,
+  "checks": [
+    {
+      "check": "init-recovery-state",
+      "ok": true,
+      "detail": "rc=0 mode=fresh"
+    },
+    {
+      "check": "seed-gated-publish",
+      "ok": true,
+      "detail": "rc=0 lines=14"
+    },
+    {
+      "check": "seed-gated-sync",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "seed-served-is-clean",
+      "ok": true,
+      "detail": "served_prefix=6074082847c3"
+    },
+    {
+      "check": "seed-publish-chain-verifies",
+      "ok": true,
+      "detail": "sidecar chain re-verified against actual bytes + native record"
+    },
+    {
+      "check": "lock-contention-timeout",
+      "ok": true,
+      "detail": "rc=1 error=lock_timeout: LockTimeout"
+    },
+    {
+      "check": "publish-after-holder-releases",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "cycle-1-concurrent-publish-sync",
+      "ok": true,
+      "detail": "pub_rc=0 syn_rc=0 publish_prefix=6074082847c3 served_prefix=6074082847c3"
+    },
+    {
+      "check": "cycle-2-concurrent-publish-sync",
+      "ok": true,
+      "detail": "pub_rc=0 syn_rc=0 publish_prefix=6074082847c3 served_prefix=6074082847c3"
+    },
+    {
+      "check": "cycle-3-concurrent-publish-sync",
+      "ok": true,
+      "detail": "pub_rc=0 syn_rc=0 publish_prefix=6074082847c3 served_prefix=6074082847c3"
+    },
+    {
+      "check": "sync-refuses-legacy-ungated-source",
+      "ok": true,
+      "detail": "rc=1 error=sync_chain_chain_published_sha_mismatch publish_prefix=f6083ad90eac"
+    },
+    {
+      "check": "served-stays-clean-after-legacy-write",
+      "ok": true,
+      "detail": "served_prefix=6074082847c3 legacy_prefix=f6083ad90eac"
+    },
+    {
+      "check": "gated-publish-restores-clean",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "sync-after-restore",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "check": "chain-verifies-after-restore",
+      "ok": true,
+      "detail": "sidecar chain re-verified after legacy-write recovery"
+    },
+    {
+      "check": "next-07-keeps-clean",
+      "ok": true,
+      "detail": "rc=0 lines=14 prefix=6074082847c3"
+    }
+  ],
+  "passed": 16,
+  "total": 16,
+  "ok": true,
+  "at_cst": "2026-11-14 23:40:30 CST"
+}

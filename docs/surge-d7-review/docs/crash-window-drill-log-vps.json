@@ -1,0 +1,239 @@
+{
+  "drill": "crash-window",
+  "workdir": "/tmp/d5-crash-window-k0d_l04_",
+  "served_sha_prefix": "6074082847c3",
+  "iterations": [
+    {
+      "n": 1,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.377,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 2,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.025,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 3,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.192,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 4,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.147,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 5,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.243,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 6,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.495,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 7,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.318,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 8,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.309,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 9,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.351,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 10,
+      "phase": "A",
+      "mode": "stop",
+      "kill_delay_s": 0.156,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 11,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.07,
+      "read": "consistent-ok",
+      "stop_survived": false,
+      "stop_overwritten_by_completed_write": true,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 12,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.163,
+      "read": "consistent-ok",
+      "stop_survived": false,
+      "stop_overwritten_by_completed_write": true,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 13,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.304,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 14,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.155,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 15,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.06,
+      "read": "consistent-ok",
+      "stop_survived": false,
+      "stop_overwritten_by_completed_write": true,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 16,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.322,
+      "read": "consistent-ok",
+      "stop_survived": false,
+      "stop_overwritten_by_completed_write": true,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 17,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.063,
+      "read": "consistent-ok",
+      "stop_survived": false,
+      "stop_overwritten_by_completed_write": true,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 18,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.311,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 19,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.382,
+      "read": "consistent-degraded",
+      "stop_survived": true,
+      "stop_overwritten_by_completed_write": false,
+      "served_sha_unchanged": true,
+      "pass": true
+    },
+    {
+      "n": 20,
+      "phase": "B",
+      "mode": "switch",
+      "kill_delay_s": 0.252,
+      "read": "consistent-ok",
+      "stop_survived": false,
+      "stop_overwritten_by_completed_write": true,
+      "served_sha_unchanged": true,
+      "pass": true
+    }
+  ],
+  "summary": {
+    "total": 20,
+    "phase_a_total": 10,
+    "phase_a_stop_survived": 10,
+    "phase_b_total": 10,
+    "phase_b_stop_survived": 4,
+    "phase_b_completed_ok_overwrites": 6,
+    "phase_b_refusals": 0,
+    "served_sha_unchanged_all": true,
+    "all_pass": true
+  },
+  "all_pass": true
+}

@@ -1,0 +1,128 @@
+{
+ "drill": "switch_rehearsal",
+ "checks": [
+  {
+   "check": "versions_distinct_sha",
+   "ok": true,
+   "detail": "shas=f6083ad9,314c25b7,d11c91ed,7d299ca8,b699aa55,765ff821,10f5eb86,e24ed5ec"
+  },
+  {
+   "check": "init_rc0",
+   "ok": true,
+   "detail": "{\"ok\": true, \"mode\": \"fresh\", \"state\": {\"state\": \"ok\", \"stopped\": false, \"since\": 1794700823, \"since_iso\": \"2026-11-15 08:00:23 CST\", \"reason\": \"initialized by owner (mode=fresh)\", \"served_status\": \"u"
+  },
+  {
+   "check": "s1_gate_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "s1_published_clean14",
+   "ok": true,
+   "detail": "published_lines=14"
+  },
+  {
+   "check": "s1_source_now_v2",
+   "ok": true,
+   "detail": "assembly advanced source to v2"
+  },
+  {
+   "check": "s2_sync_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "s2_bridge_matches_served",
+   "ok": true,
+   "detail": "6074082847c3"
+  },
+  {
+   "check": "s2_bridge_is_clean14",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "s2_old_copy_clean14",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "s3_gate_refuses_untested_v2",
+   "ok": true,
+   "detail": "rc=1 log=43 伊朗6 🇮🇷\", \"4b885b93f1a9\": \"T44 美国21 🇺🇸\"}}, \"error\": \"phone_gate_zero_qualified\", \"zero_qualified_safe_state\": \"old subscription kept, not claimed compliant\"}\n"
+  },
+  {
+   "check": "s3_served_unchanged",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "s3_source_now_v3",
+   "ok": true,
+   "detail": "assembly advanced source to v3"
+  },
+  {
+   "check": "s4a_superseded_test_does_not_admit",
+   "ok": true,
+   "detail": "rc=1 log=43 伊朗6 🇮🇷\", \"4b885b93f1a9\": \"T44 美国21 🇺🇸\"}}, \"error\": \"phone_gate_zero_qualified\", \"zero_qualified_safe_state\": \"old subscription kept, not claimed compliant\"}\n"
+  },
+  {
+   "check": "s4a_served_unchanged",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "s4a_source_now_v4",
+   "ok": true,
+   "detail": "assembly advanced source to v4"
+  },
+  {
+   "check": "s4b_gate_rc0_after_current_tested",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "s4b_chain_binds_v4",
+   "ok": true,
+   "detail": "7d299ca8097a"
+  },
+  {
+   "check": "s4b_sync_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "s4b_bridge_still_clean14",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "s4b_source_now_v5",
+   "ok": true,
+   "detail": "assembly advanced source to v5"
+  },
+  {
+   "check": "s5_served_always_gated",
+   "ok": true,
+   "detail": "final_lines=14"
+  },
+  {
+   "check": "s5_no_false_verify_failure",
+   "ok": true,
+   "detail": "log scanned"
+  },
+  {
+   "check": "s6_rollback_serves_full_file",
+   "ok": true,
+   "detail": "lines=40"
+  },
+  {
+   "check": "s6_gate_state_untouched_by_rollback",
+   "ok": true,
+   "detail": "ok"
+  }
+ ],
+ "passed": 24,
+ "total": 24,
+ "ok": true
+}

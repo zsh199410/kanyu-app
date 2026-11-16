@@ -1,0 +1,63 @@
+{
+ "drill": "d7a_redgreen",
+ "d7_root": "/opt/p2p3-d7",
+ "steps": [
+  {
+   "step": "R1 red on D7",
+   "detail": "d7a item-1 drill against the D7 tree fails: the D7 API has no gate_block / repair_targets",
+   "rc": 1,
+   "error": "ImportError"
+  },
+  {
+   "step": "R2 green on D7a",
+   "detail": "same drill against the D7a tree passes 23/23",
+   "rc": 0,
+   "error": ""
+  },
+  {
+   "step": "R3 API surface",
+   "detail": "D7: no gate_block / repair_targets / CLI flags; D7a: all present",
+   "error": ""
+  },
+  {
+   "step": "R4 unit suite",
+   "detail": "tests/test_d7a.py: ImportError on D7, 20/20 green on D7a",
+   "error": ""
+  }
+ ],
+ "checks": [
+  {
+   "check": "r1_red_on_d7",
+   "ok": true,
+   "detail": "rc=1 tail=}"
+  },
+  {
+   "check": "r2_green_on_d7a",
+   "ok": true,
+   "detail": "rc=0 passed=23/23"
+  },
+  {
+   "check": "r3_api_surface_d7",
+   "ok": true,
+   "detail": "{\"gate_api\": false, \"import_error\": \"cannot import name 'gate_block' from 'pool.bridge_sync' (/opt/p2p3-d7/pool/bridge_sync.py)\", \"cli_has_gate_block\": false, \"cli_has_repair_targets\": false}"
+  },
+  {
+   "check": "r3_api_surface_d7a",
+   "ok": true,
+   "detail": "{\"gate_api\": true, \"cli_has_gate_block\": true, \"cli_has_repair_targets\": true}"
+  },
+  {
+   "check": "r4_unit_suite_d7",
+   "ok": true,
+   "detail": "rc=1 (ImportError expected)"
+  },
+  {
+   "check": "r4_unit_suite_d7a",
+   "ok": true,
+   "detail": "rc=0"
+  }
+ ],
+ "passed": 6,
+ "total": 6,
+ "ok": true
+}

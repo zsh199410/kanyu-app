@@ -1,0 +1,100 @@
+{
+ "drill": "d7a_item2_http_recheck",
+ "engine": "nginx",
+ "dump_kind": "nginx -T output",
+ "sha": {
+  "clean14": "6074082847c3",
+  "polluted": "7737d85e5d1e"
+ },
+ "steps": [
+  {
+   "step": "dump prepared",
+   "detail": "kind=nginx -T output (nginx=True)",
+   "error": ""
+  },
+  {
+   "step": "sandbox servers up",
+   "detail": "engine=nginx",
+   "engine": "nginx",
+   "error": ""
+  },
+  {
+   "step": "H healthy",
+   "detail": "rc=0, entry 200 + SHA == bridge == expected, 7 probes refused, no config violations",
+   "engine": "nginx",
+   "error": ""
+  },
+  {
+   "step": "V independent alias at served",
+   "detail": "rc=1; violation names /alias-served/; the alias path probe returns served bytes (200)",
+   "engine": "nginx",
+   "error": ""
+  },
+  {
+   "step": "F fixed",
+   "detail": "back to the good dump + good origin: rc=0 again",
+   "engine": "nginx",
+   "error": ""
+  }
+ ],
+ "checks": [
+  {
+   "check": "h_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "h_ok_true",
+   "ok": true,
+   "detail": "ok=True"
+  },
+  {
+   "check": "h_entry_sha_matches_bridge_and_expected",
+   "ok": true,
+   "detail": "entry={'http': 200, 'body_sha_prefix': '6074082847c3', 'body_lines': 14, 'sha_matches_bridge': True, 'sha_matches_expected': True}"
+  },
+  {
+   "check": "h_probes_all_refused",
+   "ok": true,
+   "detail": "probes=7 refused=True"
+  },
+  {
+   "check": "h_no_violations",
+   "ok": true,
+   "detail": "violations=[]"
+  },
+  {
+   "check": "v_rc1",
+   "ok": true,
+   "detail": "rc=1"
+  },
+  {
+   "check": "v_violation_names_alias_served",
+   "ok": true,
+   "detail": "violations=['/alias-served/']"
+  },
+  {
+   "check": "v_alias_probe_serves_served_bytes",
+   "ok": true,
+   "detail": "probe=[{'path': '/alias-served/pool-new.txt', 'http': 200, 'body_sha_prefix': '6074082847c3', 'refused': False}]"
+  },
+  {
+   "check": "v_entry_still_matches",
+   "ok": true,
+   "detail": "entry on the control origin still serves the verified bridge bytes -- the failure is the alias, not the entry"
+  },
+  {
+   "check": "f_rc0_after_fix",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "f_ok_true_after_fix",
+   "ok": true,
+   "detail": "ok=True"
+  }
+ ],
+ "passed": 11,
+ "total": 11,
+ "ok": true
+}

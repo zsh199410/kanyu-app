@@ -1,0 +1,143 @@
+{
+ "drill": "cross_cycle_redgreen",
+ "d4_root": "/home/hatch/workspace/p2p3-d4",
+ "d5_root": "/home/hatch/workspace/p2p3-d5",
+ "phases": {
+  "wrapper_old_tree": {
+   "tree": "d4-old",
+   "init_rc": 0,
+   "publish_rc": 0,
+   "sync_rc": 0,
+   "bridge_after_sync_sha": "6074082847c3",
+   "bridge_after_blind_cp_sha": "314c25b75017",
+   "bridge_after_blind_cp_lines": 43,
+   "v2_sha": "314c25b75017",
+   "clean_sha": "6074082847c3",
+   "resync_rc": 0,
+   "bridge_after_resync_sha": "6074082847c3"
+  },
+  "wrapper_new_tree": {
+   "tree": "d5-new",
+   "init_rc": 0,
+   "publish_rc": 0,
+   "sync_rc": 0,
+   "bridge_after_sync_sha": "6074082847c3",
+   "bridge_after_blind_cp_sha": "314c25b75017",
+   "bridge_after_blind_cp_lines": 43,
+   "v2_sha": "314c25b75017",
+   "clean_sha": "6074082847c3",
+   "resync_rc": 0,
+   "bridge_after_resync_sha": "6074082847c3"
+  },
+  "publish_rename_tamper_old": {
+   "mode": "publish",
+   "rc": 1,
+   "error": "publish_refused: post-publish verification failed: lines=15 sha_prefix=7737d85e5d1e",
+   "target_sha_before": "6074082847c3",
+   "target_sha_after": "7737d85e5d1e",
+   "target_unchanged": false,
+   "tampered": true
+  },
+  "publish_rename_tamper_new": {
+   "mode": "publish",
+   "rc": 1,
+   "error": "publish_postwrite_verify_failed",
+   "target_sha_before": "6074082847c3",
+   "target_sha_after": "6074082847c3",
+   "target_unchanged": true,
+   "tampered": true
+  },
+  "sync_served_tamper_old": {
+   "mode": "sync",
+   "hook_supported": false,
+   "type_error": "run_sync() got an unexpected keyword argument 'post_copy_hook'"
+  },
+  "sync_served_tamper_new": {
+   "mode": "sync",
+   "hook_supported": true,
+   "rc": 1,
+   "error": "sync_served_gate_failed",
+   "degraded": true
+  },
+  "grep": {
+   "old_publish_postwrite_verify_failed": 0,
+   "new_publish_postwrite_verify_failed": 9,
+   "old_sync_served_gate_failed": 0,
+   "new_sync_served_gate_failed": 4,
+   "old_gate_publish_new_source_gated": 0,
+   "new_gate_publish_new_source_gated": 4,
+   "old_gate_sync_prebridge_check": 0,
+   "new_gate_sync_prebridge_check": 1
+  }
+ },
+ "checks": [
+  {
+   "check": "old_wrap_publish_sync_rc0",
+   "ok": true,
+   "detail": "publish_rc=0 sync_rc=0"
+  },
+  {
+   "check": "old_wrap_blind_cp_serves_v2_RED",
+   "ok": true,
+   "detail": "bridge_sha=314c25b75017 (v2) lines=43"
+  },
+  {
+   "check": "old_wrap_gated_sync_restores_v1",
+   "ok": true,
+   "detail": "resync_rc=0 bridge_sha=6074082847c3"
+  },
+  {
+   "check": "new_wrap_publish_sync_rc0",
+   "ok": true,
+   "detail": "publish_rc=0 sync_rc=0"
+  },
+  {
+   "check": "new_wrap_blind_cp_also_serves_v2_RED_control",
+   "ok": true,
+   "detail": "blind cp is cp on both trees; the gate is the defence, bridge_sha=314c25b75017 (v2)"
+  },
+  {
+   "check": "new_wrap_gated_sync_restores_v1",
+   "ok": true,
+   "detail": "resync_rc=0 bridge_sha=6074082847c3"
+  },
+  {
+   "check": "new_wrap_cycle_record_exists",
+   "ok": true,
+   "detail": "cycle record covered by unit tests and the cross-cycle drill (see docs/cross-cycle-drill-log.json)"
+  },
+  {
+   "check": "old_publish_rename_tamper_corrupts_target_RED",
+   "ok": true,
+   "detail": "rc=1 error=publish_refused: post-publish verification failed: lines=15 sha_prefix=7737d85e5d1e before=6074082847c3 after=7737d85e5d1e"
+  },
+  {
+   "check": "new_publish_rename_tamper_keeps_target_GREEN",
+   "ok": true,
+   "detail": "rc=1 error=publish_postwrite_verify_failed before=6074082847c3 after=6074082847c3"
+  },
+  {
+   "check": "old_sync_has_no_served_regate_hook_RED",
+   "ok": true,
+   "detail": "run_sync(post_copy_hook=...) -> TypeError: run_sync() got an unexpected keyword argument 'post_copy_hook'"
+  },
+  {
+   "check": "new_sync_served_tamper_refused_GREEN",
+   "ok": true,
+   "detail": "rc=1 error=sync_served_gate_failed degraded=True"
+  },
+  {
+   "check": "grep_old_has_no_d5_markers",
+   "ok": true,
+   "detail": "{'old_publish_postwrite_verify_failed': 0, 'new_publish_postwrite_verify_failed': 9, 'old_sync_served_gate_failed': 0, 'new_sync_served_gate_failed': 4, 'old_gate_publish_new_source_gated': 0, 'new_gate_publish_new_source_gated': 4, 'old_gate_sync_prebridge_check': 0, 'new_gate_sync_prebridge_check': 1}"
+  },
+  {
+   "check": "grep_new_has_d5_markers",
+   "ok": true,
+   "detail": "{'old_publish_postwrite_verify_failed': 0, 'new_publish_postwrite_verify_failed': 9, 'old_sync_served_gate_failed': 0, 'new_sync_served_gate_failed': 4, 'old_gate_publish_new_source_gated': 0, 'new_gate_publish_new_source_gated': 4, 'old_gate_sync_prebridge_check': 0, 'new_gate_sync_prebridge_check': 1}"
+  }
+ ],
+ "passed": 13,
+ "total": 13,
+ "ok": true
+}

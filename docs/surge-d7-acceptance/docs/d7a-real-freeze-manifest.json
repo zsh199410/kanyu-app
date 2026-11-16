@@ -1,0 +1,222 @@
+{
+  "tool": "freeze_real",
+  "frozen_at": 1794821200,
+  "source": {
+    "path": "/opt/free-node-program/publish/pool-new.txt",
+    "sha256": "cdaa94605875e10ae4d13412a9378c0b5924bbc37b22eb44b891aad7ef8398e3",
+    "sha256_prefix": "cdaa94605875",
+    "lines": 29
+  },
+  "candidates": {
+    "count": 14,
+    "sha256": "10e52c9643a8c8695df127e81cb63893627cd8b491433e10d57fe21e1e77b33a",
+    "sha256_prefix": "10e52c9643a8",
+    "lines": [
+      {
+        "name": "美国13 🇺🇸",
+        "fingerprint_prefix": "f43824d2b69a",
+        "evidence": "fresh",
+        "last_pass_ms": 264,
+        "last_pass_at": 1794808824,
+        "last_pass_source": "probe",
+        "evidence_run_version_prefix": null,
+        "probe_state": "verified",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "美国12 🇺🇸",
+        "fingerprint_prefix": "2bb58612a533",
+        "evidence": "fresh",
+        "last_pass_ms": 265,
+        "last_pass_at": 1794808818,
+        "last_pass_source": "probe",
+        "evidence_run_version_prefix": null,
+        "probe_state": "verified",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "香港34 🇭🇰",
+        "fingerprint_prefix": "2ba2b1117ed4",
+        "evidence": "stale",
+        "last_pass_ms": 57,
+        "last_pass_at": 1794799440,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": null,
+        "probe_state": "quarantined",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "香港36 🇭🇰",
+        "fingerprint_prefix": "0e0a3d473db3",
+        "evidence": "stale",
+        "last_pass_ms": 166,
+        "last_pass_at": 1794799440,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": null,
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": 1794643201
+      },
+      {
+        "name": "美国6 🇺🇸",
+        "fingerprint_prefix": "d045fec5cb84",
+        "evidence": "stale",
+        "last_pass_ms": 256,
+        "last_pass_at": 1794799440,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": null,
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "香港 🇭🇰",
+        "fingerprint_prefix": "2471d3805bd9",
+        "evidence": "stale",
+        "last_pass_ms": 56,
+        "last_pass_at": 1794791100,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": "3b178b65efb2",
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": 1794578401
+      },
+      {
+        "name": "香港2 🇭🇰",
+        "fingerprint_prefix": "299b1e7ca9c1",
+        "evidence": "stale",
+        "last_pass_ms": 61,
+        "last_pass_at": 1794791100,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": "3b178b65efb2",
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": 1794675602
+      },
+      {
+        "name": "美国9 🇺🇸",
+        "fingerprint_prefix": "dfbd0c105a35",
+        "evidence": "stale",
+        "last_pass_ms": 200,
+        "last_pass_at": 1794791100,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": "3b178b65efb2",
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "美国2 🇺🇸",
+        "fingerprint_prefix": "4c141af1c141",
+        "evidence": "stale",
+        "last_pass_ms": 206,
+        "last_pass_at": 1794791100,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": "3b178b65efb2",
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "美国1 🇺🇸",
+        "fingerprint_prefix": "290db612d0a5",
+        "evidence": "stale",
+        "last_pass_ms": 208,
+        "last_pass_at": 1794791100,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": "3b178b65efb2",
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "美国4 🇺🇸",
+        "fingerprint_prefix": "c8b78b3f6942",
+        "evidence": "stale",
+        "last_pass_ms": 208,
+        "last_pass_at": 1794791100,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": "3b178b65efb2",
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "美国3 🇺🇸",
+        "fingerprint_prefix": "f5fe7ac4910a",
+        "evidence": "stale",
+        "last_pass_ms": 209,
+        "last_pass_at": 1794791100,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": "3b178b65efb2",
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "美国7 🇺🇸",
+        "fingerprint_prefix": "c28ce3533380",
+        "evidence": "stale",
+        "last_pass_ms": 218,
+        "last_pass_at": 1794791100,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": "3b178b65efb2",
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": null
+      },
+      {
+        "name": "美国5 🇺🇸",
+        "fingerprint_prefix": "b5f2f8a92b52",
+        "evidence": "stale",
+        "last_pass_ms": 218,
+        "last_pass_at": 1794791100,
+        "last_pass_source": "native",
+        "evidence_run_version_prefix": "3b178b65efb2",
+        "probe_state": "expired",
+        "pinned": true,
+        "last_winner_report_ts": null
+      }
+    ]
+  },
+  "evidence_summary": {
+    "fresh": 2,
+    "stale": 12,
+    "partial": 0,
+    "unparseable_lines": 0,
+    "native_runs_consulted": 2,
+    "probe_rows_consulted": 70,
+    "full_group_evidence_for_frozen_sha": false
+  },
+  "pinned_check": {
+    "pinned_table_rows": 25,
+    "pinned_in_source_lines": 21,
+    "pinned_in_candidates": 14,
+    "pinned_candidate_names": [
+      "美国13 🇺🇸",
+      "美国12 🇺🇸",
+      "香港34 🇭🇰",
+      "香港36 🇭🇰",
+      "美国6 🇺🇸",
+      "香港 🇭🇰",
+      "香港2 🇭🇰",
+      "美国9 🇺🇸",
+      "美国2 🇺🇸",
+      "美国1 🇺🇸",
+      "美国4 🇺🇸",
+      "美国3 🇺🇸",
+      "美国7 🇺🇸",
+      "美国5 🇺🇸"
+    ]
+  },
+  "status": "needs_phone_retest",
+  "publishable": false,
+  "blockers": [
+    "no_fresh_full_group_evidence_for_frozen_sha",
+    "pinned_exemption_present_in_candidates"
+  ],
+  "unparseable": []
+}

@@ -1,0 +1,11 @@
+=== D1 code ===
+seed rc=0 ok=True
+modified file sha=62db44406ab4 (claimed version_sha=f6083ad90eac)
+attack rc=0 error=None target_unchanged=True
+VERDICT: RED-defect-reproduced
+
+=== D2 code ===
+seed rc=0 ok=True
+modified file sha=62db44406ab4 (claimed version_sha=f6083ad90eac)
+attack rc=1 error=source_version_sha_mismatch target_unchanged=True
+VERDICT: GREEN-refused

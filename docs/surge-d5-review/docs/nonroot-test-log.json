@@ -1,0 +1,207 @@
+{
+  "suite": [
+    "tests.test_d5_d3",
+    "tests.test_d3"
+  ],
+  "run_as": {
+    "euid": 1000,
+    "user": "d5test",
+    "uid": 1000
+  },
+  "python": "3.12.3",
+  "root": "/home/hatch/workspace/p2p3-d5",
+  "duration_s": 0.242,
+  "total": 37,
+  "passed": 37,
+  "failed": 0,
+  "skipped": 0,
+  "skip_reasons": [],
+  "exit_code": 0,
+  "tests": [
+    {
+      "test": "test_crash_after_anchor_with_stop_keeps_stop (tests.test_d5_d3.TestCrashPoint.test_crash_after_anchor_with_stop_keeps_stop)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_crash_after_state_on_ok_no_silent_rebuild (tests.test_d5_d3.TestCrashPoint.test_crash_after_state_on_ok_no_silent_rebuild)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_crash_after_state_with_stop_refuses_and_keeps_stop (tests.test_d5_d3.TestCrashPoint.test_crash_after_state_with_stop_refuses_and_keeps_stop)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_crash_hook_defaults_off (tests.test_d5_d3.TestCrashPoint.test_crash_hook_defaults_off)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_negative_a_fresh_init_still_needs_fresh_native_gate (tests.test_d5_d3.TestInitTrustBoundary.test_negative_a_fresh_init_still_needs_fresh_native_gate)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_negative_b_double_records_loss_no_auto_recovery (tests.test_d5_d3.TestInitTrustBoundary.test_negative_b_double_records_loss_no_auto_recovery)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_positive_fresh_init_on_truly_fresh_workdir (tests.test_d5_d3.TestInitTrustBoundary.test_positive_fresh_init_on_truly_fresh_workdir)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_positive_records_loss_recovery_with_allow (tests.test_d5_d3.TestInitTrustBoundary.test_positive_records_loss_recovery_with_allow)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_anchor_file_chmod000_refuses (tests.test_d5_d3.TestNonRootUnreadable.test_anchor_file_chmod000_refuses)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_eacces_injection_open_unreadable_state (tests.test_d5_d3.TestNonRootUnreadable.test_eacces_injection_open_unreadable_state)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_served_dir_chmod000_is_unknown_not_qualified (tests.test_d5_d3.TestNonRootUnreadable.test_served_dir_chmod000_is_unknown_not_qualified)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_state_file_chmod000_refuses (tests.test_d5_d3.TestNonRootUnreadable.test_state_file_chmod000_refuses)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_workdir_chmod000_refuses (tests.test_d5_d3.TestNonRootUnreadable.test_workdir_chmod000_refuses)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_write_denied_in_readonly_workdir (tests.test_d5_d3.TestNonRootUnreadable.test_write_denied_in_readonly_workdir)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_init_audit_entry (tests.test_d3.TestExplicitInit.test_init_audit_entry)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_init_cannot_launder_stop (tests.test_d3.TestExplicitInit.test_init_cannot_launder_stop)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_init_rebuild_anchor_when_anchor_lost (tests.test_d3.TestExplicitInit.test_init_rebuild_anchor_when_anchor_lost)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_init_rebuild_from_anchor (tests.test_d3.TestExplicitInit.test_init_rebuild_from_anchor)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_init_refuses_unreadable_state (tests.test_d3.TestExplicitInit.test_init_refuses_unreadable_state)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_init_refuses_when_served_changed (tests.test_d3.TestExplicitInit.test_init_refuses_when_served_changed)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_init_requires_owner_ack (tests.test_d3.TestExplicitInit.test_init_requires_owner_ack)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_uninitialized_fresh_deployment_refuses (tests.test_d3.TestExplicitInit.test_uninitialized_fresh_deployment_refuses)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_anchor_missing_refuses_all_three (tests.test_d3.TestFailClosedModes.test_anchor_missing_refuses_all_three)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_checksum_mismatch_refuses_all_three (tests.test_d3.TestFailClosedModes.test_checksum_mismatch_refuses_all_three)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_corrupt_state_file_refuses_all_three (tests.test_d3.TestFailClosedModes.test_corrupt_state_file_refuses_all_three)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_illegal_state_value_refuses_all_three (tests.test_d3.TestFailClosedModes.test_illegal_state_value_refuses_all_three)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_is_stopped_is_fail_closed (tests.test_d3.TestFailClosedModes.test_is_stopped_is_fail_closed)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_missing_state_file_refuses_all_three (tests.test_d3.TestFailClosedModes.test_missing_state_file_refuses_all_three)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_read_state_raises_on_missing (tests.test_d3.TestFailClosedModes.test_read_state_raises_on_missing)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_rollback_consults_gate (tests.test_d3.TestFailClosedModes.test_rollback_consults_gate)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_stale_state_file_replaced_by_older_copy_refuses (tests.test_d3.TestFailClosedModes.test_stale_state_file_replaced_by_older_copy_refuses)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_stop_survives_state_file_deletion (tests.test_d3.TestFailClosedModes.test_stop_survives_state_file_deletion)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_torn_write_refuses_all_three (tests.test_d3.TestFailClosedModes.test_torn_write_refuses_all_three)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_unreadable_state_file_chmod000_refuses (tests.test_d3.TestFailClosedModes.test_unreadable_state_file_chmod000_refuses)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_unreadable_state_file_refuses_all_three (tests.test_d3.TestFailClosedModes.test_unreadable_state_file_refuses_all_three)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_gate_check_reports_precise_errors (tests.test_d3.TestGateCheck.test_gate_check_reports_precise_errors)",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "test": "test_read_state_strict_reports_modes (tests.test_d3.TestGateCheck.test_read_state_strict_reports_modes)",
+      "status": "pass",
+      "detail": ""
+    }
+  ]
+}

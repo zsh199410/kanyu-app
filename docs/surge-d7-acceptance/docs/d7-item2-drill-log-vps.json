@@ -1,0 +1,129 @@
+{
+ "drill": "d7_item2_legacy_postwrite",
+ "code_root": "/opt/p2p3-d7a",
+ "sha": {
+  "clean14": "6074082847c3",
+  "old_version": "314c25b75017",
+  "polluted": "7737d85e5d1e"
+ },
+ "steps": [
+  {
+   "step": "A legacy post-rename SHA failure",
+   "detail": "rc=1 legacy_copy_failed; bridge rolled back, legacy holds corrupted bytes, detector flags it",
+   "bridge_sha": "314c25b75017",
+   "legacy_sha": "7737d85e5d1e",
+   "rc": 1,
+   "error": "legacy_copy_failed"
+  },
+  {
+   "step": "A next run repairs",
+   "detail": "rc=0, both targets clean14, verify_targets consistent",
+   "bridge_sha": "6074082847c3",
+   "legacy_sha": "6074082847c3",
+   "rc": 0,
+   "error": ""
+  },
+  {
+   "step": "B bridge post-rename SHA failure",
+   "detail": "rc=1 bridge_sha_mismatch; bridge restored, legacy untouched",
+   "bridge_sha": "314c25b75017",
+   "legacy_sha": "314c25b75017",
+   "rc": 1,
+   "error": "bridge_sha_mismatch"
+  },
+  {
+   "step": "C crash between renames",
+   "detail": "subprocess died after bridge rename; bridge=new snapshot, legacy=pre-run bytes; detector flags legacy_sha_mismatch",
+   "bridge_sha": "6074082847c3",
+   "legacy_sha": "314c25b75017",
+   "rc": 1,
+   "error": "simulated crash"
+  },
+  {
+   "step": "D fsync failure on legacy write",
+   "detail": "unit test (mock os.fsync raises on legacy tmp write): rc=1 legacy_copy_failed, bridge rolled back; next run ok",
+   "rc": 0,
+   "error": ""
+  }
+ ],
+ "checks": [
+  {
+   "check": "a_legacy_postrename_rc1",
+   "ok": true,
+   "detail": "rc=1 error=legacy_copy_failed"
+  },
+  {
+   "check": "a_bridge_rolled_back",
+   "ok": true,
+   "detail": "bridge_sha=314c25b75017"
+  },
+  {
+   "check": "a_legacy_holds_corrupted_bytes",
+   "ok": true,
+   "detail": "legacy_sha=7737d85e5d1e (polluted 15-line)"
+  },
+  {
+   "check": "a_verify_targets_flags_mismatch",
+   "ok": true,
+   "detail": "rc=1 detail=bridge_sha_mismatch"
+  },
+  {
+   "check": "a_next_run_repairs",
+   "ok": true,
+   "detail": "rc=0 bridge=6074082847c3 legacy=6074082847c3"
+  },
+  {
+   "check": "a_verify_targets_consistent_after_repair",
+   "ok": true,
+   "detail": "rc=0 detail=all_targets_match_published_sha"
+  },
+  {
+   "check": "b_bridge_postrename_rc1",
+   "ok": true,
+   "detail": "rc=1 error=bridge_sha_mismatch"
+  },
+  {
+   "check": "b_bridge_restored_legacy_untouched",
+   "ok": true,
+   "detail": "bridge=314c25b75017 legacy=314c25b75017"
+  },
+  {
+   "check": "b_next_run_repairs",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c_crash_subprocess_dies_nonzero",
+   "ok": true,
+   "detail": "rc=1 stderr_tail=RuntimeError: simulated crash between renames"
+  },
+  {
+   "check": "c_final_state_bridge_new_legacy_old",
+   "ok": true,
+   "detail": "bridge=6074082847c3 legacy=314c25b75017"
+  },
+  {
+   "check": "c_verify_targets_flags_legacy_mismatch",
+   "ok": true,
+   "detail": "rc=1 detail=legacy_sha_mismatch"
+  },
+  {
+   "check": "c_next_run_repairs_lock_free",
+   "ok": true,
+   "detail": "rc=0 (lock acquirable after crash)"
+  },
+  {
+   "check": "c_verify_targets_consistent_after_repair",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "d_fsync_failure_unit_test_passes",
+   "ok": true,
+   "detail": "rc=0 tail=OK"
+  }
+ ],
+ "passed": 15,
+ "total": 15,
+ "ok": true
+}

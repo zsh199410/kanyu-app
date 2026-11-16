@@ -1,0 +1,49 @@
+{
+ "drill": "d7_redgreen",
+ "d6_root": "/home/hatch/workspace/p2p3-d6",
+ "d7_root": "/home/hatch/workspace/p2p3-d7",
+ "steps": [
+  {
+   "step": "R1 red on D6",
+   "detail": "d7 item-2 drill against the D6 tree fails: the D6 API has no verify_targets / post-rename hooks",
+   "rc": 1,
+   "error": "ImportError/TypeError"
+  },
+  {
+   "step": "R2 green on D7",
+   "detail": "same drill against the D7 tree passes 15/15",
+   "rc": 0,
+   "error": ""
+  },
+  {
+   "step": "R3 API surface",
+   "detail": "D6 lacks verify_targets + the three D7 hooks; D7 has them",
+   "error": ""
+  }
+ ],
+ "checks": [
+  {
+   "check": "r1_red_on_d6",
+   "ok": true,
+   "detail": "rc=1 tail=ImportError: cannot import name 'verify_targets' from 'pool.bridge_sync' (/home/hatch/workspace/p2p3-d6/pool/bridge_sync.py)"
+  },
+  {
+   "check": "r2_green_on_d7",
+   "ok": true,
+   "detail": "rc=0 passed=15/15"
+  },
+  {
+   "check": "r3_api_surface_d6",
+   "ok": true,
+   "detail": "{\"verify_targets\": false, \"import_error\": \"cannot import name 'verify_targets' from 'pool.bridge_sync' (/home/hatch/workspace/p2p3-d6/pool/bridge_sync.py)\", \"has_post_bridge_hook\": false, \"has_legacy_"
+  },
+  {
+   "check": "r3_api_surface_d7",
+   "ok": true,
+   "detail": "{\"verify_targets\": true, \"has_post_bridge_hook\": true, \"has_legacy_post_rename_hook\": true, \"has_bridge_post_rename_hook\": true}"
+  }
+ ],
+ "passed": 4,
+ "total": 4,
+ "ok": true
+}

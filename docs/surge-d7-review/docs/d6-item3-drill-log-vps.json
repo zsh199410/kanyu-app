@@ -1,0 +1,143 @@
+{
+ "drill": "d6_item3_publish_exit",
+ "sha": {
+  "v1_source": "f6083ad90eac",
+  "v2_source": "314c25b75017",
+  "clean14": "6074082847c3"
+ },
+ "steps": [
+  {
+   "step": "C1 healthy",
+   "detail": "gate passes v1, assembly produces v2",
+   "src_sha_after": "314c25b75017",
+   "publish_sha": "6074082847c3",
+   "rc": 0,
+   "error": "",
+   "health": "healthy"
+  },
+  {
+   "step": "C2 torn assembly",
+   "detail": "gate passes v1, assembly crashes; exit 2, phone still serves verified v1",
+   "src_lines": 20,
+   "publish_sha": "6074082847c3",
+   "rc": 2,
+   "error": "",
+   "health": "published_assembly_failed"
+  },
+  {
+   "step": "C3 next cycle on torn source",
+   "detail": "gate refuses torn version; served/bridge unchanged",
+   "served_sha": "6074082847c3",
+   "bridge_sha": "6074082847c3",
+   "rc": 1,
+   "error": "gate_refused",
+   "health": "gate_refused"
+  },
+  {
+   "step": "C4 atomic assembly crash",
+   "detail": "only .tmp left, $SRC still v1; exit 2",
+   "src_sha": "f6083ad90eac",
+   "rc": 2,
+   "error": "",
+   "health": "published_assembly_failed"
+  },
+  {
+   "step": "C5 re-gate v1",
+   "detail": "previous assembly failure did not poison the next cycle; exit 0 healthy",
+   "src_sha_after": "314c25b75017",
+   "rc": 0,
+   "error": "",
+   "health": "healthy"
+  }
+ ],
+ "checks": [
+  {
+   "check": "init_rc0",
+   "ok": true,
+   "detail": "{\"ok\": true, \"mode\": \"fresh\", \"state\": {\"state\": \"ok\", \"stopped\": false, \"since\": 1794818681, \"since_iso\": \"2026-11-16 16:44:41 CST\", \"reason\": \"initialized by owner (mode=fresh)\", \"served_status\": \"u"
+  },
+  {
+   "check": "c1_exit_0_healthy",
+   "ok": true,
+   "detail": "rc=0 health=healthy"
+  },
+  {
+   "check": "c1_published_clean14",
+   "ok": true,
+   "detail": "publish_sha=6074082847c3"
+  },
+  {
+   "check": "c1_source_now_v2",
+   "ok": true,
+   "detail": "src_sha=314c25b75017"
+  },
+  {
+   "check": "c1_sync_rc0",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c1_bridge_clean",
+   "ok": true,
+   "detail": "bridge_sha=6074082847c3"
+  },
+  {
+   "check": "c2_exit_2_assembly_failed",
+   "ok": true,
+   "detail": "rc=2 health=published_assembly_failed"
+  },
+  {
+   "check": "c2_health_gate_rc_0_asm_rc_1",
+   "ok": true,
+   "detail": "health={'cycle_ts': 1794818681, 'health': 'published_assembly_failed', 'gate_rc': 0, 'assembly_rc': 1, 'gated_source_sha': 'f6083ad90eac', 'published_sha': '6074082847c3', 'new_source_sha': 'cc340a5a0f24', 'new_source_gated': False, 'assembly_failed': True, 'src_changed': True}"
+  },
+  {
+   "check": "c2_publish_still_clean14",
+   "ok": true,
+   "detail": "publish_sha=6074082847c3"
+  },
+  {
+   "check": "c2_log_names_exit_2",
+   "ok": true,
+   "detail": "log_tail=:41+08:00 gate-publish cycle_end gate_rc=0 assembly_rc=1 health=published_assembly_failed exit=2 new_source_gated=false\n"
+  },
+  {
+   "check": "c3_exit_1_gate_refused",
+   "ok": true,
+   "detail": "rc=1 health=gate_refused"
+  },
+  {
+   "check": "c3_health_gate_rc_1",
+   "ok": true,
+   "detail": "health={'cycle_ts': 1794818681, 'health': 'gate_refused', 'gate_rc': 1, 'assembly_rc': 1, 'gated_source_sha': 'cc340a5a0f24', 'published_sha': '', 'new_source_sha': 'cc340a5a0f24', 'new_source_gated': False, 'assembly_failed': True, 'src_changed': False}"
+  },
+  {
+   "check": "c3_served_bridge_unchanged",
+   "ok": true,
+   "detail": "served=6074082847c3 bridge=6074082847c3"
+  },
+  {
+   "check": "c4_exit_2_atomic_crash",
+   "ok": true,
+   "detail": "rc=2 health=published_assembly_failed"
+  },
+  {
+   "check": "c4_src_still_v1",
+   "ok": true,
+   "detail": "src_sha=f6083ad90eac"
+  },
+  {
+   "check": "c4_only_tmp_left",
+   "ok": true,
+   "detail": "tmp_exists=True"
+  },
+  {
+   "check": "c5_exit_0_healthy_again",
+   "ok": true,
+   "detail": "rc=0 health=healthy"
+  }
+ ],
+ "passed": 17,
+ "total": 17,
+ "ok": true
+}

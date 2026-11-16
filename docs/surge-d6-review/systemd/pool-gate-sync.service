@@ -1,0 +1,12 @@
+[Unit]
+Description=Free node pool: gated sync (D3 gate, Issue #73)
+Documentation=file:///opt/pool-gate/switch-runbook.md
+After=network-online.target probe-service.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/pool-gate
+ExecStart=/opt/pool-gate/gate-sync.sh
+# No Restart: a refused sync (rc=1) leaves the previously served
+# clean file in place, which is the safe state.
