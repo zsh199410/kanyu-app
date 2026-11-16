@@ -422,7 +422,23 @@ def _atomic_write_inner(publish_dir, filename, lines, keep=HISTORY_KEEP_DEFAULT,
                     except OSError:
                         pass
                 _restore_detail = "restored from snapshot"
+            elif same_bytes:
+                # No persistent snapshot is created for a same-byte write,
+                # to avoid replacing the last DISTINCT rollback anchor.
+                # The original target was SHA-verified equal to expected
+                # before the rename; those exact pre-write bytes provide
+                # the safe recovery image if the rename-time write is torn.
+                restore_tmp = target + ".restore.tmp"
+                with open(restore_tmp, "wb") as restore_f:
+                    restore_f.write(expected)
+                    restore_f.flush()
+                    os.fsync(restore_f.fileno())
+                os.chmod(restore_tmp, 0o600)
+                os.rename(restore_tmp, target)
+                _fsync_dir(publish_dir)
+                _restore_detail = "restored original identical bytes"
             else:
+                # Only the true first publication has no prior target.
                 for _p in (target, target + ".meta.json"):
                     try:
                         os.unlink(_p)
