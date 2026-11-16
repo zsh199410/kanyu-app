@@ -1,0 +1,168 @@
+{
+ "drill": "d7a_item1_gate_block",
+ "code_root": "/home/hatch/workspace/p2p3-d7a",
+ "sha": {
+  "clean14": "6074082847c3",
+  "old_version": "314c25b75017",
+  "polluted": "7737d85e5d1e"
+ },
+ "steps": [
+  {
+   "step": "A setup: legacy post-rename SHA failure",
+   "detail": "rc=1 legacy_copy_failed; bridge rolled back to verified clean14, legacy holds polluted bytes",
+   "bridge_sha": "6074082847c3",
+   "legacy_sha": "7737d85e5d1e",
+   "rc": 1,
+   "error": "legacy_copy_failed"
+  },
+  {
+   "step": "A gate-block latches STOP",
+   "detail": "rc=1 targets_inconsistent; publish refuses pool_stopped; served/bridge + HTTP entry unchanged (verified clean14); legacy still polluted",
+   "bridge_sha": "6074082847c3",
+   "legacy_sha": "7737d85e5d1e",
+   "rc": 1,
+   "error": ""
+  },
+  {
+   "step": "B crash between renames",
+   "detail": "bridge=new snapshot, legacy=pre-run bytes; gate-block latches STOP, next publish refuses",
+   "bridge_sha": "6074082847c3",
+   "legacy_sha": "314c25b75017",
+   "rc": 1,
+   "error": "simulated crash"
+  },
+  {
+   "step": "C controlled repair + clear_stop",
+   "detail": "repair rc=0, three targets clean14, HTTP entry == repaired SHA; STOP still latched until clear_stop; next cycle healthy",
+   "bridge_sha": "6074082847c3",
+   "legacy_sha": "6074082847c3",
+   "rc": 0,
+   "error": ""
+  },
+  {
+   "step": "D D7 red: no gate-block",
+   "detail": "D7 tree has no gate_block (ImportError); the next run repairs the divergence rc=0 with the pool still allowed -- the fault window carried zero protection",
+   "error": ""
+  }
+ ],
+ "checks": [
+  {
+   "check": "a_http_entry_is_verified_before_gate_block",
+   "ok": true,
+   "detail": "http=200 entry_sha=6074082847c3"
+  },
+  {
+   "check": "a_gate_block_rc1_targets_inconsistent",
+   "ok": true,
+   "detail": "rc=1 error=targets_inconsistent detail=legacy_sha_mismatch"
+  },
+  {
+   "check": "a_stop_latched",
+   "ok": true,
+   "detail": "gate_check error=pool_stopped"
+  },
+  {
+   "check": "a_publish_refuses_pool_stopped",
+   "ok": true,
+   "detail": "rc=1 error=pool_stopped"
+  },
+  {
+   "check": "a_served_bridge_sha_unchanged",
+   "ok": true,
+   "detail": "served=6074082847c3 bridge=6074082847c3"
+  },
+  {
+   "check": "a_http_entry_still_verified_during_stop",
+   "ok": true,
+   "detail": "http=200 entry_sha=6074082847c3 (polluted legacy never served)"
+  },
+  {
+   "check": "a_legacy_still_polluted_detectable",
+   "ok": true,
+   "detail": "legacy_sha=7737d85e5d1e"
+  },
+  {
+   "check": "b_crash_subprocess_dies_nonzero",
+   "ok": true,
+   "detail": "rc=1"
+  },
+  {
+   "check": "b_final_state_bridge_new_legacy_old",
+   "ok": true,
+   "detail": "bridge=6074082847c3 legacy=314c25b75017"
+  },
+  {
+   "check": "b_gate_block_detects_legacy_mismatch",
+   "ok": true,
+   "detail": "rc=1 detail=legacy_sha_mismatch"
+  },
+  {
+   "check": "b_stop_latched",
+   "ok": true,
+   "detail": "gate_check error=pool_stopped"
+  },
+  {
+   "check": "b_next_publish_refuses",
+   "ok": true,
+   "detail": "rc=1 error=pool_stopped"
+  },
+  {
+   "check": "b_served_bridge_sha_unchanged",
+   "ok": true,
+   "detail": "served/bridge still clean14"
+  },
+  {
+   "check": "c_repair_rc0",
+   "ok": true,
+   "detail": "rc=0 error=None"
+  },
+  {
+   "check": "c_three_targets_consistent",
+   "ok": true,
+   "detail": "after={'served_sha': '6074082847c3deee566313c625445579fad8c345c6ad5815a3655fa4a0c55286', 'bridge_sha': '6074082847c3deee566313c625445579fad8c345c6ad5815a3655fa4a0c55286', 'legacy_sha': '6074082847c3deee566313c625445579fad8c345c6ad5815a3655fa4a0c55286'}"
+  },
+  {
+   "check": "c_verify_targets_consistent",
+   "ok": true,
+   "detail": "detail=all_targets_match_published_sha"
+  },
+  {
+   "check": "c_http_entry_sha_equals_repaired_sha",
+   "ok": true,
+   "detail": "http=200 entry_sha=6074082847c3"
+  },
+  {
+   "check": "c_stop_still_latched_after_repair",
+   "ok": true,
+   "detail": "repair does not clear STOP; gate_check error=pool_stopped"
+  },
+  {
+   "check": "c_clear_stop_with_owner_ack_and_fresh_evidence",
+   "ok": true,
+   "detail": "rc=0 error=None"
+  },
+  {
+   "check": "c_next_cycle_healthy",
+   "ok": true,
+   "detail": "rc=0"
+  },
+  {
+   "check": "c_publish_allowed_after_clear_stop",
+   "ok": true,
+   "detail": "rc=0 error=None"
+  },
+  {
+   "check": "d_d7_tree_has_no_gate_block",
+   "ok": true,
+   "detail": "rc=1 (gate_block absent on D7)"
+  },
+  {
+   "check": "d_d7_next_run_repairs_with_no_stop_latch",
+   "ok": true,
+   "detail": "rc=0 repair_rc=0 allowed=True"
+  }
+ ],
+ "passed": 23,
+ "total": 23,
+ "ok": true
+}
