@@ -167,6 +167,12 @@ new_test_blobs = {
     'Tests/PeopleStoreTests.swift': '117f02ef7595c3163fa4b9bf9cb337c1bca944d8',
     'Tests/PersonCascadeTests.swift': 'bb525aaa33ea13ef07086fbdde942872a5de916f',
     'Tests/PersonUUIDIsolationTests.swift': '04c05754a54393c0257631bda20d70415e5f04a8',
+    'Tests/PosterRealDataBindingTests.swift': 'c2882f8cbdd7de07538d7b8f03d341a7cf8d3e5c',
+    'Tests/PosterDynamicSnapshotTests.swift': '4bf2f9f9a43268ffa3a93966b7b8bfc764d21714',
+    'Resources/PosterDesignPreviews/PosterConceptBazi.jpg': '530227d387a88685055dd801d9f1c92d16b4795c',
+    'Resources/PosterDesignPreviews/PosterConceptPalm.jpg': '90add3b72576d4fe3f893796dd23ed403e9c8e0d',
+    'Resources/PosterDesignPreviews/PosterConceptPremium.jpg': '0cbf272c127ff4e9c26e65757efdf83ad1c4a092',
+    'Resources/PosterDesignPreviews/PosterConceptZiwei.jpg': 'ef4432dc0f9948ebf7922a14356e3d7207275357',
 }
 for folder in ['Tests','UITests','Resources']:
     tracked = {x for x in files if x.startswith(folder+'/')}

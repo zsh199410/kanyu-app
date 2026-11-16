@@ -1612,5 +1612,71 @@
     "before": "        context.translateBy(x: 0, y: pageRect.height)\n        context.scaleBy(x: 1, y: -1)\n    }\n    }\n\n    /// 一行已排版的正文行（绘制时直接取 y 与 height，不再重算断页）\n    private struct PlacedLine {\n",
     "after": "        context.translateBy(x: 0, y: pageRect.height)\n        context.scaleBy(x: 1, y: -1)\n    }\n\n    /// 一行已排版的正文行（绘制时直接取 y 与 height，不再重算断页）\n    private struct PlacedLine {\n",
     "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "// MARK: - 保存图片到相册（4 个海报导出点共用）",
+    "after": "// MARK: - 海报导出文件名的人物 UUID 后缀（P0-4 口径，与 PalmPosterSheetView 一致）\n// 显式人物 UUID → -pid<32位hex>；nil → 空（无后缀，报告中心按姓名尽力迁移）。\n// pid 段追加在款式后缀之后（报告中心先剥 pid 再剥款式）。\nenum PosterExportNaming {\n    static func pidSuffix(personID: UUID?) -> String {\n        personID.map { \"-pid\" + $0.uuidString.replacingOccurrences(of: \"-\", with: \"\") } ?? \"\"\n    }\n}\n\n// MARK: - 保存图片到相册（4 个海报导出点共用）",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "struct PosterSheetView: View {\n    let chart: BaziChart\n    let name: String\n    @State private var fileURL: URL?",
+    "after": "struct PosterSheetView: View {\n    let chart: BaziChart\n    let name: String\n    var personID: UUID? = nil\n    @EnvironmentObject var peopleStore: PeopleStore\n    @State private var fileURL: URL?",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "            let fileName = \"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\"",
+    "after": "            let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))\n            let fileName = \"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix)\\(pidSuffix).png\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": ".sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name, initialStyle: style) }",
+    "after": ".sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name, initialStyle: style, personID: personID) }",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "struct ZiweiPosterSheetView: View {\n    let chart: ZiweiChart\n    let name: String\n    @State private var renderError: String?",
+    "after": "struct ZiweiPosterSheetView: View {\n    let chart: ZiweiChart\n    let name: String\n    var personID: UUID? = nil\n    @EnvironmentObject var peopleStore: PeopleStore\n    @State private var renderError: String?",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "        let image = output.image, data = output.pngData\n        do {\n            _ = try ReportExportArchive.save(data,\n                fileName: \"ziwei-poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\")",
+    "after": "        let image = output.image, data = output.pngData\n        let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))\n        do {\n            _ = try ReportExportArchive.save(data,\n                fileName: \"ziwei-poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix)\\(pidSuffix).png\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "struct HeCanPosterSheetView: View {\n    let bazi: BaziChart\n    let ziwei: ZiweiChart\n    let name: String\n    var palmLines: [String] = []",
+    "after": "struct HeCanPosterSheetView: View {\n    let bazi: BaziChart\n    let ziwei: ZiweiChart\n    let name: String\n    var palmLines: [String] = []\n    var personID: UUID? = nil\n    @EnvironmentObject var peopleStore: PeopleStore",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "        let image = output.image, data = output.pngData\n        do {\n            _ = try ReportExportArchive.save(data,\n                fileName: \"hecan-poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\")",
+    "after": "        let image = output.image, data = output.pngData\n        let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))\n        do {\n            _ = try ReportExportArchive.save(data,\n                fileName: \"hecan-poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix)\\(pidSuffix).png\")",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "struct PosterEditorView: View {\n    let chart: BaziChart\n    let name: String\n\n    @Environment(\\.dismiss) private var dismiss",
+    "after": "struct PosterEditorView: View {\n    let chart: BaziChart\n    let name: String\n    var personID: UUID? = nil\n    @EnvironmentObject var peopleStore: PeopleStore\n\n    @Environment(\\.dismiss) private var dismiss",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "    init(chart: BaziChart, name: String, initialStyle: PosterStyle = .songQingdai) {\n        self.chart = chart\n        self.name = name",
+    "after": "    init(chart: BaziChart, name: String, initialStyle: PosterStyle = .songQingdai, personID: UUID? = nil) {\n        self.chart = chart\n        self.name = name\n        self.personID = personID",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": "            let fileName = \"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix).png\"",
+    "after": "            let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))\n            let fileName = \"poster-\\(ReportBuilder.exportName(name.isEmpty ? \"chart\" : name))\\(style.fileSuffix)\\(pidSuffix).png\"",
+    "count": 1
   }
 ]
