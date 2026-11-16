@@ -42,6 +42,8 @@ private struct PosterEditorRenderKey: Hashable {
 struct PosterEditorView: View {
     let chart: BaziChart
     let name: String
+    var personID: UUID? = nil
+    @EnvironmentObject var peopleStore: PeopleStore
 
     @Environment(\.dismiss) private var dismiss
     @State private var style: PosterStyle = .songQingdai
@@ -57,9 +59,10 @@ struct PosterEditorView: View {
     @State private var renderError: String?
     @State private var renderRequestID = UUID()
 
-    init(chart: BaziChart, name: String, initialStyle: PosterStyle = .songQingdai) {
+    init(chart: BaziChart, name: String, initialStyle: PosterStyle = .songQingdai, personID: UUID? = nil) {
         self.chart = chart
         self.name = name
+        self.personID = personID
         _style = State(initialValue: initialStyle)
         _renderKey = State(initialValue: PosterEditorRenderKey(style: initialStyle, accent: .qingdai, title: "", subtitle: ""))
     }
@@ -201,7 +204,8 @@ struct PosterEditorView: View {
                 return
             }
             let img = output.image, data = output.pngData
-            let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png"
+            let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))
+            let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix)\(pidSuffix).png"
             do {
                 let url = try ReportExportArchive.save(data, fileName: fileName)
                 guard self.renderRequestID == request, self.renderKey == expectedKey else { return }

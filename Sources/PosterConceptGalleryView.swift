@@ -136,8 +136,24 @@ struct PosterConceptGalleryView: View {
                     Label("请导入四款 JPG 预览图资源。", systemImage: "photo.badge.exclamationmark")
                         .foregroundStyle(Ky.sub)
                 }
+                if (c == .bazi || c == .premium), let person {
+                    NavigationLink {
+                        PosterDynamicTemplateView(snapshot: PosterDynamicSnapshot.bazi(
+                            person: person,
+                            chart: BaziEngine.cachedPaipan(
+                                clock: person.birthDate, gender: person.gender,
+                                longitude: person.useLongitude ? person.longitude : nil),
+                            premium: c == .premium))
+                    } label: {
+                        Label("当前人物动态排版预览（不保存）", systemImage: "doc.text.image")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Ky.qingdai)
+                    .accessibilityIdentifier("poster.gallery.dynamic.\(c.rawValue)")
+                }
                 exportLink(c)
-                Text("当前导出器仍沿用已验证的原生布局，新画风的真实数据重排将单独验收。不会保存这张示例图作为个人报告。")
+                Text("设计图里的姓名、命盘、数值仅供欣赏；动态预览只使用当前命主的真实计算字段，不写入文件或替换原有导出。")
                     .font(.caption).foregroundStyle(Ky.sub)
                     .fixedSize(horizontal: false, vertical: true)
             }
