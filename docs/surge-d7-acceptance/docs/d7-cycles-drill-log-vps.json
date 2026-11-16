@@ -1,0 +1,153 @@
+{
+ "drill": "d7_cycles_0715",
+ "sha": {
+  "clean14": "6074082847c3",
+  "v1": "f6083ad90eac",
+  "v2": "314c25b75017",
+  "v3_untested": "65fb1e294c8d"
+ },
+ "steps": [
+  {
+   "step": "P1 cycle N :07+:15",
+   "detail": ":07 publish v1 gated, :15 sync + bridge serve clean14",
+   "served_sha": "6074082847c3",
+   "bridge_sha": "6074082847c3",
+   "rc": 0,
+   "error": ""
+  },
+  {
+   "step": "P1 cycle N+1 :07+:15",
+   "detail": ":07 publish v2 gated (source v1->v2), :15 re-serves clean14; bridge SHA unchanged (last good bytes)",
+   "served_sha": "6074082847c3",
+   "bridge_sha": "6074082847c3",
+   "rc": 0,
+   "error": ""
+  },
+  {
+   "step": "P2 cycle N+2 :07+:15 (untested v3)",
+   "detail": ":07 gate refuses v3; :15 keeps serving v2 clean14; bridge SHA unchanged",
+   "served_sha": "6074082847c3",
+   "bridge_sha": "6074082847c3",
+   "rc": 0,
+   "error": ""
+  },
+  {
+   "step": "P3 :15 tamper -> refuse + restore",
+   "detail": "served tampered post-copy: sync rc=1, served restored clean14, bridge keeps last good SHA, pool STOP",
+   "served_sha": "6074082847c3",
+   "bridge_sha": "6074082847c3",
+   "rc": 1,
+   "error": "sync_served_gate_failed"
+  }
+ ],
+ "checks": [
+  {
+   "check": "p1_init_rc0",
+   "ok": true,
+   "detail": "{'ok': True, 'mode': 'fresh', 'state': {'state': 'ok', 'stopped': False, 'since': 1794821807, 'since"
+  },
+  {
+   "check": "p1_n_07_publish_v1_rc0",
+   "ok": true,
+   "detail": "None"
+  },
+  {
+   "check": "p1_n_07_chain_source_v1",
+   "ok": true,
+   "detail": "f6083ad90eac"
+  },
+  {
+   "check": "p1_n_15_sync_rc0",
+   "ok": true,
+   "detail": "None"
+  },
+  {
+   "check": "p1_n_15_bridge_rc0",
+   "ok": true,
+   "detail": "None"
+  },
+  {
+   "check": "p1_n_targets_clean14",
+   "ok": true,
+   "detail": "served=6074082847c3 bridge=6074082847c3 legacy=6074082847c3"
+  },
+  {
+   "check": "p1_n_verify_targets_consistent",
+   "ok": true,
+   "detail": "all_targets_match_published_sha"
+  },
+  {
+   "check": "p1_n1_07_publish_v2_rc0",
+   "ok": true,
+   "detail": "None"
+  },
+  {
+   "check": "p1_n1_07_chain_source_v2",
+   "ok": true,
+   "detail": "314c25b75017"
+  },
+  {
+   "check": "p1_n1_15_sync_rc0",
+   "ok": true,
+   "detail": "None"
+  },
+  {
+   "check": "p1_n1_15_bridge_rc0",
+   "ok": true,
+   "detail": "None"
+  },
+  {
+   "check": "p1_n1_targets_still_clean14",
+   "ok": true,
+   "detail": "source moved v1->v2, served bytes stay clean14"
+  },
+  {
+   "check": "p1_n1_verify_targets_consistent",
+   "ok": true,
+   "detail": "all_targets_match_published_sha"
+  },
+  {
+   "check": "p2_n2_07_publish_v3_refused",
+   "ok": true,
+   "detail": "rc=1 error=phone_gate_zero_qualified"
+  },
+  {
+   "check": "p2_n2_07_chain_still_v2",
+   "ok": true,
+   "detail": "314c25b75017"
+  },
+  {
+   "check": "p2_n2_15_sync_still_serves_v2",
+   "ok": true,
+   "detail": "None"
+  },
+  {
+   "check": "p2_n2_15_bridge_still_v2_clean",
+   "ok": true,
+   "detail": "rc=0 bridge=6074082847c3"
+  },
+  {
+   "check": "p3_15_tamper_sync_refuses",
+   "ok": true,
+   "detail": "rc=1 error=sync_served_gate_failed"
+  },
+  {
+   "check": "p3_15_served_restored_clean14",
+   "ok": true,
+   "detail": "served=6074082847c3 restored=True"
+  },
+  {
+   "check": "p3_15_bridge_rollback_sha_unchanged",
+   "ok": true,
+   "detail": "bridge=6074082847c3 (last good, untouched by the tamper)"
+  },
+  {
+   "check": "p3_15_pool_stopped_after_tamper",
+   "ok": true,
+   "detail": "err=pool_stopped"
+  }
+ ],
+ "passed": 21,
+ "total": 21,
+ "ok": true
+}

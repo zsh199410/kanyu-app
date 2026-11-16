@@ -1,0 +1,172 @@
+{
+ "drill": "d6_redgreen",
+ "d5_root": "/opt/p2p3-d5",
+ "d6_root": "/opt/p2p3-d7a",
+ "phases": {
+  "r1_served_tamper_old": {
+   "mode": "served",
+   "rc": 1,
+   "error": "sync_served_gate_failed",
+   "served_sha_after": "7737d85e5d1e",
+   "served_lines_after": 15,
+   "served_is_polluted": true,
+   "served_is_clean": false,
+   "quarantine_files": [],
+   "quarantine_sha": "",
+   "quarantine_holds_polluted": false,
+   "degraded": true
+  },
+  "r1_served_tamper_new": {
+   "mode": "served",
+   "rc": 1,
+   "error": "sync_served_gate_failed",
+   "served_sha_after": "6074082847c3",
+   "served_lines_after": 14,
+   "served_is_polluted": false,
+   "served_is_clean": true,
+   "quarantine_files": [
+    "pool-new-1794688593-7737d85e5d1e.txt"
+   ],
+   "quarantine_sha": "7737d85e5d1e",
+   "quarantine_holds_polluted": true,
+   "degraded": true
+  },
+  "r2b_bridge_race_old": {
+   "mode": "bridge",
+   "module_missing": true,
+   "import_error": "No module named 'pool.bridge_sync'"
+  },
+  "r2b_bridge_race_new": {
+   "mode": "bridge",
+   "module_missing": false,
+   "rc": 1,
+   "error": "served_changed_after_bridge_copy",
+   "bridge_sha": "6074082847c3",
+   "bridge_is_clean": true,
+   "served_is_clean": true,
+   "served_restored": true
+  },
+  "r2a_legacy_failure_old": {
+   "tree": "d5-old",
+   "init_rc": 0,
+   "publish_rc": 0,
+   "sync_rc": 0,
+   "bridge_before_break": "6074082847c3",
+   "legacy_before_break": "6074082847c3",
+   "sync_after_break_rc": 0,
+   "log_has_old_copy_failed": true,
+   "log_has_legacy_copy_failed": false,
+   "log_has_gate_block_refused": false,
+   "bridge_after_break": "6074082847c3",
+   "legacy_written": false,
+   "clean_sha": "6074082847c3"
+  },
+  "r2a_legacy_failure_new": {
+   "tree": "d6-new",
+   "init_rc": 0,
+   "publish_rc": 0,
+   "sync_rc": 0,
+   "bridge_before_break": "6074082847c3",
+   "legacy_before_break": "6074082847c3",
+   "sync_after_break_rc": 1,
+   "log_has_old_copy_failed": false,
+   "log_has_legacy_copy_failed": false,
+   "log_has_gate_block_refused": true,
+   "bridge_after_break": "6074082847c3",
+   "legacy_written": false,
+   "clean_sha": "6074082847c3"
+  },
+  "r3_publish_exit_old": {
+   "tree": "d5-old",
+   "init_rc": 0,
+   "publish_rc": 0,
+   "health": null,
+   "publish_sha": "6074082847c3",
+   "clean_sha": "6074082847c3"
+  },
+  "r3_publish_exit_new": {
+   "tree": "d6-new",
+   "init_rc": 0,
+   "publish_rc": 2,
+   "health": {
+    "cycle_ts": 1794821806,
+    "health": "published_assembly_failed",
+    "gate_rc": 0,
+    "assembly_rc": 1,
+    "gated_source_sha": "f6083ad90eac",
+    "published_sha": "6074082847c3",
+    "new_source_sha": "cc340a5a0f24",
+    "new_source_gated": false,
+    "assembly_failed": true,
+    "src_changed": true
+   },
+   "publish_sha": "6074082847c3",
+   "clean_sha": "6074082847c3"
+  },
+  "grep": {
+   "old_bridge_sync_module": false,
+   "new_bridge_sync_module": true,
+   "old_sync_quarantine": 0,
+   "new_sync_quarantine": 2,
+   "old_publish_assembly_failed": 0,
+   "new_publish_assembly_failed": 2,
+   "old_sync_legacy_copy_failed": -1,
+   "new_sync_legacy_copy_failed": 3
+  }
+ },
+ "checks": [
+  {
+   "check": "r1_old_served_keeps_polluted_RED",
+   "ok": true,
+   "detail": "rc=1 error=sync_served_gate_failed served_sha=7737d85e5d1e lines=15 quarantine=[]"
+  },
+  {
+   "check": "r1_new_served_quarantined_and_restored_GREEN",
+   "ok": true,
+   "detail": "rc=1 error=sync_served_gate_failed served_sha=6074082847c3 quarantine=['pool-new-1794688593-7737d85e5d1e.txt'] degraded=True"
+  },
+  {
+   "check": "r2b_old_no_bridge_sync_module_RED",
+   "ok": true,
+   "detail": "import_error=No module named 'pool.bridge_sync'"
+  },
+  {
+   "check": "r2b_new_snapshot_only_verified_bytes_GREEN",
+   "ok": true,
+   "detail": "rc=1 error=served_changed_after_bridge_copy bridge_clean=True served_restored=True"
+  },
+  {
+   "check": "r2a_old_legacy_failure_exits_0_RED",
+   "ok": true,
+   "detail": "rc=0 old_copy_failed=True"
+  },
+  {
+   "check": "r2a_new_legacy_failure_exits_1_and_rolls_back_GREEN",
+   "ok": true,
+   "detail": "rc=1 gate_block_refused=True bridge=6074082847c3 legacy_written=False"
+  },
+  {
+   "check": "r3_old_torn_assembly_exits_0_RED",
+   "ok": true,
+   "detail": "rc=0 health=None"
+  },
+  {
+   "check": "r3_new_torn_assembly_exits_2_GREEN",
+   "ok": true,
+   "detail": "rc=2 health={'cycle_ts': 1794821806, 'health': 'published_assembly_failed', 'gate_rc': 0, 'assembly_rc': 1, 'gated_source_sha': 'f6083ad90eac', 'published_sha': '6074082847c3', 'new_source_sha': 'cc340a5a0f24', 'new_source_gated': False, 'assembly_failed': True, 'src_changed': True} publish_sha=6074082847c3"
+  },
+  {
+   "check": "grep_old_has_no_d6_markers",
+   "ok": true,
+   "detail": "{'old_bridge_sync_module': False, 'new_bridge_sync_module': True, 'old_sync_quarantine': 0, 'new_sync_quarantine': 2, 'old_publish_assembly_failed': 0, 'new_publish_assembly_failed': 2, 'old_sync_legacy_copy_failed': -1, 'new_sync_legacy_copy_failed': 3}"
+  },
+  {
+   "check": "grep_new_has_d6_markers",
+   "ok": true,
+   "detail": "{'old_bridge_sync_module': False, 'new_bridge_sync_module': True, 'old_sync_quarantine': 0, 'new_sync_quarantine': 2, 'old_publish_assembly_failed': 0, 'new_publish_assembly_failed': 2, 'old_sync_legacy_copy_failed': -1, 'new_sync_legacy_copy_failed': 3}"
+  }
+ ],
+ "passed": 10,
+ "total": 10,
+ "ok": true
+}

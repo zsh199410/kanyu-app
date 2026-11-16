@@ -1,0 +1,100 @@
+{
+ "drill": "d7_item1_http_exposure",
+ "live_captured_cst": "2026-11-16 16:37",
+ "sha": {
+  "clean14": "6074082847c3",
+  "polluted": "7737d85e5d1e",
+  "live_entry": "cdaa94605875"
+ },
+ "steps": [
+  {
+   "step": "R live evidence table validated",
+   "detail": "entry 200 + SHA == disk bridge == production publish; 7 served-path probes refused; audit: 1 static alias (bridge only), 0 served/publish mappings, 0 autoindex",
+   "entry_sha": "cdaa94605875",
+   "refused": 7,
+   "error": ""
+  },
+  {
+   "step": "S sandbox good mapping",
+   "detail": "engine=python-emulation; entry 200 + SHA match; 6 traversal paths refused; quarantine 404",
+   "engine": "python-emulation",
+   "error": ""
+  },
+  {
+   "step": "S negative control (independent alias)",
+   "detail": "guard=ok AND probe=200 with served SHA: the realpath guard cannot cover an independent HTTP alias; the pre-switch audit + probes are the control",
+   "engine": "python-emulation",
+   "error": ""
+  }
+ ],
+ "checks": [
+  {
+   "check": "r_entry_sha_matches_disk_bridge",
+   "ok": true,
+   "detail": "http=200 lines=29 sha=cdaa94605875"
+  },
+  {
+   "check": "r_entry_is_only_200",
+   "ok": true,
+   "detail": "non-entry: P2-dotdot=404,P3-encoded-dotdot=404,P4-quarantine=404,P5-escape-publish=404,P6-encoded-gate=400,P7-root-served=404,P8-semicolon=404"
+  },
+  {
+   "check": "r_no_probe_body_is_pool_bytes",
+   "ok": true,
+   "detail": "served-path body SHAs: 1425ed57b9c4,9f6d0b634cab,edc3eb965bbb"
+  },
+  {
+   "check": "r_quarantine_path_404",
+   "ok": true,
+   "detail": "http=404"
+  },
+  {
+   "check": "r_audit_one_static_alias_bridge_only",
+   "ok": true,
+   "detail": "aliases=1 served_mappings=0 autoindex=0 nginx=ok"
+  },
+  {
+   "check": "r_gate_state_not_yet_deployed",
+   "ok": true,
+   "detail": "gate state dir absent pre-switch (served path does not exist yet; the check binds the FUTURE path)"
+  },
+  {
+   "check": "s_entry_200_sha_match",
+   "ok": true,
+   "detail": "http=200 sha=6074082847c3"
+  },
+  {
+   "check": "s_traversal_all_refused",
+   "ok": true,
+   "detail": "pool-new.txt=404,pool-new.txt=404,pool-new.txt=404,..%2f..%2f..%2fopt=404,pool-new.txt=404,pool-new.txt=404"
+  },
+  {
+   "check": "s_quarantine_404",
+   "ok": true,
+   "detail": "http=404"
+  },
+  {
+   "check": "s_guard_served_inside_bridge_exposed",
+   "ok": true,
+   "detail": "nested served -> exposed"
+  },
+  {
+   "check": "s_guard_independent_alias_returns_ok",
+   "ok": true,
+   "detail": "served outside bridge -> ok (the documented limit)"
+  },
+  {
+   "check": "s_alias_control_serves_served_200",
+   "ok": true,
+   "detail": "http=200 sha=6074082847c3 (served bytes readable via alias)"
+  },
+  {
+   "check": "s_gap_guard_ok_but_probe_200",
+   "ok": true,
+   "detail": "guard blind to the alias; only the audit + probe catch it (GPT D6 item 1 limit, proven live here)"
+  }
+ ],
+ "passed": 13,
+ "total": 13,
+ "ok": true
+}
