@@ -9,6 +9,12 @@ final class PhysiognomyGuideTests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        addUIInterruptionMonitor(withDescription: "系统权限") { alert in
+            for title in ["使用App时允许", "使用 App 时允许", "Allow While Using App", "允许一次", "Allow Once", "好", "OK"] {
+                if alert.buttons[title].exists { alert.buttons[title].tap(); return true }
+            }
+            return false
+        }
     }
 
     func testLightStandard() { guides(theme: "light", size: "large") }
