@@ -1222,5 +1222,11 @@
     "before": "                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: \"astro\") })\n                        .accessibilityIdentifier(\"home.astro\")",
     "after": "                        .simultaneousGesture(TapGesture().onEnded { _ in AllToolsData.recordRecent(tool: \"astro\") })",
     "count": 1
+  },
+  {
+    "path": "Sources/KanyuApp.swift",
+    "before": "            // Keep the workspace lazy; frame pacing requires device measurement.\n            LazyVStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {",
+    "after": "            // P0: eager VStack — LazyVStack placement stalled the main thread 60s+ on scroll (see #33); 9 fixed sections only.\n            VStack(alignment: .leading, spacing: KanyuV6.Metric.cardGap) {",
+    "count": 1
   }
 ]
