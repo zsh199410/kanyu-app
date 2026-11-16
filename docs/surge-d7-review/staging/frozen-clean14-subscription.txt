@@ -1,0 +1,14 @@
+T01 美国9 🇺🇸 = trojan, 192.0.2.1, 40000, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T02 美国11 🇺🇸 = trojan, 192.0.2.2, 40001, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T03 美国12 🇺🇸 = trojan, 192.0.2.3, 40002, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T04 香港 🇭🇰 = trojan, 192.0.2.4, 40003, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T05 美国1 🇺🇸 = trojan, 192.0.2.5, 40004, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T06 美国7 🇺🇸 = trojan, 192.0.2.6, 40005, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T07 美国10 🇺🇸 = trojan, 192.0.2.7, 40006, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T08 美国5 🇺🇸 = trojan, 192.0.2.8, 40007, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T09 美国2 🇺🇸 = trojan, 192.0.2.9, 40008, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T10 香港2 🇭🇰 = trojan, 192.0.2.10, 40009, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T12 美国13 🇺🇸 = trojan, 192.0.2.12, 40011, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T13 美国8 🇺🇸 = trojan, 192.0.2.13, 40012, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T14 美国4 🇺🇸 = trojan, 192.0.2.14, 40013, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
+T20 香港36 🇭🇰 = trojan, 192.0.2.20, 40019, password=TEST-ONLY-NOT-A-REAL-NODE, sni=test.invalid
