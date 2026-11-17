@@ -116,7 +116,12 @@ final class PosterExportAcceptanceUITests: XCTestCase {
         wait(for: [sheetGone], timeout: 5)
 
         // 尊享款式：切款式 Picker 到“尊享预测单”，等重渲染后截图。
+        // 滚回顶部：Picker("海报款式") 在 LazyVStack 第一项（页顶，PosterModule.swift:1411），分享 sheet 关闭后
+        // 页面仍停在底部，屏外项不会实例化（Build #474 失败定论，与 #467 同类）；先 swipeDown 滚回顶部再等，断言不变。
         let stylePicker = app.buttons["海报款式"]
+        for _ in 0..<10 where !stylePicker.exists {
+            app.swipeDown()
+        }
         XCTAssertTrue(stylePicker.waitForExistence(timeout: 10), "海报款式选择器未出现")
         stylePicker.tap()
         let premiumOption = app.buttons["尊享预测单"]
