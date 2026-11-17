@@ -169,6 +169,7 @@ new_test_blobs = {
     'Tests/PersonUUIDIsolationTests.swift': '04c05754a54393c0257631bda20d70415e5f04a8',
     'Tests/PosterRealDataBindingTests.swift': 'c2882f8cbdd7de07538d7b8f03d341a7cf8d3e5c',
     'Tests/PosterDynamicSnapshotTests.swift': '4bf2f9f9a43268ffa3a93966b7b8bfc764d21714',
+    'Tests/PosterBatch2OwnershipTests.swift': '04a129c6bbac6b407e5779957ef2c6e20c1a3d2b',
     'Resources/PosterDesignPreviews/PosterConceptBazi.jpg': '530227d387a88685055dd801d9f1c92d16b4795c',
     'Resources/PosterDesignPreviews/PosterConceptPalm.jpg': '90add3b72576d4fe3f893796dd23ed403e9c8e0d',
     'Resources/PosterDesignPreviews/PosterConceptPremium.jpg': '0cbf272c127ff4e9c26e65757efdf83ad1c4a092',
