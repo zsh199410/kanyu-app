@@ -831,6 +831,18 @@ class TestDeployScriptStages(MatrixBase):
         # simulate the currently deployed OLD script (stage 5 backs it up)
         with open(dst, "w") as f:
             f.write("/* old deployed script */\n")
+        # Stage 5 now requires the immutable manifest produced by stage 2.
+        # Seed all original targets in this isolated fixture first.
+        service_dst = os.path.join(self.tmp, "probe_service.py")
+        service_new = os.path.join(self.tmp, "candidate_service.py")
+        with open(service_dst, "w") as f:
+            f.write("# old fixture service\\n")
+        with open(service_new, "w") as f:
+            f.write("# new fixture service\\n")
+        env["SERVICE_DST"] = service_dst
+        service_sha = hashlib.sha256(open(service_new, "rb").read()).hexdigest()
+        stage2 = self._run_deploy(["2", service_new, service_sha], env)
+        self.assertEqual(stage2.returncode, 0, stage2.stderr + stage2.stdout)
         des = self._desensitized_script()
         sha_in = hashlib.sha256(open(des, "rb").read()).hexdigest()
         r = self._run_deploy(["5", des, sha_in], env)
