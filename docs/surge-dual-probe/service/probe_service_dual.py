@@ -70,17 +70,40 @@ CIRCUIT_WINDOW_SECONDS = 600
 CIRCUIT_COOLDOWN_SECONDS = 3600
 
 # ---- pool content SHA (P0-1): the server is the authority on which ----
-# pool version is under test. sha256 of the pool file bytes, computed
-# fresh on every call (the file is small and republished hourly).
-# NOTE: pool_sha() is used ONLY when issuing tasks (the snapshot SHA).
-# Ingest NEVER validates against the "current" pool file; it validates
-# against the batch record locked at issuance (see _check_batch).
+# pool version is under test. sha256 of the pool file bytes.
+# NOTE: pool_sha() is used ONLY to fill in the pool SHA on EARLY
+# tasks returns (circuit open / caps / target met: no batch was
+# issued, so nothing can be bound to it). Task issuance NEVER calls
+# pool_sha(): it uses _pool_snapshot() below, which reads the pool
+# file bytes ONCE and derives the fingerprint set + SHA + batch from
+# that single immutable snapshot (GPT #6940445042 P0-1). Ingest NEVER
+# validates against the "current" pool file; it validates against the
+# batch record locked at issuance (see _check_batch).
 def pool_sha():
     try:
         with open(POOL_TXT, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest()
     except OSError:
         return None
+
+
+def _pool_snapshot():
+    """Read the pool file bytes ONCE and derive (sha256, lines) from that
+    single immutable snapshot. Task issuance binds the fingerprint set +
+    SHA + batch from THIS snapshot only: sync_pool()/sync_pool_wifi()
+    are fed these exact lines, candidates are selected from the DB
+    state produced by them, and _issue_batch locks this SHA. A :07
+    rotation between candidate selection and SHA read therefore cannot
+    misbind fingerprints from one pool version to another version's
+    SHA (GPT #6940445042 P0-1). Returns (None, []) when the file is
+    unreadable (callers fail closed with reason pool_unreadable)."""
+    try:
+        with open(POOL_TXT, "rb") as f:
+            raw = f.read()
+    except OSError:
+        return None, []
+    return (hashlib.sha256(raw).hexdigest(),
+            raw.decode("utf-8", errors="ignore").splitlines())
 
 BATCH_TTL_SECONDS = 2 * 3600  # validity window of a task batch
 BATCH_TS_SKEW_SECONDS = 600   # phone/server clock skew allowance
@@ -312,14 +335,20 @@ def _meta_set(conn, key, value):
         (key, str(value)),
     )
 
-def sync_pool():
+def sync_pool(lines=None):
+    """Sync probe_nodes from the pool file. When `lines` is given, sync
+    from those exact lines (task issuance passes the lines of the single
+    immutable _pool_snapshot() so selection and SHA can never straddle
+    a rotation, GPT #6940445042 P0-1); when None, read the file fresh
+    (standalone callers: stats(), `sync` command)."""
     conn = db()
     now = int(time.time())
-    try:
-        lines = open(POOL_TXT, encoding="utf-8", errors="ignore").read().splitlines()
-    except OSError:
-        conn.close()
-        return {"ok": False, "error": "pool file unreadable"}
+    if lines is None:
+        try:
+            lines = open(POOL_TXT, encoding="utf-8", errors="ignore").read().splitlines()
+        except OSError:
+            conn.close()
+            return {"ok": False, "error": "pool file unreadable"}
     seen = set()
     added = 0
     renamed = 0
@@ -427,8 +456,16 @@ def quality_score(row):
 def next_tasks():
     """Dynamic backfill scheduler.
     Returns (tasks, info). tasks is a list of {fingerprint,name,protocol}.
-    info explains the decision: batch_size, reason, caps, circuit state."""
-    sync_pool()
+    info explains the decision: batch_size, reason, caps, circuit state.
+    P0-1 (GPT #6940445042): the pool file is read ONCE via
+    _pool_snapshot(); sync, candidate selection and batch issuance all
+    derive from that single immutable snapshot, so a :07 rotation
+    mid-call cannot bind fingerprints from one pool version to
+    another version's SHA."""
+    psha, lines = _pool_snapshot()
+    if psha is None:
+        return [], {"reason": "pool_unreadable", "batch_size": 0}
+    sync_pool(lines)
     conn = db()
     now = int(time.time())
     hour_start, day_start = _hour_bounds(now)
@@ -500,9 +537,10 @@ def next_tasks():
                 break
             tasks.append({"fingerprint": r[0], "name": r[1], "protocol": r[2]})
     # P0-1: lock the batch binding at issuance (snapshot SHA + task
-    # fingerprint set + validity window). One pool_sha() call so the
-    # batch record and the info dict can never disagree.
-    psha = pool_sha()
+    # fingerprint set + validity window). The SHA and the fingerprint
+    # set both come from the ONE _pool_snapshot() read at the top of
+    # this function, so the batch record and the info dict can never
+    # disagree and can never straddle a pool rotation.
     batch_id = _issue_batch(conn, "cellular", psha, tasks)
     conn.close()
     return tasks, {
@@ -716,14 +754,18 @@ def _maybe_trip_circuit_wifi(conn, now):
         return True
     return False
 
-def sync_pool_wifi():
+def sync_pool_wifi(lines=None):
+    """Sync probe_nodes_wifi from the pool file. `lines` behaves as in
+    sync_pool(): task issuance passes the single immutable snapshot
+    lines (GPT #6940445042 P0-1); None reads the file fresh."""
     conn = db()
     now = int(time.time())
-    try:
-        lines = open(POOL_TXT, encoding="utf-8", errors="ignore").read().splitlines()
-    except OSError:
-        conn.close()
-        return {"ok": False, "error": "pool file unreadable"}
+    if lines is None:
+        try:
+            lines = open(POOL_TXT, encoding="utf-8", errors="ignore").read().splitlines()
+        except OSError:
+            conn.close()
+            return {"ok": False, "error": "pool file unreadable"}
     seen = set()
     added = 0
     renamed = 0
@@ -772,8 +814,12 @@ def sync_pool_wifi():
 def next_tasks_wifi():
     """Wifi-only scheduler. Same caps as cellular but counted separately;
     wifi reports never consume the cellular budget and never satisfy the
-    cellular replenish target."""
-    sync_pool_wifi()
+    cellular replenish target. P0-1 (GPT #6940445042): same single
+    immutable _pool_snapshot() rule as next_tasks()."""
+    psha, lines = _pool_snapshot()
+    if psha is None:
+        return [], {"reason": "pool_unreadable", "batch_size": 0}
+    sync_pool_wifi(lines)
     conn = db()
     now = int(time.time())
     hour_start, day_start = _hour_bounds(now)
@@ -841,9 +887,10 @@ def next_tasks_wifi():
                 break
             tasks.append({"fingerprint": r[0], "name": r[1], "protocol": r[2]})
     # P0-1: lock the batch binding at issuance (snapshot SHA + task
-    # fingerprint set + validity window). One pool_sha() call so the
-    # batch record and the info dict can never disagree.
-    psha = pool_sha()
+    # fingerprint set + validity window). The SHA and the fingerprint
+    # set both come from the ONE _pool_snapshot() read at the top of
+    # this function, so the batch record and the info dict can never
+    # disagree and can never straddle a pool rotation.
     batch_id = _issue_batch(conn, "wifi", psha, tasks)
     conn.close()
     return tasks, {
@@ -1086,11 +1133,18 @@ class Handler(BaseHTTPRequestHandler):
         if act == "tasks":
             try:
                 tasks, info = next_tasks_wifi() if channel == "wifi" else next_tasks()
-                # The pool SHA is authoritative on EVERY tasks response,
-                # including early returns (circuit open, caps, target met):
-                # the client must never report results without a pool
-                # version to bind them to.
-                info["pool_sha"] = pool_sha()
+                # P0-1 (GPT #6940445042): NEVER overwrite a batch-locked
+                # SHA. next_tasks()/next_tasks_wifi() lock pool_sha +
+                # fingerprints + batch_id from ONE immutable pool
+                # snapshot; a second pool_sha() read here could see a
+                # :07 rotation and hand the phone a SHA that does not
+                # match its batch, so its valid report would be
+                # rejected. Only early returns (circuit open / caps /
+                # target met: no batch was issued) get the current pool
+                # SHA filled in, and those carry no batch_id, so
+                # nothing can be bound to them.
+                if not info.get("batch_id"):
+                    info["pool_sha"] = pool_sha()
                 return self._send(200, {"ok": True, "tasks": tasks, "info": info})
             except Exception as e:
                 return self._send(500, {"ok": False, "error": str(e)[:200]})
