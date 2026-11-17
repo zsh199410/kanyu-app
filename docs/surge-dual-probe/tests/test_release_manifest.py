@@ -5,6 +5,7 @@ contacts a real VPS or changes production. Real SQLite backup API is exercised.
 """
 import hashlib
 import os
+import re
 from pathlib import Path
 import shutil
 import sqlite3
@@ -142,7 +143,16 @@ class ReleaseManifestTests(unittest.TestCase):
             p = self.run_shell(DEPLOY, stage)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             self.assertIn("wifi", p.stdout.lower())
-        p = self.run_shell(DEPLOY, 5, JS, sha(JS))
+        # The committed script is not a deployable production artifact.
+        # Stage 5 must receive the same placeholder-only template used by
+        # the private render workflow, not a URL baked for another host.
+        template = self.tmp / "probe-template.js"
+        raw = JS.read_text(encoding="utf-8")
+        sanitized = re.sub(r"https://[^/]+:8443/[^'\\\"]+",
+                           "https://<probe-host>:8443/<random-path>", raw)
+        self.assertIn("<probe-host>", sanitized)
+        template.write_text(sanitized, encoding="utf-8")
+        p = self.run_shell(DEPLOY, 5, template, sha(template))
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         rendered = self.script_dst.read_text()
         self.assertIn("https://probe.example:8443/testseg12345678", rendered)
