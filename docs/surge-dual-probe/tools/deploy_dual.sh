@@ -53,6 +53,7 @@ SCRIPT_DST="${SCRIPT_DST:-/opt/surge-bridge/modules/probe-task.js}"
 DB_PATH="$PROBE_BASE/data/probe.db"
 SEG_FILE="$PROBE_BASE/config/probe-path.txt"
 RENDER_CONF="${DEPLOY_RENDER_CONF:-$PROBE_BASE/config/deploy-render.conf}"
+RELEASE_MANIFEST="$PROBE_BASE/config/dual-release.manifest"
 TS="$(date +%Y%m%d-%H%M%S)"
 
 usage() {
@@ -81,6 +82,9 @@ read_render_conf() {
     PROBE_HOST="$(grep -E '^PROBE_HOST=' "$RENDER_CONF" | cut -d= -f2- | tr -d '[:space:]')"
     NGINX_CONF="$(grep -E '^NGINX_CONF=' "$RENDER_CONF" | cut -d= -f2- | tr -d '[:space:]')"
   fi
+  # Keep the Host header as exactly TWO argv elements; never use $(...) splitting.
+  HOST_ARGS=()
+  if [ -n "$PROBE_HOST" ]; then HOST_ARGS=(-H "Host: $PROBE_HOST"); fi
 }
 
 require_render_conf() {
@@ -88,12 +92,6 @@ require_render_conf() {
   [ -n "$PROBE_HOST" ] || { echo "PROBE_HOST missing from $RENDER_CONF"; exit 1; }
   [ -n "$NGINX_CONF" ] || { echo "NGINX_CONF missing from $RENDER_CONF"; exit 1; }
   [ -f "$NGINX_CONF" ] || { echo "NGINX_CONF does not exist: $NGINX_CONF"; exit 1; }
-}
-
-host_args() {
-  # Optional Host header for the public wifi checks (only when the
-  # private render conf supplied a host).
-  if [ -n "${PROBE_HOST:-}" ]; then echo "-H" "Host: $PROBE_HOST"; fi
 }
 
 cell_tables_sha() {
@@ -126,7 +124,7 @@ stage_1() {
   read_render_conf
   expect_code 200 "cellular tasks" "$LOCAL_BASE/$SEG" -H "X-Probe-Action: tasks"
   # shellcheck disable=SC2046
-  expect_code 404 "wifi tasks (public)" "$PUBLIC_BASE/$SEG-wifi" $(host_args) -H "X-Probe-Action: tasks" -H "X-Probe-Network: wifi"
+  expect_code 404 "wifi tasks (public)" "$PUBLIC_BASE/$SEG-wifi" "${HOST_ARGS[@]}" -H "X-Probe-Action: tasks" -H "X-Probe-Network: wifi"
   cell_tables_sha
   curl -s -H "X-Probe-Action: stats" "$LOCAL_BASE/$SEG" | head -c 600; echo
   echo "stage 1 complete: baseline recorded. Verify the runbook checks, then run stage 2."
@@ -136,12 +134,27 @@ stage_2() {
   local service_file="$1" service_sha="$2"
   echo "== stage 2: swap service =="
   read_seg
+  require_render_conf
+  # One immutable release manifest captures ALL originals before any write.
+  # Refuse an overlapping or incomplete prior release instead of mixing backups.
+  [ ! -e "$RELEASE_MANIFEST" ] || { echo "release manifest already active: complete or roll back prior release"; exit 1; }
   [ "$(sha_of "$service_file")" = "$service_sha" ] || { echo "service sha mismatch"; exit 1; }
   systemctl is-active --quiet probe-service || { echo "probe-service not running"; exit 1; }
+  # Capture script/nginx/service from the SAME deployment epoch.
   cp "$SERVICE_DST" "$SERVICE_DST.bak-$TS"
-  # WAL-safe DB snapshot (P0-4): the SQLite backup API, never plain cp
-  # of the live WAL database.
+  cp "$SCRIPT_DST" "$SCRIPT_DST.bak-$TS"
+  cp "$NGINX_CONF" "$NGINX_CONF.bak-$TS"
+  # WAL-safe DB snapshot (P0-4), including uncheckpointed WAL rows.
   python3 "$TOOLS_DIR/backup_db.py" "$DB_PATH" "$DB_PATH.bak-$TS" || exit 1
+  local manifest_tmp
+  manifest_tmp="$(mktemp "$RELEASE_MANIFEST.tmp.XXXXXX")"
+  chmod 600 "$manifest_tmp"
+  printf 'RELEASE_ID=%s\nSERVICE_DST=%s\nSERVICE_BAK=%s\nSERVICE_SHA=%s\nSCRIPT_DST=%s\nSCRIPT_BAK=%s\nSCRIPT_SHA=%s\nNGINX_CONF=%s\nNGINX_BAK=%s\nNGINX_SHA=%s\nDB_BAK=%s\nDB_SHA=%s\n' \
+    "$TS" "$SERVICE_DST" "$SERVICE_DST.bak-$TS" "$(sha_of "$SERVICE_DST.bak-$TS")" \
+    "$SCRIPT_DST" "$SCRIPT_DST.bak-$TS" "$(sha_of "$SCRIPT_DST.bak-$TS")" \
+    "$NGINX_CONF" "$NGINX_CONF.bak-$TS" "$(sha_of "$NGINX_CONF.bak-$TS")" \
+    "$DB_PATH.bak-$TS" "$(sha_of "$DB_PATH.bak-$TS")" > "$manifest_tmp"
+  mv "$manifest_tmp" "$RELEASE_MANIFEST"
   cp "$service_file" "$SERVICE_DST"
   [ "$(sha_of "$SERVICE_DST")" = "$service_sha" ] || { echo "service copy sha mismatch"; exit 1; }
   systemctl restart probe-service
@@ -149,7 +162,7 @@ stage_2() {
   systemctl is-active --quiet probe-service || { echo "probe-service failed to start"; exit 1; }
   expect_code 200 "cellular tasks" "$LOCAL_BASE/$SEG" -H "X-Probe-Action: tasks"
   echo "stage 2 complete: new service answers; old script shape still accepted."
-  echo "Backups: $SERVICE_DST.bak-$TS, $DB_PATH.bak-$TS"
+  echo "Release backups and original SHA pinned in private manifest (not printed)."
   echo "Verify the runbook checks, then run stage 3."
 }
 
@@ -157,6 +170,8 @@ stage_3() {
   echo "== stage 3: add nginx -wifi location =="
   read_seg
   require_render_conf
+  [ -f "$RELEASE_MANIFEST" ] || { echo "stage 2 release manifest missing"; exit 1; }
+  grep -Fxq "NGINX_CONF=$NGINX_CONF" "$RELEASE_MANIFEST" || { echo "nginx target mismatches release"; exit 1; }
   cp "$NGINX_CONF" "$NGINX_CONF.bak-$TS"
   if grep -q "location = /$SEG-wifi" "$NGINX_CONF"; then
     echo "-wifi location already present, skipping insert"
@@ -184,7 +199,7 @@ PYEOF
   nginx -t || { echo "nginx -t failed, restoring"; cp "$NGINX_CONF.bak-$TS" "$NGINX_CONF"; exit 1; }
   systemctl reload nginx
   # shellcheck disable=SC2046
-  expect_code 200 "wifi tasks (public)" "$PUBLIC_BASE/$SEG-wifi" $(host_args) -H "X-Probe-Action: tasks" -H "X-Probe-Network: wifi"
+  expect_code 200 "wifi tasks (public)" "$PUBLIC_BASE/$SEG-wifi" "${HOST_ARGS[@]}" -H "X-Probe-Action: tasks" -H "X-Probe-Network: wifi"
   expect_code 200 "cellular tasks" "$LOCAL_BASE/$SEG" -H "X-Probe-Action: tasks"
   echo "stage 3 complete: wifi endpoint reachable; cellular unchanged."
   echo "Backup: $NGINX_CONF.bak-$TS"
@@ -202,10 +217,10 @@ stage_4() {
   # required here — the phone still runs the OLD script, which never
   # calls the wifi endpoint; those reports come in stage 5.
   # shellcheck disable=SC2046
-  expect_code 200 "wifi tasks (public)" "$PUBLIC_BASE/$SEG-wifi" $(host_args) -H "X-Probe-Action: tasks" -H "X-Probe-Network: wifi"
+  expect_code 200 "wifi tasks (public)" "$PUBLIC_BASE/$SEG-wifi" "${HOST_ARGS[@]}" -H "X-Probe-Action: tasks" -H "X-Probe-Network: wifi"
   # Header/path mismatch is still fail-closed.
   # shellcheck disable=SC2046
-  expect_code 400 "wifi tasks, wrong header" "$PUBLIC_BASE/$SEG-wifi" $(host_args) -H "X-Probe-Action: tasks" -H "X-Probe-Network: cellular"
+  expect_code 400 "wifi tasks, wrong header" "$PUBLIC_BASE/$SEG-wifi" "${HOST_ARGS[@]}" -H "X-Probe-Action: tasks" -H "X-Probe-Network: cellular"
   cell_tables_sha
   echo "stage 4 complete: old cellular compatible; wifi route live."
   echo "Verify the runbook checks (including the phone's next hourly cellular report), then run stage 5."
@@ -216,6 +231,8 @@ stage_5() {
   echo "== stage 5: render + swap phone script =="
   read_seg
   require_render_conf
+  [ -f "$RELEASE_MANIFEST" ] || { echo "stage 2 release manifest missing"; exit 1; }
+  grep -Fxq "SCRIPT_DST=$SCRIPT_DST" "$RELEASE_MANIFEST" || { echo "script target mismatches release"; exit 1; }
   [ "$(sha_of "$script_file")" = "$script_sha" ] || { echo "script sha mismatch (desensitized input)"; exit 1; }
   # Private render (P0-2): placeholders fail-closed, CLIENT_VERSION
   # recomputed from the rendered content. The deployed product SHA is
