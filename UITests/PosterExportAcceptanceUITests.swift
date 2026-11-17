@@ -22,19 +22,23 @@ final class PosterExportAcceptanceUITests: XCTestCase {
     /// 渲染本身不慢——失败时刻录屏三帧（t=105/135/148s）完全相同，海报已完整渲染
     /// （王小明四柱＋五行条＋解盘文字全在屏上），且失败时刻 UI 层级里预览图在、无进度条、无失败卡，
     /// 就是没有分享按钮。原因是分享／保存按钮在 7 页长图底部、LazyVStack 里，不滚到底根本不会实例化，
-    /// 光等多久都没用。所以每轮查不到就长拖拽滚向底部再查；120 秒是上限，不是“渲染要 120 秒”。
+    /// 光等多久都没用。所以每轮查不到就上滑滚向底部再查；120 秒是上限，不是“渲染要 120 秒”。
     /// 这不是放宽断言——分享按钮仍必须出现。失败卡片（“重新生成海报”按钮）
     /// 与保存按钮（“保存到相册”，与分享按钮同属 fileURL != nil 分支）用于区分“渲染失败”与“标签问题”。
     /// Build #491 失败定论：5 次短 swipeUp 只滚到 90%（滚动条 6 页 90%），第 5 次后 App 60 秒以上
     /// 不进入 idle，第 6 次 waitForExistence 快照评估逐次超时（:34 报错），重进修法从未执行；
     /// 改为一次长拖拽（0.85→0.15）、最多 4 次，断言不变。
+    /// Build #498 失败定论：4 次长拖拽全部执行但只滚到 20%（滚动条边滚边长：7 页→15 页，
+    /// 500 px/s 慢速拖拽无惯性、每下只挪约 1 个版面），120 秒内按钮与失败卡片均未出现（:56 设计内
+    /// 超时断言），重进修法仍未执行；#488 曾证 swipeUp 甩动每下约 1.5 个版面。故改回 swipeUp、
+    /// 上限放宽至 12 次（以 120 秒 deadline 为实际 bound，12 次约 60 秒），断言不变。
     private func waitForPosterRender(_ app: XCUIApplication, timeout: TimeInterval = 120) {
         let shareButton = app.buttons["分享海报"]
         let retryButton = app.buttons["重新生成海报"]
         let saveButton = app.buttons["保存到相册"]
         let deadline = Date().addingTimeInterval(timeout)
-        var drags = 0
-        while Date() < deadline && drags < 4 {
+        var swipes = 0
+        while Date() < deadline && swipes < 12 {
             if shareButton.waitForExistence(timeout: 2) { return }
             if retryButton.exists {
                 XCTFail("海报渲染失败（已显示重新生成卡片），不是超时")
@@ -44,14 +48,12 @@ final class PosterExportAcceptanceUITests: XCTestCase {
                 XCTFail("海报已渲染完成（保存到相册已出现）但「分享海报」按钮无法按标签查到，疑似 ShareLink 无障碍标签问题")
                 return
             }
-            // 分享按钮在 6 页长图的 LazyVStack 底部，未滚到底不会实例化：长拖拽滚向底部再查。
-            // 短 swipeUp 每次只挪约 1 个版面、多次手势增加 App 失活风险（Build #491：5 次只到 90%，
-            // 随后 App 不 idle、快照评估超时）；一次长拖拽（0.85→0.15）挪得更多，最多 4 次。
+            // 分享按钮在 6 页长图的 LazyVStack 底部，未滚到底不会实例化：上滑甩动滚向底部再查。
+            // 长拖拽（Build #498：4 次只到 20%，文档边滚边长到 15 页）不如 swipeUp 甩动
+            // （#488 曾 4 下找到按钮，约 1.5 个版面/下）；上限 12 次，120 秒 deadline 为实际 bound。
             // 渲染未完成时内容只有进度条，滑动无影响；渲染失败时内容短，滑动无影响。
-            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85))
-            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15))
-            start.press(forDuration: 0.1, thenDragTo: end)
-            drags += 1
+            app.swipeUp()
+            swipes += 1
         }
         XCTFail("海报渲染超时（120 秒内分享按钮与失败卡片均未出现）")
     }
