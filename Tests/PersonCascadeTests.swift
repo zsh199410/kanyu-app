@@ -141,10 +141,17 @@ final class PersonCascadeTests: XCTestCase {
         XCTAssertTrue(fcOnDisk.contains { $0.personID == nil && $0.text == "旧姓名键登记" })
         XCTAssertFalse(fcOnDisk.contains { $0.personID == c.id })
 
-        // ② 再走一次正常读档：删 C 后姓名只剩 D 唯一，迁移会把旧记录挂到 D 名下
-        // （姓名迁移的已知局限：删人前歧义的孤儿，删人后可能归到同名幸存者；本测试只记录该行为）。
+        // ② 再走一次正常读档：P0-A（QA 分支，2026-11-17 用户已批）规定历史迁移只跑一次，
+        // 标记在首次空库加载时已立（见本测试第 119 行的 PalmRecordStore 创建），此后新增的
+        // 孤儿记录永不被同名自动认领——即使删 C 后姓名只剩 D 唯一，孤儿仍为孤儿。
+        // 这正是 P0-4 的已知缺口（删人前歧义的孤儿，删人后同名幸存者唯一时可能被误挂到
+        // 幸存者名下）；P0-A 以一次性标记关闭了它。旧期望（count == 2）是 P0-4 时代的行为，
+        // 已随 P0-A 作废：本断言改为新行为（D 只剩自己的一条记录，孤儿仍为空 personID，
+        // 且无 migrate 事件）。若以后要恢复“删人后认领”，须另立设计并改回本断言，不得悄悄改数。
         let palmAfter = PalmRecordStore(directory: dir)
-        XCTAssertEqual(palmAfter.records(for: d).count, 2)
+        XCTAssertEqual(palmAfter.records(for: d).count, 1)
         XCTAssertTrue(palmAfter.records(for: c).isEmpty)
+        XCTAssertTrue(palmAfter.records.contains { $0.personID == nil && $0.summary == "旧姓名键记录" })
+        XCTAssertTrue(PalmOwnershipLog.load(directory: dir).filter { $0.action == "migrate" }.isEmpty)
     }
 }

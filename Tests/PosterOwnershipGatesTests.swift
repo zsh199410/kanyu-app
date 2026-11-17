@@ -54,6 +54,31 @@ final class PosterOwnershipGatesTests: XCTestCase {
     }
 
     @MainActor
+    func testOrphanAddedAfterMarkerNeverClaimedEvenWhenNameBecomesUnique() {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // P0-A 规则的直接表述：标记已立后新增的孤儿，即使其姓名随后变为唯一，也永不被自动认领。
+        // 场景即 PersonCascadeTests 删 C 后 D 唯一的情形，但不依赖级联删除机械，只验迁移门禁本身；
+        // 与 testNewOrphanWithUniqueNameMatchIsNotAutoClaimed 的区别是此处姓名先歧义、后变唯一。
+        let c = Person(name: "王小明", birthEpoch: 946684800)
+        let d = Person(name: "王小明", birthEpoch: 978307200)
+        writeJSON([c, d], name: "people.json", in: dir)
+        // 空库首次加载即立标记。
+        let store = PalmRecordStore(directory: dir)
+        XCTAssertTrue(markerExists(in: dir))
+        let orphan = PalmRecord(personID: nil, personName: "王小明", kind: "手相",
+                                summary: "测试摘要", linesFlat: [])
+        store.add(orphan, image: nil)
+        // 删 C 使姓名只剩 D 唯一（只改 people.json 模拟删人后状态；级联删除本身由 PersonCascadeTests 覆盖）。
+        writeJSON([d], name: "people.json", in: dir)
+        let reloaded = PalmRecordStore(directory: dir)
+        XCTAssertNil(reloaded.records.first(where: { $0.id == orphan.id })?.personID)
+        XCTAssertTrue(reloaded.records.first(where: { $0.id == orphan.id })?.isOrphan ?? false)
+        XCTAssertEqual(reloaded.records(for: d).count, 0)
+        XCTAssertTrue(migrateEvents(in: dir).isEmpty)
+    }
+
+    @MainActor
     func testLegacyOrphanWithUniqueNameMatchIsMigratedOnce() {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
