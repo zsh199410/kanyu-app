@@ -113,15 +113,22 @@ final class PosterExportAcceptanceUITests: XCTestCase {
         let sheetAppeared = popoverAppeared || app.sheets.firstMatch.waitForExistence(timeout: 2)
         XCTAssertTrue(sheetAppeared, "系统分享 sheet 未出现")
         shot(app, name: "share-bazi")
-        // 关闭分享 sheet：iOS 27 的分享 sheet 是 Popover，无「取消」按钮（Build #471 失败时刻层级已证实）；
-        // 先点系统 dismiss 区域，再回落 swipeDown；关闭后确认 Popover 已消失再继续。
-        let cancelButton = app.buttons["取消"]
-        if cancelButton.waitForExistence(timeout: 3) {
-            cancelButton.tap()
-        } else if app.otherElements["PopoverDismissRegion"].firstMatch.waitForExistence(timeout: 3) {
-            app.otherElements["PopoverDismissRegion"].firstMatch.tap()
-        } else {
-            app.swipeDown()
+        // 关闭分享 sheet：iOS 27 的分享 sheet 是 Popover；先点「取消」按钮（若存在），
+        // 再点系统 dismiss 区域，最后回落 swipeDown；关闭后确认 Popover 已消失再继续。
+        // Build #500 定论：DismissRegion 点按可能被吞（t=208.75s 点按，sheet 在 t=209s 与 t=258s
+        // 录屏帧中完整未动，:127 的 exists==0 等待超时）；本轮 sheet 中「取消」按钮不存在
+        // （三次存在检查均 false，录屏帧中亦无取消行），故“取消优先”分支走不到。
+        // 点按后若 Popover 仍在，重试一次关闭（同顺序），再进 5 秒 exists==0 确认；断言本身不动。
+        for _ in 0..<2 {
+            let cancelButton = app.buttons["取消"]
+            if cancelButton.waitForExistence(timeout: 3) {
+                cancelButton.tap()
+            } else if app.otherElements["PopoverDismissRegion"].firstMatch.waitForExistence(timeout: 3) {
+                app.otherElements["PopoverDismissRegion"].firstMatch.tap()
+            } else {
+                app.swipeDown()
+            }
+            if !app.popovers.firstMatch.waitForExistence(timeout: 2) { break }
         }
         let sheetGone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.popovers.firstMatch, handler: nil)
         wait(for: [sheetGone], timeout: 5)
