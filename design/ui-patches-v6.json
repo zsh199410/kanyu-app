@@ -1936,5 +1936,11 @@
     "before": "    @State private var previewImage: UIImage?\n    @State private var saveMessage: String?\n    /// Batch 2 P0：归属解析。显式 personID 优先，否则查 ZiweiOwnershipIndex；\n    /// 绝不按姓名回落（Person.uniqueID(forName:) 已移除）。\n    private var resolvedOwnerID: UUID? {\n        personID ?? ZiweiOwnershipIndex.load().ownerID(for: chart.stableID)\n    }\n    /// Batch 2 P0：归属已验证＝索引有记录且对应人物仍在档案里。\n",
     "after": "    @State private var previewImage: UIImage?\n    @State private var saveMessage: String?\n    /// QA 导出验收 P0-B：归属解析。显式 personID 优先，但须在索引的 ownerIDs 内才采信\n    /// （不在则 nil，防传错人）；无显式 personID 时用 ownerID(for:)（仅唯一归属时返回，\n    /// 歧义返回 nil）；绝不按姓名回落（Person.uniqueID(forName:) 已移除）。\n    private var resolvedOwnerID: UUID? {\n        if let pid = personID {\n            return ZiweiOwnershipIndex.load().ownerIDs(for: chart.stableID).contains(pid) ? pid : nil\n        }\n        return ZiweiOwnershipIndex.load().ownerID(for: chart.stableID)\n    }\n    /// Batch 2 P0：归属已验证＝索引有记录且对应人物仍在档案里。\n",
     "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                Picker(\"海报款式\", selection: $style) {\n                    ForEach(PosterStyle.allCases, id: \\.self) { option in\n                        Text(option.rawValue).tag(option)\n                    }\n                }\n                .pickerStyle(.menu)\n                .onChange(of: style) { _, _ in\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }",
+    "after": "                Picker(\"海报款式\", selection: $style) {\n                    ForEach(PosterStyle.allCases, id: \\.self) { option in\n                        Text(option.rawValue).tag(option)\n                    }\n                }\n                .pickerStyle(.menu)\n                .accessibilityIdentifier(\"海报款式\")\n                .onChange(of: style) { _, _ in\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }",
+    "count": 1
   }
 ]
