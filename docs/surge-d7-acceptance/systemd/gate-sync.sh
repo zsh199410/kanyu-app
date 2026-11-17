@@ -41,6 +41,17 @@ mkdir -p "$GATE/logs"
 
 log() { echo "$(date -Iseconds) gate-sync $*" >> "$LOG"; }
 
+# P0: production guard catches missing, enabled or active old timers,
+# in-flight unlocked writers and inspection errors before any sync write.
+if [ "$GATE" = "/opt/pool-gate" ] && [ "$PROG" = "/opt/free-node-program" ]; then
+    if [ ! -r "$GATE/legacy-writer-guard.py" ]; then
+        log "error=legacy_writer_guard_missing"; exit 1
+    fi
+    if ! "$PY" "$GATE/legacy-writer-guard.py" >/dev/null 2>&1; then
+        log "error=legacy_writer_not_drained"; exit 1
+    fi
+fi
+
 if [ ! -f "$RECORD" ]; then
     log "error=native_record_missing record=$RECORD"
     exit 1
