@@ -67,6 +67,17 @@ write_health() {
         && mv "$_tmp" "$_file" || log "error=health_write_failed file=$_file"
 }
 
+# P0: verify no real, unlocked legacy writer can race this gate.
+# Isolation harnesses intentionally set GATE/PROG to private paths.
+if [ "$GATE" = "/opt/pool-gate" ] && [ "$PROG" = "/opt/free-node-program" ]; then
+    if [ ! -r "$GATE/legacy-writer-guard.py" ]; then
+        log "error=legacy_writer_guard_missing"; write_health "precheck_failed" -1 -1 "" "" "" false false; exit 1
+    fi
+    if ! "$PY" "$GATE/legacy-writer-guard.py" >/dev/null 2>&1; then
+        log "error=legacy_writer_not_drained"; write_health "precheck_failed" -1 -1 "" "" "" false false; exit 1
+    fi
+fi
+
 # --- Pre-checks (fail closed, log plainly, do not publish) ---
 if [ ! -f "$SRC" ]; then log "error=source_missing src=$SRC"; write_health "precheck_failed" -1 -1 "" "" "" false false; exit 1; fi
 if [ ! -s "$SRC" ]; then log "error=source_empty src=$SRC"; write_health "precheck_failed" -1 -1 "" "" "" false false; exit 1; fi
