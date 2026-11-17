@@ -8,6 +8,7 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=/opt/pool-gate
 ExecStart=/opt/pool-gate/gate-publish.sh
+ExecStartPre=/usr/bin/python3 /opt/pool-gate/legacy-writer-guard.py
 # No Restart: a refused gate (rc=1) is the SAFE state when the current
 # version has no fresh native evidence, not a crash to retry.
 # StandardOutput goes to the journal; the wrapper also appends JSON
