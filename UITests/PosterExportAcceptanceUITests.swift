@@ -116,15 +116,23 @@ final class PosterExportAcceptanceUITests: XCTestCase {
         wait(for: [sheetGone], timeout: 5)
 
         // 尊享款式：切款式 Picker 到“尊享预测单”，等重渲染后截图。
-        // 滚回顶部：Picker("海报款式") 在 LazyVStack 第一项（页顶，PosterModule.swift:1411），分享 sheet 关闭后
-        // 页面仍停在底部，屏外项不会实例化（Build #474 失败定论，与 #467 同类）；先 swipeDown 滚回顶部再等，断言不变。
-        // Build #482 失败定论：`where !stylePicker.exists` 在循环条件里同步求值，滑动后 App 60 秒未进入 idle 时
-        // 该求值本身超时报错（:122），测试走不到 :125 断言；改用有界 waitForExistence（超时返回 false 而非报错），断言不变。
-        let stylePicker = app.buttons["海报款式"]
-        for _ in 0..<10 {
-            if stylePicker.waitForExistence(timeout: 3) { break }
-            app.swipeDown()
+        // 回到页顶：Picker("海报款式") 在 LazyVStack 第一项（页顶，PosterModule.swift:1411），分享 sheet 关闭后
+        // 页面仍停在底部，屏外项不会实例化（Build #474 失败定论，与 #467 同类）。
+        // Build #488 失败定论：swipeDown 滚回顶部后 App 60 秒以上不进入 idle，后续 waitForExistence 的快照评估
+        // 逐次超时（重试 257.56s、288.62s，:125 报错），循环走不到第二次滑动；一次滑动只挪约 1 个版面，
+        // 6 页海报靠滑动回顶不可靠。改为返回重进：页顶初载时选择器在树内（#474 t≈149s 已证 y=136 可见），断言不变。
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(baziWorkspace.waitForExistence(timeout: 30), "返回后八字排盘结果未出现")
+        if posterEntry.waitForExistence(timeout: 30) {
+            posterEntry.tap()
+        } else {
+            let altEntry = app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "出预测单海报")).firstMatch
+            XCTAssertTrue(altEntry.waitForExistence(timeout: 10), "海报入口未出现")
+            altEntry.tap()
         }
+        XCTAssertTrue(app.navigationBars["命盘海报"].waitForExistence(timeout: 30), "命盘海报页未出现")
+        waitForPosterRender(app)
+        let stylePicker = app.buttons["海报款式"]
         XCTAssertTrue(stylePicker.waitForExistence(timeout: 10), "海报款式选择器未出现")
         stylePicker.tap()
         let premiumOption = app.buttons["尊享预测单"]
