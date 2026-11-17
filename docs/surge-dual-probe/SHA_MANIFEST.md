@@ -1,0 +1,29 @@
+# SHA256 清单（PR 包，脱敏后文件）
+
+本清单是 PR 包内文件的 SHA256（脱敏后）。隔离树原始文件的 SHA 见
+隔离树 `docs/SHA_MANIFEST.md`；两者因脱敏替换而不同，属预期。
+CLIENT_VERSION（脱敏后脚本）：dual-v1-23113216f849
+
+```
+88bb44a2f8b2ab90923beeecfef0b0445ca45ff9cee3132932261ab55ff85bf3  ./DESENSITIZATION_CHECKLIST.md
+12971b94a82d427967b7a175032942a68f881a517cf35a8367457d1e94990fdc  ./script/probe-task-dual.js
+9a05ff0e82d387e37d6cabf6b97cf30cde41c880f62aaceff001e8751fd8c77a  ./script/probe-task-orig.js
+188f29bbd2eb154baad768b36c8de78603b7574473332e53521dcde0baaef984  ./service/probe_service_dual.py
+015472a839991ef5a2eb6fb155e4696d27b8a430602a4b7e9ef9e5ea3b63e3f3  ./service/probe_service_orig.py
+13e0becd801a5ed84fd4330d386f3c8076e4a2ca9a8ddccb0d599032f482a617  ./tests/js_detect_test.js
+fd0e3d61cea664352c634b4fe869e8ccfa558e8695930bf02742fb68d0d7f4e8  ./tests/test_backup.py
+df8c0a6e6211896f8656000ab15d29e43de7561ba2ca95c514be455d04202a04  ./tests/test_deploy_matrix.py
+a3c95007f7789d1ec270c931e76530ed2d65b4e1ac6efbec71ce10515fe04e11  ./tests/test_dual_probe.py
+914558d062a58f21191abfa0a776db9df617442ec279391d62a22ed3e3282723  ./fixtures/pool-fixture.txt
+4133f56df1d20ccd30f20b831be80c4607db449f435c334d2b01fe4c79e9fd89  ./tools/backup_db.py
+586b9d8a74c27f10b43e14ebe3f25417c193ef0b239e67f7f6e435a272364189  ./tools/capture_sample.py
+4c3fbf759592f90bb49724855a34048545f802371124b9f82087a8bbc86c7aee  ./tools/deploy_dual.sh
+540bbd1386afc9173e64ca91776c58c85dccade58bbcef48ba8ca28a53441b29  ./tools/inject_sha.py
+1edaad16167d52f5cb799a2e128c6e23179032191652374204a13776a653f58a  ./tools/render_probe_script.py
+b278c332a3db896559db4f2af0692555af842ff93986d66d2fd9f6c518fc4ffb  ./tools/rollback_dual.sh
+9c92dc86d08551d51d3455f19c29a68acf8dd756310e8a3ad38df2e4cd42a45b  ./docs/DUAL_VERIFICATION_REPORT.md
+1ef87319e98766ed1508f696386d356603186b5420b9d3595e51e2aa633df090  ./docs/SAMPLE_REQUEST.md
+69b4449ac0480d6eccf950c308e5dbda7719265b2d03d1dfec1ab58f248558ac  ./docs/STAGED_RUNBOOK.md
+6e34d394f2b8ad864c7ed97e5013bbf89743aa7211a6b6b7d4fa2acc07576422  ./diff/script.diff
+b7e047c8681be57372294e98740d21a4f141b9a58d8e513aa6f540b0546094d0  ./diff/service.diff
+```

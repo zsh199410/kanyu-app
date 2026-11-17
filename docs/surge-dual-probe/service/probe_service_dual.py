@@ -1,0 +1,1208 @@
+#!/usr/bin/env python3
+"""Isolated probe receiving service for Issue #73 P0 revised design.
+Dual-channel (B1) patch — ISOLATED, NOT production.
+Wi-Fi results go to independent wifi tables/endpoint and NEVER touch the
+cellular probe_reports / probe_nodes / P0 gate stats. Cellular code paths
+below (sync_pool, next_tasks, ingest, stats, _maybe_trip_circuit) are
+byte-identical to the pre-patch service.
+Dynamic node discovery + fingerprint identity + persistent task queue.
+Dynamic backfill + tiered rate limiting + auto circuit breaker.
+Does NOT touch the production pool program (/opt/free-node-program).
+Stdlib only. Listens on 127.0.0.1, exposed via nginx at a random path.
+
+Version binding (P0-1, corrected per GPT #6938432964): two different
+concepts, never mixed.
+  * client_version = the phone script's own build id (dual-v1-<sha12>).
+    It identifies client code only.
+  * source_version_sha = sha256 of the node-pool file bytes UNDER TEST.
+    The binding is a TASK SNAPSHOT, not the "current pool" at POST time:
+    when a task batch is issued, the server locks batch_id + the pool
+    SHA at issuance + the batch's fingerprint set + a validity window
+    (probe_task_batches). At ingest the server verifies the submitted
+    fingerprint, version, time window and dedup key against THAT batch
+    record. A :07 pool rotation between fetch and report therefore
+    neither rejects a valid batch nor lets an old batch pose as a
+    new-pool result. All mismatches fail closed. Legacy cellular
+    clients that send no batch binding are still accepted.
+CLIENT-DECLARED LABELS (P0-3): network_type is a client assertion.
+The endpoint path and the X-Probe-Network header only check label
+self-consistency; they cannot prove the real transport interface and
+cannot catch a switch in the milliseconds between two client-side
+detections. Every record here is stored only as a client-declared
+wifi/cellular probe. It is NEVER promoted to native full-group
+verification and NEVER serves as P0 gate evidence. This service holds
+no P0 gate / native-acceptance code path at all.
+
+TRUST BOUNDARY (P0-3): the endpoint path and the X-Probe-Network header
+are CLIENT-SUPPLIED. They only check LABEL SELF-CONSISTENCY (header
+agrees with path); they CANNOT prove the real transport interface and
+CANNOT catch a switch in the milliseconds between two client-side
+detections. Records are therefore stored only as client-reported
+wifi/cellular probes. They are NEVER promoted to native full-group
+verification and NEVER serve as P0 gate evidence. This service holds
+no P0 gate / native-acceptance code path at all.
+"""
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
+
+BASE = os.environ.get("PROBE_BASE", "/opt/probe-service")
+DB_PATH = os.path.join(BASE, "data", "probe.db")
+# PROBE_POOL_TXT is an env override for isolated testing only; production
+# always uses the default pool file path below.
+POOL_TXT = os.environ.get("PROBE_POOL_TXT", "/opt/free-node-program/publish/pool-new.txt")
+
+# ---- tunables (initial trial values; adjust from real measurements) ----
+INITIAL_BATCH = 4
+EXPAND_BATCH = 8
+MAX_PER_HOUR = 20
+MAX_PER_DAY = 100
+REPLENISH_TARGET = 3          # stop probing new nodes once this many newly qualified in a session/hour
+VERIFY_TTL_SECONDS = 24 * 3600
+MAX_QUEUE_STORE = 500
+CIRCUIT_MIN_FAILS = 8         # distinct-host failures in window that trips the breaker
+CIRCUIT_WINDOW_SECONDS = 600
+CIRCUIT_COOLDOWN_SECONDS = 3600
+
+# ---- pool content SHA (P0-1): the server is the authority on which ----
+# pool version is under test. sha256 of the pool file bytes.
+# NOTE: pool_sha() is used ONLY to fill in the pool SHA on EARLY
+# tasks returns (circuit open / caps / target met: no batch was
+# issued, so nothing can be bound to it). Task issuance NEVER calls
+# pool_sha(): it uses _pool_snapshot() below, which reads the pool
+# file bytes ONCE and derives the fingerprint set + SHA + batch from
+# that single immutable snapshot (GPT #6940445042 P0-1). Ingest NEVER
+# validates against the "current" pool file; it validates against the
+# batch record locked at issuance (see _check_batch).
+def pool_sha():
+    try:
+        with open(POOL_TXT, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return None
+
+
+def _pool_snapshot():
+    """Read the pool file bytes ONCE and derive (sha256, lines) from that
+    single immutable snapshot. Task issuance binds the fingerprint set +
+    SHA + batch from THIS snapshot only: sync_pool()/sync_pool_wifi()
+    are fed these exact lines, candidates are selected from the DB
+    state produced by them, and _issue_batch locks this SHA. A :07
+    rotation between candidate selection and SHA read therefore cannot
+    misbind fingerprints from one pool version to another version's
+    SHA (GPT #6940445042 P0-1). Returns (None, []) when the file is
+    unreadable (callers fail closed with reason pool_unreadable)."""
+    try:
+        with open(POOL_TXT, "rb") as f:
+            raw = f.read()
+    except OSError:
+        return None, []
+    return (hashlib.sha256(raw).hexdigest(),
+            raw.decode("utf-8", errors="ignore").splitlines())
+
+BATCH_TTL_SECONDS = 2 * 3600  # validity window of a task batch
+BATCH_TS_SKEW_SECONDS = 600   # phone/server clock skew allowance
+
+# ---- task snapshot binding (P0-1, GPT #6938432964) ----
+def _issue_batch(conn, network_type, pool_sha_value, tasks):
+    """Lock a batch binding record at issuance: batch_id + pool SHA at
+    issuance + the batch's fingerprint set + validity window. Returns
+    the batch_id (or None when there is nothing to bind)."""
+    if not tasks or not pool_sha_value:
+        return None
+    import uuid
+    batch_id = "b-" + uuid.uuid4().hex[:16]
+    now = int(time.time())
+    conn.execute(
+        """INSERT INTO probe_task_batches(batch_id, network_type, pool_sha,
+        fingerprints, issued_at, expires_at) VALUES(?,?,?,?,?,?)""",
+        (batch_id, network_type, pool_sha_value,
+         json.dumps([t["fingerprint"] for t in tasks]),
+         now, now + BATCH_TTL_SECONDS))
+    conn.commit()
+    return batch_id
+
+
+def _check_batch(conn, batch_id, network_type, sha, fp, ts):
+    """Verify a result against the batch record locked at issuance.
+    Returns True only if: the batch exists, its channel matches, the
+    submitted pool SHA equals the LOCKED snapshot SHA, the fingerprint
+    is in the locked set, and the measurement ts is inside the validity
+    window (with clock-skew allowance). Anything else -> False
+    (fail closed). A :07 pool rotation between fetch and report can
+    therefore neither reject a valid batch nor let an old batch pose
+    as a new-pool result."""
+    if not isinstance(batch_id, str) or not re.fullmatch(r"b-[0-9a-f]{16}", batch_id):
+        return False
+    row = conn.execute(
+        """SELECT network_type, pool_sha, fingerprints, issued_at, expires_at
+        FROM probe_task_batches WHERE batch_id=?""",
+        (batch_id,)).fetchone()
+    if row is None:
+        return False
+    b_net, b_sha, b_fps, issued_at, expires_at = row
+    if b_net != network_type:
+        return False
+    if not isinstance(sha, str) or sha != b_sha:
+        return False
+    try:
+        fps = json.loads(b_fps)
+    except Exception:
+        return False
+    if fp not in fps:
+        return False
+    if not isinstance(ts, int):
+        return False
+    if ts < issued_at - BATCH_TS_SKEW_SECONDS or ts > expires_at:
+        return False
+    return True
+
+
+# ---- fingerprint: stable identity from connection params, NOT display name ----
+def fingerprint_of(proto, host, port, params):
+    parts = [proto.lower(), host.lower().strip("[]"), str(int(port))]
+    for k in sorted(params):
+        parts.append(f"{k.lower()}={params[k]}")
+    raw = "|".join(parts)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+def parse_surge_line(line):
+    try:
+        if " = " not in line:
+            return None
+        name, rest = line.split(" = ", 1)
+        parts = [p.strip() for p in rest.split(",")]
+        if len(parts) < 3:
+            return None
+        proto = parts[0].strip().lower()
+        host = parts[1].strip().strip("[]").lower()
+        port = int(parts[2].strip())
+        params = {}
+        for p in parts[3:]:
+            if "=" in p:
+                k, v = p.split("=", 1)
+                params[k.strip().lower()] = v.strip()
+        if proto not in ("trojan", "vmess", "ss"):
+            return None
+        if not host or port <= 0:
+            return None
+        return (name.strip(), proto, host, port, params)
+    except Exception:
+        return None
+
+# ---- db ----
+def _ensure_columns(conn):
+    """Add the P0-1 binding columns to a pre-existing DB if missing."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(probe_reports)").fetchall()}
+    if "source_version_sha" not in cols:
+        conn.execute("ALTER TABLE probe_reports ADD COLUMN source_version_sha TEXT")
+    if "client_version" not in cols:
+        conn.execute("ALTER TABLE probe_reports ADD COLUMN client_version TEXT")
+    if "batch_id" not in cols:
+        conn.execute("ALTER TABLE probe_reports ADD COLUMN batch_id TEXT")
+    cols_w = {r[1] for r in conn.execute("PRAGMA table_info(probe_reports_wifi)").fetchall()}
+    if "client_version" not in cols_w:
+        conn.execute("ALTER TABLE probe_reports_wifi ADD COLUMN client_version TEXT")
+    if "batch_id" not in cols_w:
+        conn.execute("ALTER TABLE probe_reports_wifi ADD COLUMN batch_id TEXT")
+
+
+def db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("""CREATE TABLE IF NOT EXISTS probe_nodes(
+        fingerprint TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        protocol TEXT NOT NULL,
+        host TEXT NOT NULL,
+        port INTEGER NOT NULL,
+        state TEXT NOT NULL DEFAULT 'pending',
+        first_seen INTEGER NOT NULL,
+        last_seen_in_pool INTEGER NOT NULL,
+        last_phone_ts INTEGER,
+        last_warm_ms INTEGER,
+        last_second_ms INTEGER,
+        last_status INTEGER,
+        last_success INTEGER,
+        last_error TEXT,
+        last_interface TEXT,
+        phone_ok INTEGER NOT NULL DEFAULT 0,
+        phone_fail INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL
+    )""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS probe_reports(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fingerprint TEXT NOT NULL,
+        name TEXT NOT NULL,
+        ts INTEGER NOT NULL,
+        state TEXT NOT NULL,
+        warm_ms INTEGER,
+        second_ms INTEGER,
+        second_status INTEGER,
+        success INTEGER NOT NULL,
+        error TEXT,
+        interface TEXT,
+        source_version_sha TEXT,
+        client_version TEXT,
+        batch_id TEXT,
+        UNIQUE(fingerprint, ts)
+    )""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_reports_fp_ts ON probe_reports(fingerprint, ts)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_reports_ts ON probe_reports(ts)")
+    conn.execute("""CREATE TABLE IF NOT EXISTS probe_meta(
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )""")
+    # ---- dual-channel (B1): independent wifi tables. The cellular tables
+    # above are never written by the wifi path; the wifi path never reads
+    # them either. Old consumers keep reading cellular tables only. ----
+    conn.execute("""CREATE TABLE IF NOT EXISTS probe_reports_wifi(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fingerprint TEXT NOT NULL,
+        name TEXT NOT NULL,
+        ts INTEGER NOT NULL,
+        state TEXT NOT NULL,
+        warm_ms INTEGER,
+        second_ms INTEGER,
+        second_status INTEGER,
+        success INTEGER NOT NULL,
+        error TEXT,
+        network_type TEXT NOT NULL DEFAULT 'wifi',
+        source_version_sha TEXT,
+        client_version TEXT,
+        batch_id TEXT,
+        UNIQUE(fingerprint, ts)
+    )""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_reports_wifi_fp_ts ON probe_reports_wifi(fingerprint, ts)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_reports_wifi_ts ON probe_reports_wifi(ts)")
+    # ---- task snapshot binding (P0-1, GPT #6938432964): one row per
+    # issued batch. Locks the pool SHA at issuance, the batch's
+    # fingerprint set and the validity window. Ingest verifies against
+    # THIS record, never against the "current" pool file. ----
+    conn.execute("""CREATE TABLE IF NOT EXISTS probe_task_batches(
+        batch_id TEXT PRIMARY KEY,
+        network_type TEXT NOT NULL,
+        pool_sha TEXT NOT NULL,
+        fingerprints TEXT NOT NULL,
+        issued_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL
+    )""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_batches_issued ON probe_task_batches(issued_at)")
+    # Labelling policy (P0-3): network_type is a client declaration.
+    conn.execute(
+        """INSERT OR IGNORE INTO probe_meta(key, value) VALUES(
+        'channel_label_policy',
+        'client-declared: network_type is a client assertion, not a measured bearer; never native proof, never P0 gate evidence')""")
+    # Migration for pre-existing DBs (production probe.db was created
+    # before these columns existed): add them if missing. Fresh DBs get
+    # them from the CREATE TABLE statements above.
+    _ensure_columns(conn)
+    conn.execute("""CREATE TABLE IF NOT EXISTS probe_nodes_wifi(
+        fingerprint TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        protocol TEXT NOT NULL,
+        host TEXT NOT NULL,
+        port INTEGER NOT NULL,
+        state TEXT NOT NULL DEFAULT 'pending',
+        first_seen INTEGER NOT NULL,
+        last_seen_in_pool INTEGER NOT NULL,
+        last_wifi_ts INTEGER,
+        last_warm_ms INTEGER,
+        last_second_ms INTEGER,
+        last_status INTEGER,
+        last_success INTEGER,
+        last_error TEXT,
+        phone_ok_wifi INTEGER NOT NULL DEFAULT 0,
+        phone_fail_wifi INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL
+    )""")
+    conn.commit()
+    return conn
+
+def _meta_get(conn, key, default=None):
+    row = conn.execute("SELECT value FROM probe_meta WHERE key=?", (key,)).fetchone()
+    return row[0] if row else default
+
+def _meta_set(conn, key, value):
+    conn.execute(
+        "INSERT INTO probe_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (key, str(value)),
+    )
+
+def sync_pool(lines=None):
+    """Sync probe_nodes from the pool file. When `lines` is given, sync
+    from those exact lines (task issuance passes the lines of the single
+    immutable _pool_snapshot() so selection and SHA can never straddle
+    a rotation, GPT #6940445042 P0-1); when None, read the file fresh
+    (standalone callers: stats(), `sync` command)."""
+    conn = db()
+    now = int(time.time())
+    if lines is None:
+        try:
+            lines = open(POOL_TXT, encoding="utf-8", errors="ignore").read().splitlines()
+        except OSError:
+            conn.close()
+            return {"ok": False, "error": "pool file unreadable"}
+    seen = set()
+    added = 0
+    renamed = 0
+    for line in lines:
+        parsed = parse_surge_line(line)
+        if not parsed:
+            continue
+        name, proto, host, port, params = parsed
+        fp = fingerprint_of(proto, host, port, params)
+        seen.add(fp)
+        row = conn.execute(
+            "SELECT name, state FROM probe_nodes WHERE fingerprint=?", (fp,)
+        ).fetchone()
+        if row is None:
+            conn.execute(
+                """INSERT INTO probe_nodes(fingerprint,name,protocol,host,port,state,
+                first_seen,last_seen_in_pool,updated_at) VALUES(?,?,?,?,?,'pending',?,?,?)""",
+                (fp, name, proto, host, port, now, now, now),
+            )
+            added += 1
+        else:
+            old_name, old_state = row
+            new_state = old_state
+            if old_state == "retired":
+                new_state = "pending"
+            if old_name != name:
+                renamed += 1
+            conn.execute(
+                """UPDATE probe_nodes SET name=?, protocol=?, host=?, port=?,
+                state=?, last_seen_in_pool=?, updated_at=? WHERE fingerprint=?""",
+                (name, proto, host, port, new_state, now, now, fp),
+            )
+    retired = 0
+    for (fp,) in conn.execute("SELECT fingerprint FROM probe_nodes WHERE state!='retired'").fetchall():
+        if fp not in seen:
+            conn.execute(
+                "UPDATE probe_nodes SET state='retired', updated_at=? WHERE fingerprint=?",
+                (now, fp),
+            )
+            retired += 1
+    conn.commit()
+    counts = dict(conn.execute("SELECT state, COUNT(*) FROM probe_nodes GROUP BY state").fetchall())
+    conn.close()
+    return {"ok": True, "added": added, "renamed": renamed, "retired": retired, "states": counts}
+
+def _hour_bounds(now):
+    hour_start = now - (now % 3600)
+    day_start = now - (now % 86400)
+    return hour_start, day_start
+
+def _circuit_open(conn, now):
+    """True if a network-failure pattern was recently detected (cooldown active)."""
+    until = _meta_get(conn, "circuit_until")
+    if until:
+        try:
+            if now < int(until):
+                return True
+        except ValueError:
+            pass
+    return False
+
+def _maybe_trip_circuit(conn, now):
+    """Trip the breaker when many distinct hosts fail in a short window.
+    Returns True if tripped by this call."""
+    window_start = now - CIRCUIT_WINDOW_SECONDS
+    rows = conn.execute(
+        """SELECT DISTINCT n.host FROM probe_reports r
+        JOIN probe_nodes n ON n.fingerprint = r.fingerprint
+        WHERE r.ts >= ? AND r.success = 0""",
+        (window_start,),
+    ).fetchall()
+    distinct_hosts = len(rows)
+    total_fail = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports WHERE ts >= ? AND success=0",
+        (window_start,),
+    ).fetchone()[0]
+    total = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports WHERE ts >= ?",
+        (window_start,),
+    ).fetchone()[0]
+    if total >= CIRCUIT_MIN_FAILS and total_fail == total and distinct_hosts >= 4:
+        _meta_set(conn, "circuit_until", now + CIRCUIT_COOLDOWN_SECONDS)
+        conn.commit()
+        return True
+    return False
+
+def quality_score(row):
+    """Rank candidates: phone history first, then newness, then recency.
+    row: (fingerprint, name, protocol, state, first_seen, last_phone_ts, phone_ok, phone_fail)."""
+    _fp, _name, _proto, state, first_seen, last_phone_ts, ok_c, fail_c = row
+    score = 0
+    score += ok_c * 3 - fail_c * 2
+    if state == "pending":
+        score += 10
+    elif state == "expired":
+        score += 5
+    # prefer nodes not tested recently (avoid re-testing the same failing node back-to-back)
+    if last_phone_ts:
+        hours_since = (int(time.time()) - last_phone_ts) / 3600.0
+        score += min(hours_since, 24) * 0.2
+    else:
+        score += 5
+    return score
+
+def next_tasks():
+    """Dynamic backfill scheduler.
+    Returns (tasks, info). tasks is a list of {fingerprint,name,protocol}.
+    info explains the decision: batch_size, reason, caps, circuit state.
+    P0-1 (GPT #6940445042): the pool file is read ONCE via
+    _pool_snapshot(); sync, candidate selection and batch issuance all
+    derive from that single immutable snapshot, so a :07 rotation
+    mid-call cannot bind fingerprints from one pool version to
+    another version's SHA."""
+    psha, lines = _pool_snapshot()
+    if psha is None:
+        return [], {"reason": "pool_unreadable", "batch_size": 0}
+    sync_pool(lines)
+    conn = db()
+    now = int(time.time())
+    hour_start, day_start = _hour_bounds(now)
+    # expire verified nodes whose last phone test is older than TTL
+    conn.execute(
+        "UPDATE probe_nodes SET state='expired', updated_at=? WHERE state='verified' AND (last_phone_ts IS NULL OR last_phone_ts < ?)",
+        (now, now - VERIFY_TTL_SECONDS),
+    )
+    conn.commit()
+    if _circuit_open(conn, now):
+        conn.close()
+        return [], {"reason": "circuit_open_network_suspected", "batch_size": 0}
+    tested_hour = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports WHERE ts >= ?", (hour_start,)
+    ).fetchone()[0]
+    tested_day = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports WHERE ts >= ?", (day_start,)
+    ).fetchone()[0]
+    qualified_hour = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports WHERE ts >= ? AND success=1 AND second_ms IS NOT NULL AND second_ms < 300",
+        (hour_start,),
+    ).fetchone()[0]
+    if tested_day >= MAX_PER_DAY:
+        conn.close()
+        return [], {"reason": "day_cap_reached", "tested_day": tested_day, "batch_size": 0}
+    if tested_hour >= MAX_PER_HOUR:
+        conn.close()
+        return [], {"reason": "hour_cap_reached", "tested_hour": tested_hour, "batch_size": 0}
+    if qualified_hour >= REPLENISH_TARGET:
+        # target met: stop probing NEW nodes this hour; remaining budget is for re-tests,
+        # but only if there are expired nodes waiting. Otherwise stop.
+        expired_waiting = conn.execute(
+            "SELECT COUNT(*) FROM probe_nodes WHERE state='expired'"
+        ).fetchone()[0]
+        if expired_waiting == 0:
+            conn.close()
+            return [], {"reason": "target_met", "qualified_hour": qualified_hour, "batch_size": 0}
+    # decide batch size: expand when the most recent batch all failed
+    batch_size = INITIAL_BATCH
+    recent = conn.execute(
+        "SELECT success FROM probe_reports WHERE ts >= ? ORDER BY ts DESC LIMIT ?",
+        (hour_start, INITIAL_BATCH),
+    ).fetchall()
+    if len(recent) >= INITIAL_BATCH and all(r[0] == 0 for r in recent):
+        batch_size = EXPAND_BATCH
+    remaining_hour = MAX_PER_HOUR - tested_hour
+    remaining_day = MAX_PER_DAY - tested_day
+    batch_size = min(batch_size, remaining_hour, remaining_day)
+    if batch_size <= 0:
+        conn.close()
+        return [], {"reason": "cap_reached", "batch_size": 0}
+    # gather candidates by priority group, ranked by quality score within each group.
+    # Exclude nodes already tested this hour (do not re-offer just-failed nodes
+    # in the next backfill batch; expansion must test DIFFERENT nodes).
+    tasks = []
+    for state in ("pending", "expired", "quarantined"):
+        if len(tasks) >= batch_size:
+            break
+        rows = conn.execute(
+            """SELECT fingerprint, name, protocol, state, first_seen, last_phone_ts,
+            phone_ok, phone_fail FROM probe_nodes WHERE state=?
+            AND NOT EXISTS (SELECT 1 FROM probe_reports r
+                WHERE r.fingerprint = probe_nodes.fingerprint AND r.ts >= ?)""",
+            (state, hour_start),
+        ).fetchall()
+        rows.sort(key=quality_score, reverse=True)
+        for r in rows:
+            if len(tasks) >= batch_size:
+                break
+            tasks.append({"fingerprint": r[0], "name": r[1], "protocol": r[2]})
+    # P0-1: lock the batch binding at issuance (snapshot SHA + task
+    # fingerprint set + validity window). The SHA and the fingerprint
+    # set both come from the ONE _pool_snapshot() read at the top of
+    # this function, so the batch record and the info dict can never
+    # disagree and can never straddle a pool rotation.
+    batch_id = _issue_batch(conn, "cellular", psha, tasks)
+    conn.close()
+    return tasks, {
+        "reason": "ok",
+        "batch_size": len(tasks),
+        "tested_hour": tested_hour,
+        "tested_day": tested_day,
+        "qualified_hour": qualified_hour,
+        "pool_sha": psha,
+        "batch_id": batch_id,
+    }
+
+def ingest(results):
+    conn = db()
+    now = int(time.time())
+    accepted = 0
+    duplicates = 0
+    rejected = 0
+    for r in results if isinstance(results, list) else []:
+        if not isinstance(r, dict):
+            rejected += 1
+            continue
+        fp = r.get("fingerprint")
+        name = r.get("name")
+        ts = r.get("ts")
+        state = r.get("state")
+        if not isinstance(fp, str) or not re.fullmatch(r"[0-9a-f]{32}", fp):
+            rejected += 1
+            continue
+        if not isinstance(name, str) or not name or len(name) > 120:
+            rejected += 1
+            continue
+        if not isinstance(ts, int) or ts <= 0 or ts > now + 600:
+            rejected += 1
+            continue
+        if state not in ("measured", "first_failed"):
+            rejected += 1
+            continue
+        # P0-1 snapshot binding (GPT #6938432964): a result that carries
+        # any binding field must validate against the batch record locked
+        # at issuance (fingerprint set + snapshot pool SHA + time
+        # window). Legacy clients that send neither field are still
+        # accepted (backward compatibility). Ingest NEVER compares
+        # against the "current" pool file.
+        sha = r.get("source_version_sha")
+        batch_id = r.get("batch_id")
+        if batch_id is not None or sha is not None:
+            if not _check_batch(conn, batch_id, "cellular", sha, fp, ts):
+                rejected += 1
+                continue
+        cver = r.get("client_version")
+        if cver is not None:
+            if not isinstance(cver, str) or not re.fullmatch(r"dual-v1-[0-9a-f]{12}", cver):
+                rejected += 1
+                continue
+        success = 1 if r.get("success") is True else 0
+        warm = r.get("warm_ms")
+        second = r.get("second_request_ms")
+        status = r.get("second_status")
+        err = r.get("error")
+        iface = r.get("interface")
+        warm = warm if isinstance(warm, int) and 0 <= warm <= 60000 else None
+        second = second if isinstance(second, int) and 0 <= second <= 60000 else None
+        status = status if isinstance(status, int) and 100 <= status <= 599 else None
+        err = err if isinstance(err, str) and len(err) <= 300 else None
+        iface = iface if isinstance(iface, str) and len(iface) <= 40 else None
+        try:
+            conn.execute(
+                """INSERT INTO probe_reports(fingerprint,name,ts,state,warm_ms,second_ms,
+                second_status,success,error,interface,source_version_sha,client_version,batch_id)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (fp, name, ts, state, warm, second, status, success, err, iface, sha, cver, batch_id),
+            )
+            accepted += 1
+        except sqlite3.IntegrityError:
+            duplicates += 1
+            continue
+        row = conn.execute(
+            "SELECT state, phone_ok, phone_fail FROM probe_nodes WHERE fingerprint=?", (fp,)
+        ).fetchone()
+        if row is None:
+            continue
+        old_state, ok_c, fail_c = row
+        if success:
+            new_ok, new_fail = ok_c + 1, fail_c
+            # Verified ONLY when the phone measurement is both successful AND
+            # fast (second request < 300ms). A responsive-but-slow node is
+            # recorded but does NOT count as verified and does not satisfy
+            # the replenishment target.
+            is_fast = second is not None and second < 300
+            if is_fast:
+                new_state = "verified"
+            elif old_state == "verified":
+                new_state = "expired"
+            else:
+                new_state = old_state
+        else:
+            new_ok, new_fail = ok_c, fail_c + 1
+            new_state = "quarantined" if new_fail >= 3 and ok_c == 0 else old_state
+            if old_state == "verified":
+                new_state = "expired"
+        conn.execute(
+            """UPDATE probe_nodes SET name=?, state=?, last_phone_ts=?, last_warm_ms=?,
+            last_second_ms=?, last_status=?, last_success=?, last_error=?, last_interface=?,
+            phone_ok=?, phone_fail=?, updated_at=? WHERE fingerprint=?""",
+            (name, new_state, ts, warm, second, status, success, err, iface,
+             new_ok, new_fail, now, fp),
+        )
+        conn.execute(
+            """DELETE FROM probe_reports WHERE fingerprint=? AND id NOT IN
+            (SELECT id FROM probe_reports WHERE fingerprint=? ORDER BY ts DESC LIMIT ?)""",
+            (fp, fp, MAX_QUEUE_STORE),
+        )
+    conn.commit()
+    tripped = _maybe_trip_circuit(conn, now)
+    conn.commit()
+    conn.close()
+    out = {"ok": True, "accepted": accepted, "duplicates": duplicates, "rejected": rejected}
+    if tripped:
+        out["circuit_tripped"] = True
+        out["note"] = "many distinct hosts failed at once; possible network issue, backing off"
+    return out
+
+def stats():
+    sync_pool()
+    conn = db()
+    now = int(time.time())
+    hour_start, day_start = _hour_bounds(now)
+    states = dict(conn.execute("SELECT state, COUNT(*) FROM probe_nodes GROUP BY state").fetchall())
+    new_today = conn.execute(
+        "SELECT COUNT(*) FROM probe_nodes WHERE first_seen >= ?", (day_start,)
+    ).fetchone()[0]
+    total = sum(states.values())
+    verified = states.get("verified", 0)
+    covered = conn.execute(
+        "SELECT COUNT(*) FROM probe_nodes WHERE last_phone_ts IS NOT NULL AND last_phone_ts >= ?",
+        (day_start,),
+    ).fetchone()[0]
+    tested_hour = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports WHERE ts >= ?", (hour_start,)
+    ).fetchone()[0]
+    tested_day = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports WHERE ts >= ?", (day_start,)
+    ).fetchone()[0]
+    qualified_day = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports WHERE ts >= ? AND success=1 AND second_ms IS NOT NULL AND second_ms < 300",
+        (day_start,),
+    ).fetchone()[0]
+    backlog = states.get("pending", 0) + states.get("expired", 0)
+    avg_alive = conn.execute(
+        "SELECT AVG(? - first_seen) FROM probe_nodes WHERE state!='retired'",
+        (now,),
+    ).fetchone()[0]
+    circuit = _circuit_open(conn, now)
+    conn.close()
+    return {
+        "ok": True,
+        "total": total,
+        "states": states,
+        "new_today": new_today,
+        "verified": verified,
+        "coverage_24h": covered,
+        "coverage_ratio": round(covered / total, 3) if total else 0,
+        "qualified_ratio": round(verified / total, 3) if total else 0,
+        "backlog": backlog,
+        "tested_hour": tested_hour,
+        "tested_day": tested_day,
+        "qualified_day": qualified_day,
+        "avg_alive_seconds": int(avg_alive) if avg_alive else 0,
+        "circuit_open": circuit,
+        # P0-3: the cellular label is a client declaration, not a
+        # measured bearer; it is never native proof or P0 gate evidence.
+        "channel_label": "client-declared",
+    }
+
+# ---- dual-channel (B1): wifi path. Mirrors the cellular path but reads
+# and writes ONLY the wifi tables and wifi meta keys. It never touches
+# probe_reports / probe_nodes / the cellular circuit breaker / caps. ----
+WIFI_VERIFY_TTL_SECONDS = 24 * 3600
+
+def _wifi_circuit_open(conn, now):
+    until = _meta_get(conn, "wifi_circuit_until")
+    if until:
+        try:
+            if now < int(until):
+                return True
+        except ValueError:
+            pass
+    return False
+
+def _maybe_trip_circuit_wifi(conn, now):
+    window_start = now - CIRCUIT_WINDOW_SECONDS
+    rows = conn.execute(
+        """SELECT DISTINCT n.host FROM probe_reports_wifi r
+        JOIN probe_nodes_wifi n ON n.fingerprint = r.fingerprint
+        WHERE r.ts >= ? AND r.success = 0""",
+        (window_start,),
+    ).fetchall()
+    distinct_hosts = len(rows)
+    total_fail = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports_wifi WHERE ts >= ? AND success=0",
+        (window_start,),
+    ).fetchone()[0]
+    total = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports_wifi WHERE ts >= ?",
+        (window_start,),
+    ).fetchone()[0]
+    if total >= CIRCUIT_MIN_FAILS and total_fail == total and distinct_hosts >= 4:
+        _meta_set(conn, "wifi_circuit_until", now + CIRCUIT_COOLDOWN_SECONDS)
+        conn.commit()
+        return True
+    return False
+
+def sync_pool_wifi(lines=None):
+    """Sync probe_nodes_wifi from the pool file. `lines` behaves as in
+    sync_pool(): task issuance passes the single immutable snapshot
+    lines (GPT #6940445042 P0-1); None reads the file fresh."""
+    conn = db()
+    now = int(time.time())
+    if lines is None:
+        try:
+            lines = open(POOL_TXT, encoding="utf-8", errors="ignore").read().splitlines()
+        except OSError:
+            conn.close()
+            return {"ok": False, "error": "pool file unreadable"}
+    seen = set()
+    added = 0
+    renamed = 0
+    for line in lines:
+        parsed = parse_surge_line(line)
+        if not parsed:
+            continue
+        name, proto, host, port, params = parsed
+        fp = fingerprint_of(proto, host, port, params)
+        seen.add(fp)
+        row = conn.execute(
+            "SELECT name, state FROM probe_nodes_wifi WHERE fingerprint=?", (fp,)
+        ).fetchone()
+        if row is None:
+            conn.execute(
+                """INSERT INTO probe_nodes_wifi(fingerprint,name,protocol,host,port,state,
+                first_seen,last_seen_in_pool,updated_at) VALUES(?,?,?,?,?,'pending',?,?,?)""",
+                (fp, name, proto, host, port, now, now, now),
+            )
+            added += 1
+        else:
+            old_name, old_state = row
+            new_state = old_state
+            if old_state == "wifi_retired":
+                new_state = "pending"
+            if old_name != name:
+                renamed += 1
+            conn.execute(
+                """UPDATE probe_nodes_wifi SET name=?, protocol=?, host=?, port=?,
+                state=?, last_seen_in_pool=?, updated_at=? WHERE fingerprint=?""",
+                (name, proto, host, port, new_state, now, now, fp),
+            )
+    retired = 0
+    for (fp,) in conn.execute("SELECT fingerprint FROM probe_nodes_wifi WHERE state!='wifi_retired'").fetchall():
+        if fp not in seen:
+            conn.execute(
+                "UPDATE probe_nodes_wifi SET state='wifi_retired', updated_at=? WHERE fingerprint=?",
+                (now, fp),
+            )
+            retired += 1
+    conn.commit()
+    counts = dict(conn.execute("SELECT state, COUNT(*) FROM probe_nodes_wifi GROUP BY state").fetchall())
+    conn.close()
+    return {"ok": True, "added": added, "renamed": renamed, "retired": retired, "states": counts}
+
+def next_tasks_wifi():
+    """Wifi-only scheduler. Same caps as cellular but counted separately;
+    wifi reports never consume the cellular budget and never satisfy the
+    cellular replenish target. P0-1 (GPT #6940445042): same single
+    immutable _pool_snapshot() rule as next_tasks()."""
+    psha, lines = _pool_snapshot()
+    if psha is None:
+        return [], {"reason": "pool_unreadable", "batch_size": 0}
+    sync_pool_wifi(lines)
+    conn = db()
+    now = int(time.time())
+    hour_start, day_start = _hour_bounds(now)
+    conn.execute(
+        "UPDATE probe_nodes_wifi SET state='wifi_expired', updated_at=? WHERE state='wifi_verified' AND (last_wifi_ts IS NULL OR last_wifi_ts < ?)",
+        (now, now - WIFI_VERIFY_TTL_SECONDS),
+    )
+    conn.commit()
+    if _wifi_circuit_open(conn, now):
+        conn.close()
+        return [], {"reason": "wifi_circuit_open_network_suspected", "batch_size": 0}
+    tested_hour = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports_wifi WHERE ts >= ?", (hour_start,)
+    ).fetchone()[0]
+    tested_day = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports_wifi WHERE ts >= ?", (day_start,)
+    ).fetchone()[0]
+    qualified_hour = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports_wifi WHERE ts >= ? AND success=1 AND second_ms IS NOT NULL AND second_ms < 300",
+        (hour_start,),
+    ).fetchone()[0]
+    if tested_day >= MAX_PER_DAY:
+        conn.close()
+        return [], {"reason": "wifi_day_cap_reached", "tested_day": tested_day, "batch_size": 0}
+    if tested_hour >= MAX_PER_HOUR:
+        conn.close()
+        return [], {"reason": "wifi_hour_cap_reached", "tested_hour": tested_hour, "batch_size": 0}
+    if qualified_hour >= REPLENISH_TARGET:
+        expired_waiting = conn.execute(
+            "SELECT COUNT(*) FROM probe_nodes_wifi WHERE state='wifi_expired'"
+        ).fetchone()[0]
+        if expired_waiting == 0:
+            conn.close()
+            return [], {"reason": "wifi_target_met", "qualified_hour": qualified_hour, "batch_size": 0}
+    batch_size = INITIAL_BATCH
+    recent = conn.execute(
+        "SELECT success FROM probe_reports_wifi WHERE ts >= ? ORDER BY ts DESC LIMIT ?",
+        (hour_start, INITIAL_BATCH),
+    ).fetchall()
+    if len(recent) >= INITIAL_BATCH and all(r[0] == 0 for r in recent):
+        batch_size = EXPAND_BATCH
+    remaining_hour = MAX_PER_HOUR - tested_hour
+    remaining_day = MAX_PER_DAY - tested_day
+    batch_size = min(batch_size, remaining_hour, remaining_day)
+    if batch_size <= 0:
+        conn.close()
+        return [], {"reason": "wifi_cap_reached", "batch_size": 0}
+    tasks = []
+    for state in ("pending", "wifi_expired", "wifi_quarantined"):
+        if len(tasks) >= batch_size:
+            break
+        rows = conn.execute(
+            """SELECT fingerprint, name, protocol, state, first_seen, last_wifi_ts,
+            phone_ok_wifi, phone_fail_wifi FROM probe_nodes_wifi WHERE state=?
+            AND NOT EXISTS (SELECT 1 FROM probe_reports_wifi r
+                WHERE r.fingerprint = probe_nodes_wifi.fingerprint AND r.ts >= ?)""",
+            (state, hour_start),
+        ).fetchall()
+        rows.sort(key=lambda r: (r[6] * 3 - r[7] * 2
+                                 + (10 if r[3] == "pending" else 5 if r[3] == "wifi_expired" else 0)
+                                 + (min((int(time.time()) - r[5]) / 3600.0, 24) * 0.2 if r[5] else 5)),
+                  reverse=True)
+        for r in rows:
+            if len(tasks) >= batch_size:
+                break
+            tasks.append({"fingerprint": r[0], "name": r[1], "protocol": r[2]})
+    # P0-1: lock the batch binding at issuance (snapshot SHA + task
+    # fingerprint set + validity window). The SHA and the fingerprint
+    # set both come from the ONE _pool_snapshot() read at the top of
+    # this function, so the batch record and the info dict can never
+    # disagree and can never straddle a pool rotation.
+    batch_id = _issue_batch(conn, "wifi", psha, tasks)
+    conn.close()
+    return tasks, {
+        "reason": "ok",
+        "batch_size": len(tasks),
+        "tested_hour": tested_hour,
+        "tested_day": tested_day,
+        "qualified_hour": qualified_hour,
+        "pool_sha": psha,
+        "batch_id": batch_id,
+    }
+
+def ingest_wifi(results):
+    """Wifi-only ingest. Every record must carry network_type == 'wifi',
+    a batch_id whose locked record validates the fingerprint, the
+    snapshot pool SHA and the time window (P0-1), and a well-formed
+    client_version. Anything else is rejected. Writes ONLY
+    probe_reports_wifi / probe_nodes_wifi. Cellular tables are never
+    touched, so wifi can never promote a cellular 'verified' or feed
+    the P0 gate. Wifi 'verified' lives only in probe_nodes_wifi as
+    'wifi_verified' and is a ranking signal, never native proof.
+    TRUST BOUNDARY (P0-3): network_type / source_version_sha /
+    client_version arrive from the client. The endpoint path and the
+    X-Probe-Network header only check label self-consistency; they
+    cannot prove the real transport interface. Records are stored only
+    as client-declared wifi probes, never as native verification."""
+    conn = db()
+    now = int(time.time())
+    accepted = 0
+    duplicates = 0
+    rejected = 0
+    for r in results if isinstance(results, list) else []:
+        if not isinstance(r, dict):
+            rejected += 1
+            continue
+        if r.get("network_type") != "wifi":
+            rejected += 1
+            continue
+        fp = r.get("fingerprint")
+        name = r.get("name")
+        ts = r.get("ts")
+        state = r.get("state")
+        if not isinstance(fp, str) or not re.fullmatch(r"[0-9a-f]{32}", fp):
+            rejected += 1
+            continue
+        if not isinstance(name, str) or not name or len(name) > 120:
+            rejected += 1
+            continue
+        if not isinstance(ts, int) or ts <= 0 or ts > now + 600:
+            rejected += 1
+            continue
+        if state not in ("measured", "first_failed"):
+            rejected += 1
+            continue
+        # P0-1 snapshot binding (GPT #6938432964): the result MUST carry
+        # a batch_id whose locked record validates the fingerprint, the
+        # snapshot pool SHA and the time window. A script build id is
+        # not a pool version; the "current" pool file is never consulted.
+        sha = r.get("source_version_sha")
+        batch_id = r.get("batch_id")
+        if not _check_batch(conn, batch_id, "wifi", sha, fp, ts):
+            rejected += 1
+            continue
+        cver = r.get("client_version")
+        if (not isinstance(cver, str)
+                or not re.fullmatch(r"dual-v1-[0-9a-f]{12}", cver)):
+            rejected += 1
+            continue
+        success = 1 if r.get("success") is True else 0
+        warm = r.get("warm_ms")
+        second = r.get("second_request_ms")
+        status = r.get("second_status")
+        err = r.get("error")
+        warm = warm if isinstance(warm, int) and 0 <= warm <= 60000 else None
+        second = second if isinstance(second, int) and 0 <= second <= 60000 else None
+        status = status if isinstance(status, int) and 100 <= status <= 599 else None
+        err = err if isinstance(err, str) and len(err) <= 300 else None
+        try:
+            conn.execute(
+                """INSERT INTO probe_reports_wifi(fingerprint,name,ts,state,warm_ms,second_ms,
+                second_status,success,error,network_type,source_version_sha,client_version,batch_id)
+                VALUES(?,?,?,?,?,?,?,?,?,'wifi',?,?,?)""",
+                (fp, name, ts, state, warm, second, status, success, err, sha, cver, batch_id),
+            )
+            accepted += 1
+        except sqlite3.IntegrityError:
+            duplicates += 1
+            continue
+        row = conn.execute(
+            "SELECT state, phone_ok_wifi, phone_fail_wifi FROM probe_nodes_wifi WHERE fingerprint=?", (fp,)
+        ).fetchone()
+        if row is None:
+            continue
+        old_state, ok_c, fail_c = row
+        if success:
+            new_ok, new_fail = ok_c + 1, fail_c
+            is_fast = second is not None and second < 300
+            if is_fast:
+                new_state = "wifi_verified"
+            elif old_state == "wifi_verified":
+                new_state = "wifi_expired"
+            else:
+                new_state = old_state
+        else:
+            new_ok, new_fail = ok_c, fail_c + 1
+            new_state = "wifi_quarantined" if new_fail >= 3 and ok_c == 0 else old_state
+            if old_state == "wifi_verified":
+                new_state = "wifi_expired"
+        conn.execute(
+            """UPDATE probe_nodes_wifi SET name=?, state=?, last_wifi_ts=?, last_warm_ms=?,
+            last_second_ms=?, last_status=?, last_success=?, last_error=?,
+            phone_ok_wifi=?, phone_fail_wifi=?, updated_at=? WHERE fingerprint=?""",
+            (name, new_state, ts, warm, second, status, success, err,
+             new_ok, new_fail, now, fp),
+        )
+        conn.execute(
+            """DELETE FROM probe_reports_wifi WHERE fingerprint=? AND id NOT IN
+            (SELECT id FROM probe_reports_wifi WHERE fingerprint=? ORDER BY ts DESC LIMIT ?)""",
+            (fp, fp, MAX_QUEUE_STORE),
+        )
+    conn.commit()
+    tripped = _maybe_trip_circuit_wifi(conn, now)
+    conn.commit()
+    conn.close()
+    out = {"ok": True, "accepted": accepted, "duplicates": duplicates, "rejected": rejected}
+    if tripped:
+        out["circuit_tripped"] = True
+        out["note"] = "many distinct hosts failed at once on wifi; possible network issue, backing off"
+    return out
+
+def stats_wifi():
+    sync_pool_wifi()
+    conn = db()
+    now = int(time.time())
+    hour_start, day_start = _hour_bounds(now)
+    states = dict(conn.execute("SELECT state, COUNT(*) FROM probe_nodes_wifi GROUP BY state").fetchall())
+    total = sum(states.values())
+    verified = states.get("wifi_verified", 0)
+    covered = conn.execute(
+        "SELECT COUNT(*) FROM probe_nodes_wifi WHERE last_wifi_ts IS NOT NULL AND last_wifi_ts >= ?",
+        (day_start,),
+    ).fetchone()[0]
+    tested_hour = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports_wifi WHERE ts >= ?", (hour_start,)
+    ).fetchone()[0]
+    tested_day = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports_wifi WHERE ts >= ?", (day_start,)
+    ).fetchone()[0]
+    qualified_day = conn.execute(
+        "SELECT COUNT(*) FROM probe_reports_wifi WHERE ts >= ? AND success=1 AND second_ms IS NOT NULL AND second_ms < 300",
+        (day_start,),
+    ).fetchone()[0]
+    circuit = _wifi_circuit_open(conn, now)
+    conn.close()
+    return {
+        "ok": True,
+        "network_type": "wifi",
+        "total": total,
+        "states": states,
+        "verified": verified,
+        "coverage_24h": covered,
+        "coverage_ratio": round(covered / total, 3) if total else 0,
+        "qualified_ratio": round(verified / total, 3) if total else 0,
+        "tested_hour": tested_hour,
+        "tested_day": tested_day,
+        "qualified_day": qualified_day,
+        "circuit_open": circuit,
+        # P0-3: this is a CLIENT-DECLARED wifi label (client assertion,
+        # not a measured bearer). Wifi stats are ranking/health signals
+        # only; they are never native full-group verification and never
+        # P0 gate evidence.
+        "channel_label": "client-declared wifi",
+    }
+
+# ---- http ----
+def load_secret(name):
+    p = os.path.join(BASE, "config", name)
+    try:
+        with open(p) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def _send(self, code, obj):
+        body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _auth(self):
+        # No Bearer token: the token would have to live inside the phone script,
+        # which is fetched over a public URL, so it would not be a secret.
+        # Protection is the unguessable random path (like winner-report) plus
+        # strict validation, fingerprint allow-listing and rate limits.
+        return True
+
+    def _channel(self):
+        # Returns 'cellular', 'wifi', or None. The wifi endpoint is a
+        # separate exact path (<seg>-wifi); the cellular endpoint keeps the
+        # original path and behavior for old clients. A present
+        # X-Probe-Network header must agree with the path; a mismatch is
+        # a 400 (label error is fail-closed, never silently re-tagged).
+        # TRUST BOUNDARY (P0-3): path and header are CLIENT-SUPPLIED.
+        # They prove label self-consistency ONLY. They cannot prove the
+        # real transport interface and cannot catch a switch in the
+        # milliseconds between two client-side detections. Records
+        # admitted here are client-declared wifi/cellular probes, never
+        # native verification and never P0 gate evidence.
+        seg = load_secret("probe-path.txt")
+        if not seg or not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", seg):
+            return None
+        path = urlparse(self.path).path
+        hdr = (self.headers.get("X-Probe-Network") or "").strip()
+        if path == "/" + seg:
+            if hdr and hdr != "cellular":
+                return "mismatch"
+            return "cellular"
+        if path == "/" + seg + "-wifi":
+            if hdr and hdr != "wifi":
+                return "mismatch"
+            return "wifi"
+        return None
+
+    def do_GET(self):
+        channel = self._channel()
+        if channel is None:
+            return self._send(404, {"ok": False, "error": "not found"})
+        if channel == "mismatch":
+            return self._send(400, {"ok": False, "error": "network header does not match endpoint"})
+        if not self._auth():
+            return self._send(401, {"ok": False, "error": "unauthorized"})
+        act = self.headers.get("X-Probe-Action", "")
+        if act == "tasks":
+            try:
+                tasks, info = next_tasks_wifi() if channel == "wifi" else next_tasks()
+                # P0-1 (GPT #6940445042): NEVER overwrite a batch-locked
+                # SHA. next_tasks()/next_tasks_wifi() lock pool_sha +
+                # fingerprints + batch_id from ONE immutable pool
+                # snapshot; a second pool_sha() read here could see a
+                # :07 rotation and hand the phone a SHA that does not
+                # match its batch, so its valid report would be
+                # rejected. Only early returns (circuit open / caps /
+                # target met: no batch was issued) get the current pool
+                # SHA filled in, and those carry no batch_id, so
+                # nothing can be bound to them.
+                if not info.get("batch_id"):
+                    info["pool_sha"] = pool_sha()
+                return self._send(200, {"ok": True, "tasks": tasks, "info": info})
+            except Exception as e:
+                return self._send(500, {"ok": False, "error": str(e)[:200]})
+        if act == "stats":
+            try:
+                return self._send(200, stats_wifi() if channel == "wifi" else stats())
+            except Exception as e:
+                return self._send(500, {"ok": False, "error": str(e)[:200]})
+        return self._send(400, {"ok": False, "error": "unknown action"})
+
+    def do_POST(self):
+        channel = self._channel()
+        if channel is None:
+            return self._send(404, {"ok": False, "error": "not found"})
+        if channel == "mismatch":
+            return self._send(400, {"ok": False, "error": "network header does not match endpoint"})
+        if not self._auth():
+            return self._send(401, {"ok": False, "error": "unauthorized"})
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            n = 0
+        if n <= 0 or n > 65536:
+            return self._send(400, {"ok": False, "error": "bad length"})
+        try:
+            body = json.loads(self.rfile.read(n).decode("utf-8"))
+        except Exception:
+            return self._send(400, {"ok": False, "error": "bad json"})
+        results = body.get("results") if isinstance(body, dict) else None
+        if not isinstance(results, list) or len(results) > 8:
+            return self._send(400, {"ok": False, "error": "bad results"})
+        try:
+            if channel == "wifi":
+                return self._send(200, ingest_wifi(results))
+            # Defense-in-depth: a wifi-labelled record must never land in
+            # the cellular tables, even if a client posts to the wrong path.
+            if any(isinstance(r, dict) and r.get("network_type") == "wifi" for r in results):
+                return self._send(400, {"ok": False, "error": "wifi results must use the wifi endpoint"})
+            return self._send(200, ingest(results))
+        except Exception as e:
+            return self._send(500, {"ok": False, "error": str(e)[:200]})
+
+def main():
+    import sys
+    port = int(os.environ.get("PROBE_PORT", "18081"))
+    if len(sys.argv) > 1 and sys.argv[1] == "sync":
+        print(json.dumps(sync_pool(), ensure_ascii=False))
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "stats":
+        print(json.dumps(stats(), ensure_ascii=False, indent=2))
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "tasks":
+        tasks, info = next_tasks()
+        print(json.dumps({"tasks": tasks, "info": info}, ensure_ascii=False, indent=2))
+        return
+    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    print(f"probe service on 127.0.0.1:{port} base={BASE}", flush=True)
+    server.serve_forever()
+
+if __name__ == "__main__":
+    main()
