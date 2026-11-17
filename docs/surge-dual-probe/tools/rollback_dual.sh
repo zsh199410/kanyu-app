@@ -102,7 +102,7 @@ cell_status="$(curl -s -o /dev/null -w '%{http_code}' \
   -H "X-Probe-Action: tasks" "$LOCAL_BASE/$SEG")"
 [ "$cell_status" = 200 ] || fail "legacy cellular tasks not healthy"
 
-echo "== preserve wifi tables (no DROP TABLE) =="
+echo "== wifi tables retained for audit =="
 python3 - "$DB_PATH" <<'PY' || fail "audit read failed"
 import sqlite3, sys
 c = sqlite3.connect("file:" + sys.argv[1] + "?mode=ro", uri=True)
