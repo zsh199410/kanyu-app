@@ -4,12 +4,12 @@
 # No GitHub-redacted placeholder or latest-bak guessing. Wi-Fi tables retained.
 set -euo pipefail
 
-PROBE_BASE="\${PROBE_BASE:-/opt/probe-service}"
-SERVICE_DST="\${SERVICE_DST:-/opt/probe-service/probe_service.py}"
-SCRIPT_DST="\${SCRIPT_DST:-/opt/surge-bridge/modules/probe-task.js}"
-LOCAL_BASE="\${PROBE_LOCAL_BASE:-http://127.0.0.1:18081}"
-PUBLIC_BASE="\${PROBE_PUBLIC_BASE:-https://127.0.0.1:8443}"
-RENDER_CONF="\${DEPLOY_RENDER_CONF:-$PROBE_BASE/config/deploy-render.conf}"
+PROBE_BASE="${PROBE_BASE:-/opt/probe-service}"
+SERVICE_DST="${SERVICE_DST:-/opt/probe-service/probe_service.py}"
+SCRIPT_DST="${SCRIPT_DST:-/opt/surge-bridge/modules/probe-task.js}"
+LOCAL_BASE="${PROBE_LOCAL_BASE:-http://127.0.0.1:18081}"
+PUBLIC_BASE="${PROBE_PUBLIC_BASE:-https://127.0.0.1:8443}"
+RENDER_CONF="${DEPLOY_RENDER_CONF:-$PROBE_BASE/config/deploy-render.conf}"
 RELEASE_MANIFEST="$PROBE_BASE/config/dual-release.manifest"
 SEG_FILE="$PROBE_BASE/config/probe-path.txt"
 DB_PATH="$PROBE_BASE/data/probe.db"
@@ -64,8 +64,8 @@ done < "$RELEASE_MANIFEST"
 
 # Verify ALL originals before restoring the first file.
 for kind in SERVICE SCRIPT NGINX DB; do
-  bak_var="\${kind}_BAK"; sha_var="\${kind}_SHA"
-  bak="\${!bak_var}"; wanted="\${!sha_var}"
+  bak_var="${kind}_BAK"; sha_var="${kind}_SHA"
+  bak="${!bak_var}"; wanted="${!sha_var}"
   [ -n "$bak" ] && [ -f "$bak" ] || fail "missing $kind release backup"
   [[ "$wanted" =~ ^[0-9a-f]{64}$ ]] || fail "invalid $kind SHA"
   [ "$(sha_of "$bak")" = "$wanted" ] || fail "$kind backup SHA mismatch"
