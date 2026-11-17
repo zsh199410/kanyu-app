@@ -150,7 +150,15 @@ final class PosterExportAcceptanceUITests: XCTestCase {
         }
         XCTAssertTrue(app.navigationBars["命盘海报"].waitForExistence(timeout: 30), "命盘海报页未出现")
         waitForPosterRender(app)
+        // Build #502 定论：第二遍 waitForPosterRender 的 4 次上滑把页顶的 Picker 滑出屏顶并反实例化
+        // （失败分层快照 C403D9F1 t≈192s 中“海报款式”0 次；t=161s 帧与分层快照 A14307AB 中 y=136 可见，
+        // 分享按钮则在树内 y=865.3）。先有界轮询滚回顶部再等选择器；断言本身不动。
+        // 注意 #488 教训：不用裸 .exists 轮询（滑动后 App 失活会致快照评估超时），用有界 waitForExistence。
         let stylePicker = app.buttons["海报款式"]
+        for _ in 0..<10 {
+            if stylePicker.waitForExistence(timeout: 3) { break }
+            app.swipeDown()
+        }
         XCTAssertTrue(stylePicker.waitForExistence(timeout: 10), "海报款式选择器未出现")
         stylePicker.tap()
         let premiumOption = app.buttons["尊享预测单"]
