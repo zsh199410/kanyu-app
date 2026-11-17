@@ -94,15 +94,26 @@ final class PosterExportAcceptanceUITests: XCTestCase {
         shot(app, name: "sheet-bazi-song")
 
         // 分享流程：点分享 → 系统分享 sheet 截图 → 关闭。
+        // 失败定论（Build #471 取证）：系统分享 sheet 在 iOS 27 以 Popover 呈现，非 Sheet；
+        // 失败时刻层级与录屏均显示分享 sheet 已完整出现（Reminders/Preview/More、Copy/Save Image），
+        // 只是 app.sheets 永远匹配不到 Popover。先等 Popover，再回落 Sheet，断言强度不变。
         shareButton.tap()
-        XCTAssertTrue(app.sheets.firstMatch.waitForExistence(timeout: 15), "系统分享 sheet 未出现")
+        let popoverAppeared = app.popovers.firstMatch.waitForExistence(timeout: 15)
+        let sheetAppeared = popoverAppeared || app.sheets.firstMatch.waitForExistence(timeout: 2)
+        XCTAssertTrue(sheetAppeared, "系统分享 sheet 未出现")
         shot(app, name: "share-bazi")
+        // 关闭分享 sheet：iOS 27 的分享 sheet 是 Popover，无「取消」按钮（Build #471 失败时刻层级已证实）；
+        // 先点系统 dismiss 区域，再回落 swipeDown；关闭后确认 Popover 已消失再继续。
         let cancelButton = app.buttons["取消"]
-        if cancelButton.waitForExistence(timeout: 5) {
+        if cancelButton.waitForExistence(timeout: 3) {
             cancelButton.tap()
+        } else if app.otherElements["PopoverDismissRegion"].firstMatch.waitForExistence(timeout: 3) {
+            app.otherElements["PopoverDismissRegion"].firstMatch.tap()
         } else {
             app.swipeDown()
         }
+        let sheetGone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.popovers.firstMatch, handler: nil)
+        wait(for: [sheetGone], timeout: 5)
 
         // 尊享款式：切款式 Picker 到“尊享预测单”，等重渲染后截图。
         let stylePicker = app.buttons["海报款式"]
