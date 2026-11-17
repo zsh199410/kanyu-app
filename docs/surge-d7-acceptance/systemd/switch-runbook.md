@@ -69,6 +69,40 @@
    个配置项。切换后豁免的消除靠门禁本身，配置项改为 `false` 只是
    记账 + 防未来代码误读。
 
+## P0 补充｜旧无锁写手排空门禁（独立 PR，待隔离测试验收）
+
+现网旧 pool.cli publish 与 pool-sync.sh **不使用新门禁 flock**。
+此前隔离演练让旧写手也持 flock，因此“无重叠”不能代表真实现网。
+本补丁为新 pool-gate-publish.service / pool-gate-sync.service
+增加 ExecStartPre=/usr/bin/python3 /opt/pool-gate/legacy-writer-guard.py；
+两个生产包装脚本在正式默认路径执行时再做一次相同只读检查。
+
+只有以下条件同时成立才放行：两个旧 timer 都是 disabled +
+inactive，两旧 service inactive/dead + MainPID/ControlPID=0 +
+Result=success + 无排队 Job，ps 中也无旧 pool.cli publish /
+pool-sync.sh 写手。systemctl 或进程扫描失败、旧单元缺失、
+SIGKILL 后遗留失败状态均**拒绝**。拒绝仅记录原因码、不公开
+进程命令/代理行。以下安装与关闭生产 timer 的命令**只能在
+另行批准的生产切换窗口执行**，不可作为本次测试的上线指示：
+
+```bash
+# 只示范应装文件；完整操作依旧受 Phase 0-7 审批及隔离演练约束
+install -m 0644 /opt/p2p3-d4/systemd/legacy-writer-guard.py \
+  /opt/pool-gate/legacy-writer-guard.py
+# 旧定时器停用、两旧服务 drain 后再检查
+/usr/bin/python3 /opt/pool-gate/legacy-writer-guard.py
+# 必须 rc=0 + ok=true，任何失败停止切换，不启动新 timer
+```
+
+**安全边界**：上述 preflight 是“检查瞬间”的证明，并不是系统级
+永久互斥。systemctl disable/stop 不能阻止管理员随后手动启动旧
+service 或其他直接写文件的进程；部署时必须维护唯一写手策略，
+禁止旧 unit 重新启动，保留只读审计和回滚监督。若旧服务的
+Result 非 success，不允许自动 reset-failed、清 STOP 或忽略结果。
+隔离环境必须补“旧无 flock 红→绿”“SIGTERM/SIGKILL”“任一
+检查不可用 fail-closed”，并证明 HTTP SHA 不被坏版本覆盖。
+不能拿现有 33/33 持锁模拟结果替代本项验收。
+
 ## 1. 切换前检查（Phase 0，只读；任一项不过即停）
 
 ```bash
