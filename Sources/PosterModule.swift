@@ -71,6 +71,15 @@ extension PosterStyle {
     }
 }
 
+// MARK: - 海报导出文件名的人物 UUID 后缀（P0-4 口径，与 PalmPosterSheetView 一致）
+// 显式人物 UUID → -pid<32位hex>；nil → 空（无后缀，报告中心按姓名尽力迁移）。
+// pid 段追加在款式后缀之后（报告中心先剥 pid 再剥款式）。
+enum PosterExportNaming {
+    static func pidSuffix(personID: UUID?) -> String {
+        personID.map { "-pid" + $0.uuidString.replacingOccurrences(of: "-", with: "") } ?? ""
+    }
+}
+
 // MARK: - 保存图片到相册（4 个海报导出点共用）
 // PHPhotoLibrary 回调在任意队列，状态一律回主线程再写；成功／失败都给一句话，绝不静默失败。
 // 权限：Info.plist 须配 NSPhotoLibraryAddUsageDescription（仅写入相册）。
@@ -378,7 +387,7 @@ struct PosterView: View {
 
     var body: some View {
         if style == .yuceDan {
-            YucedanPosterLayout(chart: chart, name: displayName, pal: pal)
+            YucedanPosterLayout(chart: chart, name: displayName, pal: pal, subtitle: subtitleOverride)
         } else {
             standardPosterView
         }
@@ -606,11 +615,13 @@ let chart: BaziChart
 let name: String
 // pal 必须是 fileprivate：PosterPalette 是 private 类型，internal 属性/初始化器会编译不过
 fileprivate let pal: PosterPalette
+private let subtitle: String?
 
-fileprivate init(chart: BaziChart, name: String, pal: PosterPalette) {
+fileprivate init(chart: BaziChart, name: String, pal: PosterPalette, subtitle: String? = nil) {
 self.chart = chart
 self.name = name
 self.pal = pal
+self.subtitle = subtitle
 }
 
 // MARK: - 数据（全部逐人现算；喜忌口径见 InterpretEngine.posterXiJi：扶抑初判＋调候优先）
@@ -1065,7 +1076,7 @@ HStack(alignment:.bottom, spacing: 10) {
 VStack(alignment:.leading, spacing: 2) {
 Text("三术合参 · 堪舆命理院 谨制")
 .font(.system(size: 12, weight:.bold, design:.serif)).foregroundStyle(pal.accent)
-Text("据子平五典与天纪三合推演 · 传统命理研习参考")
+Text(subtitle.flatMap { $0.isEmpty ? nil : $0 } ?? "据子平五典与天纪三合推演 · 传统命理研习参考")
 .font(.system(size: 9, design:.serif)).foregroundStyle(pal.sub)
 .fixedSize(horizontal: false, vertical: true)
 Text("典籍依据：《滴天髓》《子平真诠》《穷通宝鉴》《三命通会》《渊海子平》")
@@ -1368,6 +1379,8 @@ richBody(rows[j].1, goldKeys: goldKeys)
 struct PosterSheetView: View {
     let chart: BaziChart
     let name: String
+    var personID: UUID? = nil
+    @EnvironmentObject var peopleStore: PeopleStore
     @State private var fileURL: URL?
     @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
@@ -1393,7 +1406,7 @@ struct PosterSheetView: View {
                 // G13：海报编辑器入口（.sheet 弹出，禁 fullScreenCover）
                 Button("打开海报编辑器（换字／换色）") { showEditor = true }
                     .buttonStyle(KyPrimaryButton())
-                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name) }
+                    .sheet(isPresented: $showEditor) { PosterEditorView(chart: chart, name: name, initialStyle: style, personID: personID) }
 
                 // P3：导出规格以 V6 指标卡静态呈现（1080 宽 PNG、scale 2.0、540pt 画布）
                 HStack(spacing: 10) {
@@ -1466,7 +1479,8 @@ struct PosterSheetView: View {
                 return
             }
             let img = output.image, data = output.pngData
-            let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png"
+            let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))
+            let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix)\(pidSuffix).png"
             do {
                 let url = try ReportExportArchive.save(data, fileName: fileName)
                 guard self.renderRequestID == request, self.style == style else { return }
@@ -1843,6 +1857,8 @@ struct ZiweiPosterView: View {
 struct ZiweiPosterSheetView: View {
     let chart: ZiweiChart
     let name: String
+    var personID: UUID? = nil
+    @EnvironmentObject var peopleStore: PeopleStore
     @State private var renderError: String?
     @State private var style: PosterStyle = .songQingdai
     @State private var previewImage: UIImage?
@@ -1920,9 +1936,10 @@ struct ZiweiPosterSheetView: View {
             return
         }
         let image = output.image, data = output.pngData
+        let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))
         do {
             _ = try ReportExportArchive.save(data,
-                fileName: "ziwei-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
+                fileName: "ziwei-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix)\(pidSuffix).png")
             previewImage = image
         } catch {
             renderError = "海报写入失败，请检查剩余空间后重试。"
@@ -2174,6 +2191,8 @@ struct HeCanPosterSheetView: View {
     let ziwei: ZiweiChart
     let name: String
     var palmLines: [String] = []
+    var personID: UUID? = nil
+    @EnvironmentObject var peopleStore: PeopleStore
     @State private var renderError: String?
     @State private var previewImage: UIImage?
     @State private var style: PosterStyle = .songQingdai
@@ -2252,9 +2271,10 @@ struct HeCanPosterSheetView: View {
             return
         }
         let image = output.image, data = output.pngData
+        let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))
         do {
             _ = try ReportExportArchive.save(data,
-                fileName: "hecan-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix).png")
+                fileName: "hecan-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix)\(pidSuffix).png")
             previewImage = image
         } catch {
             renderError = "海报写入失败，请检查剩余空间后重试。"

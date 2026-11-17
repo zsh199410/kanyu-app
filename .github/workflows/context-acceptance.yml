@@ -1,0 +1,71 @@
+name: Profile context acceptance
+
+on:
+  push:
+    branches: ['acceptance/profile-context-*', 'feat/illustrated-guides-*']
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      case:
+        description: UI case (all is required for release acceptance)
+        type: choice
+        default: all
+        options: [all, light-standard, dark-standard, light-accessibility, dark-accessibility]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: context-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      cases: ${{ steps.select.outputs.cases }}
+    steps:
+      - id: select
+        env:
+          SELECTED_CASE: ${{ inputs.case || 'all' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          cases = ['light-standard', 'dark-standard', 'light-accessibility', 'dark-accessibility']
+          selected = os.environ['SELECTED_CASE']
+          assert selected == 'all' or selected in cases
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('cases=' + json.dumps(cases if selected == 'all' else [selected]) + '\n')
+          PY
+
+  context:
+    needs: matrix
+    runs-on: macos-26
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        case: ${{ fromJSON(needs.matrix.outputs.cases) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify protected sources
+        run: python3 design/verify_v6.py
+      - name: Select Xcode 26
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Run actual profile lifecycle UI acceptance
+        run: python3 design/run_context_acceptance.py --case '${{ matrix.case }}'
+      - name: Preserve actual UI results (including failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-${{ matrix.case }}-${{ github.sha }}
+          path: build/context-evidence
+          if-no-files-found: warn
+          retention-days: 7
