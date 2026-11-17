@@ -91,10 +91,18 @@ private struct V6ExportQARunnerView: View {
                 samples.append(try render(AnyView(PalmPosterView(record: record, image: nil)),
                     name: "palm-empty-photo", style: .songQingdai, directory: directory))
             } catch { errors.append("palm: \(error)") }
+            // 第 12 张：手相真实照片分支（确定性程序化照片，非真机实拍；仅走通 image != nil 分支）。
+            do {
+                let realRecord = PalmRecord(personName: name, kind: "手相", createdEpoch: 946684800,
+                    summary: "QA渲染样例，程序化照片，不代表测量结论。",
+                    linesFlat: [0.1, 0.3, 0.5, 0.26, 0.9, 0.26, 0.12, 0.5, 0.5, 0.44, 0.88, 0.44, 0.22, 0.24, 0.5, 0.84, 0.15, 0.6])
+                samples.append(try render(AnyView(PalmPosterView(record: realRecord, image: makeDeterministicPalmPhoto())),
+                    name: "palm-real-photo", style: .songQingdai, directory: directory))
+            } catch { errors.append("palm-real-photo: \(error)") }
             try saveExpectedReportText(to: directory)
             try V6BackupQA.run(output: directory)
         } catch { errors.append("setup: \(error)") }
-        let manifest = Manifest(status: errors.isEmpty && samples.count == 11 ? "success" : "failure",
+        let manifest = Manifest(status: errors.isEmpty && samples.count == 12 ? "success" : "failure",
             scope: "Debug-only production rasterizer, local backup/extraction helper checks and full report drawing inputs for existing XCTest fixtures; not export-sheet, photo permission, sensor, or physical-device performance tests",
             samples: samples, errors: errors)
         do {
@@ -102,6 +110,25 @@ private struct V6ExportQARunnerView: View {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(manifest).write(to: directory.appendingPathComponent("manifest.json"), options: .atomic)
         } catch { print("V6 export QA manifest write failed: \(error)") }
+    }
+
+    /// 确定性程序化掌纹照片（暖底＋三条掌纹示意线；不是真机实拍，仅走通 image != nil 分支）。
+    private static func makeDeterministicPalmPhoto() -> UIImage {
+        let size = CGSize(width: 400, height: 500)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            UIColor(red: 0.85, green: 0.72, blue: 0.58, alpha: 1).setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+            UIColor(red: 0.6, green: 0.35, blue: 0.25, alpha: 1).setStroke()
+            ctx.cgContext.setLineWidth(3)
+            ctx.cgContext.move(to: CGPoint(x: 40, y: 150))
+            ctx.cgContext.addQuadCurve(to: CGPoint(x: 360, y: 130), control: CGPoint(x: 200, y: 100))
+            ctx.cgContext.move(to: CGPoint(x: 50, y: 250))
+            ctx.cgContext.addQuadCurve(to: CGPoint(x: 350, y: 220), control: CGPoint(x: 200, y: 180))
+            ctx.cgContext.move(to: CGPoint(x: 90, y: 120))
+            ctx.cgContext.addQuadCurve(to: CGPoint(x: 200, y: 420), control: CGPoint(x: 60, y: 300))
+            ctx.cgContext.strokePath()
+        }
     }
 
     static func validateOrientation(in directory: URL) throws {

@@ -1,0 +1,82 @@
+{
+  "version": "ios-four-poster-dynamic-v1",
+  "status": "read_only_preview",
+  "source": "existing engine/measurement only",
+  "rules": {
+    "no_static_sample_values": true,
+    "require_owner_uuid_for_persist": true,
+    "no_name_only_matching": true,
+    "preserve_complete_text": true,
+    "source_path_for_each_field": true,
+    "do_not_change_golden_or_engine": true
+  },
+  "designs": [
+    {
+      "id": "palm",
+      "title": "手相个人指南",
+      "style": "青黛金线，道家山水",
+      "model": "PalmRecord",
+      "fields": [
+        "id",
+        "summary",
+        "linesFlat"
+      ],
+      "missing": "stable owner UUID; image/line geometry needs same record",
+      "exportReady": false
+    },
+    {
+      "id": "bazi",
+      "title": "八字古风长卷",
+      "style": "宋纸丹青，道家漫画",
+      "model": "BaziChart+InterpretEngine",
+      "fields": [
+        "pillars",
+        "wuxingPercents",
+        "dayunGanZhi",
+        "interpret"
+      ],
+      "owner": "Person.id",
+      "exportReady": false
+    },
+    {
+      "id": "ziwei",
+      "title": "紫微星曜图鉴",
+      "style": "玄夜观星",
+      "model": "ZiweiChart",
+      "fields": [
+        "palaces",
+        "lunarText"
+      ],
+      "missing": "stable owner ID needs explicit link",
+      "exportReady": false
+    },
+    {
+      "id": "premium",
+      "title": "尊享预测单",
+      "style": "朱砂册页",
+      "model": "BaziChart+YucedanPosterLayout",
+      "fields": [
+        "pillars",
+        "wuxingPercents",
+        "dayunGanZhi",
+        "interpret"
+      ],
+      "owner": "Person.id",
+      "exportReady": false
+    }
+  ],
+  "export": {
+    "widthPx": 1080,
+    "height": "variable",
+    "actualJPEGs": "design samples only",
+    "pdf": "same typed bound data, own layout",
+    "separation": "no persistence in preview",
+    "evidence": [
+      "exact SHA CI",
+      "device screenshots",
+      "cross-person isolation",
+      "PNG CRC and dimensions",
+      "PDF full text and page count"
+    ]
+  }
+}

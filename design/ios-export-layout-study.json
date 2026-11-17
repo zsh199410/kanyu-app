@@ -1,0 +1,112 @@
+{
+  "schema": "kanyu.ios.export.layout-study.v1",
+  "status": "DRAFT_RESEARCH_ONLY",
+  "base_main_sha": "66ed1d4283cc1f286229f1e0bca2d71e908495c9",
+  "scope": "iOS only",
+  "production_modified": false,
+  "poster": {
+    "one_visible_style": "宋纸青黛",
+    "independent_product": "尊享预测单（不可作为第二皮肤）",
+    "canvas_pt": 540,
+    "scale": 2,
+    "width_px": 1080,
+    "content_inset_pt": 32,
+    "content_width_pt": 476,
+    "inner_frame_inset_pt": 17.5,
+    "inner_frame_stroke_pt": 0.5,
+    "inner_frame_inner_edge_pt": 18,
+    "minimum_frame_to_text_pt": 14,
+    "vertical_safe_inset_pt": 36,
+    "section_gap_pt": 20,
+    "subsection_gap_pt": 14,
+    "colors": {
+      "paper": "#F6F1E6",
+      "card": "#FCFBF7",
+      "ink": "#2B2723",
+      "indigo_ui": "#1F4959",
+      "historical_poster_indigo_pending_review": "#274E5C",
+      "cinnabar_accent": "#9A2A22"
+    },
+    "typography_pt": {
+      "masthead": 28,
+      "section": 18,
+      "main_result": 17,
+      "body": 14,
+      "evidence": 11.5
+    }
+  },
+  "pdf": {
+    "a4_pt": [
+      595,
+      842
+    ],
+    "body_left_right_pt": 48,
+    "body_top_pt": 48,
+    "body_bottom_pt": 794,
+    "footer_y_pt": 812,
+    "title_pt": 28,
+    "chapter_pt": 18,
+    "subheading_pt": 14,
+    "body_pt": 12.25,
+    "evidence_pt": 10.5,
+    "toc_first_page": 2,
+    "body_hash_must_remain_identical": true,
+    "engine_version_must_remain_identical": true,
+    "toc_layout": {
+      "status": "DESIGN_ONLY",
+      "first_toc_page": 2,
+      "first_content_page_formula": "1 + tocPageCount + oneBasedContentPageIndex",
+      "toc_row_strategy": "measured title height; row=max(left,right,16pt)+gap",
+      "allow_multiline": true,
+      "overflow": "paginate TOC onto additional pages, never overlap bottom or footer",
+      "preserve_current_page_counts_if_single_toc_page": true
+    }
+  },
+  "flow": [
+    "preview",
+    "prepare_local_file",
+    "validate_png_or_pdf",
+    "persist",
+    "system_share_sheet",
+    "report_center"
+  ],
+  "tests": [
+    "protected_original_tests_golden_json",
+    "exact_sha_build",
+    "png_1080_width_and_full_text",
+    "pdf_4_14_26_pages_and_edge_cases",
+    "title_orphan_and_toc_spill",
+    "real_pdfkit_text_selectable",
+    "sha256_crc",
+    "same_name_person_isolation",
+    "iphone_voiceover_and_long_names",
+    "adaptive_toc_multiline_and_overflow",
+    "export_failed_write_keeps_prior_valid_file",
+    "share_disabled_until_validated_persistent_file_exists"
+  ],
+  "not_verified": [
+    "real_ios_render",
+    "pdf_ua",
+    "iphone_export_or_share",
+    "new_head_ci",
+    "same_name_person_isolation"
+  ],
+  "export_ui_contract": {
+    "status": "DESIGN_ONLY",
+    "states": [
+      "idle",
+      "rendering",
+      "validating",
+      "persisting",
+      "ready",
+      "sharing",
+      "failed",
+      "cancelled"
+    ],
+    "preview": "PDFKit PDFView and full-resolution poster preview",
+    "ready_only_after": "durable file exists, PNG/PDF validates, person and version receipt match",
+    "share": "validated persistent file URL through ShareLink / system sheet",
+    "failure": "preserve previous valid artifact; retry without silent content loss",
+    "cross_person": "do not reuse across different person IDs, separate data-workflow gate"
+  }
+}
