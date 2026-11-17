@@ -1,5 +1,14 @@
 # 分阶段部署手册（Staged Runbook）— #73 双通道探针补丁 B①
 
+## P0 补充：同批次回滚证据（GPT 直接修复）
+
+部署 Stage 2 **在修改线上任何文件前**，一次性备份原版 service、nginx、托管脚本和 SQLite WAL-safe DB 快照，并记录同一个发行 ID、四份备份的真实 SHA256 至服务器私有 `/opt/probe-service/config/dual-release.manifest`（权限 600）。Stage 3/5 必须匹配此 manifest，不能按“最新 .bak 文件”跨批次拼接恢复。若有正在进行的 release manifest，下一次 Stage 2 直接拒绝，需先完成相应回滚或另行受控收口。
+
+`tools/rollback_dual.sh` **不接受脱敏版 PR 中的旧脚本 SHA**，也不硬编码 nginx 文件/探针 Host：均读取 Stage 2 私有 manifest 与同机 `deploy-render.conf`。回滚前先验证全部原文件 SHA、完整备份和 DB `integrity_check`，不满足则一字不动；通过后按“脚本→nginx→服务”逆序恢复，检验 Wi-Fi 404 与蜂窝 200，始终保留 Wi-Fi 数据表。成功后 archive manifest。
+
+> PR #82 脱敏目录中只有代码，不包含真实配置。任何用户/执行器不得将仓库脱敏 SHA 当作生产 SHA；本段不代表批准生产部署。Stage 2/3/4/5 仍需独立审定和隔离演练。
+
+
 > 来源：Issue #73 评论 #6938432964（GPT 增量复核，五条精确门禁之 5）
 > 与 PR #82 评论 #6940445042（GPT 逐文件终审，P0-3：分阶段脚本与
 > 手册必须一致——脚本按 stage 参数独立执行，阶段之间停下等确认；
