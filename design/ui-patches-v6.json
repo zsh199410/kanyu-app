@@ -1822,5 +1822,119 @@
     "before": "        }\n        let image = output.image, data = output.pngData\n        let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))\n        do {\n            _ = try ReportExportArchive.save(data,\n",
     "after": "        }\n        let image = output.image, data = output.pngData\n        // Batch 2 P0：文件名 pid 只认显式 personID；姓名回落已移除\n        // （Person.uniqueID(forName:) 是姓名推断，不可作为归属证明）。\n        let pidSuffix = PosterExportNaming.pidSuffix(personID: personID)\n        do {\n            _ = try ReportExportArchive.save(data,\n",
     "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "}\n\n@MainActor\nfinal class PalmRecordStore: ObservableObject {\n",
+    "after": "}\n\n/// QA 导出验收 P0-A：历史迁移一次性标记（文件 palm_legacy_migration_done.json）。\n/// 首次按新规则加载时对现存记录跑一次旧迁移，随后立标记、永不自动迁移；\n/// 此后新增记录一律显式 associate 或保持孤儿。标记内容只留完成时刻作证据。\nstruct PalmLegacyMigrationMarker: Codable {\n    var done: Bool\n    var epoch: Double\n}\n\n@MainActor\nfinal class PalmRecordStore: ObservableObject {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "            if let list = try? JSONDecoder().decode([PalmRecord].self, from: data) {\n                records = list\n                migratePersonIDs()\n            }\n            else { try? FileManager.default.copyItem(at: indexURL, to: indexURL.deletingPathExtension().appendingPathExtension(\"corrupt.json\")) }\n        }\n    }\n    /// P0-4 尽力迁移：personID 为空且 personName 精确匹配到唯一现有人物时挂上该人 UUID；\n",
+    "after": "            if let list = try? JSONDecoder().decode([PalmRecord].self, from: data) {\n                records = list\n                runLegacyMigrationOnceIfNeeded()\n            }\n            else { try? FileManager.default.copyItem(at: indexURL, to: indexURL.deletingPathExtension().appendingPathExtension(\"corrupt.json\")) }\n        } else {\n            // 首次加载即为空库：同样立标记，此后新增记录永不参与自动迁移。\n            writeLegacyMigrationMarkerIfNeeded()\n        }\n    }\n    /// QA 导出验收 P0-A：历史迁移只跑一次。标记已存在即跳过；不存在则跑一次旧迁移，\n    /// 随后无论是否迁到记录都立标记。标记与记录同目录，随备份走。\n    private static let legacyMigrationMarkerFileName = \"palm_legacy_migration_done.json\"\n    private func legacyMigrationMarkerURL() -> URL {\n        directory.appendingPathComponent(Self.legacyMigrationMarkerFileName)\n    }\n    private func writeLegacyMigrationMarkerIfNeeded() {\n        let url = legacyMigrationMarkerURL()\n        guard !FileManager.default.fileExists(atPath: url.path) else { return }\n        let marker = PalmLegacyMigrationMarker(done: true, epoch: Date().timeIntervalSince1970)\n        if let data = try? JSONEncoder().encode(marker) {\n            try? data.write(to: url, options: .atomic)\n            StoreSchema.writeMeta(for: url, count: 1)\n        }\n    }\n    private func runLegacyMigrationOnceIfNeeded() {\n        guard !FileManager.default.fileExists(atPath: legacyMigrationMarkerURL().path) else { return }\n        migratePersonIDs()\n        writeLegacyMigrationMarkerIfNeeded()\n    }\n    /// P0-4 尽力迁移：personID 为空且 personName 精确匹配到唯一现有人物时挂上该人 UUID；\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "    /// P0-4 尽力迁移：personID 为空且 personName 精确匹配到唯一现有人物时挂上该人 UUID；\n    /// 匹配到零个或多个时留作孤儿（personID 保持空）。改动过才回写，幂等。\n    private func migratePersonIDs() {\n        let people = Person.loadPeopleForMigration(directory: directory)\n",
+    "after": "    /// P0-4 尽力迁移：personID 为空且 personName 精确匹配到唯一现有人物时挂上该人 UUID；\n    /// 匹配到零个或多个时留作孤儿（personID 保持空）。改动过才回写，幂等。\n    /// QA 导出验收 P0-A：每迁一条记录追加一条 migrate 事件留证据（系统一次性动作，\n    /// 与用户点选的 associate/disassociate 以 action 值区分）；本函数只由\n    /// runLegacyMigrationOnceIfNeeded 调用，不再每次加载都跑。\n    private func migratePersonIDs() {\n        let people = Person.loadPeopleForMigration(directory: directory)\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PalmModule.swift",
+    "before": "                records[i].personID = id\n                changed = true\n            }\n        }\n",
+    "after": "                records[i].personID = id\n                changed = true\n                PalmOwnershipLog.append(.init(recordID: records[i].id, personID: id, action: \"migrate\", epoch: Date().timeIntervalSince1970), directory: directory)\n            }\n        }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "}\n\n/// Batch 2 P0：紫微盘面归属外部索引（chartStableID → personID）。\n/// ZiweiChart 本身无归属字段，且原模型不宜改（纯函数排盘核心），故用版本化、可回滚的\n/// 外部索引。文件 ziwei_ownership.json ＋ meta.json，与 StoreSchema 同口径\n",
+    "after": "}\n\n/// QA 导出验收 P0-B：紫微盘面归属外部索引（chartStableID → [personID]，v2 多归属）。\n/// ZiweiChart 本身无归属字段，且原模型不宜改（纯函数排盘核心），故用版本化、可回滚的\n/// 外部索引。文件 ziwei_ownership.json ＋ meta.json，与 StoreSchema 同口径\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "/// （schemaVersion + count）；删除索引文件即回到未绑定态（盘面本身不受影响）。\n/// 归属只能由用户显式关联（ZiweiHomeView 的“关联到当前人物”），绝不按姓名、出生时间、\n/// 当前选中人物反推；无归属时正式导出禁用，仅允许明确标记的非正式预览。\nstruct ZiweiOwnershipIndex: Codable {\n    var schemaVersion: Int\n    /// chartStableID → personID。\n    var entries: [String: UUID]\n    var updatedEpoch: Double\n    static let fileName = \"ziwei_ownership.json\"\n    static let currentVersion = 1\n    static func fileURL(directory: URL) -> URL { directory.appendingPathComponent(fileName) }\n    static func defaultDirectory() -> URL {\n",
+    "after": "/// （schemaVersion + count）；删除索引文件即回到未绑定态（盘面本身不受影响）。\n/// 归属只能由用户显式关联（ZiweiHomeView 的“关联到当前人物”），绝不按姓名、出生时间、\n/// 当前选中人物反推；无归属或归属歧义时正式导出禁用，仅允许明确标记的非正式预览。\n/// v2 说明：stableID 是内容指纹，同生辰/同盘面必然相同，不能作跨人物唯一身份键，\n/// 故同一 stableID 可对应多人（保序数组，先 link 的在前）；ownerID(for:) 仅在\n/// 唯一归属时返回，0 个或 ≥2 个返回 nil，歧义时须由用户显式选人。\nstruct ZiweiOwnershipIndex: Codable {\n    var schemaVersion: Int\n    /// chartStableID → 归属人物 UUID 列表（保序；同一人重复 link 不追加，避免假歧义）。\n    var entries: [String: [UUID]]\n    var updatedEpoch: Double\n    static let fileName = \"ziwei_ownership.json\"\n    static let currentVersion = 2\n    static func fileURL(directory: URL) -> URL { directory.appendingPathComponent(fileName) }\n    static func defaultDirectory() -> URL {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "    static func load(directory: URL? = nil) -> ZiweiOwnershipIndex {\n        let dir = directory ?? defaultDirectory()\n        guard let data = try? Data(contentsOf: fileURL(directory: dir)),\n              let idx = try? JSONDecoder().decode(ZiweiOwnershipIndex.self, from: data) else {\n            return ZiweiOwnershipIndex(schemaVersion: currentVersion, entries: [:], updatedEpoch: Date().timeIntervalSince1970)\n        }\n        return idx\n    }\n    func save(directory: URL? = nil) {\n",
+    "after": "    static func load(directory: URL? = nil) -> ZiweiOwnershipIndex {\n        let dir = directory ?? defaultDirectory()\n        guard let data = try? Data(contentsOf: fileURL(directory: dir)) else {\n            return ZiweiOwnershipIndex(schemaVersion: currentVersion, entries: [:], updatedEpoch: Date().timeIntervalSince1970)\n        }\n        if let idx = try? JSONDecoder().decode(ZiweiOwnershipIndex.self, from: data) {\n            return idx\n        }\n        // v1 迁移：单值 entries 转单元素数组，并立即以 v2 写回磁盘（迁移一次到位）。\n        if let legacy = try? JSONDecoder().decode(ZiweiOwnershipIndexV1.self, from: data) {\n            let migrated = ZiweiOwnershipIndex(schemaVersion: currentVersion,\n                                               entries: legacy.entries.mapValues { [$0] },\n                                               updatedEpoch: Date().timeIntervalSince1970)\n            migrated.save(directory: dir)\n            return migrated\n        }\n        return ZiweiOwnershipIndex(schemaVersion: currentVersion, entries: [:], updatedEpoch: Date().timeIntervalSince1970)\n    }\n    func save(directory: URL? = nil) {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "        let dir = directory ?? Self.defaultDirectory()\n        var copy = self\n        copy.updatedEpoch = Date().timeIntervalSince1970\n        if let data = try? JSONEncoder().encode(copy) {\n",
+    "after": "        let dir = directory ?? Self.defaultDirectory()\n        var copy = self\n        copy.schemaVersion = Self.currentVersion\n        copy.updatedEpoch = Date().timeIntervalSince1970\n        if let data = try? JSONEncoder().encode(copy) {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "        }\n    }\n    /// 取某盘面的归属人物 UUID；未关联返回 nil。\n    func ownerID(for stableID: String) -> UUID? { entries[stableID] }\n    /// 显式关联（用户点选）。覆盖同盘面的旧关联（双胞胎同盘时改关联即覆盖）。\n    mutating func link(stableID: String, to personID: UUID) {\n        entries[stableID] = personID\n    }\n    /// 解除某盘面的关联。\n    mutating func unlink(stableID: String) {\n        entries.removeValue(forKey: stableID)\n",
+    "after": "        }\n    }\n    /// 取某盘面的全部归属人物 UUID（按 link 顺序；未关联返回空数组）。\n    func ownerIDs(for stableID: String) -> [UUID] { entries[stableID] ?? [] }\n    /// 取某盘面的归属人物 UUID；仅唯一归属时返回，未关联或歧义（≥2 人）返回 nil。\n    func ownerID(for stableID: String) -> UUID? {\n        let ids = ownerIDs(for: stableID)\n        return ids.count == 1 ? ids[0] : nil\n    }\n    /// 显式关联（用户点选）。追加到归属列表，不覆盖已有归属；同一人重复 link 不追加。\n    mutating func link(stableID: String, to personID: UUID) {\n        var ids = entries[stableID] ?? []\n        if !ids.contains(personID) { ids.append(personID) }\n        entries[stableID] = ids\n    }\n    /// 解除某盘面的全部关联。\n    mutating func unlink(stableID: String) {\n        entries.removeValue(forKey: stableID)\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "        entries.removeValue(forKey: stableID)\n    }\n    /// 级联删除：删掉某人的全部盘面关联（删人物时调用，与 PalmRecordStore.removeAll 同口径）。\n    mutating func removeAll(for personID: UUID) {\n        entries = entries.filter { $0.value != personID }\n    }\n    /// 备份/恢复：导出全部条目；导入时整体替换（调用方先备份旧索引）。\n",
+    "after": "        entries.removeValue(forKey: stableID)\n    }\n    /// 解除某盘面与某一人的关联；删空后移除该键。\n    mutating func unlink(stableID: String, personID: UUID) {\n        guard var ids = entries[stableID] else { return }\n        ids.removeAll { $0 == personID }\n        if ids.isEmpty { entries.removeValue(forKey: stableID) } else { entries[stableID] = ids }\n    }\n    /// 级联删除：删掉某人的全部盘面关联（删人物时调用，与 PalmRecordStore.removeAll 同口径）。\n    mutating func removeAll(for personID: UUID) {\n        var next: [String: [UUID]] = [:]\n        for (key, ids) in entries {\n            let kept = ids.filter { $0 != personID }\n            if !kept.isEmpty { next[key] = kept }\n        }\n        entries = next\n    }\n    /// 备份/恢复：导出全部条目；导入时整体替换（调用方先备份旧索引）。\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "    }\n    static func importData(_ data: Data) -> ZiweiOwnershipIndex? {\n        try? JSONDecoder().decode(ZiweiOwnershipIndex.self, from: data)\n    }\n}\n\n",
+    "after": "    }\n    static func importData(_ data: Data) -> ZiweiOwnershipIndex? {\n        if let idx = try? JSONDecoder().decode(ZiweiOwnershipIndex.self, from: data) { return idx }\n        if let legacy = try? JSONDecoder().decode(ZiweiOwnershipIndexV1.self, from: data) {\n            return ZiweiOwnershipIndex(schemaVersion: currentVersion,\n                                       entries: legacy.entries.mapValues { [$0] },\n                                       updatedEpoch: Date().timeIntervalSince1970)\n        }\n        return nil\n    }\n}\n\n/// v1 旧形状（entries 单值），仅供 load/importData 迁移解码；新写入一律 v2。\nprivate struct ZiweiOwnershipIndexV1: Codable {\n    var schemaVersion: Int\n    var entries: [String: UUID]\n    var updatedEpoch: Double\n}\n\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "    /// Batch 2 P0：速选所选人物（仅速选时有值；手动输入不推断，值为 nil）。\n    @State private var quickSelectedPersonID: UUID? = nil\n    /// Batch 2 P0：当前盘面在 ZiweiOwnershipIndex 中的归属人物（nil ＝ 未关联）。\n    @State private var linkedPersonID: UUID? = nil\n\n    private var inputSnapshot: String { \"\\(name)|\\(gender)|\\(birth.timeIntervalSince1970)|\\(useLongitude)|\\(longitudeText)\" }\n",
+    "after": "    /// Batch 2 P0：速选所选人物（仅速选时有值；手动输入不推断，值为 nil）。\n    @State private var quickSelectedPersonID: UUID? = nil\n    /// QA 导出验收 P0-B：当前盘面在 ZiweiOwnershipIndex 中的全部归属人物（空 ＝ 未关联；\n    /// 多人 ＝ 同盘面歧义，须显式选人）。stableID 是内容指纹，同盘面可对应多人。\n    @State private var linkedPersonIDs: [UUID] = []\n    /// QA 导出验收 P0-B：歧义盘面下用户显式选定的导出人物（唯一归属时自动等于该人）。\n    @State private var selectedExportPersonID: UUID? = nil\n    /// 海报入口的导出人物：显式选定优先；唯一归属时为该人；歧义未选人时为 nil（非正式预览）。\n    private var exportPersonID: UUID? {\n        selectedExportPersonID ?? (linkedPersonIDs.count == 1 ? linkedPersonIDs[0] : nil)\n    }\n    /// 归属人物列表（按 link 顺序，过滤已删人物）。\n    private var linkedPeople: [Person] {\n        linkedPersonIDs.compactMap { id in peopleStore.people.first { $0.id == id } }\n    }\n\n    private var inputSnapshot: String { \"\\(name)|\\(gender)|\\(birth.timeIntervalSince1970)|\\(useLongitude)|\\(longitudeText)\" }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "                    // Batch 2 P0：盘面归属（显式关联，绝不按姓名/出生时间/当前选中反推）。\n                    // 已关联显示归属人并可解除；未关联时正式导出禁用，仅非正式预览。\n                    VStack(alignment: .leading, spacing: 8) {\n                        if let linkedID = linkedPersonID, let linked = peopleStore.people.first(where: { $0.id == linkedID }) {\n                            HStack(spacing: 6) {\n                                Image(systemName: \"person.crop.circle.badge.checkmark\").foregroundStyle(Ky.qingdai)\n",
+    "after": "                    // Batch 2 P0：盘面归属（显式关联，绝不按姓名/出生时间/当前选中反推）。\n                    // 已关联显示归属人并可解除；未关联时正式导出禁用，仅非正式预览。\n                    // QA 导出验收 P0-B：同盘面多人时显式选人，歧义未选人时正式导出禁用。\n                    VStack(alignment: .leading, spacing: 8) {\n                        if linkedPersonIDs.count > 1 {\n                            HStack(spacing: 6) {\n                                Image(systemName: \"person.2.fill\").foregroundStyle(Ky.cinnabar)\n                                Text(\"此盘面共关联 \\(linkedPersonIDs.count) 人，请明确选择导出人物\").font(.subheadline).fontWeight(.semibold)\n                            }\n                            Text(\"同生辰或相同盘面会生成相同内容指纹，归属须逐人确认；未选人时正式导出禁用。\")\n                                .font(.caption).foregroundStyle(Ky.sub)\n                            ForEach(linkedPeople) { p in\n                                HStack(spacing: 6) {\n                                    Text(p.name).font(.subheadline)\n                                    Spacer()\n                                    if selectedExportPersonID == p.id {\n                                        Image(systemName: \"checkmark.circle.fill\").foregroundStyle(Ky.qingdai)\n                                    }\n                                    Button(\"解除此人关联\") {\n                                        var idx = ZiweiOwnershipIndex.load()\n                                        idx.unlink(stableID: ch.stableID, personID: p.id)\n                                        idx.save()\n                                        linkedPersonIDs = idx.ownerIDs(for: ch.stableID)\n                                        if selectedExportPersonID == p.id { selectedExportPersonID = nil }\n                                    }.buttonStyle(.bordered)\n                                }\n                            }\n                            Menu {\n                                ForEach(linkedPeople) { p in\n                                    Button(p.name) { selectedExportPersonID = p.id }\n                                }\n                            } label: {\n                                Label(\"导出为：\\(selectedExportPersonID.flatMap { id in peopleStore.people.first { $0.id == id } }?.name ?? \"未选择\")\", systemImage: \"person.crop.circle\")\n                            }\n                            .buttonStyle(.bordered)\n                            if selectedExportPersonID == nil {\n                                Text(\"请先选择一位导出人物，否则海报页仅为非正式预览。\")\n                                    .font(.caption).foregroundStyle(Ky.cinnabar)\n                            }\n                        } else if let linkedID = linkedPersonIDs.first, let linked = peopleStore.people.first(where: { $0.id == linkedID }) {\n                            HStack(spacing: 6) {\n                                Image(systemName: \"person.crop.circle.badge.checkmark\").foregroundStyle(Ky.qingdai)\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "                                idx.unlink(stableID: ch.stableID)\n                                idx.save()\n                                linkedPersonID = nil\n                            }.buttonStyle(.bordered)\n                        } else {\n",
+    "after": "                                idx.unlink(stableID: ch.stableID)\n                                idx.save()\n                                linkedPersonIDs = []\n                                selectedExportPersonID = nil\n                            }.buttonStyle(.bordered)\n                        } else {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "                                    idx.link(stableID: ch.stableID, to: target.id)\n                                    idx.save()\n                                    linkedPersonID = target.id\n                                }.buttonStyle(KyPrimaryButton())\n                            } else {\n",
+    "after": "                                    idx.link(stableID: ch.stableID, to: target.id)\n                                    idx.save()\n                                    linkedPersonIDs = idx.ownerIDs(for: ch.stableID)\n                                    selectedExportPersonID = target.id\n                                }.buttonStyle(KyPrimaryButton())\n                            } else {\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "                    .background(Ky.card)\n                    .clipShape(RoundedRectangle(cornerRadius: 12))\n                    NavigationLink { ZiweiPosterSheetView(chart: ch, name: name, personID: linkedPersonID) } label: {\n                        HStack(spacing: 10) {\n                            Image(systemName: \"photo.artframe\")\n",
+    "after": "                    .background(Ky.card)\n                    .clipShape(RoundedRectangle(cornerRadius: 12))\n                    NavigationLink { ZiweiPosterSheetView(chart: ch, name: name, personID: exportPersonID) } label: {\n                        HStack(spacing: 10) {\n                            Image(systemName: \"photo.artframe\")\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "                                // 不自动把盘面归属到他身上；正式关联仍须用户在盘面下方显式点选）。\n                                quickSelectedPersonID = p.id\n                                if let c = chart { linkedPersonID = ZiweiOwnershipIndex.load().ownerID(for: c.stableID) }\n                                chartSnapshot = \"\\(p.name)|\\(p.gender)|\\(p.birthDate.timeIntervalSince1970)|\\(p.useLongitude)|\\(String(format: \"%.1f\", p.longitude))\"\n                                savedTip = true; inputCollapsed = true\n",
+    "after": "                                // 不自动把盘面归属到他身上；正式关联仍须用户在盘面下方显式点选）。\n                                quickSelectedPersonID = p.id\n                                if let c = chart {\n                                    // QA 导出验收 P0-B：读全部归属；唯一时自动选定导出人物，歧义时清空待用户显式选人。\n                                    linkedPersonIDs = ZiweiOwnershipIndex.load().ownerIDs(for: c.stableID)\n                                    selectedExportPersonID = linkedPersonIDs.count == 1 ? linkedPersonIDs[0] : nil\n                                }\n                                chartSnapshot = \"\\(p.name)|\\(p.gender)|\\(p.birthDate.timeIntervalSince1970)|\\(p.useLongitude)|\\(String(format: \"%.1f\", p.longitude))\"\n                                savedTip = true; inputCollapsed = true\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/ZiweiModule.swift",
+    "before": "                // Batch 2 P0：手动输入不推断人物；排盘后从索引读当前盘面的归属。\n                quickSelectedPersonID = nil\n                if let c = chart { linkedPersonID = ZiweiOwnershipIndex.load().ownerID(for: c.stableID) }\n                chartSnapshot = inputSnapshot; savedTip = false\n                withAnimation(KyMotion.toggle) { inputCollapsed = true }\n",
+    "after": "                // Batch 2 P0：手动输入不推断人物；排盘后从索引读当前盘面的归属。\n                quickSelectedPersonID = nil\n                if let c = chart {\n                    // QA 导出验收 P0-B：读全部归属；唯一时自动选定导出人物，歧义时清空待用户显式选人。\n                    linkedPersonIDs = ZiweiOwnershipIndex.load().ownerIDs(for: c.stableID)\n                    selectedExportPersonID = linkedPersonIDs.count == 1 ? linkedPersonIDs[0] : nil\n                }\n                chartSnapshot = inputSnapshot; savedTip = false\n                withAnimation(KyMotion.toggle) { inputCollapsed = true }\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "    @State private var previewImage: UIImage?\n    @State private var saveMessage: String?\n    /// Batch 2 P0：归属解析。显式 personID 优先，否则查 ZiweiOwnershipIndex；\n    /// 绝不按姓名回落（Person.uniqueID(forName:) 已移除）。\n    private var resolvedOwnerID: UUID? {\n        personID ?? ZiweiOwnershipIndex.load().ownerID(for: chart.stableID)\n    }\n    /// Batch 2 P0：归属已验证＝索引有记录且对应人物仍在档案里。\n",
+    "after": "    @State private var previewImage: UIImage?\n    @State private var saveMessage: String?\n    /// QA 导出验收 P0-B：归属解析。显式 personID 优先，但须在索引的 ownerIDs 内才采信\n    /// （不在则 nil，防传错人）；无显式 personID 时用 ownerID(for:)（仅唯一归属时返回，\n    /// 歧义返回 nil）；绝不按姓名回落（Person.uniqueID(forName:) 已移除）。\n    private var resolvedOwnerID: UUID? {\n        if let pid = personID {\n            return ZiweiOwnershipIndex.load().ownerIDs(for: chart.stableID).contains(pid) ? pid : nil\n        }\n        return ZiweiOwnershipIndex.load().ownerID(for: chart.stableID)\n    }\n    /// Batch 2 P0：归属已验证＝索引有记录且对应人物仍在档案里。\n",
+    "count": 1
   }
 ]
