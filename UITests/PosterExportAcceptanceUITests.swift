@@ -14,6 +14,39 @@ final class PosterExportAcceptanceUITests: XCTestCase {
         add(attachment)
     }
 
+    /// 等待海报渲染完成再断言分享按钮：分享按钮出现即成功；失败卡片出现即按渲染失败报错；
+    /// 保存按钮出现而分享按钮不出现，说明渲染已完成但 ShareLink 标签查不到（另类失败，需修标签）。
+    /// 渲染是主线程同步 1080px 光栅化（PosterSheetView.render 经 PosterRasterizer.render＋
+    /// 等海报渲染完成并滚到底部，等到分享按钮出现。
+    /// 根因（Build #467 失败时刻证据已核实，run 44020882050）：
+    /// 渲染本身不慢——失败时刻录屏三帧（t=105/135/148s）完全相同，海报已完整渲染
+    /// （王小明四柱＋五行条＋解盘文字全在屏上），且失败时刻 UI 层级里预览图在、无进度条、无失败卡，
+    /// 就是没有分享按钮。原因是分享／保存按钮在 7 页长图底部、LazyVStack 里，不滚到底根本不会实例化，
+    /// 光等多久都没用。所以每轮查不到就向上滑一屏再查；120 秒是上限，不是“渲染要 120 秒”。
+    /// 这不是放宽断言——分享按钮仍必须出现。失败卡片（“重新生成海报”按钮）
+    /// 与保存按钮（“保存到相册”，与分享按钮同属 fileURL != nil 分支）用于区分“渲染失败”与“标签问题”。
+    private func waitForPosterRender(_ app: XCUIApplication, timeout: TimeInterval = 120) {
+        let shareButton = app.buttons["分享海报"]
+        let retryButton = app.buttons["重新生成海报"]
+        let saveButton = app.buttons["保存到相册"]
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if shareButton.waitForExistence(timeout: 2) { return }
+            if retryButton.exists {
+                XCTFail("海报渲染失败（已显示重新生成卡片），不是超时")
+                return
+            }
+            if saveButton.exists {
+                XCTFail("海报已渲染完成（保存到相册已出现）但「分享海报」按钮无法按标签查到，疑似 ShareLink 无障碍标签问题")
+                return
+            }
+            // 分享按钮在 7 页长图的 LazyVStack 底部，未滚到底不会实例化：向下滚一屏再查。
+            // 渲染未完成时内容只有进度条，滑动无影响；渲染失败时内容短，滑动无影响。
+            app.swipeUp()
+        }
+        XCTFail("海报渲染超时（120 秒内分享按钮与失败卡片均未出现）")
+    }
+
     func testPosterBusinessEntriesAndShareFlow() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -55,8 +88,9 @@ final class PosterExportAcceptanceUITests: XCTestCase {
             altEntry.tap()
         }
         XCTAssertTrue(app.navigationBars["命盘海报"].waitForExistence(timeout: 30), "命盘海报页未出现")
+        waitForPosterRender(app)
         let shareButton = app.buttons["分享海报"]
-        XCTAssertTrue(shareButton.waitForExistence(timeout: 30), "分享海报按钮未出现（渲染未完成）")
+        XCTAssertTrue(shareButton.exists, "分享海报按钮未出现（渲染未完成）")
         shot(app, name: "sheet-bazi-song")
 
         // 分享流程：点分享 → 系统分享 sheet 截图 → 关闭。
@@ -77,7 +111,11 @@ final class PosterExportAcceptanceUITests: XCTestCase {
         let premiumOption = app.buttons["尊享预测单"]
         XCTAssertTrue(premiumOption.waitForExistence(timeout: 10), "尊享预测单选项未出现")
         premiumOption.tap()
-        XCTAssertTrue(shareButton.waitForExistence(timeout: 30), "尊享款式重渲染后分享按钮未出现")
+        // 先等旧分享按钮消失（重渲染已开始），再等新渲染完成，避免误认旧图。
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: shareButton, handler: nil)
+        wait(for: [gone], timeout: 10)
+        waitForPosterRender(app)
+        XCTAssertTrue(shareButton.exists, "尊享款式重渲染后分享按钮未出现")
         shot(app, name: "sheet-premium-yucedan")
 
         // 返回后依次截图紫微、合参业务入口（不深入填表流程）。
