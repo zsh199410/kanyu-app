@@ -921,6 +921,14 @@ enum PalmOwnershipLog {
     }
 }
 
+/// QA 导出验收 P0-A：历史迁移一次性标记（文件 palm_legacy_migration_done.json）。
+/// 首次按新规则加载时对现存记录跑一次旧迁移，随后立标记、永不自动迁移；
+/// 此后新增记录一律显式 associate 或保持孤儿。标记内容只留完成时刻作证据。
+struct PalmLegacyMigrationMarker: Codable {
+    var done: Bool
+    var epoch: Double
+}
+
 @MainActor
 final class PalmRecordStore: ObservableObject {
     @Published var records: [PalmRecord] = []
@@ -934,13 +942,39 @@ final class PalmRecordStore: ObservableObject {
         if let data = try? Data(contentsOf: indexURL) {
             if let list = try? JSONDecoder().decode([PalmRecord].self, from: data) {
                 records = list
-                migratePersonIDs()
+                runLegacyMigrationOnceIfNeeded()
             }
             else { try? FileManager.default.copyItem(at: indexURL, to: indexURL.deletingPathExtension().appendingPathExtension("corrupt.json")) }
+        } else {
+            // 首次加载即为空库：同样立标记，此后新增记录永不参与自动迁移。
+            writeLegacyMigrationMarkerIfNeeded()
         }
+    }
+    /// QA 导出验收 P0-A：历史迁移只跑一次。标记已存在即跳过；不存在则跑一次旧迁移，
+    /// 随后无论是否迁到记录都立标记。标记与记录同目录，随备份走。
+    private static let legacyMigrationMarkerFileName = "palm_legacy_migration_done.json"
+    private func legacyMigrationMarkerURL() -> URL {
+        directory.appendingPathComponent(Self.legacyMigrationMarkerFileName)
+    }
+    private func writeLegacyMigrationMarkerIfNeeded() {
+        let url = legacyMigrationMarkerURL()
+        guard !FileManager.default.fileExists(atPath: url.path) else { return }
+        let marker = PalmLegacyMigrationMarker(done: true, epoch: Date().timeIntervalSince1970)
+        if let data = try? JSONEncoder().encode(marker) {
+            try? data.write(to: url, options: .atomic)
+            StoreSchema.writeMeta(for: url, count: 1)
+        }
+    }
+    private func runLegacyMigrationOnceIfNeeded() {
+        guard !FileManager.default.fileExists(atPath: legacyMigrationMarkerURL().path) else { return }
+        migratePersonIDs()
+        writeLegacyMigrationMarkerIfNeeded()
     }
     /// P0-4 尽力迁移：personID 为空且 personName 精确匹配到唯一现有人物时挂上该人 UUID；
     /// 匹配到零个或多个时留作孤儿（personID 保持空）。改动过才回写，幂等。
+    /// QA 导出验收 P0-A：每迁一条记录追加一条 migrate 事件留证据（系统一次性动作，
+    /// 与用户点选的 associate/disassociate 以 action 值区分）；本函数只由
+    /// runLegacyMigrationOnceIfNeeded 调用，不再每次加载都跑。
     private func migratePersonIDs() {
         let people = Person.loadPeopleForMigration(directory: directory)
         var changed = false
@@ -948,6 +982,7 @@ final class PalmRecordStore: ObservableObject {
             if records[i].personID == nil, let id = Person.uniqueID(forName: records[i].personName, in: people) {
                 records[i].personID = id
                 changed = true
+                PalmOwnershipLog.append(.init(recordID: records[i].id, personID: id, action: "migrate", epoch: Date().timeIntervalSince1970), directory: directory)
             }
         }
         if changed { save() }

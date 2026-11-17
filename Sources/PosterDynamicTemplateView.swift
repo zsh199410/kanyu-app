@@ -184,16 +184,29 @@ struct PosterDynamicSnapshot {
 
     // Other domains require their actual record/chart and an explicit owner UUID.
     // Never match records by a person's name to infer identity.
+    /// 兼容旧调用点（既有测试 testZiweiOrphanSnapshotCannotArchive 不改）：单 ownerID 转发为
+    /// ownerIDs 单元素数组；nil 转发为空数组。新调用点一律用 ownerIDs: 版本。
     static func ziwei(chart: ZiweiChart, name: String, ownerID: UUID?) -> Self {
+        ziwei(chart: chart, name: name, ownerIDs: ownerID.map { [$0] } ?? [])
+    }
+    // QA 导出验收 P0-B：收全部归属列表；ownerID 仅在唯一归属时推导，0 人或歧义（≥2 人）
+    // 时为 nil 并记 blocking 缺失，正式导出禁用，歧义须由用户显式选人。
+    static func ziwei(chart: ZiweiChart, name: String, ownerIDs: [UUID]) -> Self {
         let palaceFields = chart.palaces.enumerated().map { i, palace in
             PosterBoundField(id: "palace.\(i)", label: palace.name,
                              value: palace.majors.isEmpty ? "本宫无主星"
                                  : palace.majors.map { $0.star + ($0.mutagen.map { "化" + $0 } ?? "") }.joined(separator: "、"),
                              source: "ZiweiChart.palaces")
         }
-        // Batch 2 P0：通用快照 5 字段。ownerID 为空时记 blocking 缺失，canArchive 为 false。
-        let missing: [PosterMissingField] = ownerID == nil
-            ? [.init(id: "ownerID", label: "未绑定人物 UUID", blocking: true)] : []
+        // QA 导出验收 P0-B：通用快照 5 字段。0 人记 ownerID blocking 缺失；
+        // 歧义（≥2 人）记 ownerID-ambiguous blocking 缺失，canArchive 为 false。
+        let ownerID: UUID? = ownerIDs.count == 1 ? ownerIDs[0] : nil
+        var missing: [PosterMissingField] = []
+        if ownerIDs.isEmpty {
+            missing.append(.init(id: "ownerID", label: "未绑定人物 UUID", blocking: true))
+        } else if ownerIDs.count > 1 {
+            missing.append(.init(id: "ownerID-ambiguous", label: "多人共用同一盘面，请先明确选择导出人物", blocking: true))
+        }
         return .init(kind: .ziwei, ownerID: ownerID, displayName: name,
                      receipt: "ZiweiChart 农历: \(chart.lunarText)",
                      sections: [.init(id: "palaces", title: "十二宫主星", fields: palaceFields)],

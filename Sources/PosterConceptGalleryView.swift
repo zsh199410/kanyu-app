@@ -177,9 +177,12 @@ struct PosterConceptGalleryView: View {
                 if c == .ziwei, let person {
                     let zwChart = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
                                                     longitude: person.useLongitude ? person.longitude : nil)
-                    if let ownerID = ZiweiOwnershipIndex.load().ownerID(for: zwChart.stableID), ownerID == person.id {
+                    // QA 导出验收 P0-B：按 ownerIDs 分流。唯一且等于当前人物才链动态预览；
+                    // 含当前人物但歧义时提示去紫微页显式选人，不链预览；否则为未关联。
+                    let zwOwnerIDs = ZiweiOwnershipIndex.load().ownerIDs(for: zwChart.stableID)
+                    if zwOwnerIDs.count == 1, zwOwnerIDs[0] == person.id {
                         NavigationLink {
-                            PosterDynamicTemplateView(snapshot: PosterDynamicSnapshot.ziwei(chart: zwChart, name: person.name, ownerID: person.id))
+                            PosterDynamicTemplateView(snapshot: PosterDynamicSnapshot.ziwei(chart: zwChart, name: person.name, ownerIDs: [person.id]))
                         } label: {
                             Label("当前人物紫微动态预览（不保存）", systemImage: "doc.text.image")
                                 .frame(maxWidth: .infinity, minHeight: 44)
@@ -187,6 +190,9 @@ struct PosterConceptGalleryView: View {
                         .buttonStyle(.bordered)
                         .tint(Ky.qingdai)
                         .accessibilityIdentifier("poster.gallery.dynamic.ziwei")
+                    } else if zwOwnerIDs.contains(person.id) {
+                        Label("多人共用此紫微盘，请先去紫微页选择导出人物。", systemImage: "person.2.fill")
+                            .font(.footnote).foregroundStyle(Ky.sub)
                     } else {
                         Label("当前人物紫微盘未关联，正式导出不可用。请先去紫微页关联到人物档案。", systemImage: "moon.stars")
                             .font(.footnote).foregroundStyle(Ky.sub)

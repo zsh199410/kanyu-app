@@ -1881,10 +1881,14 @@ struct ZiweiPosterSheetView: View {
     @State private var style: PosterStyle = .songQingdai
     @State private var previewImage: UIImage?
     @State private var saveMessage: String?
-    /// Batch 2 P0：归属解析。显式 personID 优先，否则查 ZiweiOwnershipIndex；
-    /// 绝不按姓名回落（Person.uniqueID(forName:) 已移除）。
+    /// QA 导出验收 P0-B：归属解析。显式 personID 优先，但须在索引的 ownerIDs 内才采信
+    /// （不在则 nil，防传错人）；无显式 personID 时用 ownerID(for:)（仅唯一归属时返回，
+    /// 歧义返回 nil）；绝不按姓名回落（Person.uniqueID(forName:) 已移除）。
     private var resolvedOwnerID: UUID? {
-        personID ?? ZiweiOwnershipIndex.load().ownerID(for: chart.stableID)
+        if let pid = personID {
+            return ZiweiOwnershipIndex.load().ownerIDs(for: chart.stableID).contains(pid) ? pid : nil
+        }
+        return ZiweiOwnershipIndex.load().ownerID(for: chart.stableID)
     }
     /// Batch 2 P0：归属已验证＝索引有记录且对应人物仍在档案里。
     private var isVerifiedOwner: Bool {
