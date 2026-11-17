@@ -1,0 +1,26 @@
+# SHA256 清单（PR 包，脱敏后文件）
+
+本清单是 PR 包内文件的 SHA256（脱敏后）。隔离树原始文件的 SHA 见
+隔离树 `docs/SHA_MANIFEST.md`；两者因脱敏替换而不同，属预期。
+CLIENT_VERSION（脱敏后脚本）：dual-v1-23113216f849
+
+```
+8aafac7c088c483593906cd1e91938fe7070a5e2b95e13c315d19e26b50927ff  ./DESENSITIZATION_CHECKLIST.md
+12971b94a82d427967b7a175032942a68f881a517cf35a8367457d1e94990fdc  ./script/probe-task-dual.js
+9a05ff0e82d387e37d6cabf6b97cf30cde41c880f62aaceff001e8751fd8c77a  ./script/probe-task-orig.js
+b3fa23eea3141ef2134c8f2a39f3e3900eac1d57cd71dc20c26be19e4edafd4d  ./service/probe_service_dual.py
+015472a839991ef5a2eb6fb155e4696d27b8a430602a4b7e9ef9e5ea3b63e3f3  ./service/probe_service_orig.py
+13e0becd801a5ed84fd4330d386f3c8076e4a2ca9a8ddccb0d599032f482a617  ./tests/js_detect_test.js
+6303eb8b7111fc03681703ce5eaee6cd80d0feca65e1bf53c6393ca202fc965d  ./tests/test_deploy_matrix.py
+c0e7450c5cfbca44904adc67a1b442951efcc9263f49634302c12e8d2a8d43a5  ./tests/test_dual_probe.py
+914558d062a58f21191abfa0a776db9df617442ec279391d62a22ed3e3282723  ./fixtures/pool-fixture.txt
+586b9d8a74c27f10b43e14ebe3f25417c193ef0b239e67f7f6e435a272364189  ./tools/capture_sample.py
+bd2613dd1ccd741244ae1af7b8f83447adea1c660febc1aad9ac2ffc99a4ba2f  ./tools/deploy_dual.sh
+540bbd1386afc9173e64ca91776c58c85dccade58bbcef48ba8ca28a53441b29  ./tools/inject_sha.py
+b278c332a3db896559db4f2af0692555af842ff93986d66d2fd9f6c518fc4ffb  ./tools/rollback_dual.sh
+a35af68d4a2668d6ef8bda7853bd7ecc9359cc7d929b9d651a8ea2236318c1ae  ./docs/DUAL_VERIFICATION_REPORT.md
+7974733caf941e49145d14a168ec4542949cc07554f08cc3ca9a9c8a34817fe9  ./docs/SAMPLE_REQUEST.md
+51e0c2549179355e50a77557d81b4f07feba1a91b21770c86c20ab11d80dc27d  ./docs/STAGED_RUNBOOK.md
+6e34d394f2b8ad864c7ed97e5013bbf89743aa7211a6b6b7d4fa2acc07576422  ./diff/script.diff
+fefff9059bd6001b6c1d7cb8de5a99a06d0654cfc3c4061b3833b5436d91e0b5  ./diff/service.diff
+```
