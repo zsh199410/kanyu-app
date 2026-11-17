@@ -836,8 +836,8 @@ class TestDeployScriptStages(MatrixBase):
         # binding rather than invoking systemctl and changing services.
         manifest = os.path.join(self.base, "config", "dual-release.manifest")
         with open(manifest, "w") as f:
-            f.write("RELEASE_ID=fixture-stage5\\n")
-            f.write(f"SCRIPT_DST={dst}\\n")
+            f.write("RELEASE_ID=fixture-stage5\n")
+            f.write(f"SCRIPT_DST={dst}\n")
         os.chmod(manifest, 0o600)
         des = self._desensitized_script()
         sha_in = hashlib.sha256(open(des, "rb").read()).hexdigest()
