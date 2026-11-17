@@ -154,7 +154,10 @@ final class PosterExportAcceptanceUITests: XCTestCase {
         // （失败分层快照 C403D9F1 t≈192s 中“海报款式”0 次；t=161s 帧与分层快照 A14307AB 中 y=136 可见，
         // 分享按钮则在树内 y=865.3）。先有界轮询滚回顶部再等选择器；断言本身不动。
         // 注意 #488 教训：不用裸 .exists 轮询（滑动后 App 失活会致快照评估超时），用有界 waitForExistence。
-        let stylePicker = app.buttons["海报款式"]
+        // Build #504 定论：滚回顶部已生效（10 次 swipeDown 后选择器在屏可见），但 app.buttons["海报款式"]
+        // 精确匹配永远命中不了 menu Picker 的复合 label「海报款式, 宋纸青黛版」（产品未设 accessibilityIdentifier）。
+        // 改用 label CONTAINS 查询（同文件 :147 先例）；断言本身不动。产品侧同步给 Picker 加 identifier，两者并行。
+        let stylePicker = app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "海报款式")).firstMatch
         for _ in 0..<10 {
             if stylePicker.waitForExistence(timeout: 3) { break }
             app.swipeDown()
