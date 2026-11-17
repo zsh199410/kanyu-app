@@ -633,6 +633,12 @@ return InterpretEngine.conclusion(items: items, titles: t1)
 private var xj: (xi: [Int], ji: [Int], neutral: [Int], level: String, tongDang: Double, tiaoHou: [Int]) {
 InterpretEngine.posterXiJi(chart: chart)
 }
+/// Batch 2 P0：幸运数字/颜色单一权威。权威来源＝InterpretEngine.interpret() 的
+/// “幸运颜色与数字”那条（30 条内、可追溯）；原生静态五行映射（numMap/colorMap）不再
+/// 作为幸运模块的来源。解析不到或来源未验证时，幸运模块省略并提示“来源待核对”。
+/// 注意：幸运数字取自 interpret 的层级选择 xiIdxTH，与 posterXiJi 的 xi 元素集合可能
+/// 不同，故行文不再混贴 posterXiJi 的元素名（“（木数）”之类）。
+private var lucky: PosterLucky { InterpretEngine.luckyNumbersColors(items: items, chart: chart) }
 private static let wxNames = ["木", "火", "土", "金", "水"]
 private static let numMap = ["木": "3、8", "火": "2、7", "土": "5、0", "金": "4、9", "水": "1、6"]
 private static let colorMap = ["木": "绿、青", "火": "红", "土": "黄", "金": "白、金", "水": "黑、蓝"]
@@ -692,13 +698,22 @@ let (g, c) = markGlyph(wxIdx(ofBranch: br))
 return (br, y, y - chart.birthYear, g, c)
 }
 }
-private var xiNums: String { xj.xi.compactMap { Self.numMap[Self.wxNames[$0]]}.joined(separator: "、")}
+/// Batch 2 P0：吉祥数字改走幸运单一权威（InterpretEngine 的“幸运颜色与数字”条），
+/// 不再由 posterXiJi 经静态 numMap 推导。未验证时提示“来源待核对”，不静默回落旧映射。
+private var xiNums: String {
+    if lucky.isVerified { return lucky.numbers }
+    return "来源待核对"
+}
 private var xiNames: String { xj.xi.map { Self.wxNames[$0]}.joined(separator: "、")}
 private var jiNames: String { xj.ji.map { Self.wxNames[$0]}.joined(separator: "、")}
+/// Batch 2 P0：楼层由幸运数字本数＋10 推导（与旧口径一致），来源同为幸运权威。
 private var floors: String {
-let base = xj.xi.flatMap { (Self.numMap[Self.wxNames[$0]] ?? "").split(separator: "、").compactMap { Int($0)}}
-let all = (base + base.map { $0 + 10}).sorted()
-return all.map { String($0)}.joined(separator: "、") + " 层"
+    if lucky.isVerified {
+        let base = lucky.numbersList
+        let all = (base + base.map { $0 + 10 }).sorted()
+        return all.map { String($0) }.joined(separator: "、") + " 层"
+    }
+    return "来源待核对"
 }
 
     private func yuceReceiptRow(_ left: String, _ right: String) -> some View {
@@ -1060,10 +1075,10 @@ Text(row.1)
 yuceSection(num: "七", title: "破局调理五行通关指南", rows: [
 ("1. 生旺五行", xj.xi.isEmpty ? "流通为要，不拘固定五行" : "喜用 \(xiNames)（✓）；忌 \(jiNames.isEmpty ? "无" : jiNames + "（×）")"),
 ("2. 适宜方位", conclusion("适合方位")),
-("3. 吉祥数字", xj.xi.isEmpty ? "流通为要，不拘固定数" : "宜含 \(xiNums)（\(xiNames)数）；楼层宜选 \(floors)"),
-("4. 幸运色彩", conclusion("幸运颜色与数字") + (jiNames.isEmpty ? "" : "；忌\(jiNames)色系（\(jiColors)）")),
+("3. 吉祥数字", xj.xi.isEmpty ? "流通为要，不拘固定数" : (lucky.isVerified ? "宜含 \(xiNums)；楼层宜选 \(floors)" : "来源待核对")),
+("4. 幸运色彩", lucky.isVerified ? (lucky.text + (jiNames.isEmpty ? "" : "；忌\(jiNames)色系（\(jiColors)）")) : "来源待核对"),
 ("5. 贵人属相", guiRenShengXiao),
-("6. 手机尾号吉数", xj.xi.isEmpty ? "流通为要，不拘固定数" : "宜含 \(xiNums)（\(xiNames)数）"),
+("6. 手机尾号吉数", xj.xi.isEmpty ? "流通为要，不拘固定数" : (lucky.isVerified ? "宜含 \(xiNums)" : "来源待核对")),
 ("7. 修心建议", conclusion("如何化解（破局调理）")),
 ("8. 传统补五行", buXingInline),
 ], note: "传统应用参考", goldKeys: qiGoldKeys)
@@ -1479,7 +1494,10 @@ struct PosterSheetView: View {
                 return
             }
             let img = output.image, data = output.pngData
-            let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))
+            // Batch 2 P0：文件名 pid 只认显式 personID；姓名回落已移除
+            // （Person.uniqueID(forName:) 是姓名推断，不可作为归属证明；
+            //  报告中心按姓名尽力迁移是归档侧行为，不作为归属证明）。
+            let pidSuffix = PosterExportNaming.pidSuffix(personID: personID)
             let fileName = "poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix)\(pidSuffix).png"
             do {
                 let url = try ReportExportArchive.save(data, fileName: fileName)
@@ -1863,6 +1881,16 @@ struct ZiweiPosterSheetView: View {
     @State private var style: PosterStyle = .songQingdai
     @State private var previewImage: UIImage?
     @State private var saveMessage: String?
+    /// Batch 2 P0：归属解析。显式 personID 优先，否则查 ZiweiOwnershipIndex；
+    /// 绝不按姓名回落（Person.uniqueID(forName:) 已移除）。
+    private var resolvedOwnerID: UUID? {
+        personID ?? ZiweiOwnershipIndex.load().ownerID(for: chart.stableID)
+    }
+    /// Batch 2 P0：归属已验证＝索引有记录且对应人物仍在档案里。
+    private var isVerifiedOwner: Bool {
+        guard let id = resolvedOwnerID else { return false }
+        return peopleStore.people.contains { $0.id == id }
+    }
 
     var body: some View {
         ScrollView {
@@ -1872,6 +1900,19 @@ struct ZiweiPosterSheetView: View {
                 HStack(spacing: 10) {
                     KyMetricCard(label: "导出宽度", value: "1080 px", badgeText: "PNG")
                     KyMetricCard(label: "渲染倍率", value: "2.0×", badgeText: "540 pt")
+                }
+                // Batch 2 P0：未验证归属时为非正式预览（明确标记），正式导出入口隐藏。
+                if !isVerifiedOwner {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("非正式预览：未绑定到人物档案", systemImage: "exclamationmark.shield")
+                            .foregroundStyle(Ky.cinnabar)
+                            .font(.subheadline.weight(.semibold))
+                        Text("此盘未证明归属，正式导出已禁用。请回紫微页关联到人物档案后再导出。")
+                            .font(.caption).foregroundStyle(Ky.sub)
+                    }
+                    .padding(12)
+                    .background(Ky.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
                 if let img = previewImage {
@@ -1893,24 +1934,27 @@ struct ZiweiPosterSheetView: View {
                 }
 
                 if let img = previewImage {
-                    ShareLink(item: Image(uiImage: img), preview: SharePreview("紫微命盘海报", image: Image(uiImage: img))) {
-                        Label("分享海报", systemImage: "square.and.arrow.up")
-                    }
-                    .buttonStyle(KyPrimaryButton())
-                    Button {
-                        let savingStyle = style
-                        PosterPhotoSaver.save(img) { message in
-                            if style == savingStyle { saveMessage = message }
+                    // Batch 2 P0：正式导出入口（分享/保存）仅归属已验证时显示；未验证仅预览。
+                    if isVerifiedOwner {
+                        ShareLink(item: Image(uiImage: img), preview: SharePreview("紫微命盘海报", image: Image(uiImage: img))) {
+                            Label("分享海报", systemImage: "square.and.arrow.up")
                         }
-                    } label: {
-                        Label("保存到相册", systemImage: "photo.badge.plus")
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(Ky.qingdai)
-                    if let saveMessage {
-                        Text(saveMessage)
-                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                        .buttonStyle(KyPrimaryButton())
+                        Button {
+                            let savingStyle = style
+                            PosterPhotoSaver.save(img) { message in
+                                if style == savingStyle { saveMessage = message }
+                            }
+                        } label: {
+                            Label("保存到相册", systemImage: "photo.badge.plus")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Ky.qingdai)
+                        if let saveMessage {
+                            Text(saveMessage)
+                                .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
+                        }
                     }
                     Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
@@ -1936,10 +1980,14 @@ struct ZiweiPosterSheetView: View {
             return
         }
         let image = output.image, data = output.pngData
-        let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))
+        // Batch 2 P0：文件名 pid 只认已验证的归属（显式 personID 优先，否则查索引）；
+        // 姓名回落已移除。未验证归属时不写入报告历史（仅预览）。
+        let pidSuffix = PosterExportNaming.pidSuffix(personID: resolvedOwnerID)
         do {
-            _ = try ReportExportArchive.save(data,
-                fileName: "ziwei-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix)\(pidSuffix).png")
+            if isVerifiedOwner {
+                _ = try ReportExportArchive.save(data,
+                    fileName: "ziwei-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix)\(pidSuffix).png")
+            }
             previewImage = image
         } catch {
             renderError = "海报写入失败，请检查剩余空间后重试。"
@@ -2271,7 +2319,9 @@ struct HeCanPosterSheetView: View {
             return
         }
         let image = output.image, data = output.pngData
-        let pidSuffix = PosterExportNaming.pidSuffix(personID: personID ?? Person.uniqueID(forName: name, in: peopleStore.people))
+        // Batch 2 P0：文件名 pid 只认显式 personID；姓名回落已移除
+        // （Person.uniqueID(forName:) 是姓名推断，不可作为归属证明）。
+        let pidSuffix = PosterExportNaming.pidSuffix(personID: personID)
         do {
             _ = try ReportExportArchive.save(data,
                 fileName: "hecan-poster-\(ReportBuilder.exportName(name.isEmpty ? "chart" : name))\(style.fileSuffix)\(pidSuffix).png")

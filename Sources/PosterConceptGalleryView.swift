@@ -49,6 +49,8 @@ private enum PosterConcept: String, CaseIterable, Identifiable {
 /// Gallery only. The flat generative design examples are never exported as a user's results.
 struct PosterConceptGalleryView: View {
     var person: Person? = nil
+    /// Batch 2 P0：手相动态预览需读当前人物的 PalmRecord（按 personID 匹配）。
+    @StateObject private var palmStore = PalmRecordStore()
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
@@ -152,6 +154,44 @@ struct PosterConceptGalleryView: View {
                     .tint(Ky.qingdai)
                     .accessibilityIdentifier("poster.gallery.dynamic.\(c.rawValue)")
                 }
+                // Batch 2 P0：手相动态预览。仅当前人物有 personID 匹配的 PalmRecord 时链入
+                // PosterDynamicSnapshot.palm；否则显示暂无记录（不按姓名/最近记录回落）。
+                if c == .palm, let person {
+                    if let rec = palmStore.records(for: person).first {
+                        NavigationLink {
+                            PosterDynamicTemplateView(snapshot: PosterDynamicSnapshot.palm(record: rec, ownerID: person.id))
+                        } label: {
+                            Label("当前人物手相动态预览（不保存）", systemImage: "doc.text.image")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Ky.qingdai)
+                        .accessibilityIdentifier("poster.gallery.dynamic.palm")
+                    } else {
+                        Label("当前人物暂无手相记录，请先去手相测量。", systemImage: "hand.raised")
+                            .font(.footnote).foregroundStyle(Ky.sub)
+                    }
+                }
+                // Batch 2 P0：紫微动态预览。仅当前人物的排盘 stableID 在索引中有归属且等于本人时
+                // 链入 PosterDynamicSnapshot.ziwei；否则显示未关联、正式导出不可用。
+                if c == .ziwei, let person {
+                    let zwChart = ZiweiEngine.chart(clock: person.birthDate, gender: person.gender,
+                                                    longitude: person.useLongitude ? person.longitude : nil)
+                    if let ownerID = ZiweiOwnershipIndex.load().ownerID(for: zwChart.stableID), ownerID == person.id {
+                        NavigationLink {
+                            PosterDynamicTemplateView(snapshot: PosterDynamicSnapshot.ziwei(chart: zwChart, name: person.name, ownerID: person.id))
+                        } label: {
+                            Label("当前人物紫微动态预览（不保存）", systemImage: "doc.text.image")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Ky.qingdai)
+                        .accessibilityIdentifier("poster.gallery.dynamic.ziwei")
+                    } else {
+                        Label("当前人物紫微盘未关联，正式导出不可用。请先去紫微页关联到人物档案。", systemImage: "moon.stars")
+                            .font(.footnote).foregroundStyle(Ky.sub)
+                    }
+                }
                 exportLink(c)
                 Text("设计图里的姓名、命盘、数值仅供欣赏；动态预览只使用当前命主的真实计算字段，不写入文件或替换原有导出。")
                     .font(.caption).foregroundStyle(Ky.sub)
@@ -180,9 +220,10 @@ struct PosterConceptGalleryView: View {
         case .bazi, .premium:
             if let p = person {
                 NavigationLink {
+                    // Batch 2 P0：八字/尊享导出入口显式传 personID（不再靠姓名回落认人）。
                     PosterSheetView(chart: BaziEngine.cachedPaipan(
                         clock: p.birthDate, gender: p.gender,
-                        longitude: p.useLongitude ? p.longitude : nil), name: p.name)
+                        longitude: p.useLongitude ? p.longitude : nil), name: p.name, personID: p.id)
                 } label: {
                     Label(c == .premium ? "前往现有尊享预测单" : "前往八字原生海报",
                           systemImage: "photo")

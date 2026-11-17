@@ -881,9 +881,45 @@ struct PalmRecord: Codable, Identifiable {
     var summary: String                 // 测量摘要（掌型/指比 或 三停比例）
     var linesFlat: [Double] = []        // 手相三线控制点（归一化 x,y 交错）
     var photoFile: String = ""          // Documents/PalmPhotos/<id>.jpg
+    /// Batch 2 P0：孤儿（无可信人物归属）。personID 为空即孤儿，正式导出禁用；
+    /// 只能由用户显式关联（PalmRecordStore.associate）认领，绝不按同名自动认领。
+    var isOrphan: Bool { personID == nil }
 }
 
 struct PalmExport: Codable { var schemaVersion: Int; var records: [PalmRecord] }
+
+/// Batch 2 P0：手相归属关联事件（迁移证据）。用户显式关联/解除关联时各记一条，
+/// 只追加不改写；关联动作必须由用户在界面上明确点选，绝不由迁移/回填自动产生。
+struct PalmOwnershipEvent: Codable {
+    /// 记录 ID。
+    var recordID: UUID
+    /// 关联到的人物 UUID；解除关联时为 nil。
+    var personID: UUID?
+    /// associate（关联）/ disassociate（解除关联）。
+    var action: String
+    /// 事件时刻（Unix 时间戳）。
+    var epoch: Double
+}
+
+/// Batch 2 P0：手相归属关联日志（文件 palm_ownership_log.json ＋ meta.json，与 StoreSchema 同口径）。
+/// 只追加事件，不删改历史；删除日志文件即回到无证据态（记录本身的 personID 不受影响）。
+enum PalmOwnershipLog {
+    static let fileName = "palm_ownership_log.json"
+    static func fileURL(directory: URL) -> URL { directory.appendingPathComponent(fileName) }
+    static func load(directory: URL) -> [PalmOwnershipEvent] {
+        guard let data = try? Data(contentsOf: fileURL(directory: directory)),
+              let list = try? JSONDecoder().decode([PalmOwnershipEvent].self, from: data) else { return [] }
+        return list
+    }
+    static func append(_ event: PalmOwnershipEvent, directory: URL) {
+        var list = load(directory: directory)
+        list.append(event)
+        if let data = try? JSONEncoder().encode(list) {
+            try? data.write(to: fileURL(directory: directory), options: .atomic)
+            StoreSchema.writeMeta(for: fileURL(directory: directory), count: list.count)
+        }
+    }
+}
 
 @MainActor
 final class PalmRecordStore: ObservableObject {
@@ -950,6 +986,28 @@ final class PalmRecordStore: ObservableObject {
     func records(for person: Person) -> [PalmRecord] { records.filter { $0.personID == person.id } }
     /// 旧版按姓名取记录（仅供手动录入八字页等只有姓名字符串的旧调用点兼容；同名会串人，慎用）。
     func records(for name: String) -> [PalmRecord] { records.filter { $0.personName == name } }
+
+    /// Batch 2 P0：按人物 UUID 取记录的归属人（显式 personID 匹配；孤儿或人物已删返回 nil）。
+    /// 只认显式 personID，不按姓名/最近使用/当前选中推断。
+    func owner(of record: PalmRecord, in people: [Person]) -> Person? {
+        guard let id = record.personID else { return nil }
+        return people.first { $0.id == id }
+    }
+    /// Batch 2 P0：用户显式关联（孤儿认领）。只接受调用方传入的明确 personID，
+    /// 不按姓名匹配；写记录＋追加关联事件（迁移证据），可撤销（见 disassociate）。
+    func associate(recordID: UUID, to personID: UUID) {
+        guard let i = records.firstIndex(where: { $0.id == recordID }) else { return }
+        records[i].personID = personID
+        save()
+        PalmOwnershipLog.append(.init(recordID: recordID, personID: personID, action: "associate", epoch: Date().timeIntervalSince1970), directory: directory)
+    }
+    /// Batch 2 P0：解除关联（可撤销）。personID 清空，记录回孤儿态，追加解除事件。
+    func disassociate(recordID: UUID) {
+        guard let i = records.firstIndex(where: { $0.id == recordID }) else { return }
+        records[i].personID = nil
+        save()
+        PalmOwnershipLog.append(.init(recordID: recordID, personID: nil, action: "disassociate", epoch: Date().timeIntervalSince1970), directory: directory)
+    }
 
     /// P0-4 级联删除：删掉该人的全部记录（personID 归属的必删；旧姓名键记录只在
     /// 姓名唯一时才按名删，同名时留孤儿）。照片文件随记录一并删除。
@@ -1223,14 +1281,41 @@ enum PalmPosterTemporaryFile {
 struct PalmPosterSheetView: View {
     let record: PalmRecord
     @ObservedObject var store: PalmRecordStore
+    @EnvironmentObject var peopleStore: PeopleStore
     @State private var fileURL: URL?
     @State private var previewImage: UIImage?
     @State private var saveMessage: String?
     @State private var renderError: String?
     @State private var isRendering = false
+    /// Batch 2 P0：孤儿提示（非空时正式导出已禁用，仅预览）。
+    @State private var orphanNotice: String?
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
+                // Batch 2 P0：孤儿横幅（正式导出禁用，仅预览；可显式关联到当前人物后重渲染解锁）。
+                if let orphanNotice {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(orphanNotice, systemImage: "exclamationmark.shield")
+                            .foregroundStyle(Ky.cinnabar)
+                            .font(.subheadline.weight(.semibold))
+                            .multilineTextAlignment(.leading)
+                        Text("正式导出已禁用：此记录未绑定到人物档案。关联后可正式导出；仅预览不写入报告历史。")
+                            .font(.caption).foregroundStyle(Ky.sub)
+                        if let current = peopleStore.currentPerson {
+                            Button("关联到当前人物：\(current.name)") {
+                                store.associate(recordID: record.id, to: current.id)
+                                self.orphanNotice = nil
+                                render()
+                            }.buttonStyle(KyPrimaryButton())
+                        } else {
+                            Text("请先在人物档案里设当前命主，再回来关联。")
+                                .font(.caption).foregroundStyle(Ky.cinnabar)
+                        }
+                    }
+                    .padding(12)
+                    .background(Ky.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
                 if let renderError {
                     VStack(spacing: 12) {
                         Label(renderError, systemImage: "exclamationmark.triangle")
@@ -1285,8 +1370,18 @@ struct PalmPosterSheetView: View {
         previewImage = nil
         renderError = nil
         saveMessage = nil
-        let img = store.image(of: record)
-        let view = PalmPosterView(record: record, image: img)
+        orphanNotice = nil
+        // Batch 2 P0：以 store 里最新记录为准（关联后重渲染能读到新 personID）。
+        let current = store.records.first { $0.id == record.id } ?? record
+        // Batch 2 P0：归属门禁。孤儿（personID 为空）或归属人物已删时正式导出禁用，
+        // 仍渲染预览供查看，但不写入报告历史、不设 fileURL（分享/保存入口随之隐藏）。
+        let owner = store.owner(of: current, in: peopleStore.people)
+        let isOrphan = current.isOrphan || owner == nil
+        if isOrphan {
+            orphanNotice = "未绑定人物：此记录为孤儿，正式导出已禁用"
+        }
+        let img = store.image(of: current)
+        let view = PalmPosterView(record: current, image: img)
             .environment(\.colorScheme, .light).environment(\.dynamicTypeSize, .large)
         Task { @MainActor in
             let output: PosterRasterizer.Output
@@ -1298,16 +1393,18 @@ struct PalmPosterSheetView: View {
                 return
             }
             let out = output.image, data = output.pngData
-            let url = PalmPosterTemporaryFile.url(for: record.id)
+            let url = PalmPosterTemporaryFile.url(for: current.id)
             do {
                 try data.write(to: url, options: .atomic)
-                // P0-4：手相海报文件名带人物 UUID（-pid<32位小写hex>），报告中心按 UUID 归属；
-                // 旧记录 personID 为空时保持旧文件名，报告中心再按姓名尽力迁移。
-                let pidSuffix = record.personID.map { "-pid" + $0.uuidString.replacingOccurrences(of: "-", with: "") } ?? ""
-                _ = try ReportExportArchive.save(data,
-                    fileName: "palm-poster-\(ReportBuilder.exportName(record.personName))\(pidSuffix).png")
+                // Batch 2 P0：孤儿不写入报告历史（fileURL 保持 nil，分享/保存入口隐藏）；
+                // 已绑定记录按 P0-4 口径带 -pid 后缀归档。
+                if !isOrphan {
+                    let pidSuffix = current.personID.map { "-pid" + $0.uuidString.replacingOccurrences(of: "-", with: "") } ?? ""
+                    _ = try ReportExportArchive.save(data,
+                        fileName: "palm-poster-\(ReportBuilder.exportName(current.personName))\(pidSuffix).png")
+                    fileURL = url
+                }
                 previewImage = out
-                fileURL = url
             } catch {
                 renderError = "海报写入失败，请检查设备剩余空间后重试。"
             }

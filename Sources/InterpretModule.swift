@@ -76,6 +76,28 @@ enum VerifyStore {
     }
 }
 
+// MARK: - Batch 2 P0：尊享幸运数字/颜色（单一权威值对象）
+// 权威来源：InterpretEngine.interpret() 30 条内的“幸运颜色与数字”结论。
+// 模板深读段与原生预测单都调 InterpretEngine.luckyNumbersColors，不再各用各的映射。
+struct PosterLucky {
+    /// 完整结论正文（interpret “幸运颜色与数字”条）。
+    let text: String
+    /// 结构化数字（如“木数 3、8；火数 2、7”）；解析失败时为空。
+    let numbers: String
+    /// 结构化颜色（如“木主青、绿；火主红、紫”）；解析失败时为空。
+    let colors: String
+    /// 结构化数字列表（如 [3, 8, 2, 7]）；解析失败时为空。供原生楼层推导（本数＋10）。
+    let numbersList: [Int]
+    /// 来源种类（固定值，便于快照与导出收据核对）。
+    let sourceKind: String
+    /// 来源记录 ID：盘面指纹（四柱＋出生钟表时间）。
+    let sourceRecordID: String
+    /// 来源版本：interpret 条目数＋口径标记。
+    let sourceVersion: String
+    /// 解析是否成功；失败时调用方省略该模块并提示“来源待核对”。
+    let isVerified: Bool
+}
+
 enum InterpretEngine {
     private static let wxNames = ["木", "火", "土", "金", "水"]
     private static func wxIndex(of stem: Character) -> Int {
@@ -149,6 +171,40 @@ enum InterpretEngine {
             if let c = items.first(where: { $0.title == t })?.conclusion, !c.isEmpty { return c }
         }
         return ""
+    }
+
+    // MARK: - Batch 2 P0：尊享幸运数字/颜色的单一权威来源
+    /// 模板深读段与原生预测单共用的幸运数字/颜色值。权威来源是 interpret() 30 条内的
+    /// “幸运颜色与数字”结论（可追溯：InterpretItem 带 links/mechanism/confidence）。
+    /// 不复用 posterXiJi 的 xi/ji 集合：dimensions() 用扶抑＋调候的层级选择（偏弱取生我＋日主、
+    /// 偏强取食伤财官），posterXiJi 用调候并集减冲突，集合可能不同；且 dimensions 的颜色表含
+    /// “紫/棕”，原生静态 colorMap 只有“红/黄”，数值与颜色都可能对不上。两条链路都调本函数。
+    static func luckyNumbersColors(chart ch: BaziChart) -> PosterLucky {
+        luckyNumbersColors(items: interpret(chart: ch), chart: ch)
+    }
+    /// 已算过 interpret() 的调用方传 items，避免重复计算 30 条。
+    static func luckyNumbersColors(items: [InterpretItem], chart ch: BaziChart) -> PosterLucky {
+        let recordID = "BaziChart:\(ch.pillars.joined())-\(Int(ch.birthDate.timeIntervalSince1970))"
+        let kind = "InterpretEngine.interpret/幸运颜色与数字"
+        let version = "interpret-30/posterXiJi-fuyi-tiaohou"
+        let empty = PosterLucky(text: "", numbers: "", colors: "", numbersList: [],
+                                sourceKind: kind, sourceRecordID: recordID, sourceVersion: version, isVerified: false)
+        guard let text = items.first(where: { $0.title == "幸运颜色与数字" })?.conclusion, !text.isEmpty else { return empty }
+        // 结论格式固定（dimensions() 生成）：
+        // “日常多用这几色最合你：<颜色>。…数字上 <数字> 与你相合，…”
+        // 颜色段取“日常多用这几色最合你：”与首个“。”之间；数字段取“数字上 ”与“ 与你相合”之间。
+        // 任一段解析不到即视为未对齐，调用方省略模块并提示“来源待核对”。
+        guard let colorStart = text.range(of: "日常多用这几色最合你：")?.upperBound,
+              let colorEnd = text[colorStart...].firstIndex(of: "。"),
+              let numStart = text.range(of: "数字上 ")?.upperBound,
+              let numEnd = text.range(of: " 与你相合")?.lowerBound else { return empty }
+        let colors = String(text[colorStart..<colorEnd])
+        let numbers = String(text[numStart..<numEnd])
+        guard !colors.isEmpty, !numbers.isEmpty else { return empty }
+        let digits = numbers.components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .compactMap { Int($0) }
+        return PosterLucky(text: text, numbers: numbers, colors: colors, numbersList: digits,
+                           sourceKind: kind, sourceRecordID: recordID, sourceVersion: version, isVerified: true)
     }
 
     // MARK: - G5 可信度标签（Insight 第 1 批）
