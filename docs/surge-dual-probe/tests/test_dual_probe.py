@@ -2,11 +2,11 @@
 """Isolated tests for the #73 dual-channel (B1) probe patch.
 
 Covers design checklist (GPT #6937918471) + final-review P0-1..P0-4
-(GPT #6938113969):
-  P0-1 version binding split (client_version vs pool source_version_sha),
-  P0-2 primary-bearer network judgement, P0-3 endpoint+header trust
-  boundary, P0-4 staged deploy/rollback interop matrix (separate file
-  tests/test_deploy_matrix.py).
+(GPT #6938113969) + GPT #6940445042 P0-1 snapshot race fix
+(single immutable pool snapshot; rotation fault injection),
+P0-2 private render, P0-3 staged deploy (separate file
+tests/test_deploy_matrix.py), P0-4 WAL-safe backup (separate file
+tests/test_backup.py).
   Also: wifi/cellular/unknown, in-switch requests, label+SHA alignment,
   old-record compatibility, no impact on old cellular probe & WinnerReport,
   no DIRECT fallback. Plus: caps/circuit independence, wifi-verified never
@@ -560,6 +560,65 @@ class TestVersionBindingP01(DualBase):
                                 sha=new_sha, batch_id=info["batch_id"])
         out = self.wifi_ingest([new_bound])
         self.assertEqual(out["accepted"], 1, out)
+
+    def test_P01_rotation_between_snapshot_and_get_return(self):
+        # GPT #6940445042 P0-1 fault injection: rotate the pool file
+        # AFTER the snapshot read but BEFORE the tasks response is
+        # built. The returned info.pool_sha must still be the
+        # batch-locked (pre-rotation) SHA; the old batch's report must
+        # be accepted and stored under the OLD sha (never re-labelled
+        # as new-pool qualified); the same batch claiming the NEW sha
+        # must be rejected; a fresh batch after the rotation binds to
+        # the NEW sha.
+        real_snapshot = dual._pool_snapshot
+
+        def rotating_snapshot():
+            sha, lines = real_snapshot()
+            with open(self.pool, "a", encoding="utf-8") as f:
+                f.write("\n# rotated mid-flight: same nodes, new bytes\n")
+            return sha, lines
+
+        dual._pool_snapshot = rotating_snapshot
+        try:
+            tasks, info = dual.next_tasks_wifi()
+        finally:
+            dual._pool_snapshot = real_snapshot
+        new_sha = hashlib.sha256(open(self.pool, "rb").read()).hexdigest()
+        self.assertNotEqual(new_sha, POOL_SHA)
+        self.assertEqual(info["pool_sha"], POOL_SHA,
+                         "GET return overwrote the batch-locked SHA")
+        self.assertRegex(info["batch_id"], r"^b-[0-9a-f]{16}$")
+        self.assertGreater(len(tasks), 0, info)
+        conn = sqlite3.connect(self.db_path)
+        row = conn.execute(
+            "SELECT pool_sha FROM probe_task_batches WHERE batch_id=?",
+            (info["batch_id"],)).fetchone()
+        conn.close()
+        self.assertIsNotNone(row, "no batch record for issued tasks")
+        self.assertEqual(row[0], POOL_SHA)
+        # old batch report accepted, stored under the OLD snapshot sha
+        t = tasks[0]
+        out = self.wifi_ingest([make_result(
+            t["fingerprint"], t["name"], NOW - 10, True, 100,
+            sha=POOL_SHA, batch_id=info["batch_id"])])
+        self.assertEqual(out["accepted"], 1, out)
+        conn = sqlite3.connect(self.db_path)
+        stored = conn.execute(
+            "SELECT source_version_sha FROM probe_reports_wifi "
+            "WHERE fingerprint=?", (t["fingerprint"],)).fetchone()[0]
+        conn.close()
+        self.assertEqual(stored, POOL_SHA,
+                         "old batch re-labelled as new-pool qualified")
+        # same batch claiming the NEW sha -> rejected
+        t2 = tasks[1]
+        out = self.wifi_ingest([make_result(
+            t2["fingerprint"], t2["name"], NOW - 9, True, 100,
+            sha=new_sha, batch_id=info["batch_id"])])
+        self.assertEqual(out["rejected"], 1, out)
+        # a fresh batch after the rotation binds to the NEW sha
+        tasks2, info2 = dual.next_tasks_wifi()
+        self.assertEqual(info2["pool_sha"], new_sha)
+        self.assertGreater(len(tasks2), 0, info2)
 
     def test_P01_batch_window_enforced(self):
         # A batch whose validity window has closed rejects results even

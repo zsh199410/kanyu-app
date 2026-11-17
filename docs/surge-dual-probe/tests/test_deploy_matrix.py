@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """P0-4 staged deploy / rollback interop matrix for the #73 dual-channel
-(B1) probe patch (GPT #6938432964, five precise gates).
+(B1) probe patch (GPT #6938432964, five precise gates; GPT #6940445042
+P0-1 snapshot race, P0-3 staged-script/runbook alignment).
 
 Stages, all with REAL HTTP through a simulated nginx layer (a tiny
 reverse proxy in this file) and one shared isolated DB + fixture pool:
@@ -9,8 +10,13 @@ reverse proxy in this file) and one shared isolated DB + fixture pool:
   (3) add nginx: NEW service + NEW nginx + OLD script client
       (wifi endpoint becomes reachable; old script never calls it)
   (4) old+new script compat: NEW service + NEW nginx + BOTH clients
-      (legacy cellular + new batch-bound wifi/cellular) + abuse checks
+      (legacy cellular + ISOLATED new script, played by this harness —
+      in production the phone still runs the OLD script at this stage,
+      so production wifi REPORTS are NOT part of stage 4; they belong
+      to stage 5) + abuse checks
   (5) finally swap script: NEW service + NEW nginx, new script only
+      (the harness now plays the phone AFTER the swap: production wifi
+      reports arrive here, not in stage 4)
   (R) reverse-order rollback: old script -> old nginx -> old service
 
 Per stage the test records real HTTP statuses, the cellular tables SHA
@@ -20,6 +26,15 @@ The conventional rollback keeps the wifi tables for audit; DROP TABLE
 is FORBIDDEN as a rollback step (GPT #6938432964 gate 5 — the earlier
 "optional thorough cleanup" is void) and the test asserts the rollback
 script contains no DROP TABLE.
+
+TestDeployScriptStages additionally covers the deploy script itself
+(GPT #6940445042 P0-3): the stage argument is required, stages 1 and
+4 run alone against the simulated service/proxy and stop, stage 5
+fails closed without a private render config, and stage 5 renders +
+deploys with the RENDERED product SHA (never the desensitized input
+SHA). TestRotationFaultInjection covers the P0-1 race at the HTTP
+level: the pool rotates between the snapshot read and the GET tasks
+return, and the response must still carry the batch-locked SHA.
 
 Runs in-process (ThreadingHTTPServer on ephemeral ports) so it works in
 all four environments (local/VPS x root/non-root). Stdlib only.
@@ -399,6 +414,11 @@ class TestDeployMatrix(MatrixBase):
         self._stop_all()
 
         # ---- Stage 4: OLD+NEW SCRIPT COMPAT — both clients live ----
+        # NOTE (GPT #6940445042 P0-3): the wifi round trip below is the
+        # ISOLATED new-script simulation — this harness plays the new
+        # client. In production the phone still runs the OLD script at
+        # this stage, so production wifi REPORTS are NOT part of stage 4;
+        # they are verified in stage 5, after the script swap.
         proxy_port, _svc_port = self._serve(dual, wifi_enabled=True)
         self._cur_proxy = proxy_port
         # old script (legacy cellular) still works; FAILURE on purpose
@@ -434,6 +454,8 @@ class TestDeployMatrix(MatrixBase):
         self._stop_all()
 
         # ---- Stage 5: FINALLY SWAP SCRIPT — new script only ----
+        # Production wifi reports arrive HERE (after the swap): the
+        # harness now plays the phone with the new script.
         proxy_port, _svc_port = self._serve(dual, wifi_enabled=True)
         self._cur_proxy = proxy_port
         # NOTE: stats() runs sync_pool(), which rewrites updated_at, so
@@ -653,6 +675,213 @@ class TestDeployMatrix(MatrixBase):
             except Exception:
                 pass
         self.servers = []
+
+
+class TestRotationFaultInjection(MatrixBase):
+    def test_P01_rotation_between_snapshot_and_get_return_http(self):
+        # GPT #6940445042 P0-1, HTTP level: the pool rotates AFTER the
+        # snapshot read but BEFORE the GET tasks response is built. The
+        # response must still carry the batch-locked (pre-rotation) SHA;
+        # the old batch's report is accepted and stored under the OLD
+        # sha (never re-labelled as new-pool qualified).
+        proxy_port, _svc_port = self._serve(dual, wifi_enabled=True)
+        self._cur_proxy = proxy_port
+        ts = int(time.time()) - 120
+        real_snapshot = dual._pool_snapshot
+
+        def rotating_snapshot():
+            sha, lines = real_snapshot()
+            with open(self.pool, "a", encoding="utf-8") as f:
+                f.write("\n# rotated mid-flight: same nodes, new bytes\n")
+            return sha, lines
+
+        dual._pool_snapshot = rotating_snapshot
+        try:
+            code, body = self._req(proxy_port, "GET", "wifi",
+                                   action="tasks", net_hdr="wifi")
+        finally:
+            dual._pool_snapshot = real_snapshot
+        self.assertEqual(code, 200, body)
+        new_sha = hashlib.sha256(open(self.pool, "rb").read()).hexdigest()
+        self.assertNotEqual(new_sha, POOL_SHA)
+        self.assertEqual(body["info"]["pool_sha"], POOL_SHA,
+                         "GET return overwrote the batch-locked SHA")
+        batch_id = body["info"]["batch_id"]
+        self.assertRegex(batch_id, r"^b-[0-9a-f]{16}$")
+        self.assertGreater(len(body["tasks"]), 0, body)
+        t = body["tasks"][0]
+        code, rbody = self._req(proxy_port, "POST", "wifi", results=[
+            new_result(t["fingerprint"], t["name"], ts, True, 100,
+                       "wifi", batch_id)], net_hdr="wifi")
+        self.assertEqual(code, 200, rbody)
+        self.assertEqual(rbody["accepted"], 1, rbody)
+        conn = sqlite3.connect(self.db_path)
+        stored = conn.execute(
+            "SELECT source_version_sha FROM probe_reports_wifi "
+            "WHERE fingerprint=?", (t["fingerprint"],)).fetchone()[0]
+        conn.close()
+        self.assertEqual(stored, POOL_SHA,
+                         "old batch re-labelled as new-pool qualified")
+        # same batch claiming the NEW sha -> rejected
+        t2 = body["tasks"][1]
+        code, rbody = self._req(proxy_port, "POST", "wifi", results=[
+            new_result(t2["fingerprint"], t2["name"], ts + 1, True, 100,
+                       "wifi", batch_id, sha=new_sha)], net_hdr="wifi")
+        self.assertEqual(code, 200, rbody)
+        self.assertEqual(rbody["rejected"], 1, rbody)
+        # a fresh batch after the rotation binds to the NEW sha
+        code, body2 = self._req(proxy_port, "GET", "wifi",
+                                action="tasks", net_hdr="wifi")
+        self.assertEqual(code, 200, body2)
+        self.assertEqual(body2["info"]["pool_sha"], new_sha)
+
+
+DEPLOY_SH = os.path.join(ROOT, "tools", "deploy_dual.sh")
+RENDER_TOOL = os.path.join(ROOT, "tools", "render_probe_script.py")
+
+
+class TestDeployScriptStages(MatrixBase):
+    """GPT #6940445042 P0-3: deploy_dual.sh is genuinely staged — one
+    stage per invocation, each stopping after its gate. Stages 1 and 4
+    run alone against the simulated service/proxy; stage 5 fails closed
+    without a private render config and renders + deploys with the
+    RENDERED product SHA (never the desensitized input SHA)."""
+
+    def _desensitized_script(self):
+        # Redact the isolation script's real probe URL without knowing
+        # its value (regex over the URL shape only).
+        src = open(DUAL_JS, encoding="utf-8").read()
+        des = re.sub(r"https://[^/]+:8443/[^'\"]+",
+                     "https://<probe-host>:8443/<random-path>", src)
+        assert "<probe-host>" in des and "<random-path>" in des
+        path = os.path.join(self.tmp, "desens.js")
+        open(path, "w", encoding="utf-8").write(des)
+        return path
+
+    def _deploy_env(self, svc_port, proxy_port):
+        env = dict(os.environ)
+        env["PROBE_BASE"] = self.base
+        env["PROBE_LOCAL_BASE"] = f"http://127.0.0.1:{svc_port}"
+        env["PROBE_PUBLIC_BASE"] = f"http://127.0.0.1:{proxy_port}"
+        return env
+
+    def _run_deploy(self, args, env):
+        import subprocess
+        return subprocess.run(
+            ["bash", DEPLOY_SH] + args, env=env,
+            capture_output=True, text=True, timeout=60)
+
+    def test_stage_arg_required(self):
+        env = dict(os.environ)
+        r = self._run_deploy([], env)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("usage", r.stderr.lower())
+        r = self._run_deploy(["9"], env)
+        self.assertNotEqual(r.returncode, 0)
+        r = self._run_deploy(["2"], env)
+        self.assertNotEqual(r.returncode, 0)
+        r = self._run_deploy(["5", "only-one-arg"], env)
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_stage1_runs_alone_and_stops(self):
+        proxy_port, svc_port = self._serve(orig, wifi_enabled=False)
+        env = self._deploy_env(svc_port, proxy_port)
+        r = self._run_deploy(["1"], env)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertIn("cellular tasks: 200", r.stdout)
+        self.assertIn("wifi tasks (public): 404", r.stdout)
+        self.assertIn("stage 1 complete", r.stdout)
+        # stage 1 changes nothing: the cellular tables are untouched
+        self.assertEqual(self._wifi_row_count(), 0)
+
+    def test_stage4_runs_alone_and_stops(self):
+        proxy_port, svc_port = self._serve(dual, wifi_enabled=True)
+        env = self._deploy_env(svc_port, proxy_port)
+        r = self._run_deploy(["4"], env)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertIn("cellular tasks: 200", r.stdout)
+        self.assertIn("wifi tasks (public): 200", r.stdout)
+        self.assertIn("wifi tasks, wrong header: 400", r.stdout)
+        self.assertIn("stage 4 complete", r.stdout)
+
+    def test_stage5_fail_closed_without_render_conf(self):
+        proxy_port, svc_port = self._serve(dual, wifi_enabled=True)
+        env = self._deploy_env(svc_port, proxy_port)
+        dst = os.path.join(self.tmp, "probe-task.js")
+        env["SCRIPT_DST"] = dst
+        des = self._desensitized_script()
+        sha = hashlib.sha256(open(des, "rb").read()).hexdigest()
+        r = self._run_deploy(["5", des, sha], env)
+        self.assertNotEqual(r.returncode, 0, r.stdout)
+        self.assertFalse(os.path.exists(dst),
+                         "stage 5 wrote the script without a render conf")
+
+    def test_stage5_renders_and_deploys(self):
+        proxy_port, svc_port = self._serve(dual, wifi_enabled=True)
+        env = self._deploy_env(svc_port, proxy_port)
+        # private render conf (fixture values only)
+        vhost = os.path.join(self.tmp, "vhost.conf")
+        open(vhost, "w").write("# fixture vhost\n")
+        with open(os.path.join(self.base, "config",
+                               "deploy-render.conf"), "w") as f:
+            f.write("PROBE_HOST=probe-test.example\n")
+            f.write(f"NGINX_CONF={vhost}\n")
+        dst = os.path.join(self.tmp, "probe-task.js")
+        env["SCRIPT_DST"] = dst
+        # simulate the currently deployed OLD script (stage 5 backs it up)
+        with open(dst, "w") as f:
+            f.write("/* old deployed script */\n")
+        des = self._desensitized_script()
+        sha_in = hashlib.sha256(open(des, "rb").read()).hexdigest()
+        r = self._run_deploy(["5", des, sha_in], env)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertTrue(os.path.exists(dst))
+        data = open(dst, encoding="utf-8").read()
+        self.assertNotIn("<probe-host>", data)
+        self.assertNotIn("<random-path>", data)
+        self.assertNotIn("<nginx-vhost>", data)
+        m = re.search(r"const PROBE_URL = '(https://[^']+)'", data)
+        self.assertIsNotNone(m)
+        self.assertEqual(
+            m.group(1), f"https://probe-test.example:8443/{TEST_SEG}")
+        # CLIENT_VERSION recomputed from the rendered content
+        raw = open(dst, "rb").read()
+        norm = re.sub(rb"dual-v1-[0-9a-f]{12}",
+                      b"dual-v1-000000000000", raw)
+        cver = re.search(
+            rb"const CLIENT_VERSION = '(dual-v1-[0-9a-f]{12})';",
+            raw).group(1).decode()
+        self.assertEqual(hashlib.sha256(norm).hexdigest()[:12],
+                         cver.split("-")[2])
+        # the deployed product SHA is the RENDERED sha, never the
+        # desensitized input sha
+        sha_out = hashlib.sha256(raw).hexdigest()
+        self.assertNotEqual(sha_out, sha_in)
+        self.assertIn(f"sha256={sha_out}", r.stdout)
+        # the old script was backed up next to the destination
+        bak = [fn for fn in os.listdir(self.tmp)
+               if fn.startswith("probe-task.js.bak-")]
+        self.assertEqual(len(bak), 1, bak)
+        self.assertIn("old deployed script",
+                      open(os.path.join(self.tmp, bak[0])).read())
+
+    def test_stage_structure(self):
+        src = open(DEPLOY_SH, encoding="utf-8").read()
+        # genuine stage dispatch: one stage per invocation
+        self.assertIn('case "$STAGE" in', src)
+        # stage 2 backs up via the SQLite backup API (P0-4), never a
+        # plain cp of the live WAL database
+        self.assertIn("backup_db.py", src)
+        self.assertNotIn("cp /opt/probe-service/data/probe.db", src)
+        # stage 5 renders privately (P0-2)
+        self.assertIn("render_probe_script.py", src)
+        # the old straight-through run (service -> nginx -> script in
+        # one invocation) is gone
+        self.assertNotIn("step 3: phone script", src)
+        self.assertNotIn("step 1: service", src)
+        # all five stages exist as independent functions
+        for n in ("1", "2", "3", "4", "5"):
+            self.assertIn(f"stage_{n}()", src)
 
 
 if __name__ == "__main__":
