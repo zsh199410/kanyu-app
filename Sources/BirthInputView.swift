@@ -120,7 +120,7 @@ struct BirthInputView: View {
                                     "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"]
 
     static func solarOf(_ date: Date) -> Solar {
-        let c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        let c = BirthClockInput.calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         return Solar.fromYmdHms(year: c.year ?? 2000, month: c.month ?? 1, day: c.day ?? 1, hour: c.hour ?? 12, minute: c.minute ?? 0)
     }
 
@@ -145,6 +145,12 @@ struct BirthInputView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            DisclosureGroup("标准北京时间 UTC+8 · 填写说明") {
+                Text("这里统一按标准北京时间录入。海外出生或使用历史夏令时的记录，请先换算为 UTC+8。经度开关只计算真太阳时校正，不替代法定时区或夏令时换算。".scriptConverted)
+                    .font(.caption).foregroundStyle(Ky.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(.caption).tint(Ky.qingdai)
             // 生辰摘要票据卡：点一下弹层改时间
             Button { showSheet = true } label: {
                 HStack(spacing: 12) {
@@ -181,6 +187,9 @@ struct BirthInputView: View {
                 .kySubCard()
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("修改生辰：\(summarySolar)，北京时间 UTC+8")
+            .accessibilityValue("农历：\(summaryLunar)")
+            .accessibilityIdentifier("birth.edit")
             .sheet(isPresented: $showSheet) {
                 TimePickerSheet(initial: clock, mode: $mode, useLongitude: useLongitude, longitudeText: $longitudeText) { date, unknown in
                     clock = date; unknownHour = unknown; showSheet = false
@@ -293,7 +302,7 @@ struct BirthInputView: View {
         return VStack(alignment: .leading, spacing: 4) {
             if useLongitude {
                 if let lo = lon, (-180...180).contains(lo) {
-                    let corr = TrueSolarTime.corrected(clock: clock, longitude: lo)
+                    let corr = TrueSolarTime.corrected(clock: clock, longitude: lo, calendar: BirthClockInput.calendar)
                     let delta = Int((corr.timeIntervalSince(clock) / 60).rounded())
                     let cs = Self.solarOf(corr)
                     HStack(spacing: 5) {
@@ -329,7 +338,7 @@ struct BirthInputView: View {
     static func nearestJieQiText(lunar l: Lunar, clock: Date) -> String? {
         func hoursTo(_ sol: Solar) -> Double {
             var c = DateComponents(); c.year = sol.year; c.month = sol.month; c.day = sol.day; c.hour = sol.hour; c.minute = sol.minute
-            guard let d = Calendar(identifier: .gregorian).date(from: c) else { return 999 }
+            guard let d = BirthClockInput.calendar.date(from: c) else { return 999 }
             return abs(d.timeIntervalSince(clock)) / 3600
         }
         var best: (String, Double)?
@@ -396,7 +405,7 @@ private struct TimePickerSheet: View {
     }
     private var solarDayCount: Int {
         var c = DateComponents(); c.year = sy; c.month = smo
-        let cal = Calendar(identifier: .gregorian)
+        let cal = BirthClockInput.calendar
         if let d = cal.date(from: c), let r = cal.range(of: .day, in: .month, for: d) { return r.count }
         return 31
     }
@@ -410,8 +419,8 @@ private struct TimePickerSheet: View {
             solar = Lunar.fromYmdHms(lunarYear: ly, lunarMonth: (leap && hasLeapChoice) ? -lmo : lmo, lunarDay: 1, hour: 12, minute: 0).solar
         }
         var c = DateComponents(); c.year = solar.year; c.month = solar.month; c.day = solar.day
-        let d = Calendar(identifier: .gregorian).date(from: c) ?? Date()
-        return Calendar(identifier: .gregorian).component(.weekday, from: d) - 1
+        let d = BirthClockInput.calendar.date(from: c) ?? Date()
+        return BirthClockInput.calendar.component(.weekday, from: d) - 1
     }
     private var minutesToBoundary: Int {
         let h = curHour, m = curMinute
@@ -539,6 +548,7 @@ private struct TimePickerSheet: View {
                     }
                     .fontWeight(.bold)
                     .foregroundStyle(Ky.qingdai)
+                    .accessibilityIdentifier("birth.confirm")
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -553,7 +563,7 @@ private struct TimePickerSheet: View {
         }
         .onAppear {
             if !seeded {
-                let cal = Calendar(identifier: .gregorian)
+                let cal = BirthClockInput.calendar
                 let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: initial)
                 sy = c.year ?? 2000; smo = c.month ?? 1; sd = c.day ?? 1; sh = c.hour ?? 12; smi = c.minute ?? 0
                 let l = BirthInputView.solarOf(initial).lunar
@@ -581,6 +591,7 @@ private struct TimePickerSheet: View {
                     .frame(width: 30, height: 30).background(Ky.elevated).clipShape(Circle())
             }.accessibilityLabel("上一年")
             TextField("1994", text: $yearText)
+                .accessibilityIdentifier("birth.year")
                 .keyboardType(.numberPad)
                 .focused($yearFieldFocused)
                 .font(KyV2.tabular(16, weight: .bold))
@@ -928,7 +939,7 @@ private struct TimePickerSheet: View {
                 Text("当前选定".scriptConverted).font(.caption2).fontWeight(.semibold).foregroundStyle(Ky.qingdai)
                 Spacer()
                 if useLongitude, let lo = lon, (-180...180).contains(lo) {
-                    let corr = TrueSolarTime.corrected(clock: d, longitude: lo)
+                    let corr = TrueSolarTime.corrected(clock: d, longitude: lo, calendar: BirthClockInput.calendar)
                     let cs = BirthInputView.solarOf(corr)
                     Text("真太阳时 \(String(format: "%02d:%02d", cs.hour, cs.minute))".scriptConverted)
                         .font(KyV2.tabular(11, weight: .semibold)).foregroundStyle(Ky.gold)
@@ -949,12 +960,12 @@ private struct TimePickerSheet: View {
     private func draftDate() -> Date {
         if mode == 0 {
             var c = DateComponents(); c.year = sy; c.month = smo; c.day = min(sd, solarDayCount); c.hour = sh; c.minute = smi
-            return Calendar(identifier: .gregorian).date(from: c) ?? initial
+            return BirthClockInput.calendar.date(from: c) ?? initial
         }
         let m = (leap && hasLeapChoice) ? -lmo : lmo
         let s = Lunar.fromYmdHms(lunarYear: ly, lunarMonth: m, lunarDay: min(ld, lunarDayCount), hour: lh, minute: lmi).solar
         var c = DateComponents(); c.year = s.year; c.month = s.month; c.day = s.day; c.hour = s.hour; c.minute = s.minute
-        return Calendar(identifier: .gregorian).date(from: c) ?? initial
+        return BirthClockInput.calendar.date(from: c) ?? initial
     }
 
     private func convertDraft() {
@@ -971,15 +982,15 @@ private struct TimePickerSheet: View {
     }
     private func draftSolar() -> Date {
         var c = DateComponents(); c.year = sy; c.month = smo; c.day = min(sd, solarDayCount); c.hour = sh; c.minute = smi
-        return Calendar(identifier: .gregorian).date(from: c) ?? initial
+        return BirthClockInput.calendar.date(from: c) ?? initial
     }
 
     private func compose() -> Date {
         var d = draftDate()
         if unknown {
-            var c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: d)
+            var c = BirthClockInput.calendar.dateComponents([.year, .month, .day], from: d)
             c.hour = 12; c.minute = 0
-            d = Calendar(identifier: .gregorian).date(from: c) ?? d
+            d = BirthClockInput.calendar.date(from: c) ?? d
         }
         return d
     }
