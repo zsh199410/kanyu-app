@@ -8,5 +8,6 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=/opt/pool-gate
 ExecStart=/opt/pool-gate/gate-sync.sh
+ExecStartPre=/usr/bin/python3 /opt/pool-gate/legacy-writer-guard.py
 # No Restart: a refused sync (rc=1) leaves the previously served
 # clean file in place, which is the safe state.
