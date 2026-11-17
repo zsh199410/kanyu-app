@@ -1414,6 +1414,7 @@ struct PosterSheetView: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .accessibilityIdentifier("海报款式")
                 .onChange(of: style) { _, _ in
                     fileURL = nil; previewImage = nil; saveMessage = nil
                 }
