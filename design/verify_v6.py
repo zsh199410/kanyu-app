@@ -172,7 +172,7 @@ new_test_blobs = {
     'Tests/PosterBatch2OwnershipTests.swift': '04a129c6bbac6b407e5779957ef2c6e20c1a3d2b',
     'Tests/PosterFormalExportTests.swift': '442bce8a0e2f8f98e836084aa80152340085fa5e',
     'Tests/PosterOwnershipGatesTests.swift': 'c3f8a0379d0fa3281941d76c6fc74cc2725d9c5b',
-    'UITests/PosterExportAcceptanceUITests.swift': 'dc988dc1b793861f3e27670b3d6f27f5f418356f',
+    'UITests/PosterExportAcceptanceUITests.swift': 'd1a4d7fa9e9cff29a9bb7b1b457bedd129b7c6c4',
     'Resources/PosterDesignPreviews/PosterConceptBazi.jpg': '530227d387a88685055dd801d9f1c92d16b4795c',
     'Resources/PosterDesignPreviews/PosterConceptPalm.jpg': '90add3b72576d4fe3f893796dd23ed403e9c8e0d',
     'Resources/PosterDesignPreviews/PosterConceptPremium.jpg': '0cbf272c127ff4e9c26e65757efdf83ad1c4a092',
