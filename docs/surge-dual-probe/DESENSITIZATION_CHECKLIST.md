@@ -8,9 +8,9 @@ PR 包从脱敏副本在全新目录 `~/workspace/p2p3-dual-pr/` 里组装；
 
 ## 替换记录（PR 包内计数）
 
-- nginx-vhost-conf: 5 处
+- nginx-vhost-conf: 4 处
 - orig-script-sha: 1 处
-- probe-host: 6 处
+- probe-host: 5 处
 - random-path-segment: 2 处
 - orig-script-sha: 回滚脚本的 ORIG_SCRIPT_SHA 已换成脱敏后原脚本的
   SHA；部署时须替换为生产原脚本 SHA（隔离树 docs/SHA_MANIFEST.md）。
@@ -47,7 +47,12 @@ PR 包从脱敏副本在全新目录 `~/workspace/p2p3-dual-pr/` 里组装；
 
 占位符只替换 URL/主机/路径字面量，函数与控制流逐行保留；
 审查不受影响。脱敏后的脚本不替换占位符无法直接运行：
-部署时须把 `<probe-host>` / `<random-path>` 换成生产值
-（部署脚本从 `probe-path.txt` 现读路径段；脚本 URL 由部署方填入）。
+部署时由 tools/render_probe_script.py 在服务器上私有渲染
+（真实 host/path 来自服务器本地 600 权限配置，占位符未
+替换干净即 fail-closed，CLIENT_VERSION 按渲染后内容重算，
+按渲染产物 SHA 核验，不用脱敏 GitHub SHA 当部署产物 SHA）。
+部署脚本按 stage 参数独立执行，一次一个阶段。DB 备份用
+tools/backup_db.py（SQLite backup API 一致性快照 +
+integrity_check），不用单文件 cp。
 测试用 localhost/占位符，不依赖生产值。
 
