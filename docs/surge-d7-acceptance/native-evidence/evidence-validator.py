@@ -128,7 +128,8 @@ def validate_evidence(record: dict, candidate_record: dict, pinned_names=None, n
     参数:
         record: 证据记录 dict (native-collector.build_evidence_chain 产出)。
         candidate_record: 冻结候选记录 dict (candidate-freeze.freeze_candidate 产出)。
-            为 None 时跳过候选绑定校验 (仅用于无候选上下文的审计)。
+            为 None 时候选绑定校验失败 (fail-closed): 没有冻结候选就
+            没有可绑定的池状态, 证据不可判 valid, 永不可计入删除资格。
         pinned_names: 钉选名列表 (可选); 命中则 is_pinned=True, 永不允许删除。
         node_name: 被测节点名 (可选); 不传则从 raw_result 取。
 
@@ -182,9 +183,13 @@ def validate_evidence(record: dict, candidate_record: dict, pinned_names=None, n
         )
 
     # 候选绑定: payload_sha / member_set_sha / candidate_id 三者一致。
+    # Fail-closed: candidate_record 为 None (冻结候选缺失) 时绑定校验
+    # 失败, 不得跳过。没有冻结候选就没有可绑定的池状态, 证据不可判
+    # valid, 永不可计入 removal_candidates, 否则一次缺失冻结就会把
+    # 未绑定证据误算成删除资格。
     if candidate_record is None:
-        checks["candidate_binding_ok"] = True
-        reasons.append("无候选上下文, 跳过候选绑定校验")
+        checks["candidate_binding_ok"] = False
+        reasons.append("无冻结候选记录, 候选绑定校验失败, 禁止用于生产下架")
     elif not isinstance(candidate_record, dict):
         reasons.append("candidate_record 不是 dict, 候选绑定校验失败")
     else:
