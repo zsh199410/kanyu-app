@@ -1,4 +1,4 @@
-name: RC context cancellation diagnostics (manual only)
+name: RC context cancellation diagnostics (isolated PR)
 
 # Isolated diagnostic workflow: never changes existing RC workflows or test/golden sources.
 # PR-scoped diagnostics run without merging to default branch.
