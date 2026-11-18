@@ -12,8 +12,8 @@
     且 insufficient_sources 逐项说明; 手机端上报 SHA 匹配时为 BYTE_PROOF。
   * attach_loaded_proof / collector.apply_loaded_proof:
     弱证明绝不写 SHA, BYTE_PROOF 才写; 校验器对弱证明证据仍判
-    eligible_for_removal=False (phone 未验证), 字节证明 + 失败 +
-    语义已校准时才可下架。
+    eligible_for_removal=False (phone 未验证)。字节证明 + 失败 +
+    语义已校准时，单次样本仍不可下架（须跨时段累计合格失败样本）。
   * mock 回放: 本地 HTTP 服务器按真实响应形态返回
     /v1/policy_groups, 抓回后做成员集合比对 (不连真机)。
 
@@ -299,7 +299,10 @@ class TestAttachAndValidatorIntegration(unittest.TestCase):
         self.assertFalse(result["eligible_for_removal"])
         self.assertTrue(result["checks"]["loaded_proof_ok"])
 
-    def test_byte_proof_enables_removal_when_failure_and_calibrated(self):
+    def test_byte_proof_single_sample_never_authorizes_removal(self):
+        # 字节证明 + 失败延迟 + 语义已校准：单次样本仍不可下架。
+        # （PR #93 新规：单次测速永不授权不可逆删除；延迟超 300ms
+        # 仅表示未达优选目标，连通则保留。）
         record = self._evidence(500)
         attached = collector.apply_loaded_proof(
             record,
@@ -319,7 +322,8 @@ class TestAttachAndValidatorIntegration(unittest.TestCase):
             calibrated, self.candidate, pinned_names=PINNED_NAMES
         )
         self.assertEqual(result["verdict"], "FAIL_LATENCY")
-        self.assertTrue(result["eligible_for_removal"])
+        self.assertFalse(result["eligible_for_removal"])
+        self.assertFalse(result["qualified_failure_sample"])
 
     def test_inconsistent_proof_fields_rejected(self):
         record = self._evidence(500)
