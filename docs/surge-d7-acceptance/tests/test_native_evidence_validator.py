@@ -354,6 +354,25 @@ class TestShadowAudit(ValidatorTestBase):
             self.make_evidence("TEST-PINNED-01", 1, latency=900),  # 钉选失败, 不可删
         ]
 
+    def test_missing_frozen_candidate_never_eligible(self):
+        # Fail-closed (GPT review P0): 冻结候选缺失时, 即使证据本身是
+        # 可信失败 (TEST-ROTATION-02, latency 500), 也不可计入删除资格。
+        evidences = self._mixed_evidences()
+        failing = [e for e in evidences
+                   if e.get("raw_result", {}).get("node_name") == "TEST-ROTATION-02"][0]
+        result = validator.validate_evidence(
+            failing, None, pinned_names=PINNED_NAMES)
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["verdict"], "UNVERIFIED")
+        self.assertFalse(result["eligible_for_removal"])
+        self.assertFalse(result["checks"]["candidate_binding_ok"])
+        audit = validator.audit_shadow(
+            ALL_NAMES, evidences, PINNED_NAMES, "RUNNING",
+            output_dir=None, candidate_record=None,
+        )
+        self.assertEqual(audit["removal_candidates"], 0)
+        self.assertEqual(audit["decision"], "NO_SAFE_REMOVAL")
+
     def test_ten_counts_correct(self):
         audit = validator.audit_shadow(
             ALL_NAMES, self._mixed_evidences(), PINNED_NAMES, "RUNNING",

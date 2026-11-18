@@ -265,6 +265,62 @@ class TestControllerLeaseStateFailures(_ControllerCase):
         self.assertEqual(rec["state"], "GATE_UNKNOWN")
         self.assertFalse(rec["verified"])
 
+    def _stub_client_revoke(self, lease_still_stored):
+        """SurgeApiClient whose evaluate calls are stubbed: the revoke
+        script 'runs' (returns reject_ok) but the lease delete does not
+        take effect, and the read script reports the lease still stored
+        (or gone, when lease_still_stored is False). Selection always
+        reads back REJECT, so only the lease read-back can distinguish
+        a real revoke from a false one."""
+        lease = make_lease()
+        lease_json = json.dumps(lease)
+
+        def request_fn(method, url, body, timeout):
+            if url.endswith("/v1/scripting/evaluate"):
+                payload = json.loads(body.decode("utf-8")) if body else {}
+                script = payload.get("script_text", "")
+                if "setSelectGroupPolicy" in script:
+                    # revoke script: ran, set REJECT, but delete did not
+                    # take effect (the lease stays in the store).
+                    return 200, json.dumps({"reject_ok": True}).encode()
+                # read script: report the lease still stored (or gone).
+                raw = lease_json if lease_still_stored else None
+                return 200, json.dumps({"lease_raw": raw}).encode()
+            if url.endswith("/v1/policy_groups/select") and method == "POST":
+                return 200, b"{}"
+            if "/v1/policy_groups/select" in url and method == "GET":
+                return 200, json.dumps({"policy": "REJECT"}).encode()
+            return 404, b"{}"
+
+        return gate_controller.SurgeApiClient(
+            "http://stub.invalid", request_fn=request_fn, timeout=2.0)
+
+    def test_revoke_reject_only_is_not_confirmed(self):
+        # Fail-closed (GPT review P0): the group reads back REJECT but
+        # the lease is still stored on the device. The revoke must NOT
+        # be reported as confirmed.
+        client = self._stub_client_revoke(lease_still_stored=True)
+        ctrl = gate_controller.GateController(
+            api_client=client, state_path=self.state_path,
+            allowed_members=["Test-Proxy-1", "Test-Proxy-2", "Test-Proxy-3"],
+            now_fn=lambda: NOW)
+        rec = ctrl.revoke_lease("test")
+        self.assertEqual(rec["state"], "GATE_UNKNOWN")
+        self.assertFalse(rec["verified"])
+        self.assertIn("lease still stored", rec["reason"])
+
+    def test_revoke_confirmed_when_lease_actually_gone(self):
+        # Positive control: same stub, but the read script reports no
+        # lease stored. REJECT read-back + empty lease store = revoked.
+        client = self._stub_client_revoke(lease_still_stored=False)
+        ctrl = gate_controller.GateController(
+            api_client=client, state_path=self.state_path,
+            allowed_members=["Test-Proxy-1", "Test-Proxy-2", "Test-Proxy-3"],
+            now_fn=lambda: NOW)
+        rec = ctrl.revoke_lease("test")
+        self.assertEqual(rec["state"], "LEASE_REVOKED")
+        self.assertTrue(rec["verified"])
+
     def test_never_selects_direct(self):
         base_url = self.start_server()
         ctrl = self.make_controller(base_url)

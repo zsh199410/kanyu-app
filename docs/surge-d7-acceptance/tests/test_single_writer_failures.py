@@ -171,6 +171,9 @@ class TestSingleWriterFailures(unittest.TestCase):
             self.assertEqual(db_counts(env.db), (50, 50, 0))
 
     # Ban proof: each broken link of the chain fails it (fail-closed).
+    # Masking is the default bar (GPT review P0, 2026-11-18): a
+    # merely-disabled service can still be revived by `systemctl
+    # start`, so it must fail the proof; masked services pass.
     def test_f06_ban_proof_rejects_each_broken_link(self):
         base_timer = {
             "LoadState": "loaded", "UnitFileState": "disabled",
@@ -178,7 +181,12 @@ class TestSingleWriterFailures(unittest.TestCase):
             "MainPID": "0", "ControlPID": "0",
             "Result": "success", "Job": "",
         }
-        base_service = dict(base_timer, UnitFileState="disabled")
+        base_service = {
+            "LoadState": "masked", "UnitFileState": "masked",
+            "ActiveState": "inactive", "SubState": "dead",
+            "MainPID": "0", "ControlPID": "0",
+            "Result": "success", "Job": "",
+        }
         benign_ps = ["    1 /sbin/init",
                      "  900 /usr/bin/python3 /opt/free-node-program/pool.py"]
 
@@ -215,17 +223,20 @@ class TestSingleWriterFailures(unittest.TestCase):
         cases.append(("service running", units))
         units = good_units()
         units["pool-publish.service"]["Result"] = "signal"
-        cases.append(("service killed by signal", units))
+        units["pool-publish.service"]["LoadState"] = "loaded"
+        units["pool-publish.service"]["UnitFileState"] = "disabled"
+        cases.append(("service killed by signal (loaded, disabled)", units))
         units = good_units()
-        units["pool-sync.service"]["UnitFileState"] = "enabled"
-        cases.append(("service re-enabled (not disabled)", units))
+        units["pool-sync.service"]["UnitFileState"] = "disabled"
+        units["pool-sync.service"]["LoadState"] = "loaded"
+        cases.append(("service merely disabled, not masked", units))
         units = good_units()
         units["pool-publish.service"]["LoadState"] = "not-found"
         cases.append(("service not loaded", units))
         units = good_units()
-        units["pool-sync.service"]["UnitFileState"] = "masked"
-        cases.append(("service masked (LoadState=masked, guard conflict)",
-                      units))
+        units["pool-sync.service"]["UnitFileState"] = "disabled"
+        cases.append(("service mask inconsistent (masked load, "
+                      "disabled file state)", units))
         for name, units_case in cases:
             proven, evidence = run(units_case, benign_ps)
             self.assertFalse(proven, "ban must fail: %s" % name)
@@ -243,49 +254,39 @@ class TestSingleWriterFailures(unittest.TestCase):
             good_units(),
             benign_ps + [" 2345 /bin/bash /opt/free-node-program/pool-sync.sh"])
         self.assertFalse(proven)
-        # Masked service: fails the DEFAULT chain at service_disabled
-        # (on real systemd it additionally fails the verbatim guard's
-        # LoadState check -- a masked unit reports LoadState=masked).
+        # A merely-disabled service fails the DEFAULT chain at
+        # service_masked (a manual `systemctl start` could still revive
+        # it, so disabled does not close the handover).
         units = good_units()
-        units["pool-sync.service"]["UnitFileState"] = "masked"
+        units["pool-sync.service"]["UnitFileState"] = "disabled"
+        units["pool-sync.service"]["LoadState"] = "loaded"
         proven, evidence = run(units, benign_ps)
         self.assertFalse(proven)
         self.assertEqual([e["check"] for e in evidence if not e["ok"]],
-                         ["service_disabled:pool-sync.service"])
-        # ...but the opt-in masked variant accepts exactly that state
-        # (for callers that do NOT run the verbatim guard alongside):
-        # both services masked this time, since the variant requires it
-        # of every service.
-        units = good_units()
-        for u in ("pool-publish.service", "pool-sync.service"):
-            units[u]["UnitFileState"] = "masked"
-        proven, _ = sw.legacy_ban_proof(
-            show=lambda u: dict(units[u]),
-            processes=lambda: list(benign_ps),
-            require_masked_services=True)
-        self.assertTrue(proven)
-        # And the opt-in masked variant rejects a merely-disabled service.
+                         ["service_masked:pool-sync.service"])
+        # The masked bar is the default now: the explicit flag changes
+        # nothing, and a fully masked chain passes with or without it.
         proven, _ = sw.legacy_ban_proof(
             show=lambda u: dict(good_units()[u]),
             processes=lambda: list(benign_ps),
             require_masked_services=True)
-        self.assertFalse(proven)
-        # Real systemd reports LoadState="masked" for a masked unit; the
-        # opt-in variant must accept that as loaded (the verbatim guard
-        # does not -- that is the documented S2e conflict).
+        self.assertTrue(proven)
+        # And the masked default rejects a merely-disabled service.
         units = good_units()
         for u in ("pool-publish.service", "pool-sync.service"):
-            units[u]["UnitFileState"] = "masked"
-            units[u]["LoadState"] = "masked"
-        proven, _ = sw.legacy_ban_proof(
-            show=lambda u: dict(units[u]),
-            processes=lambda: list(benign_ps),
-            require_masked_services=True)
-        self.assertTrue(proven)
+            units[u]["UnitFileState"] = "disabled"
+            units[u]["LoadState"] = "loaded"
         proven, _ = sw.legacy_ban_proof(
             show=lambda u: dict(units[u]),
             processes=lambda: list(benign_ps))
-        self.assertFalse(proven, "default chain must refuse masked units")
+        self.assertFalse(proven)
+        # A masked service's Result is historical (it cannot run), so a
+        # masked unit with Result=signal still passes the proof.
+        units = good_units()
+        for u in ("pool-publish.service", "pool-sync.service"):
+            units[u]["Result"] = "signal"
+        proven, _ = run(units, benign_ps)
+        self.assertTrue(proven)
         # Inspection failure (systemctl down) also fails the proof.
         proven, _ = sw.legacy_ban_proof(
             show=lambda u: (_ for _ in ()).throw(RuntimeError("command_failed")),

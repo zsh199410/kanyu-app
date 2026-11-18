@@ -172,6 +172,56 @@ class TestLegacyWriterGuard(unittest.TestCase):
         self.assertEqual(fake.show_calls, 4)
         self.assertEqual(fake.ps_calls, 1)
 
+    # 2b. Masked services are closed, not missing (guard amendment,
+    # GPT review P0 2026-11-18). A masked unit cannot be started by
+    # any means, so it counts as drained -- stronger than disabled.
+    def test_02b_masked_services_are_allowed(self):
+        # (a) Both services masked (LoadState + UnitFileState masked,
+        #     drained fields) -> allowed.
+        units = drained_units()
+        for unit in SERVICES:
+            units[unit].update({
+                "LoadState": "masked", "UnitFileState": "masked",
+                "ActiveState": "inactive", "SubState": "dead",
+                "MainPID": "0", "ControlPID": "0",
+                "Result": "success", "Job": "",
+            })
+        fake = FakeSystem(units=units)
+        allowed, reason, _ = guard.check(show=fake.show, processes=fake.processes)
+        self.assertTrue(allowed, reason)
+        # (b) Masked with a non-success Result still allowed: Result
+        #     describes the last run, meaningless for a unit that
+        #     cannot run.
+        units = drained_units()
+        for unit in SERVICES:
+            units[unit].update({
+                "LoadState": "masked", "UnitFileState": "masked",
+                "ActiveState": "inactive", "SubState": "dead",
+                "MainPID": "0", "ControlPID": "0",
+                "Result": "signal", "Job": "",
+            })
+        fake = FakeSystem(units=units)
+        allowed, reason, _ = guard.check(show=fake.show, processes=fake.processes)
+        self.assertTrue(allowed, reason)
+        # (c) Mask inconsistency: LoadState masked but UnitFileState
+        #     merely disabled -> refuse.
+        units = drained_units()
+        units["pool-publish.service"].update({
+            "LoadState": "masked", "UnitFileState": "disabled",
+        })
+        fake = FakeSystem(units=units)
+        allowed, reason, subject = guard.check(show=fake.show, processes=fake.processes)
+        self.assertFalse(allowed)
+        self.assertEqual(reason, "service_mask_inconsistent")
+        self.assertEqual(subject, "pool-publish.service")
+        # (d) A merely-disabled service (not masked) is still allowed
+        #     by the guard alone -- the guard does not check service
+        #     UnitFileState; the ban proof (masked by default) is the
+        #     layer that refuses it.
+        fake = FakeSystem()
+        allowed, reason, _ = guard.check(show=fake.show, processes=fake.processes)
+        self.assertTrue(allowed, reason)
+
     # 3. SIGTERM / SIGKILL negative cases (writer killed by signal -> refuse).
     def test_03_signal_terminated_writer_is_refused(self):
         # (a) SIGTERM: systemd records Result=signal, SubState=failed.
