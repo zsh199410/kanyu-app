@@ -226,9 +226,17 @@ struct PosterDynamicSnapshot {
         ]
         // Batch 2 P0：归属以记录自存的 personID 为准；调用方传入的 ownerID 为空时回落到记录值，
         // 两者皆空即为孤儿（blocking 缺失，canArchive 为 false）。绝不按姓名推断。
-        let resolvedOwnerID = ownerID ?? record.personID
+        // P0: fail closed when caller-selected person and persisted record owner disagree.
+        // A non-nil caller UUID must never reassign another person's PalmRecord.
+        let ownerConflict = ownerID != nil && record.personID != nil && ownerID != record.personID
+        let resolvedOwnerID: UUID? = ownerConflict ? nil : (record.personID ?? ownerID)
         var missing: [PosterMissingField] = []
-        if resolvedOwnerID == nil {
+        if ownerConflict {
+            missing.append(.init(id: "ownerID-conflict",
+                                 label: "当前人物与手相记录归属不一致，禁止导出",
+                                 blocking: true))
+        }
+        if resolvedOwnerID == nil && !ownerConflict {
             missing.append(.init(id: "ownerID", label: "未绑定人物 UUID", blocking: true))
         }
         if record.photoFile.isEmpty {
