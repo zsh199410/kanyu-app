@@ -1942,5 +1942,11 @@
     "before": "                Picker(\"海报款式\", selection: $style) {\n                    ForEach(PosterStyle.allCases, id: \\.self) { option in\n                        Text(option.rawValue).tag(option)\n                    }\n                }\n                .pickerStyle(.menu)\n                .onChange(of: style) { _, _ in\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }",
     "after": "                Picker(\"海报款式\", selection: $style) {\n                    ForEach(PosterStyle.allCases, id: \\.self) { option in\n                        Text(option.rawValue).tag(option)\n                    }\n                }\n                .pickerStyle(.menu)\n                .accessibilityIdentifier(\"海报款式\")\n                .onChange(of: style) { _, _ in\n                    fileURL = nil; previewImage = nil; saveMessage = nil\n                }",
     "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "(\"4. 感情关口与解法\", conclusion(\"婚姻感情\")),\n",
+    "after": "// The same 婚姻感情 conclusion is already shown in row 2; do not duplicate it under a misleading second heading.\n",
+    "count": 1
   }
 ]
