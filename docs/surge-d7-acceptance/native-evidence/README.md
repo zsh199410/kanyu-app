@@ -54,6 +54,24 @@ VPS 生成订阅字节
 - 沙盒内无真机: 测试与示例中的 `phone_loaded_sha` 必须为 `"UNKNOWN"`,
   这是诚实结论, 不是缺陷。真机验证链路接通后才可填入真实 SHA。
 
+## 节点即时筛选策略（机主 2026-11-19 更新）
+
+- **可信原生连接测速失败**（同一冻结候选、真实手机加载字节证明、
+  API口径已校准、同一bearer的实际失败）：直接标记
+  `FAILED_EXCLUDED`，**立即从自动可用候选剔除，不参与自动选路**，
+  无需先累计8次。该行为不等于从订阅永久删除。
+- **测速成功但 >=300ms**：仍是成功连接，置
+  `retest_high_latency=True`，安排复测并降低优选顺序，不因高延迟删除。
+- **复测重新成功**：撤销之前的 `FAILED_EXCLUDED`，但样本不足时
+  继续 `INSUFFICIENT_EVIDENCE`，而不是强行标为优选。
+- **数据缺失、Smart组只返回赢家、未知语义、phone_loaded_sha=UNKNOWN**：
+  无法认定真实测速失败，也不能据此剔除或删除。Wi-Fi和蜂窝必须分开判断。
+- **21条钉选成员保护**：失败可以暂停自动选中，但不能自动从订阅删除、
+  修改钉选、取消STOP或触碰生产数据。永久删除仍要求独立发布门禁。
+- 上述逻辑目前落在只读 `stability-ranker.py` 分类器中：
+  `exclude_from_active_selection` 与 `retest_high_latency` 是候选筛选
+  的**建议输出**，尚未接入日用配置生产发布，不能宣称真机池已自动执行。
+
 ## 判定标准 (judge_evidence / validate_evidence)
 
 | 情形 | verdict |
