@@ -528,6 +528,147 @@ def post_test_to_phone(payload: dict) -> dict:
     }
 
 
+def apply_calibration(record: dict, calibration: dict) -> dict:
+    """把口径对照校准结论应用到证据记录副本上 (F3, 不修改输入)。
+
+    measurement_verified 只在 calibration_verdict == "CALIBRATED"
+    且 mapping_field 非空时置 True; 其他一切情况 (UNCALIBRATED /
+    CONTRADICTED / 缺字段 / 非 dict) 一律 False。
+    同时记录 calibration_verdict 与 calibration_mapping_field 供核查。
+    verdict 本函数不改写: 调用方须随后用 judge_evidence() 重判。
+    校准结论本身由 native-evidence/calibration.py 的 calibrate() 产出。
+    """
+    if not isinstance(record, dict):
+        raise TypeError("record 必须是 dict")
+    result = dict(record)
+    verdict = calibration.get("verdict") if isinstance(calibration, dict) else None
+    mapping = calibration.get("mapping_field") if isinstance(calibration, dict) else None
+    result["measurement_verified"] = bool(
+        verdict == "CALIBRATED" and isinstance(mapping, str) and mapping
+    )
+    result["calibration_verdict"] = verdict if isinstance(verdict, str) else "UNCALIBRATED"
+    result["calibration_mapping_field"] = mapping if isinstance(mapping, str) else None
+    return result
+
+
+# 证据记录可选附加字段 (F2/F3): 出现时才校验类型与一致性,
+# 不出现不强制 (validate_evidence_schema 不要求它们存在)。
+OPTIONAL_EVIDENCE_FIELDS = {
+    "loaded_proof_level": (str,),
+    "loaded_members_verified": (bool,),
+    "production_admission": (str,),
+    "calibration_verdict": (str,),
+    "calibration_mapping_field": (str, type(None)),
+}
+
+_LOADED_PROOF_LEVELS = ("BYTE_PROOF", "MEMBERS_VERIFIED", "UNVERIFIED")
+_ADMISSIONS = ("GRANTED", "PENDING_REVIEW", "DENIED")
+_CALIBRATION_VERDICTS = ("CALIBRATED", "UNCALIBRATED", "CONTRADICTED")
+
+
+def validate_loaded_proof_fields(record: dict) -> list:
+    """校验证据记录上 F2/F3 可选附加字段的类型与一致性, 返回错误列表。
+
+    规则 (fail-closed, 出现即校验, 不出现不强制):
+      * loaded_proof_level 只允许 BYTE_PROOF / MEMBERS_VERIFIED / UNVERIFIED。
+      * production_admission 只允许 GRANTED / PENDING_REVIEW / DENIED。
+      * calibration_verdict 只允许 CALIBRATED / UNCALIBRATED / CONTRADICTED。
+      * loaded_members_verified 必须是 bool (不是 bool 即错)。
+      * 一致性: BYTE_PROOF 时 phone_loaded_sha 必须是合法 SHA-256
+        (弱证明 / 无证明绝不能携带已验证 SHA);
+        MEMBERS_VERIFIED / UNVERIFIED 时 phone_loaded_sha 必须是 "UNKNOWN"。
+      * 一致性: measurement_verified 为 True 时 calibration_verdict
+        必须是 CALIBRATED (语义已校准才可置 True)。
+      * 一致性: production_admission 为 GRANTED 时 proof_level 必须是
+        BYTE_PROOF; MEMBERS_VERIFIED 时 admission 必须是 PENDING_REVIEW。
+    任一错误都说明记录被篡改或误写, 校验器据此判 UNVERIFIED。
+    """
+    errors = []
+    if not isinstance(record, dict):
+        return ["证据记录不是 dict"]
+    for field, types in OPTIONAL_EVIDENCE_FIELDS.items():
+        if field in record and not isinstance(record[field], types):
+            errors.append(
+                "字段类型错误: {} 应为 {}, 得到 {}".format(
+                    field, "/".join(t.__name__ for t in types), type(record[field]).__name__
+                )
+            )
+    level = record.get("loaded_proof_level")
+    if level is not None and level not in _LOADED_PROOF_LEVELS:
+        errors.append("字段值错误: loaded_proof_level 非法: {!r}".format(level))
+    admission = record.get("production_admission")
+    if admission is not None and admission not in _ADMISSIONS:
+        errors.append("字段值错误: production_admission 非法: {!r}".format(admission))
+    calib = record.get("calibration_verdict")
+    if calib is not None and calib not in _CALIBRATION_VERDICTS:
+        errors.append("字段值错误: calibration_verdict 非法: {!r}".format(calib))
+    phone_sha = record.get("phone_loaded_sha")
+    if level == "BYTE_PROOF":
+        if not (isinstance(phone_sha, str) and _SHA256_RE.match(phone_sha)):
+            errors.append(
+                "一致性错误: loaded_proof_level 为 BYTE_PROOF 时 "
+                'phone_loaded_sha 必须是合法 SHA-256, 不能为 "UNKNOWN"'
+            )
+    elif level in ("MEMBERS_VERIFIED", "UNVERIFIED"):
+        if phone_sha != "UNKNOWN":
+            errors.append(
+                "一致性错误: loaded_proof_level 为 {} 时 phone_loaded_sha "
+                '必须是 "UNKNOWN" (弱证明/无证明不能携带已验证 SHA)'.format(level)
+            )
+    if record.get("measurement_verified") is True and calib is not None:
+        if calib != "CALIBRATED":
+            errors.append(
+                "一致性错误: measurement_verified 为 True 时 calibration_verdict "
+                "必须是 CALIBRATED, 当前为 {}".format(calib)
+            )
+    if admission == "GRANTED" and level is not None and level != "BYTE_PROOF":
+        errors.append(
+            "一致性错误: production_admission 为 GRANTED 时 loaded_proof_level "
+            "必须是 BYTE_PROOF, 当前为 {}".format(level)
+        )
+    if level == "MEMBERS_VERIFIED" and admission is not None and admission != "PENDING_REVIEW":
+        errors.append(
+            "一致性错误: loaded_proof_level 为 MEMBERS_VERIFIED 时 "
+            "production_admission 必须是 PENDING_REVIEW, 当前为 {}".format(admission)
+        )
+    return errors
+
+
+def apply_loaded_proof(record: dict, proof: dict) -> dict:
+    """把已加载证明附加到证据记录副本上 (F2, 不修改输入, 不改写 verdict)。
+
+    proof: phone-loaded-proof.py 的 verify/classify 产出 dict,
+    须含 proof_level / production_admission, 可含 loaded_members_verified /
+    phone_loaded_sha。
+    只有 proof_level 为 BYTE_PROOF 时才把 phone_loaded_sha 写成真实 SHA;
+    其他等级下 phone_loaded_sha 保持原值 (一般为 "UNKNOWN")。
+    附加后用 validate_loaded_proof_fields() 自检, 不一致直接抛错。
+    """
+    if not isinstance(record, dict):
+        raise TypeError("record 必须是 dict")
+    if not isinstance(proof, dict):
+        raise TypeError("proof 必须是 dict")
+    level = proof.get("proof_level")
+    if level not in _LOADED_PROOF_LEVELS:
+        raise ValueError("proof_level 非法: {!r}".format(level))
+    admission = proof.get("production_admission")
+    if admission not in _ADMISSIONS:
+        raise ValueError("production_admission 非法: {!r}".format(admission))
+    result = dict(record)
+    result["loaded_proof_level"] = level
+    result["loaded_members_verified"] = bool(proof.get("loaded_members_verified"))
+    result["production_admission"] = admission
+    if level == "BYTE_PROOF":
+        sha = proof.get("phone_loaded_sha")
+        if not (isinstance(sha, str) and _SHA256_RE.match(sha)):
+            raise ValueError("BYTE_PROOF 必须携带合法 SHA-256 phone_loaded_sha")
+        result["phone_loaded_sha"] = sha
+    errors = validate_loaded_proof_fields(result)
+    if errors:
+        raise ValueError("附加已加载证明后一致性校验失败: {}".format("; ".join(errors)))
+    return result
+
+
 if __name__ == "__main__":
     print("native-collector.py: 原生测速采集器, 无独立 CLI。")
     print("关键语义: round-one-total / available / tcp / receive 均不等于")

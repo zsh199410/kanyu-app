@@ -9,8 +9,11 @@
 | 文件 | 作用 |
 | --- | --- |
 | `candidate-freeze.py` | B1 候选冻结: `freeze_candidate()` / `verify_candidate()` |
-| `native-collector.py` | B2 原生测速采集: `build_evidence_chain()` / `judge_evidence()` / `check_batch_limits()` / `post_timeout_policy()` |
-| `evidence-validator.py` | B3 证据校验 + 影子审计: `validate_evidence()` / `audit_shadow()` / `run_example()` |
+| `native-collector.py` | B2 原生测速采集: `build_evidence_chain()` / `judge_evidence()` / `check_batch_limits()` / `post_timeout_policy()`；F 轮新增 `apply_calibration()` / `apply_loaded_proof()` / `validate_loaded_proof_fields()` |
+| `evidence-validator.py` | B3 证据校验 + 影子审计: `validate_evidence()` / `audit_shadow()` / `run_example()`；F 轮新增 `loaded_proof_ok` 一致性检查 |
+| `phone-loaded-proof.py` | F2 手机已加载订阅证明: `verify_byte_level()` / `verify_loaded_members()` / `classify_loaded_proof()` / `attach_loaded_proof()` |
+| `calibration.py` | F3 口径对照校准: `parse_api_latency()` / `build_paired_row()` / `calibrate()` / `measurement_verified_from_calibration()` |
+| `api-capability-report.json` | F1 只读查询真实原始响应 (脱敏后) |
 | `README.md` | 本说明 |
 | `isolated-evidence-example/` | 示例入口产出的隔离证据 (运行后生成, 非生产路径) |
 
@@ -93,6 +96,90 @@ VPS 生成订阅字节
   校准通过后才可将 `measurement_verified` 置为 `True`,
   并把校准方法与对照样本写入本 README 的校准记录节。
   在此之前, 本链路只产出“未验证的原始测量记录”, 不产出生产准入结论。
+
+## F 轮实测结论 (2026-11-18 20:25–20:40 CST, 真机只读查询)
+
+> 本节为任务 F 的实测结论, 证据见 `api-capability-report.json`
+> (脱敏后)。有副作用 POST **未做** (0 次), 生产零改动。
+
+### F1 只读查询: 能获取什么、不能获取什么
+
+经 Surge 桥下发 7 次只读 GET (桥指令 1795004725、1795005131,
+全部 `via=httpAPI`, 无 POST):
+
+| 查询 | 真实结果 |
+| --- | --- |
+| `GET /v1/policy_groups/select` (无参数) | `{"policy": null}`——不带 group_name 时不返回选中状态 |
+| `GET /v1/policy_groups/select?group_name=免费节点池` | `{"policy": "香港2 🇭🇰"}`——池组当前选中该成员 (显示名) |
+| `GET /v1/policy_groups` | 18 条规则; `免费节点池` 规则下 30 条, 全部 enabled、全部 isGroup=false, 类型 Trojan 23 / Shadowsocks 5 / VMess 2; 条目字段只有 enabled / isGroup / lineHash / name / typeDescription |
+| `GET /v1/external_resources` | `defines` 108 项, 全部 ready=true、updating=false; 类型 script 87 / ruleset 18 / policy-group 2 / data 1; 2 个 policy-group 资源的 updatedAt 为 2026-11-18 14:44:22 与 19:55:17 CST |
+| `GET /v1/profiles/current?sensitive=0` | profile 全文 1786 行、originalProfile 150 行; 无 managed-config 行、无 pool-new 字样; 不含任何已加载订阅字节 SHA |
+| `GET /v1/policies` | 18 个策略组、22 个直连代理 (仅记数量); 不返回池成员 |
+| `GET /v1/policy_groups/test_results?group_name=免费节点池` | 只返回两个 Smart 组当前选中策略 (`日本自动` / `美国自动` 各 1 个), **没有**逐节点延迟字段 (无 round-one-total / available / tcp / receive / latency_ms) |
+
+**Surge 版本号: 无法获取。** 7 次响应全文检索 `version` 键为 0 命中,
+本轮 5 个端点不提供版本号。
+
+**能获取的已加载信息:** 策略组当前选中策略、已加载成员名/类型/
+启用状态、策略组与直连代理名列表、外部资源 ready 与 updatedAt、
+当前配置全文。
+**不能获取的已加载信息:** 手机端已加载订阅字节 SHA (无任何端点返回)、
+订阅源 URL 的 SHA、逐节点 API 延迟字段 (按本轮查法)、手机界面显示的
+延迟数字 (须人工读数)。
+
+### F2 phone_loaded_sha: 字节证明不可行, 弱证明成立
+
+- **字节级证明 (BYTE_PROOF): 不可行。** 7 次响应中没有任何字段含
+  手机端已加载订阅字节 SHA, `phone_loaded_sha` 保持 `"UNKNOWN"`,
+  不得伪造。
+- **弱证明 (MEMBERS_VERIFIED): 成立 (真实数据回放验证)。**
+  手机端 `免费节点池` 成员名集合 (30 名) 与源端 served 池文件成员名集合
+  逐名一致, 类型分布一致 (Trojan 23 / Shadowsocks 5 / VMess 2);
+  成员名集合 SHA-256 均为
+  `a1f9f711b716316b2564bc59ebfab90f2e7ec2e9de5ad5f48434dc5c979f8063`。
+  该结论由 `phone-loaded-proof.classify_loaded_proof()` 在真实响应上
+  回放得出, 代码见 `phone-loaded-proof.py`, 测试见
+  `tests/test_phone_loaded_proof.py` (含 mock 回放)。
+- 弱证明只证明“成员名一致”, 不证明字节一致 (同名成员可对应不同
+  URI/密码/参数)。`loaded_members_verified=True`,
+  但 `phone_loaded_sha` 仍为 `"UNKNOWN"`,
+  `production_admission` 恒为 `"PENDING_REVIEW"`——生产准入资格须单独审查,
+  校验器仍判 `eligible_for_removal=False`, 不可据此下架。
+- 证明等级: `BYTE_PROOF` (唯一能填真实 SHA) >
+  `MEMBERS_VERIFIED` (弱证明, 准入待审查) > `UNVERIFIED`。
+  配置文件内容 / ready 状态 / updatedAt / 源端 SHA 一律不算已加载证明,
+  `classify_loaded_proof()` 会逐项记入 `insufficient_sources`。
+
+### F3 口径对照校准: UNCALIBRATED (未校准)
+
+- 配对样本 0 行 (无手机界面人工读数), 未达最少 3 行要求。
+- `test_results` 按本轮查法不返回逐节点 API 延迟字段, 无法构造
+  API 值 vs UI 显示值的配对行。
+- 结论: `calibration_verdict=UNCALIBRATED`,
+  `measurement_verified` 保持 `False`,
+  证据判定维持 `UNVERIFIED`, 决策维持 `NO_SAFE_REMOVAL`。
+- 校准通过条件 (见 `calibration.py`): ≥3 行同节点、同 bearer、
+  同 test_url 口径 (HTTP 与 HTTPS 分开) 的配对样本, 且界面显示值恒等于
+  某一 API 字段 (残差逐样本为 0)、映射唯一; 否则为 UNCALIBRATED,
+  同一 API 值对应不同 UI 值时为 CONTRADICTED。
+- 下一步校准须机主在手机上人工读数 (见“机主最短操作指令”):
+  同一节点、同一时间、同一网络下, 抄下 API 值与界面显示值各 3 组,
+  再由 `calibrate()` 判定映射。
+
+### 机主最短操作指令 (校准用, 仅 1 次, 隔离 profile 载入后)
+
+> 前置: 隔离 profile 已载入手机且 `免费节点池` 成员与待测候选一致;
+> 未确认前不测。手机保持蜂窝数据 (不要切 Wi-Fi), 不要改生产配置。
+
+1. 打开 Surge → 免费节点池组, 任选 1 条轮换节点 (不要选钉选),
+   记下组内显示的延迟数字 (如实抄, 精确到毫秒)。
+2. 立即在同一节点上触发一次原生测速 (组内下拉/测速按钮),
+   再次记下组内显示的延迟数字。
+3. 把“节点名 + 两次界面显示值 + 当时是蜂窝还是 Wi-Fi + 时间”
+   发回。重复 3 个不同轮换节点 (共 3 组)。
+4. 不要做 fallback 测试、不要改任何选择、不要动生产池。
+
+API 侧的对应值由桥只读查询取回后对照, 不需要机主再操作 App 外的步骤。
 
 ## 执行范围约束
 

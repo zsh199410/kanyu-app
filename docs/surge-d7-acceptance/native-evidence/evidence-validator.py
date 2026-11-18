@@ -147,6 +147,9 @@ def validate_evidence(record: dict, candidate_record: dict, pinned_names=None, n
         "not_expired": False,
         "phone_verified": False,
         "measurement_verified": False,
+        # F2/F3: 可选附加字段 (loaded_proof_level 等) 的一致性。
+        # 不出现 = 通过; 出现但类型/取值/一致性错误 = 不通过。
+        "loaded_proof_ok": False,
     }
 
     if not isinstance(record, dict):
@@ -164,6 +167,19 @@ def validate_evidence(record: dict, candidate_record: dict, pinned_names=None, n
         reasons.extend(schema_errors)
     else:
         checks["schema_ok"] = True
+
+    # F2/F3 可选附加字段一致性 (不降低第一轮 fail-closed 语义:
+    # 弱证明绝不能冒充字节证明, 校准未通过绝不能置 measurement_verified)。
+    proof_errors = collector_mod.validate_loaded_proof_fields(record)
+    if proof_errors:
+        reasons.extend(proof_errors)
+    else:
+        checks["loaded_proof_ok"] = True
+    if record.get("loaded_proof_level") == "MEMBERS_VERIFIED":
+        reasons.append(
+            "弱证明: 成员集合一致仅为弱证明, phone_loaded_sha 仍为 UNKNOWN, "
+            "生产准入待单独审查, 不可据此下架"
+        )
 
     # 候选绑定: payload_sha / member_set_sha / candidate_id 三者一致。
     if candidate_record is None:
@@ -213,7 +229,10 @@ def validate_evidence(record: dict, candidate_record: dict, pinned_names=None, n
         reasons.append("钉选保护: {} 为钉选成员, 即使失败也不得删除".format(resolved_name))
 
     valid = bool(
-        checks["schema_ok"] and checks["candidate_binding_ok"] and checks["not_expired"]
+        checks["schema_ok"]
+        and checks["candidate_binding_ok"]
+        and checks["not_expired"]
+        and checks["loaded_proof_ok"]
     )
 
     # verdict: 绑定/时效/schema 任一失败 -> 强制 UNVERIFIED; 否则取 judge 结果。
