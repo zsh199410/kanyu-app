@@ -255,6 +255,17 @@ class TestRuleScriptJS(unittest.TestCase):
         out = self.run_rule(make_lease(), network=NETWORK_B)
         self.assertEqual(out["doneValue"], {"matched": False})
 
+    def test_invalid_fingerprint_cannot_match_itself(self):
+        # Both issuance and rule evaluation can encounter the same malformed
+        # $network shape. fp-error == fp-error must NEVER grant traffic.
+        invalid = dict(NETWORK_A, dns="not-an-array")
+        out = self.run_rule(make_lease(net_fp="fp-error"), network=invalid)
+        self.assertEqual(out["doneValue"], {"matched": False})
+
+    def test_absent_network_marker_cannot_match_itself(self):
+        out = self.run_rule(make_lease(net_fp="no-network"), network=None)
+        self.assertEqual(out["doneValue"], {"matched": False})
+
     def test_boot_mismatch_denies(self):
         out = self.run_rule(make_lease(), boot_id="boot-2")
         self.assertEqual(out["doneValue"], {"matched": False})
