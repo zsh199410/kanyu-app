@@ -261,6 +261,8 @@ struct PosterDynamicSnapshot {
 }
 struct PosterDynamicTemplateView: View {
     let snapshot: PosterDynamicSnapshot
+    @State private var exportedURL: URL?
+    @State private var exportError: String?
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -309,8 +311,18 @@ struct PosterDynamicTemplateView: View {
                     .font(.footnote)
                     .foregroundStyle(snapshot.kind.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Label("只读预览 · 不保存 · 不分享示例图", systemImage: "lock.doc")
-                    .font(.caption)
+                if snapshot.canArchive {
+                    Button {
+                        do { exportedURL = try PosterFamilyExport.image(snapshot: snapshot) }
+                        catch { exportError = error.localizedDescription }
+                    } label: {
+                        Label("导出真实数据长图（PNG）", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    Label("人物归属或来源未通过校验，禁止导出", systemImage: "lock.doc")
+                        .font(.caption)
+                }
             }
             .padding(18)
             .frame(maxWidth: 620)
@@ -319,6 +331,17 @@ struct PosterDynamicTemplateView: View {
         .background(snapshot.kind.paper.ignoresSafeArea())
         .navigationTitle(snapshot.kind.title)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: Binding(get: { exportedURL != nil }, set: { if !$0 { exportedURL = nil } })) {
+            if let url = exportedURL { PosterFamilyShareSheet(url: url) }
+        }
+        .alert("导出失败", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("确定", role: .cancel) { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
+        }
         .accessibilityIdentifier("poster.dynamic.\(snapshot.kind.rawValue)")
     }
 }
