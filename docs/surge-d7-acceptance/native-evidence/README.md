@@ -103,6 +103,39 @@ VPS 生成订阅字节
   并把校准方法与对照样本写入本 README 的校准记录节。
   在此之前, 本链路只产出“未验证的原始测量记录”, 不产出生产准入结论。
 
+## F 校准首轮：只读 API 能力探测（2026-11-19）
+
+代码入口：`f-readonly-api-probe.py`。这一步**只确认 API 能返回何种
+字段**，不触发测速，不构成 F CALIBRATED，不修改订阅/节点/配置。
+必须在与 iPhone 同一可信私网的机器（或已有的受信桥接主机）执行；
+不支持从公开互联网直接访问手机的 HTTP API。
+
+```bash
+export SURGE_API_BASE="http://<phone-private-ip>:6171"
+read -rs -p 'Surge API key: ' SURGE_API_KEY; printf '\n'
+export SURGE_API_KEY
+SURGE_GROUP_NAME='免费节点池' python3 native-evidence/f-readonly-api-probe.py \
+  > /tmp/surge-f-get-only-redacted.json
+unset SURGE_API_KEY
+```
+
+首轮只读 GET：`/v1/policies?include_external=true`、
+`/v1/policy_groups`、
+`/v1/policy_groups/test_results?group_name=免费节点池`。
+如明确指定 `SURGE_POLICY_NAME`，再额外探测该策略的
+`/v1/policies/detail`。输出仅含响应类型、有限键名、项目数量、
+已知数值型延迟字段；**不含原始节点名、地址、URI、凭据、
+identifier 或完整 API 原文**。出错也不回显响应体，不自动重试，
+`post_count=0`，一律 `calibration_verdict=UNCALIBRATED`。
+只把脱敏输出送到 Issue #73；真实 API 数据只留私有环境。
+
+**注意：此 GET 探测若仍无逐节点数值，就必须先验证单节点测试接口
+真实可寻址，再执行首个受控 POST（至多1个 identifier，每小时最多
+1批，超时不重发），并与当时手机界面读数配对。不能把多个
+手动截图、自动组赢家或自写 HTTP 请求当作真正 API/UI 配对。**
+官方参考：https://manual.nssurge.com/tools/http-api.html 与
+https://manual.nssurge.com/tools/testing.html 。
+
 ## F 轮实测结论 (2026-11-18 20:25–20:40 CST, 真机只读查询)
 
 > 本节为任务 F 的实测结论, 证据见 `api-capability-report.json`
