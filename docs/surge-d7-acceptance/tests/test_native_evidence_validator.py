@@ -185,11 +185,11 @@ class TestJudgeEvidence(ValidatorTestBase):
     def test_judge_exactly_300_not_pass(self):
         # 严格 <300: 300ms 整不算合格。
         record = self.make_evidence("TEST-ROTATION-01", 101, latency=300)
-        self.assertEqual(collector.judge_evidence(record), "FAIL_LATENCY")
+        self.assertEqual(collector.judge_evidence(record), "ABOVE_TARGET")
 
     def test_judge_gte_300_fail_latency(self):
         record = self.make_evidence("TEST-ROTATION-01", 101, latency=500)
-        self.assertEqual(collector.judge_evidence(record), "FAIL_LATENCY")
+        self.assertEqual(collector.judge_evidence(record), "ABOVE_TARGET")
 
     def test_judge_timeout_fail_keeps_null_latency(self):
         record = self.make_evidence(
@@ -266,20 +266,20 @@ class TestRemovalEligibility(ValidatorTestBase):
             "TEST-ROTATION-01", 101, latency=500, phone_sha="UNKNOWN"
         )
         result = validator.validate_evidence(record, self.candidate, pinned_names=PINNED_NAMES)
-        self.assertEqual(result["verdict"], "FAIL_LATENCY")
+        self.assertEqual(result["verdict"], "ABOVE_TARGET")
         self.assertFalse(result["eligible_for_removal"])
 
     def test_slow_but_connected_is_never_a_removal(self):
         record = self.make_evidence("TEST-ROTATION-01", 101, latency=500)
         result = validator.validate_evidence(record, self.candidate, pinned_names=PINNED_NAMES)
-        self.assertEqual(result["verdict"], "FAIL_LATENCY")
+        self.assertEqual(result["verdict"], "ABOVE_TARGET")
         self.assertFalse(result["eligible_for_removal"])
 
     def test_pinned_failure_never_removable(self):
         record = self.make_evidence("TEST-PINNED-01", 1, latency=900)
         result = validator.validate_evidence(record, self.candidate, pinned_names=PINNED_NAMES)
         self.assertTrue(result["is_pinned"])
-        self.assertEqual(result["verdict"], "FAIL_LATENCY")
+        self.assertEqual(result["verdict"], "ABOVE_TARGET")
         self.assertFalse(result["eligible_for_removal"])
 
     def test_single_timeout_is_never_an_automatic_removal(self):
