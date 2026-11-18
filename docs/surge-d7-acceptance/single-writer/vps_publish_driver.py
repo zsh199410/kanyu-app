@@ -73,9 +73,8 @@ def gate_guard_check():
 
 
 def gate_ban_proof():
-    # Default chain (services disabled, not masked): the strongest chain
-    # compatible with the verbatim guard -- a masked service reports
-    # LoadState=masked and the guard refuses it (verified on the VPS).
+    # Default chain (services masked): the strongest bar. The amended
+    # guard accepts masked services, so mask and guard pass together.
     return sw.legacy_ban_proof(timers=GATE_TIMERS, services=GATE_SERVICES)
 
 

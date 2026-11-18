@@ -222,7 +222,7 @@ def _legacy_process_present(rows):
 
 def legacy_ban_proof(show=None, processes=None,
                      timers=LEGACY_TIMERS, services=LEGACY_SERVICES,
-                     require_masked_services=False):
+                     require_masked_services=True):
     """Prove legacy writers are banned from re-entering, beyond flock.
 
     flock alone cannot bind a writer that never takes the lock -- the old
@@ -231,28 +231,25 @@ def legacy_ban_proof(show=None, processes=None,
 
     * every legacy timer: loaded, UnitFileState == "disabled",
       ActiveState == "inactive", no pending Job;
-    * every legacy service: loaded, ActiveState == "inactive",
-      SubState == "dead", MainPID == ControlPID == "0", no pending Job,
-      Result == "success", and -- the extra bar beyond the verbatim
-      guard, which does not check service UnitFileState --
-      UnitFileState == "disabled";
+    * every legacy service: MASKED (UnitFileState == "masked",
+      LoadState == "masked"), ActiveState == "inactive",
+      SubState == "dead", MainPID == ControlPID == "0", no pending Job.
+      Masking is the default and only bar: a merely-disabled service
+      can still be revived by a manual `systemctl start`, so "disabled"
+      does not close the handover (GPT review P0, 2026-11-18). The
+      PR #80 guard was amended the same day to accept LoadState
+      "masked" as drained, so masking and the guard now pass together;
+      the old mutual exclusion (masked vs verbatim guard) no longer
+      applies.
     * no legacy writer process visible in the process table.
 
-    About masking (verified on the VPS 2026-11-18): a masked service
-    reports LoadState == "masked", and the verbatim PR #80 guard
-    refuses any service whose LoadState is not "loaded"
-    (``service_not_loaded``). Masked services and the verbatim guard
-    therefore CANNOT pass together -- masking an old service would make
-    the guard refuse every future publish forever. Masking is the
-    stronger bar, but it needs a guard amendment (accept LoadState
-    "masked" as drained), which is a separate decision outside this
-    task. The opt-in ``require_masked_services=True`` checks
-    UnitFileState == "masked" instead of "disabled" for callers that
-    have made that decision and do not run the verbatim guard alongside;
-    in that mode a masked unit's LoadState ("masked") is also accepted
-    as loaded, since the unit is known to systemd and its state is
-    fully determined. The default (False) is the strongest chain that
-    stays compatible with the verbatim guard.
+    ``require_masked_services`` is kept as a parameter for callers and
+    tests that need to spell the requirement out; it defaults to True
+    and passing False selects the old disabled-only bar, which is NOT
+    sufficient to close a production handover and must not be used for
+    one. In the masked mode a masked unit's LoadState ("masked") is
+    accepted as loaded, since the unit is known to systemd and its
+    state is fully determined.
 
     Returns ``(proven, evidence)`` where ``evidence`` is a list of
     ``{"check": ..., "ok": ..., "detail": ...}`` dicts, one per assertion,
@@ -315,10 +312,15 @@ def legacy_ban_proof(show=None, processes=None,
                            data.get("Job", "") in ("", "0"),
                            data.get("Job", "")):
                 return False, evidence
-            if not _record("service_result_success:" + unit,
-                           data.get("Result") == "success",
-                           data.get("Result", "")):
-                return False, evidence
+            if data.get("LoadState") != "masked":
+                # Result describes the last run's outcome; a masked unit
+                # cannot run, so its Result is historical and is not
+                # required. (A merely-disabled unit that was killed by
+                # signal must still fail here.)
+                if not _record("service_result_success:" + unit,
+                               data.get("Result") == "success",
+                               data.get("Result", "")):
+                    return False, evidence
             if require_masked_services:
                 if not _record("service_masked:" + unit,
                                data.get("UnitFileState") == "masked",
@@ -641,9 +643,8 @@ def _build_arg_parser():
     c.add_argument("--timers", nargs="*", default=list(LEGACY_TIMERS))
     c.add_argument("--services", nargs="*", default=list(LEGACY_SERVICES))
     c.add_argument("--require-masked", action="store_true",
-                   help="require masked services instead of disabled "
-                        "(opt-in; incompatible with the verbatim guard, "
-                        "see legacy_ban_proof docstring)")
+                   help="no-op: masked services are now the default bar "
+                        "(kept for backward compatibility)")
     return parser
 
 

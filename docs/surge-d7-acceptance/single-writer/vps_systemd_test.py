@@ -13,8 +13,8 @@ What is verified here (with real systemctl / ps output as evidence):
   S1 production guard refuses (timers active) + production SHA unchanged
   S2 legacy-ban proof chain on real systemd: timer re-enable, service
      running, signal-killed service, legacy process in ps -- each must
-     fail the proof; drained + disabled state must pass it; plus the
-     demonstrated mask-vs-verbatim-guard conflict (S2e)
+     fail the proof; drained + masked state must pass it; plus the
+     demonstrated mask-and-amended-guard agreement (S2e)
   S3 two concurrent systemd publish services: exactly one wins, the
      other is refused; lock intervals never overlap; final file complete
   S4 SIGKILL of the lock holder under systemd: lock released, next
@@ -174,9 +174,9 @@ def service_result(unit):
 
 
 def ban_proof_for(timers, services):
-    # Default chain (services disabled): the strongest chain compatible
-    # with the verbatim guard. Masked services report LoadState=masked
-    # and the guard refuses them (see S2e); do NOT require masked here.
+    # Default chain (services masked): the strongest bar, and the
+    # amended guard now accepts masked services too, so the two pass
+    # together. A merely-disabled service fails the proof.
     return sw.legacy_ban_proof(timers=tuple(timers),
                                services=tuple(services))
 
@@ -333,10 +333,11 @@ WantedBy=multi-user.target
 
 def step_s2():
     # Isolation units: legacy pair (ban-proof target) + gate pair
-    # (publish-time target). Timers stay disabled and services stay
-    # disabled -- the strongest state compatible with the verbatim
-    # PR #80 guard (a masked service reports LoadState=masked and the
-    # guard refuses it; see S2e for the demonstrated conflict).
+    # (publish-time target). Timers stay disabled; services are MASKED
+    # (the default bar since the GPT review P0, 2026-11-18 -- a
+    # merely-disabled service can still be revived by `systemctl
+    # start`). The amended guard accepts masked services, so mask and
+    # guard pass together (see S2e).
     write_unit("p2p3-legacy-publish.timer", TIMER_UNIT)
     write_unit("p2p3-legacy-sync.timer", TIMER_UNIT)
     write_unit("p2p3-legacy-publish.service", SERVICE_TRUE)
@@ -346,17 +347,22 @@ def step_s2():
     write_unit("p2p3-gate-publish.service", SERVICE_TRUE)
     write_unit("p2p3-gate-sync.service", SERVICE_TRUE)
     daemon_reload()
+    run(["systemctl", "mask", "p2p3-legacy-publish.service"])
+    run(["systemctl", "mask", "p2p3-legacy-sync.service"])
+    run(["systemctl", "mask", "p2p3-gate-publish.service"])
+    run(["systemctl", "mask", "p2p3-gate-sync.service"])
+    daemon_reload()
     log("legacy publish timer state: %s"
         % json.dumps(systemctl_show("p2p3-legacy-publish.timer")))
     log("legacy publish service state: %s"
         % json.dumps(systemctl_show("p2p3-legacy-publish.service")))
 
-    # S2a: drained + disabled proves the ban (both unit sets).
+    # S2a: drained + masked proves the ban (both unit sets).
     proven, evidence = ban_proof_for(LEGACY_TIMERS, LEGACY_SERVICES)
-    record("S2a-ban-proven-when-drained-disabled",
+    record("S2a-ban-proven-when-drained-masked",
            proven, "evidence=%d checks" % len(evidence))
     proven_g, _ = ban_proof_for(GATE_TIMERS, GATE_SERVICES)
-    record("S2a-gate-ban-proven", proven_g, "gate units drained+disabled")
+    record("S2a-gate-ban-proven", proven_g, "gate units drained+masked")
 
     # S2b: re-enable + start the legacy timer -> proof must fail.
     run(["systemctl", "enable", "--runtime", "p2p3-legacy-publish.timer"])
@@ -402,6 +408,11 @@ def step_s2():
     # a stop-job kill is NOT caught by the Result check; only an
     # out-of-band kill (SIGKILL straight at the MainPID) leaves
     # Result=signal. The proof below uses the out-of-band kill.
+    # The service is masked by the S2 setup, so unmask it first (a
+    # masked unit cannot be started at all); it is re-masked after
+    # the restore below.
+    run(["systemctl", "unmask", "p2p3-legacy-sync.service"])
+    daemon_reload()
     run(["systemctl", "start", "p2p3-legacy-sync.service"])
     time.sleep(1)
     log("legacy sync service while running: %s"
@@ -442,19 +453,24 @@ def step_s2():
         write_unit("p2p3-legacy-sync.service", SERVICE_SLEEP)
         daemon_reload()
         state = systemctl_show("p2p3-legacy-sync.service")
+    # Re-mask the service (it was unmasked for the start test above)
+    # so the ban proof passes again on the masked bar.
+    run(["systemctl", "mask", "p2p3-legacy-sync.service"])
+    daemon_reload()
     log("legacy sync service after restore: %s" % json.dumps(state))
     proven, _ = ban_proof_for(LEGACY_TIMERS, LEGACY_SERVICES)
     record("S2d-service-restored-proof-passes-again", proven,
            "Result=%s after restore" % state.get("Result"))
 
-    # S2e: the mask / verbatim-guard conflict, demonstrated on the gate
-    # units. Masking is the stronger bar, but a masked service reports
-    # LoadState=masked and the verbatim guard refuses it -- so mask and
-    # guard cannot pass together. This step proves the conflict exists
-    # (both directions) instead of leaving it as an assumption.
-    run(["systemctl", "mask", "p2p3-gate-publish.service"])
-    run(["systemctl", "mask", "p2p3-gate-sync.service"])
-    daemon_reload()
+    # S2e: the mask / guard amendment, demonstrated on the gate units.
+    # Masking is the stronger bar, and the guard was amended (GPT
+    # review P0, 2026-11-18) to accept LoadState=masked as drained, so
+    # mask and guard now pass TOGETHER. Previously (verbatim guard) a
+    # masked service failed the guard as "service_not_loaded" and the
+    # two could not pass together; that conflict is closed by the
+    # amendment. The gate services are already masked by the S2 setup;
+    # this step proves the amended behaviour instead of leaving it as
+    # an assumption.
     state = systemctl_show("p2p3-gate-publish.service")
     log("gate publish service while masked: %s" % json.dumps(state))
     guard.TIMERS = GATE_TIMERS
@@ -463,20 +479,21 @@ def step_s2():
     proven_masked, _ = sw.legacy_ban_proof(
         timers=GATE_TIMERS, services=GATE_SERVICES,
         require_masked_services=True)
-    record("S2e-masked-service-fails-verbatim-guard",
-           not allowed and reason == "service_not_loaded"
-           and subject == "p2p3-gate-publish.service",
+    record("S2e-masked-service-passes-amended-guard",
+           allowed and reason == "legacy_writers_drained",
            "guard reason=%s LoadState=%s"
            % (reason, state.get("LoadState")))
-    record("S2e-masked-service-passes-masked-variant-proof",
+    record("S2e-masked-service-passes-masked-proof",
            proven_masked,
-           "opt-in require_masked_services=True passes while masked")
-    run(["systemctl", "unmask", "p2p3-gate-publish.service"])
-    run(["systemctl", "unmask", "p2p3-gate-sync.service"])
-    daemon_reload()
+           "require_masked_services=True passes while masked")
+    record("S2e-mask-and-guard-pass-together",
+           allowed and proven_masked,
+           "amended guard + masked proof agree while masked")
+    # The masked state IS the restored state now (no unmask): both
+    # must still pass with the services masked.
     allowed, reason, _ = guard.check()
     proven, _ = ban_proof_for(GATE_TIMERS, GATE_SERVICES)
-    record("S2e-unmasked-guard-and-proof-pass-again",
+    record("S2e-masked-guard-and-proof-pass-again",
            allowed and proven, "guard reason=%s" % reason)
 
 
