@@ -121,6 +121,54 @@ class StabilityTest(unittest.TestCase):
         result = self.classify([old, wrong])
         self.assertEqual(result["sample_count"], 0)
 
+    def test_one_verified_failure_immediately_excluded_from_rotation(self):
+        result = self.classify([record(0, fail=True)])
+        self.assertEqual(result["state"], "FAILED_EXCLUDED")
+        self.assertTrue(result["latest_native_probe_failed"])
+        self.assertTrue(result["exclude_from_active_selection"])
+        self.assertEqual(result["decision"], "EXCLUDE_ACTIVE_ONLY")
+        self.assertFalse(result["eligible_for_removal"])
+
+    def test_most_recent_failure_excludes_even_if_history_is_healthy(self):
+        samples = [record(9-i, 185) for i in range(8)]
+        samples.append(record(0, fail=True))
+        result = self.classify(samples)
+        self.assertGreaterEqual(result["success_rate"], 0.8)
+        self.assertEqual(result["state"], "FAILED_EXCLUDED")
+        self.assertTrue(result["exclude_from_active_selection"])
+        self.assertFalse(result["retest_high_latency"])
+
+    def test_high_latency_is_success_and_queued_for_retest(self):
+        result = self.classify([record(0, 423)])
+        self.assertEqual(result["successes"], 1)
+        self.assertEqual(result["failures"], 0)
+        self.assertFalse(result["exclude_from_active_selection"])
+        self.assertTrue(result["retest_high_latency"])
+        self.assertEqual(result["decision"], "RETEST_SLOW_CONNECTION")
+        self.assertFalse(result["eligible_for_removal"])
+
+    def test_successful_retest_restores_from_failed_exclusion(self):
+        samples = [record(2, fail=True), record(0, 234)]
+        result = self.classify(samples, previous_state="FAILED_EXCLUDED")
+        self.assertEqual(result["state"], "INSUFFICIENT_EVIDENCE")
+        self.assertFalse(result["exclude_from_active_selection"])
+        self.assertFalse(result["latest_native_probe_failed"])
+        self.assertFalse(result["retest_high_latency"])
+
+    def test_unknown_or_uncalibrated_timeout_must_not_exclude(self):
+        record_unverified = record(0, fail=True, verified=False)
+        result = self.classify([record_unverified])
+        self.assertEqual(result["sample_count"], 0)
+        self.assertEqual(result["state"], "INSUFFICIENT_EVIDENCE")
+        self.assertFalse(result["exclude_from_active_selection"])
+
+    def test_bearers_do_not_inherit_each_others_failures(self):
+        result = self.classify([record(0, fail=True, bearer="wifi"),
+                                record(1, 222, bearer="cellular")])
+        self.assertFalse(result["exclude_from_active_selection"])
+        self.assertEqual(result["successes"], 1)
+        self.assertEqual(result["failures"], 0)
+
     def test_wrong_network_type_rejected(self):
         with self.assertRaises(ValueError):
             ranker.classify([], NAME, "UNKNOWN", SHA, now=NOW)
