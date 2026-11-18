@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-# Provenance (verbatim reuse, check logic unchanged):
-#   Source: PR #80 "[Issue #73 P0] Fail closed until unlocked legacy writers are drained"
-#   Repo: zsh199410/kanyu-app
-#   Head SHA: eaa520232af4336e03e83dd4d2f98cac3d8f2d4b
-#   Branch: issue73-p0-legacy-writer-interlock
-#   Path: docs/surge-d7-acceptance/systemd/legacy-writer-guard.py
-#   Retrieved: 2026-11-18 via GitHub connector get_file_contents (blob SHA 5d4a86dea5b79faed304a29e1e0a03a20eb31158)
-#   Local copy: legacy-writer-guard/legacy-writer-guard.py (this file)
-#   NOTE: only this header block was added; the original file body below is byte-identical
-#   to the PR #80 source (no logic change). PR #80 stays Draft; do not auto-merge.
+# Provenance: derived from PR #80, original head eaa52023.
+# The local copy has an explicit amendment: genuinely masked and drained
+# old services are accepted after checks; this is NOT byte-identical to
+# PR #80. The original PR #80 remains a separate Draft.
 """Fail-closed preflight for the real, UNLOCKED legacy pool writers.
 
 Use as ExecStartPre on BOTH new gate services, and at the start of each
