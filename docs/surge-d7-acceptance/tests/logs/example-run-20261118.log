@@ -1,0 +1,32 @@
+示例证据链已产出: native-evidence/isolated-evidence-example/example-evidence-chain.json
+candidate_id: cand-007b438520df44b517b849809c470f7f
+phone_loaded_sha (诚实结论): UNKNOWN
+示例证据 verdict: UNVERIFIED
+eligible_for_removal: False
+
+== 示例审计十项计数 (30 候选 + 1 条 TEST-NET 示例证据) ==
+1. 当前候选节点数: 30
+2. 原生证据覆盖数: 1/30
+3. 有效测试数: 1
+4. 小于 300ms 数量: 1
+5. 大于等于 300ms 数量: 0
+6. 明确失败数量: 0
+7. UNKNOWN 数量: 0
+8. 具有安全删除资格的非钉选数量: 0
+9. 21 条钉选完整性: 21/21 (intact=True)
+10. STOP 状态: RUNNING
+decision: NO_SAFE_REMOVAL
+
+== 生产当前态复核十项计数 (30 候选 + 0 证据) ==
+1. 当前候选节点数: 30
+2. 原生证据覆盖数: 0/30
+3. 有效测试数: 0
+4. 小于 300ms 数量: 0
+5. 大于等于 300ms 数量: 0
+6. 明确失败数量: 0
+7. UNKNOWN 数量: 0
+8. 具有安全删除资格的非钉选数量: 0
+9. 21 条钉选完整性: 21/21 (intact=True)
+10. STOP 状态: RUNNING
+decision: NO_SAFE_REMOVAL
+removal_candidates: 0

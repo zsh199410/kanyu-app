@@ -1,0 +1,322 @@
+{
+  "bridge_commands": [
+    {
+      "actions": 5,
+      "id": 1795004725,
+      "issued_at_cst": "2026-11-18 20:25:25",
+      "result_at_cst": "2026-11-18 20:30:02",
+      "side_effects": "无 (全部为 GET)"
+    },
+    {
+      "actions": 2,
+      "id": 1795005131,
+      "issued_at_cst": "2026-11-18 20:32:11",
+      "note": "补查: select 须带 group_name 参数才返回选中策略; test_results 带 group_name 参数的行为见下",
+      "result_at_cst": "2026-11-18 20:40:02",
+      "side_effects": "无 (全部为 GET)"
+    }
+  ],
+  "calibration_status": {
+    "measurement_verified": false,
+    "paired_samples": 0,
+    "reasons": [
+      "无手机界面人工读数 (UI 显示值 0 行), 配对样本 0 行, 未达最少 3 行要求",
+      "test_results 按本轮查法只返回 Smart 组选中策略, 未返回逐节点 API 延迟字段",
+      "API 值 vs UI 显示值 vs 组选择结果 vs HTTP/HTTPS 口径的映射未确定",
+      "measurement_verified 保持 False, 证据判定维持 UNVERIFIED, 决策维持 NO_SAFE_REMOVAL"
+    ],
+    "verdict": "UNCALIBRATED"
+  },
+  "desensitization": {
+    "kept": "结构、字段名、数据类型、计数、时间戳、成员名集合 SHA-256、类型分布",
+    "removed": [
+      "profiles/current 的 profile 与 originalProfile 全文 (含代理行原文)",
+      "external_resources 全部 path 值 (含订阅/资源 URL)",
+      "policy_groups 全部 lineHash 值",
+      "external_resources 全部 key 值",
+      "profile 的 name 值 (仅记长度 6)",
+      "任何节点 URI、密码、token、真实出口 IP"
+    ]
+  },
+  "endpoints": [
+    {
+      "finding": "不带 group_name 参数时返回 policy=null, 不是选中状态, 须带参数查询",
+      "method": "GET",
+      "path": "/v1/policy_groups/select",
+      "response": {
+        "policy": null
+      },
+      "response_types": {
+        "policy": "null"
+      }
+    },
+    {
+      "finding": "免费节点池组当前选中 香港2 🇭🇰 (显示名, 非 URI/密码)",
+      "method": "GET",
+      "path": "/v1/policy_groups/select?group_name=<pool-group>",
+      "response": {
+        "policy": "香港2 🇭🇰"
+      },
+      "response_types": {
+        "policy": "string (策略组当前选中的代理显示名)"
+      }
+    },
+    {
+      "finding": "手机端已加载的免费节点池成员为 30 条, 全部 enabled, 类型分布与源端一致",
+      "method": "GET",
+      "path": "/v1/policy_groups",
+      "pool_group": {
+        "enabled": {
+          "true": 30
+        },
+        "entries": 30,
+        "isGroup": {
+          "false": 30
+        },
+        "member_name_set_definition": "手机端 免费节点池 规则下 30 个条目名去重排序后以 \\n 连接的 SHA-256",
+        "member_name_set_sha256": "a1f9f711b716316b2564bc59ebfab90f2e7ec2e9de5ad5f48434dc5c979f8063",
+        "rule": "免费节点池",
+        "typeDescription": {
+          "Shadowsocks": 5,
+          "Trojan": 23,
+          "VMess": 2
+        },
+        "unique_names": 30
+      },
+      "response_shape": {
+        "entry_field_types": {
+          "enabled": "boolean",
+          "isGroup": "boolean",
+          "lineHash": "string (已脱敏, 不入库)",
+          "name": "string",
+          "typeDescription": "string"
+        },
+        "entry_fields": [
+          "enabled",
+          "isGroup",
+          "lineHash",
+          "name",
+          "typeDescription"
+        ],
+        "rule_entry_counts": {
+          "人工智能": 3,
+          "代码托管": 3,
+          "候选备用｜手动": 14,
+          "免费节点池": 30,
+          "国际抖音": 3,
+          "家宽线路": 4,
+          "微软服务": 2,
+          "手动节点": 22,
+          "日本自动": 11,
+          "油管视频": 3,
+          "漏网之鱼": 4,
+          "电报消息": 3,
+          "社交媒体": 3,
+          "网络测速": 4,
+          "美国自动": 5,
+          "节点选择": 3,
+          "苹果服务": 2,
+          "谷歌服务": 3
+        },
+        "top_level": "object, 18 个键 (规则名 -> 条目列表)"
+      }
+    },
+    {
+      "finding": "108 个外部资源全部 ready=true; 2 个 policy-group 类型资源有 updatedAt 时间戳, 但没有任何字段含已加载订阅字节 SHA; ready 状态不等于已加载订阅 SHA",
+      "method": "GET",
+      "path": "/v1/external_resources",
+      "response_shape": {
+        "defines_count": 108,
+        "defines_types": {
+          "data": 1,
+          "policy-group": 2,
+          "ruleset": 18,
+          "script": 87
+        },
+        "item_field_types": {
+          "fromModule": "string|null",
+          "key": "string (已脱敏, 不入库)",
+          "local": "boolean",
+          "path": "string (URL, 已脱敏, 不入库)",
+          "ready": "boolean",
+          "type": "string",
+          "updatedAt": "number (epoch 秒, 含小数)",
+          "updating": "boolean"
+        },
+        "item_fields": [
+          "fromModule",
+          "key",
+          "local",
+          "path",
+          "ready",
+          "type",
+          "updatedAt",
+          "updating"
+        ],
+        "policy_group_entries": [
+          {
+            "fromModule": null,
+            "local": false,
+            "ready": true,
+            "updatedAt": 1794984262.141941,
+            "updatedAt_cst": "2026-11-18 14:44:22",
+            "updating": false
+          },
+          {
+            "fromModule": null,
+            "local": false,
+            "ready": true,
+            "updatedAt": 1795002917.0530968,
+            "updatedAt_cst": "2026-11-18 19:55:17",
+            "updating": false
+          }
+        ],
+        "ready": {
+          "true": 108
+        },
+        "top_level_keys": [
+          "defines"
+        ],
+        "updating": {
+          "false": 108
+        }
+      }
+    },
+    {
+      "finding": "当前配置全文可读 (sensitive=0), 但不含 managed-config 行、不含 pool-new 字样、不含任何已加载订阅字节 SHA; 配置内容不等于已加载订阅 SHA",
+      "method": "GET",
+      "path": "/v1/profiles/current?sensitive=0",
+      "response_shape": {
+        "checks": {
+          "contains_pool_new": false,
+          "has_managed_config_line": false,
+          "proxy_section_markers": 1
+        },
+        "name": {
+          "chars": 6,
+          "type": "string (值已脱敏, 不入库)"
+        },
+        "originalProfile": {
+          "chars": 9663,
+          "lines": 150,
+          "sections": [
+            "General",
+            "Proxy",
+            "Proxy Group",
+            "Rule",
+            "Host",
+            "MITM",
+            "Script",
+            "Tailscale my-tailnet"
+          ],
+          "type": "string (全文已脱敏, 不入库)"
+        },
+        "profile": {
+          "chars": 214782,
+          "lines": 1786,
+          "sections": [
+            "General",
+            "Proxy",
+            "Proxy Group",
+            "Rule",
+            "Host",
+            "URL Rewrite",
+            "Body Rewrite",
+            "Map Local",
+            "MITM",
+            "Script",
+            "Panel",
+            "Tailscale my-tailnet"
+          ],
+          "type": "string (全文已脱敏, 不入库)"
+        },
+        "top_level_keys": [
+          "profile",
+          "originalProfile",
+          "name"
+        ]
+      }
+    },
+    {
+      "finding": "18 个策略组、22 个直连代理 (显示名列表); 该端点不返回池成员, 不能用于成员集合比对",
+      "method": "GET",
+      "path": "/v1/policies",
+      "response_shape": {
+        "policy_groups_count": 18,
+        "proxies_count": 22,
+        "proxies_type": "array of string (代理显示名, 仅记数量)",
+        "top_level_keys": [
+          "policy-groups",
+          "proxies"
+        ]
+      }
+    },
+    {
+      "finding": "带 group_name=免费节点池查询 test_results, 返回的是两个 Smart 组 (日本自动/美国自动) 各自当前选中的 1 个策略, 没有返回免费节点池的逐节点延迟字段 (无 round-one-total / available / tcp / receive / latency_ms); 该端点按此查法不能提供校准用的 API 延迟值",
+      "method": "GET",
+      "path": "/v1/policy_groups/test_results?group_name=<pool-group>",
+      "response": {
+        "日本自动": [
+          "日本🇯🇵 Snell6"
+        ],
+        "美国自动": [
+          "美国🇺🇸AnyTLS"
+        ]
+      },
+      "response_types": {
+        "日本自动": "array of string (1 项)",
+        "美国自动": "array of string (1 项)"
+      }
+    }
+  ],
+  "generated_at": "2026-11-18T20:40:02+08:00",
+  "loaded_proof_classification": {
+    "loaded_members_verified": true,
+    "member_sets_match": true,
+    "method": "phone-loaded-proof.classify_loaded_proof(api_responses, candidate, group_name=免费节点池), 源端成员名集合取自 served 池文件 (VPS 侧计算, 仅比对 SHA)",
+    "phone_loaded_sha": "UNKNOWN",
+    "phone_member_count": 30,
+    "phone_member_name_set_sha256": "a1f9f711b716316b2564bc59ebfab90f2e7ec2e9de5ad5f48434dc5c979f8063",
+    "production_admission": "PENDING_REVIEW",
+    "proof_level": "MEMBERS_VERIFIED",
+    "reasons": [
+      "手机端 免费节点池 成员名集合 (30 名) 与源端 served 池文件成员名集合逐名一致, 类型分布一致 (Trojan 23 / Shadowsocks 5 / VMess 2)",
+      "弱证明: 仅证明成员名一致, 不证明字节一致 (同名成员可对应不同 URI/密码/参数)",
+      "7 次响应中没有任何字段含手机端已加载订阅字节 SHA, 字节级证明不可行, phone_loaded_sha 保持 UNKNOWN",
+      "production_admission 为 PENDING_REVIEW: 弱证明的生产准入资格须单独审查, 不可据此下架"
+    ],
+    "source_member_count": 30,
+    "source_member_name_set_sha256": "a1f9f711b716316b2564bc59ebfab90f2e7ec2e9de5ad5f48434dc5c979f8063",
+    "source_member_set_sha256_lines": "dcfdcadb17aad6923c891dd56ace35c7ced92db5b93ad4e435b055388c712688",
+    "source_payload_sha256": "606dcfca229e26c0ac83882085f957be40e43cc0b0904d8388cb34398c51247a",
+    "source_type_distribution": {
+      "ss": 5,
+      "trojan": 23,
+      "vmess": 2
+    },
+    "type_distributions_match": true
+  },
+  "method": "经 Surge 桥 (sgcmd) 下发只读 GET, 手机端 HTTP API 返回, via=httpAPI",
+  "report": "F1 只读查询真实原始响应 (脱敏后)",
+  "surge_version": {
+    "available": false,
+    "finding": "7 次响应中没有任何字段含 Surge 版本号 (全文检索 version 键为 0 命中); 本轮 5 个端点无法获取 Surge 版本"
+  },
+  "what_phone_api_can_and_cannot_provide": {
+    "can": [
+      "策略组当前选中策略 (select, 须带 group_name)",
+      "各规则下已加载成员名、类型、启用状态 (/v1/policy_groups)",
+      "策略组与直连代理名列表 (/v1/policies)",
+      "外部资源 ready/updating/updatedAt/type (/v1/external_resources)",
+      "当前配置全文与原始配置全文 (/v1/profiles/current, sensitive=0)",
+      "Smart 组当前选中策略 (/v1/policy_groups/test_results 按本轮查法)"
+    ],
+    "cannot": [
+      "Surge 版本号 (本轮 5 个端点无 version 字段)",
+      "手机端已加载订阅字节 SHA (无任何端点返回, phone_loaded_sha 无法字节证明)",
+      "订阅源 URL 的 SHA / 加载时刻的字节指纹",
+      "逐节点 API 延迟字段 (test_results 按本轮查法不返回延迟)",
+      "手机界面显示的延迟数字 (须人工读数, API 不提供)"
+    ]
+  }
+}

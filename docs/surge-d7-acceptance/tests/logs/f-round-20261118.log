@@ -1,0 +1,263 @@
+test_ambiguous_mapping_uncalibrated (test_api_calibration.TestCalibrate.test_ambiguous_mapping_uncalibrated) ... ok
+test_calibrated_on_available (test_api_calibration.TestCalibrate.test_calibrated_on_available) ... ok
+test_calibrated_on_round_one_total (test_api_calibration.TestCalibrate.test_calibrated_on_round_one_total) ... ok
+test_contradicted_same_api_different_ui (test_api_calibration.TestCalibrate.test_contradicted_same_api_different_ui) ... ok
+test_http_and_https_calibrate_separately (test_api_calibration.TestCalibrate.test_http_and_https_calibrate_separately) ... ok
+test_mixed_bearers_uncalibrated (test_api_calibration.TestCalibrate.test_mixed_bearers_uncalibrated) ... ok
+test_mixed_nodes_uncalibrated (test_api_calibration.TestCalibrate.test_mixed_nodes_uncalibrated) ... ok
+test_mixed_schemes_uncalibrated (test_api_calibration.TestCalibrate.test_mixed_schemes_uncalibrated) ... ok
+test_no_field_explains_ui (test_api_calibration.TestCalibrate.test_no_field_explains_ui) ... ok
+test_too_few_samples (test_api_calibration.TestCalibrate.test_too_few_samples) ... ok
+test_apply_calibration_gates_judgement (test_api_calibration.TestMeasurementVerifiedGate.test_apply_calibration_gates_judgement) ... ok
+test_calibration_module_apply_matches_collector (test_api_calibration.TestMeasurementVerifiedGate.test_calibration_module_apply_matches_collector) ... ok
+test_only_calibrated_verifies (test_api_calibration.TestMeasurementVerifiedGate.test_only_calibrated_verifies) ... ok
+test_uncalibrated_never_passes_even_if_phone_verified (test_api_calibration.TestMeasurementVerifiedGate.test_uncalibrated_never_passes_even_if_phone_verified) ... ok
+test_invalid_ui_rejected (test_api_calibration.TestPairedRows.test_invalid_ui_rejected) ... ok
+test_row_without_ui_is_not_usable (test_api_calibration.TestPairedRows.test_row_without_ui_is_not_usable) ... ok
+test_bool_is_not_latency (test_api_calibration.TestParseApiLatency.test_bool_is_not_latency) ... ok
+test_fields_and_types_preserved (test_api_calibration.TestParseApiLatency.test_fields_and_types_preserved) ... ok
+test_missing_fields_are_none (test_api_calibration.TestParseApiLatency.test_missing_fields_are_none) ... ok
+test_non_dict_raises (test_api_calibration.TestParseApiLatency.test_non_dict_raises) ... ok
+test_string_value_not_coerced (test_api_calibration.TestParseApiLatency.test_string_value_not_coerced) ... ok
+test_scheme (test_api_calibration.TestSchemeAndSource.test_scheme) ... ok
+test_source_kinds (test_api_calibration.TestSchemeAndSource.test_source_kinds) ... ok
+test_mutations_fail (test_device_gate.TestConfAudit.test_mutations_fail) ... ok
+test_real_conf_passes (test_device_gate.TestConfAudit.test_real_conf_passes) ... ok
+test_corrupt_lease_revoked (test_device_gate.TestCronSweep.test_corrupt_lease_revoked) ... ok
+test_expired_lease_revoked_and_reject (test_device_gate.TestCronSweep.test_expired_lease_revoked_and_reject) ... ok
+test_no_lease_already_reject_no_action (test_device_gate.TestCronSweep.test_no_lease_already_reject_no_action) ... ok
+test_no_lease_with_proxy_selected_forces_reject (test_device_gate.TestCronSweep.test_no_lease_with_proxy_selected_forces_reject) ... ok
+test_valid_lease_untouched (test_device_gate.TestCronSweep.test_valid_lease_untouched) ... ok
+test_engine_started_revokes_and_mints_boot (test_device_gate.TestEventScripts.test_engine_started_revokes_and_mints_boot) ... ok
+test_manual_event_preserves_state (test_device_gate.TestEventScripts.test_manual_event_preserves_state) ... ok
+test_network_changed_revokes (test_device_gate.TestEventScripts.test_network_changed_revokes) ... ok
+test_old_lease_denied_after_reboot (test_device_gate.TestEventScripts.test_old_lease_denied_after_reboot)
+Full chain: boot 1 lease valid -> engine-started (boot 2) -> ... ok
+test_profile_reloaded_revokes (test_device_gate.TestEventScripts.test_profile_reloaded_revokes) ... ok
+test_check_status_active_then_expired (test_device_gate.TestGateControllerIssue.test_check_status_active_then_expired) ... ok
+test_issue_gate_script_missing (test_device_gate.TestGateControllerIssue.test_issue_gate_script_missing) ... ok
+test_issue_happy_path_active (test_device_gate.TestGateControllerIssue.test_issue_happy_path_active) ... ok
+test_issue_no_echo_is_unverified_not_active (test_device_gate.TestGateControllerIssue.test_issue_no_echo_is_unverified_not_active) ... ok
+test_issue_scripting_disabled (test_device_gate.TestGateControllerIssue.test_issue_scripting_disabled) ... ok
+test_issue_sha_mismatch (test_device_gate.TestGateControllerIssue.test_issue_sha_mismatch) ... ok
+test_issue_stop_flag (test_device_gate.TestGateControllerIssue.test_issue_stop_flag) ... ok
+test_renew_reissues_with_new_timestamps (test_device_gate.TestGateControllerIssue.test_renew_reissues_with_new_timestamps) ... ok
+test_revoke_after_issue (test_device_gate.TestGateControllerIssue.test_revoke_after_issue) ... ok
+test_startup_reverify_no_prior_state (test_device_gate.TestGateControllerIssue.test_startup_reverify_no_prior_state) ... ok
+test_startup_reverify_reconfirms_active (test_device_gate.TestGateControllerIssue.test_startup_reverify_reconfirms_active) ... ok
+test_bad_lease_version_denies (test_device_gate.TestRuleScriptJS.test_bad_lease_version_denies) ... ok
+test_boot_mismatch_denies (test_device_gate.TestRuleScriptJS.test_boot_mismatch_denies) ... ok
+test_clock_back_before_issue_denies (test_device_gate.TestRuleScriptJS.test_clock_back_before_issue_denies) ... ok
+test_clock_back_vs_lastseen_denies (test_device_gate.TestRuleScriptJS.test_clock_back_vs_lastseen_denies) ... ok
+test_corrupt_lease_json_denies (test_device_gate.TestRuleScriptJS.test_corrupt_lease_json_denies) ... ok
+test_expired_lease_denies (test_device_gate.TestRuleScriptJS.test_expired_lease_denies) ... ok
+test_fingerprint_parity_python_vs_js (test_device_gate.TestRuleScriptJS.test_fingerprint_parity_python_vs_js)
+networkFingerprint in gate-script.js must equal the Python oracle. ... ok
+test_js_syntax_parses (test_device_gate.TestRuleScriptJS.test_js_syntax_parses) ... ok
+test_network_change_denies (test_device_gate.TestRuleScriptJS.test_network_change_denies) ... ok
+test_no_boot_id_denies (test_device_gate.TestRuleScriptJS.test_no_boot_id_denies) ... ok
+test_no_lease_denies (test_device_gate.TestRuleScriptJS.test_no_lease_denies) ... ok
+test_proxy_not_allowed_denies (test_device_gate.TestRuleScriptJS.test_proxy_not_allowed_denies) ... ok
+test_selection_mismatch_denies (test_device_gate.TestRuleScriptJS.test_selection_mismatch_denies) ... ok
+test_sha_mismatch_denies (test_device_gate.TestRuleScriptJS.test_sha_mismatch_denies) ... ok
+test_stopped_denies (test_device_gate.TestRuleScriptJS.test_stopped_denies) ... ok
+test_ttl_inconsistent_denies (test_device_gate.TestRuleScriptJS.test_ttl_inconsistent_denies) ... ok
+test_unknown_selection_denies (test_device_gate.TestRuleScriptJS.test_unknown_selection_denies) ... ok
+test_valid_lease_matches (test_device_gate.TestRuleScriptJS.test_valid_lease_matches) ... ok
+test_evaluate_500_blocks_issue (test_device_gate_failures.TestControllerApiFailures.test_evaluate_500_blocks_issue) ... ok
+test_get_groups_500_blocks_issue (test_device_gate_failures.TestControllerApiFailures.test_get_groups_500_blocks_issue) ... ok
+test_group_not_loaded (test_device_gate_failures.TestControllerApiFailures.test_group_not_loaded) ... ok
+test_lying_get_override_blocks_active (test_device_gate_failures.TestControllerApiFailures.test_lying_get_override_blocks_active) ... ok
+test_no_boot_id_on_device_blocks_active (test_device_gate_failures.TestControllerApiFailures.test_no_boot_id_on_device_blocks_active)
+engine-started never ran -> issue script reports no-boot-id -> ... ok
+test_post_ignored_readback_mismatch (test_device_gate_failures.TestControllerApiFailures.test_post_ignored_readback_mismatch) ... ok
+test_post_timeout_is_not_active (test_device_gate_failures.TestControllerApiFailures.test_post_timeout_is_not_active) ... ok
+test_duplicate_candidates_refused (test_device_gate_failures.TestControllerCandidateFailures.test_duplicate_candidates_refused) ... ok
+test_non_testnet_host_refused (test_device_gate_failures.TestControllerCandidateFailures.test_non_testnet_host_refused) ... ok
+test_stale_evidence_refused (test_device_gate_failures.TestControllerCandidateFailures.test_stale_evidence_refused) ... ok
+test_unhealthy_latency_no_lease (test_device_gate_failures.TestControllerCandidateFailures.test_unhealthy_latency_no_lease) ... ok
+test_unknown_member_refused (test_device_gate_failures.TestControllerCandidateFailures.test_unknown_member_refused) ... ok
+test_concurrent_issue_is_serialised (test_device_gate_failures.TestControllerConcurrencyAndRestart.test_concurrent_issue_is_serialised) ... ok
+test_restart_then_lease_expired (test_device_gate_failures.TestControllerConcurrencyAndRestart.test_restart_then_lease_expired) ... ok
+test_corrupt_stored_lease_is_unknown (test_device_gate_failures.TestControllerLeaseStateFailures.test_corrupt_stored_lease_is_unknown) ... ok
+test_damaged_state_file_is_not_trusted (test_device_gate_failures.TestControllerLeaseStateFailures.test_damaged_state_file_is_not_trusted) ... ok
+test_forged_active_state_file_is_not_trusted (test_device_gate_failures.TestControllerLeaseStateFailures.test_forged_active_state_file_is_not_trusted)
+A state file claiming LEASE_ACTIVE/verified must be re-read ... ok
+test_lease_from_future_clock_is_unknown (test_device_gate_failures.TestControllerLeaseStateFailures.test_lease_from_future_clock_is_unknown) ... ok
+test_never_selects_direct (test_device_gate_failures.TestControllerLeaseStateFailures.test_never_selects_direct) ... ok
+test_no_lease_status (test_device_gate_failures.TestControllerLeaseStateFailures.test_no_lease_status) ... ok
+test_revoke_unconfirmed_when_post_ignored (test_device_gate_failures.TestControllerLeaseStateFailures.test_revoke_unconfirmed_when_post_ignored) ... ok
+test_selection_differs_from_lease_is_unknown (test_device_gate_failures.TestControllerLeaseStateFailures.test_selection_differs_from_lease_is_unknown) ... ok
+test_lastseen_cache_survives_across_requests (test_device_gate_failures.TestRuleScriptEdgeCases.test_lastseen_cache_survives_across_requests)
+Two sequential requests share the store: the second sees the ... ok
+test_missing_script_file_is_a_harness_error_not_a_match (test_device_gate_failures.TestRuleScriptEdgeCases.test_missing_script_file_is_a_harness_error_not_a_match)
+Models 'script missing': the rule cannot run, so in Surge the ... ok
+test_setselectgrouppolicy_failure_still_revokes_lease (test_device_gate_failures.TestRuleScriptEdgeCases.test_setselectgrouppolicy_failure_still_revokes_lease)
+Even if setSelectGroupPolicy fails, the event must delete the ... ok
+test_stale_boot_after_second_reboot (test_device_gate_failures.TestRuleScriptEdgeCases.test_stale_boot_after_second_reboot)
+Two engine-started runs mint two different boot ids; a lease ... ok
+test_01_legacy_writer_present_is_refused (test_legacy_writer_guard.TestLegacyWriterGuard.test_01_legacy_writer_present_is_refused) ... ok
+test_02_drained_writers_are_allowed (test_legacy_writer_guard.TestLegacyWriterGuard.test_02_drained_writers_are_allowed) ... ok
+test_03_signal_terminated_writer_is_refused (test_legacy_writer_guard.TestLegacyWriterGuard.test_03_signal_terminated_writer_is_refused) ... ok
+test_04_pending_systemd_job_is_refused (test_legacy_writer_guard.TestLegacyWriterGuard.test_04_pending_systemd_job_is_refused) ... ok
+test_05_inspection_failure_is_refused (test_legacy_writer_guard.TestLegacyWriterGuard.test_05_inspection_failure_is_refused) ... ok
+test_06_manual_restart_after_drain_is_refused_on_recheck (test_legacy_writer_guard.TestLegacyWriterGuard.test_06_manual_restart_after_drain_is_refused_on_recheck) ... ok
+test_07_refusal_leaves_served_sha_unchanged (test_legacy_writer_guard.TestLegacyWriterGuard.test_07_refusal_leaves_served_sha_unchanged) ... ok
+test_08_concurrent_contention_allows_only_one_writer (test_legacy_writer_guard.TestLegacyWriterGuard.test_08_concurrent_contention_allows_only_one_writer) ... ok
+test_byte_change_invalidates_old_record (test_native_candidate_binding.TestFreezeCandidate.test_byte_change_invalidates_old_record) ... ok
+test_candidate_id_deterministic_across_revisions (test_native_candidate_binding.TestFreezeCandidate.test_candidate_id_deterministic_across_revisions) ... ok
+test_different_bytes_different_candidate_id (test_native_candidate_binding.TestFreezeCandidate.test_different_bytes_different_candidate_id) ... ok
+test_freeze_rejects_empty_source_revision (test_native_candidate_binding.TestFreezeCandidate.test_freeze_rejects_empty_source_revision) ... ok
+test_freeze_rejects_non_bytes (test_native_candidate_binding.TestFreezeCandidate.test_freeze_rejects_non_bytes) ... ok
+test_member_addition_invalidates_old_record (test_native_candidate_binding.TestFreezeCandidate.test_member_addition_invalidates_old_record) ... ok
+test_member_removal_invalidates_old_record (test_native_candidate_binding.TestFreezeCandidate.test_member_removal_invalidates_old_record) ... ok
+test_member_reorder_invalidates_old_record (test_native_candidate_binding.TestFreezeCandidate.test_member_reorder_invalidates_old_record) ... ok
+test_missing_field_rejected (test_native_candidate_binding.TestFreezeCandidate.test_missing_field_rejected) ... ok
+test_non_dict_record_rejected (test_native_candidate_binding.TestFreezeCandidate.test_non_dict_record_rejected) ... ok
+test_payload_and_member_sha_are_64_hex (test_native_candidate_binding.TestFreezeCandidate.test_payload_and_member_sha_are_64_hex) ... ok
+test_policy_fingerprint_mismatch_rejected (test_native_candidate_binding.TestFreezeCandidate.test_policy_fingerprint_mismatch_rejected) ... ok
+test_record_has_all_required_fields (test_native_candidate_binding.TestFreezeCandidate.test_record_has_all_required_fields) ... ok
+test_same_bytes_same_candidate_id (test_native_candidate_binding.TestFreezeCandidate.test_same_bytes_same_candidate_id) ... ok
+test_tampered_candidate_id_rejected (test_native_candidate_binding.TestFreezeCandidate.test_tampered_candidate_id_rejected) ... ok
+test_tampered_member_set_sha_rejected (test_native_candidate_binding.TestFreezeCandidate.test_tampered_member_set_sha_rejected) ... ok
+test_verify_valid_for_unchanged_bytes (test_native_candidate_binding.TestFreezeCandidate.test_verify_valid_for_unchanged_bytes) ... ok
+test_batch_after_hour_allowed (test_native_evidence_validator.TestBatchLimits.test_batch_after_hour_allowed) ... ok
+test_eleven_identifiers_rejected (test_native_evidence_validator.TestBatchLimits.test_eleven_identifiers_rejected) ... ok
+test_phone_post_never_sends_in_sandbox (test_native_evidence_validator.TestBatchLimits.test_phone_post_never_sends_in_sandbox) ... ok
+test_post_timeout_must_not_resend (test_native_evidence_validator.TestBatchLimits.test_post_timeout_must_not_resend) ... ok
+test_second_batch_within_hour_rejected (test_native_evidence_validator.TestBatchLimits.test_second_batch_within_hour_rejected) ... ok
+test_ten_identifiers_allowed (test_native_evidence_validator.TestBatchLimits.test_ten_identifiers_allowed) ... ok
+test_unparseable_last_batch_rejected (test_native_evidence_validator.TestBatchLimits.test_unparseable_last_batch_rejected) ... ok
+test_candidate_binding_mismatch_unverified (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_candidate_binding_mismatch_unverified) ... ok
+test_expired_evidence_unverified (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_expired_evidence_unverified) ... ok
+test_fresh_evidence_not_expired (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_fresh_evidence_not_expired) ... ok
+test_latency_type_error_rejected (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_latency_type_error_rejected) ... ok
+test_measurement_verified_type_error_rejected (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_measurement_verified_type_error_rejected) ... ok
+test_member_set_binding_mismatch_unverified (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_member_set_binding_mismatch_unverified) ... ok
+test_missing_field_rejected (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_missing_field_rejected) ... ok
+test_policy_version_mismatch_unverified (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_policy_version_mismatch_unverified) ... ok
+test_raw_result_type_error_rejected (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_raw_result_type_error_rejected) ... ok
+test_valid_evidence_passes (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_valid_evidence_passes) ... ok
+test_build_preserves_raw_result_types (test_native_evidence_validator.TestJudgeEvidence.test_build_preserves_raw_result_types) ... ok
+test_build_without_explicit_latency_is_null (test_native_evidence_validator.TestJudgeEvidence.test_build_without_explicit_latency_is_null) ... ok
+test_invalid_bearer_rejected (test_native_evidence_validator.TestJudgeEvidence.test_invalid_bearer_rejected) ... ok
+test_judge_exactly_300_not_pass (test_native_evidence_validator.TestJudgeEvidence.test_judge_exactly_300_not_pass) ... ok
+test_judge_expired_unverified (test_native_evidence_validator.TestJudgeEvidence.test_judge_expired_unverified) ... ok
+test_judge_gte_300_fail_latency (test_native_evidence_validator.TestJudgeEvidence.test_judge_gte_300_fail_latency) ... ok
+test_judge_lt_300_boundary_299_pass (test_native_evidence_validator.TestJudgeEvidence.test_judge_lt_300_boundary_299_pass) ... ok
+test_judge_lt_300_pass (test_native_evidence_validator.TestJudgeEvidence.test_judge_lt_300_pass) ... ok
+test_judge_null_latency_never_pass (test_native_evidence_validator.TestJudgeEvidence.test_judge_null_latency_never_pass) ... ok
+test_judge_phone_unknown_lt_300_unverified (test_native_evidence_validator.TestJudgeEvidence.test_judge_phone_unknown_lt_300_unverified) ... ok
+test_judge_timeout_fail_keeps_null_latency (test_native_evidence_validator.TestJudgeEvidence.test_judge_timeout_fail_keeps_null_latency) ... ok
+test_judge_uncalibrated_semantics_unverified (test_native_evidence_validator.TestJudgeEvidence.test_judge_uncalibrated_semantics_unverified) ... ok
+test_judge_untested_unknown (test_native_evidence_validator.TestJudgeEvidence.test_judge_untested_unknown) ... ok
+test_unknown_bearer_when_undetermined (test_native_evidence_validator.TestJudgeEvidence.test_unknown_bearer_when_undetermined) ... ok
+test_phone_unknown_failure_cannot_remove (test_native_evidence_validator.TestRemovalEligibility.test_phone_unknown_failure_cannot_remove) ... ok
+test_pinned_failure_never_removable (test_native_evidence_validator.TestRemovalEligibility.test_pinned_failure_never_removable) ... ok
+test_uncalibrated_failure_cannot_remove (test_native_evidence_validator.TestRemovalEligibility.test_uncalibrated_failure_cannot_remove) ... ok
+test_verified_failure_can_count_for_removal (test_native_evidence_validator.TestRemovalEligibility.test_verified_failure_can_count_for_removal) ... ok
+test_verified_timeout_counts_as_credible_failure (test_native_evidence_validator.TestRemovalEligibility.test_verified_timeout_counts_as_credible_failure) ... ok
+test_example_produces_verifiable_chain_with_unknown_phone (test_native_evidence_validator.TestRunExample.test_example_produces_verifiable_chain_with_unknown_phone) ... ok
+test_audit_refuses_production_path (test_native_evidence_validator.TestShadowAudit.test_audit_refuses_production_path) ... ok
+test_audit_writes_only_isolated_dir (test_native_evidence_validator.TestShadowAudit.test_audit_writes_only_isolated_dir) ... ok
+test_stop_forces_no_safe_removal (test_native_evidence_validator.TestShadowAudit.test_stop_forces_no_safe_removal) ... ok
+test_ten_counts_correct (test_native_evidence_validator.TestShadowAudit.test_ten_counts_correct) ... ok
+test_zero_of_30_no_safe_removal (test_native_evidence_validator.TestShadowAudit.test_zero_of_30_no_safe_removal) ... ok
+test_byte_proof_enables_removal_when_failure_and_calibrated (test_phone_loaded_proof.TestAttachAndValidatorIntegration.test_byte_proof_enables_removal_when_failure_and_calibrated) ... ok
+test_byte_proof_without_sha_raises (test_phone_loaded_proof.TestAttachAndValidatorIntegration.test_byte_proof_without_sha_raises) ... ok
+test_inconsistent_proof_fields_rejected (test_phone_loaded_proof.TestAttachAndValidatorIntegration.test_inconsistent_proof_fields_rejected) ... ok
+test_invalid_proof_level_raises (test_phone_loaded_proof.TestAttachAndValidatorIntegration.test_invalid_proof_level_raises) ... ok
+test_measurement_verified_without_calibration_rejected (test_phone_loaded_proof.TestAttachAndValidatorIntegration.test_measurement_verified_without_calibration_rejected) ... ok
+test_weak_proof_never_writes_sha (test_phone_loaded_proof.TestAttachAndValidatorIntegration.test_weak_proof_never_writes_sha) ... ok
+test_frozen_without_payload_sha (test_phone_loaded_proof.TestByteLevelProof.test_frozen_without_payload_sha) ... ok
+test_illegal_sha_is_unverified (test_phone_loaded_proof.TestByteLevelProof.test_illegal_sha_is_unverified) ... ok
+test_match_is_byte_proof (test_phone_loaded_proof.TestByteLevelProof.test_match_is_byte_proof) ... ok
+test_mismatch_is_unverified (test_phone_loaded_proof.TestByteLevelProof.test_mismatch_is_unverified) ... ok
+test_unknown_input_is_unverified (test_phone_loaded_proof.TestByteLevelProof.test_unknown_input_is_unverified) ... ok
+test_empty_responses_is_unverified (test_phone_loaded_proof.TestClassifyLoadedProof.test_empty_responses_is_unverified) ... ok
+test_group_name_scoping_matters (test_phone_loaded_proof.TestClassifyLoadedProof.test_group_name_scoping_matters) ... ok
+test_profiles_and_resources_only_is_unverified (test_phone_loaded_proof.TestClassifyLoadedProof.test_profiles_and_resources_only_is_unverified) ... ok
+test_real_shape_groups_replay_members_verified (test_phone_loaded_proof.TestClassifyLoadedProof.test_real_shape_groups_replay_members_verified) ... ok
+test_reported_sha_match_is_byte_proof (test_phone_loaded_proof.TestClassifyLoadedProof.test_reported_sha_match_is_byte_proof) ... ok
+test_empty_phone_members_fails (test_phone_loaded_proof.TestMembersWeakProof.test_empty_phone_members_fails) ... ok
+test_exact_set_is_members_verified (test_phone_loaded_proof.TestMembersWeakProof.test_exact_set_is_members_verified) ... ok
+test_extra_member_fails (test_phone_loaded_proof.TestMembersWeakProof.test_extra_member_fails) ... ok
+test_frozen_without_member_names (test_phone_loaded_proof.TestMembersWeakProof.test_frozen_without_member_names) ... ok
+test_member_set_sha_deterministic (test_phone_loaded_proof.TestMembersWeakProof.test_member_set_sha_deterministic) ... ok
+test_missing_one_member_fails (test_phone_loaded_proof.TestMembersWeakProof.test_missing_one_member_fails) ... ok
+test_order_does_not_matter (test_phone_loaded_proof.TestMembersWeakProof.test_order_does_not_matter) ... ok
+test_fetch_and_classify_replay (test_phone_loaded_proof.TestMockReplay.test_fetch_and_classify_replay) ... ok
+test_conf_static_check_passes_on_real_file (test_selector_controller.TestNormalPaths.test_conf_static_check_passes_on_real_file)
+The real conf file parses clean under the real checker. ... ok
+test_explicit_reject_verified (test_selector_controller.TestNormalPaths.test_explicit_reject_verified)
+No candidates -> explicit REJECT, read-back REJECT. ... ok
+test_logs_contain_no_secrets (test_selector_controller.TestNormalPaths.test_logs_contain_no_secrets)
+Structured logs must never carry passwords, tokens or URIs. ... ok
+test_manual_rollback_to_reject (test_selector_controller.TestNormalPaths.test_manual_rollback_to_reject)
+Human rollback entry point: explicit REJECT + read-back. ... ok
+test_readback_mismatch_is_unknown_not_safe (test_selector_controller.TestNormalPaths.test_readback_mismatch_is_unknown_not_safe)
+POST ok but GET returns a different policy -> UNKNOWN. ... ok
+test_select_healthy_proxy_verified (test_selector_controller.TestNormalPaths.test_select_healthy_proxy_verified)
+Healthy candidates -> lowest-latency proxy, read-back agrees. ... ok
+test_state_persistence_roundtrip (test_selector_controller.TestNormalPaths.test_state_persistence_roundtrip)
+Save -> load is marked unverified -> startup re-verify trusts it ... ok
+test_stop_check_blocks_and_rejects (test_selector_controller.TestNormalPaths.test_stop_check_blocks_and_rejects)
+STOP file present -> STOPPED, device ends on REJECT. ... ok
+test_api_error_refuses_to_continue (test_selector_failures.TestFailurePaths.test_api_error_refuses_to_continue)
+POST 500 -> SELECTION_UNKNOWN, no production authorisation. ... ok
+test_api_timeout_is_unknown_never_claims_reject (test_selector_failures.TestFailurePaths.test_api_timeout_is_unknown_never_claims_reject)
+POST timeout -> SELECTION_UNKNOWN. The controller must not ... ok
+test_candidate_sha_mismatch_refuses_selection (test_selector_failures.TestFailurePaths.test_candidate_sha_mismatch_refuses_selection)
+Candidate set SHA != expected version -> VERSION_MISMATCH, ... ok
+test_concurrent_calls (test_selector_failures.TestFailurePaths.test_concurrent_calls)
+Concurrent run_cycle + rollback calls: no crash, no torn ... ok
+test_controller_crash_recovery_state_is_verifiable (test_selector_failures.TestFailurePaths.test_controller_crash_recovery_state_is_verifiable)
+Simulated crash: state file survives, new controller instance ... ok
+test_device_config_not_loaded_refuses_operation (test_selector_failures.TestFailurePaths.test_device_config_not_loaded_refuses_operation)
+Device does not report the expected group/members -> refuse ... ok
+test_duplicate_identifiers_refuse_selection (test_selector_failures.TestFailurePaths.test_duplicate_identifiers_refuse_selection)
+Two candidates with the same name -> refuse, fall back to REJECT. ... ok
+test_expired_candidate_evidence_refuses_proxy (test_selector_failures.TestFailurePaths.test_expired_candidate_evidence_refuses_proxy)
+Candidate evidence older than 24h -> unhealthy -> REJECT. ... ok
+test_get_readback_failure_is_unknown (test_selector_failures.TestFailurePaths.test_get_readback_failure_is_unknown)
+POST ok but GET read-back 500 -> SELECTION_UNKNOWN. ... ok
+test_identifier_mapping_failure_refuses_selection (test_selector_failures.TestFailurePaths.test_identifier_mapping_failure_refuses_selection)
+Candidate name not in the device member list -> refuse. ... ok
+test_no_healthy_proxy_does_not_authorise_production (test_selector_failures.TestFailurePaths.test_no_healthy_proxy_does_not_authorise_production)
+All candidates unhealthy -> REJECT, production not authorised. ... ok
+test_repeated_state_events_no_race (test_selector_failures.TestFailurePaths.test_repeated_state_events_no_race)
+The same cycle repeated 20x (and concurrently) must never ... ok
+test_restart_recovery (test_selector_failures.TestFailurePaths.test_restart_recovery)
+Restart: fresh controller instance + same state file + same ... ok
+test_single_failing_proxy_never_selects_direct (test_selector_failures.TestFailurePaths.test_single_failing_proxy_never_selects_direct)
+One must-fail proxy: controller must not fall back to DIRECT ... ok
+test_stale_selection_not_reported_safe (test_selector_failures.TestFailurePaths.test_stale_selection_not_reported_safe)
+Persisted PROXY_VERIFIED with expired evidence must not be ... ok
+test_stop_blocks_production (test_selector_failures.TestFailurePaths.test_stop_blocks_production)
+STOP checker active -> STOPPED, proxy never selected. ... ok
+test_wifi_cellular_switch_reverifies (test_selector_failures.TestFailurePaths.test_wifi_cellular_switch_reverifies)
+After a network switch the live selection is re-read. Same ... ok
+test_01_two_concurrent_publishes_serialize (test_single_writer.TestSingleWriter.test_01_two_concurrent_publishes_serialize) ... ok
+test_02_guard_pass_alone_grants_no_write_permission (test_single_writer.TestSingleWriter.test_02_guard_pass_alone_grants_no_write_permission) ... ok
+test_03_no_race_between_check_and_write (test_single_writer.TestSingleWriter.test_03_no_race_between_check_and_write) ... /usr/lib/python3.12/multiprocessing/popen_fork.py:66: DeprecationWarning: This process (pid=10853) is multi-threaded, use of fork() may lead to deadlocks in the child.
+  self.pid = os.fork()
+ok
+test_04_atomic_write_and_http_consistency (test_single_writer.TestSingleWriter.test_04_atomic_write_and_http_consistency) ... ok
+test_05_sigkill_releases_lock_without_half_product (test_single_writer.TestSingleWriter.test_05_sigkill_releases_lock_without_half_product) ... ok
+test_06_guard_or_ban_refusal_writes_nothing (test_single_writer.TestSingleWriter.test_06_guard_or_ban_refusal_writes_nothing) ... ok
+test_07_rollback_keeps_crawl_and_test_data (test_single_writer.TestSingleWriter.test_07_rollback_keeps_crawl_and_test_data) ... ok
+test_f01_lock_timeout_is_fail_closed (test_single_writer_failures.TestSingleWriterFailures.test_f01_lock_timeout_is_fail_closed) ... ok
+test_f02_stale_candidate_is_refused (test_single_writer_failures.TestSingleWriterFailures.test_f02_stale_candidate_is_refused) ... ok
+test_f03_legacy_reentry_after_write_is_rolled_back (test_single_writer_failures.TestSingleWriterFailures.test_f03_legacy_reentry_after_write_is_rolled_back) ... ok
+test_f04_ban_proof_failure_after_write_is_rolled_back (test_single_writer_failures.TestSingleWriterFailures.test_f04_ban_proof_failure_after_write_is_rolled_back) ... ok
+test_f05_guard_unavailable_is_fail_closed (test_single_writer_failures.TestSingleWriterFailures.test_f05_guard_unavailable_is_fail_closed) ... ok
+test_f06_ban_proof_rejects_each_broken_link (test_single_writer_failures.TestSingleWriterFailures.test_f06_ban_proof_rejects_each_broken_link) ... ok
+test_f07_atomic_write_failure_leaves_destination_intact (test_single_writer_failures.TestSingleWriterFailures.test_f07_atomic_write_failure_leaves_destination_intact) ... ok
+test_f08_reentrant_acquire_is_refused (test_single_writer_failures.TestSingleWriterFailures.test_f08_reentrant_acquire_is_refused) ... ok
+test_f09_repeated_faults_never_touch_other_rows (test_single_writer_failures.TestSingleWriterFailures.test_f09_repeated_faults_never_touch_other_rows) ... ok
+
+----------------------------------------------------------------------
+Ran 222 tests in 43.927s
+
+OK
+EXIT=0

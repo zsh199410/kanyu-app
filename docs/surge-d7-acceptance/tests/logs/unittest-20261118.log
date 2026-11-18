@@ -1,0 +1,122 @@
+test_01_legacy_writer_present_is_refused (test_legacy_writer_guard.TestLegacyWriterGuard.test_01_legacy_writer_present_is_refused) ... ok
+test_02_drained_writers_are_allowed (test_legacy_writer_guard.TestLegacyWriterGuard.test_02_drained_writers_are_allowed) ... ok
+test_03_signal_terminated_writer_is_refused (test_legacy_writer_guard.TestLegacyWriterGuard.test_03_signal_terminated_writer_is_refused) ... ok
+test_04_pending_systemd_job_is_refused (test_legacy_writer_guard.TestLegacyWriterGuard.test_04_pending_systemd_job_is_refused) ... ok
+test_05_inspection_failure_is_refused (test_legacy_writer_guard.TestLegacyWriterGuard.test_05_inspection_failure_is_refused) ... ok
+test_06_manual_restart_after_drain_is_refused_on_recheck (test_legacy_writer_guard.TestLegacyWriterGuard.test_06_manual_restart_after_drain_is_refused_on_recheck) ... ok
+test_07_refusal_leaves_served_sha_unchanged (test_legacy_writer_guard.TestLegacyWriterGuard.test_07_refusal_leaves_served_sha_unchanged) ... ok
+test_08_concurrent_contention_allows_only_one_writer (test_legacy_writer_guard.TestLegacyWriterGuard.test_08_concurrent_contention_allows_only_one_writer) ... ok
+test_byte_change_invalidates_old_record (test_native_candidate_binding.TestFreezeCandidate.test_byte_change_invalidates_old_record) ... ok
+test_candidate_id_deterministic_across_revisions (test_native_candidate_binding.TestFreezeCandidate.test_candidate_id_deterministic_across_revisions) ... ok
+test_different_bytes_different_candidate_id (test_native_candidate_binding.TestFreezeCandidate.test_different_bytes_different_candidate_id) ... ok
+test_freeze_rejects_empty_source_revision (test_native_candidate_binding.TestFreezeCandidate.test_freeze_rejects_empty_source_revision) ... ok
+test_freeze_rejects_non_bytes (test_native_candidate_binding.TestFreezeCandidate.test_freeze_rejects_non_bytes) ... ok
+test_member_addition_invalidates_old_record (test_native_candidate_binding.TestFreezeCandidate.test_member_addition_invalidates_old_record) ... ok
+test_member_removal_invalidates_old_record (test_native_candidate_binding.TestFreezeCandidate.test_member_removal_invalidates_old_record) ... ok
+test_member_reorder_invalidates_old_record (test_native_candidate_binding.TestFreezeCandidate.test_member_reorder_invalidates_old_record) ... ok
+test_missing_field_rejected (test_native_candidate_binding.TestFreezeCandidate.test_missing_field_rejected) ... ok
+test_non_dict_record_rejected (test_native_candidate_binding.TestFreezeCandidate.test_non_dict_record_rejected) ... ok
+test_payload_and_member_sha_are_64_hex (test_native_candidate_binding.TestFreezeCandidate.test_payload_and_member_sha_are_64_hex) ... ok
+test_policy_fingerprint_mismatch_rejected (test_native_candidate_binding.TestFreezeCandidate.test_policy_fingerprint_mismatch_rejected) ... ok
+test_record_has_all_required_fields (test_native_candidate_binding.TestFreezeCandidate.test_record_has_all_required_fields) ... ok
+test_same_bytes_same_candidate_id (test_native_candidate_binding.TestFreezeCandidate.test_same_bytes_same_candidate_id) ... ok
+test_tampered_candidate_id_rejected (test_native_candidate_binding.TestFreezeCandidate.test_tampered_candidate_id_rejected) ... ok
+test_tampered_member_set_sha_rejected (test_native_candidate_binding.TestFreezeCandidate.test_tampered_member_set_sha_rejected) ... ok
+test_verify_valid_for_unchanged_bytes (test_native_candidate_binding.TestFreezeCandidate.test_verify_valid_for_unchanged_bytes) ... ok
+test_batch_after_hour_allowed (test_native_evidence_validator.TestBatchLimits.test_batch_after_hour_allowed) ... ok
+test_eleven_identifiers_rejected (test_native_evidence_validator.TestBatchLimits.test_eleven_identifiers_rejected) ... ok
+test_phone_post_never_sends_in_sandbox (test_native_evidence_validator.TestBatchLimits.test_phone_post_never_sends_in_sandbox) ... ok
+test_post_timeout_must_not_resend (test_native_evidence_validator.TestBatchLimits.test_post_timeout_must_not_resend) ... ok
+test_second_batch_within_hour_rejected (test_native_evidence_validator.TestBatchLimits.test_second_batch_within_hour_rejected) ... ok
+test_ten_identifiers_allowed (test_native_evidence_validator.TestBatchLimits.test_ten_identifiers_allowed) ... ok
+test_unparseable_last_batch_rejected (test_native_evidence_validator.TestBatchLimits.test_unparseable_last_batch_rejected) ... ok
+test_candidate_binding_mismatch_unverified (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_candidate_binding_mismatch_unverified) ... ok
+test_expired_evidence_unverified (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_expired_evidence_unverified) ... ok
+test_fresh_evidence_not_expired (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_fresh_evidence_not_expired) ... ok
+test_latency_type_error_rejected (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_latency_type_error_rejected) ... ok
+test_measurement_verified_type_error_rejected (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_measurement_verified_type_error_rejected) ... ok
+test_member_set_binding_mismatch_unverified (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_member_set_binding_mismatch_unverified) ... ok
+test_missing_field_rejected (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_missing_field_rejected) ... ok
+test_policy_version_mismatch_unverified (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_policy_version_mismatch_unverified) ... ok
+test_raw_result_type_error_rejected (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_raw_result_type_error_rejected) ... ok
+test_valid_evidence_passes (test_native_evidence_validator.TestEvidenceSchemaAndBinding.test_valid_evidence_passes) ... ok
+test_build_preserves_raw_result_types (test_native_evidence_validator.TestJudgeEvidence.test_build_preserves_raw_result_types) ... ok
+test_build_without_explicit_latency_is_null (test_native_evidence_validator.TestJudgeEvidence.test_build_without_explicit_latency_is_null) ... ok
+test_invalid_bearer_rejected (test_native_evidence_validator.TestJudgeEvidence.test_invalid_bearer_rejected) ... ok
+test_judge_exactly_300_not_pass (test_native_evidence_validator.TestJudgeEvidence.test_judge_exactly_300_not_pass) ... ok
+test_judge_expired_unverified (test_native_evidence_validator.TestJudgeEvidence.test_judge_expired_unverified) ... ok
+test_judge_gte_300_fail_latency (test_native_evidence_validator.TestJudgeEvidence.test_judge_gte_300_fail_latency) ... ok
+test_judge_lt_300_boundary_299_pass (test_native_evidence_validator.TestJudgeEvidence.test_judge_lt_300_boundary_299_pass) ... ok
+test_judge_lt_300_pass (test_native_evidence_validator.TestJudgeEvidence.test_judge_lt_300_pass) ... ok
+test_judge_null_latency_never_pass (test_native_evidence_validator.TestJudgeEvidence.test_judge_null_latency_never_pass) ... ok
+test_judge_phone_unknown_lt_300_unverified (test_native_evidence_validator.TestJudgeEvidence.test_judge_phone_unknown_lt_300_unverified) ... ok
+test_judge_timeout_fail_keeps_null_latency (test_native_evidence_validator.TestJudgeEvidence.test_judge_timeout_fail_keeps_null_latency) ... ok
+test_judge_uncalibrated_semantics_unverified (test_native_evidence_validator.TestJudgeEvidence.test_judge_uncalibrated_semantics_unverified) ... ok
+test_judge_untested_unknown (test_native_evidence_validator.TestJudgeEvidence.test_judge_untested_unknown) ... ok
+test_unknown_bearer_when_undetermined (test_native_evidence_validator.TestJudgeEvidence.test_unknown_bearer_when_undetermined) ... ok
+test_phone_unknown_failure_cannot_remove (test_native_evidence_validator.TestRemovalEligibility.test_phone_unknown_failure_cannot_remove) ... ok
+test_pinned_failure_never_removable (test_native_evidence_validator.TestRemovalEligibility.test_pinned_failure_never_removable) ... ok
+test_uncalibrated_failure_cannot_remove (test_native_evidence_validator.TestRemovalEligibility.test_uncalibrated_failure_cannot_remove) ... ok
+test_verified_failure_can_count_for_removal (test_native_evidence_validator.TestRemovalEligibility.test_verified_failure_can_count_for_removal) ... ok
+test_verified_timeout_counts_as_credible_failure (test_native_evidence_validator.TestRemovalEligibility.test_verified_timeout_counts_as_credible_failure) ... ok
+test_example_produces_verifiable_chain_with_unknown_phone (test_native_evidence_validator.TestRunExample.test_example_produces_verifiable_chain_with_unknown_phone) ... ok
+test_audit_refuses_production_path (test_native_evidence_validator.TestShadowAudit.test_audit_refuses_production_path) ... ok
+test_audit_writes_only_isolated_dir (test_native_evidence_validator.TestShadowAudit.test_audit_writes_only_isolated_dir) ... ok
+test_stop_forces_no_safe_removal (test_native_evidence_validator.TestShadowAudit.test_stop_forces_no_safe_removal) ... ok
+test_ten_counts_correct (test_native_evidence_validator.TestShadowAudit.test_ten_counts_correct) ... ok
+test_zero_of_30_no_safe_removal (test_native_evidence_validator.TestShadowAudit.test_zero_of_30_no_safe_removal) ... ok
+test_conf_static_check_passes_on_real_file (test_selector_controller.TestNormalPaths.test_conf_static_check_passes_on_real_file)
+The real conf file parses clean under the real checker. ... ok
+test_explicit_reject_verified (test_selector_controller.TestNormalPaths.test_explicit_reject_verified)
+No candidates -> explicit REJECT, read-back REJECT. ... ok
+test_logs_contain_no_secrets (test_selector_controller.TestNormalPaths.test_logs_contain_no_secrets)
+Structured logs must never carry passwords, tokens or URIs. ... ok
+test_manual_rollback_to_reject (test_selector_controller.TestNormalPaths.test_manual_rollback_to_reject)
+Human rollback entry point: explicit REJECT + read-back. ... ok
+test_readback_mismatch_is_unknown_not_safe (test_selector_controller.TestNormalPaths.test_readback_mismatch_is_unknown_not_safe)
+POST ok but GET returns a different policy -> UNKNOWN. ... ok
+test_select_healthy_proxy_verified (test_selector_controller.TestNormalPaths.test_select_healthy_proxy_verified)
+Healthy candidates -> lowest-latency proxy, read-back agrees. ... ok
+test_state_persistence_roundtrip (test_selector_controller.TestNormalPaths.test_state_persistence_roundtrip)
+Save -> load is marked unverified -> startup re-verify trusts it ... ok
+test_stop_check_blocks_and_rejects (test_selector_controller.TestNormalPaths.test_stop_check_blocks_and_rejects)
+STOP file present -> STOPPED, device ends on REJECT. ... ok
+test_api_error_refuses_to_continue (test_selector_failures.TestFailurePaths.test_api_error_refuses_to_continue)
+POST 500 -> SELECTION_UNKNOWN, no production authorisation. ... ok
+test_api_timeout_is_unknown_never_claims_reject (test_selector_failures.TestFailurePaths.test_api_timeout_is_unknown_never_claims_reject)
+POST timeout -> SELECTION_UNKNOWN. The controller must not ... ok
+test_candidate_sha_mismatch_refuses_selection (test_selector_failures.TestFailurePaths.test_candidate_sha_mismatch_refuses_selection)
+Candidate set SHA != expected version -> VERSION_MISMATCH, ... ok
+test_concurrent_calls (test_selector_failures.TestFailurePaths.test_concurrent_calls)
+Concurrent run_cycle + rollback calls: no crash, no torn ... ok
+test_controller_crash_recovery_state_is_verifiable (test_selector_failures.TestFailurePaths.test_controller_crash_recovery_state_is_verifiable)
+Simulated crash: state file survives, new controller instance ... ok
+test_device_config_not_loaded_refuses_operation (test_selector_failures.TestFailurePaths.test_device_config_not_loaded_refuses_operation)
+Device does not report the expected group/members -> refuse ... ok
+test_duplicate_identifiers_refuse_selection (test_selector_failures.TestFailurePaths.test_duplicate_identifiers_refuse_selection)
+Two candidates with the same name -> refuse, fall back to REJECT. ... ok
+test_expired_candidate_evidence_refuses_proxy (test_selector_failures.TestFailurePaths.test_expired_candidate_evidence_refuses_proxy)
+Candidate evidence older than 24h -> unhealthy -> REJECT. ... ok
+test_get_readback_failure_is_unknown (test_selector_failures.TestFailurePaths.test_get_readback_failure_is_unknown)
+POST ok but GET read-back 500 -> SELECTION_UNKNOWN. ... ok
+test_identifier_mapping_failure_refuses_selection (test_selector_failures.TestFailurePaths.test_identifier_mapping_failure_refuses_selection)
+Candidate name not in the device member list -> refuse. ... ok
+test_no_healthy_proxy_does_not_authorise_production (test_selector_failures.TestFailurePaths.test_no_healthy_proxy_does_not_authorise_production)
+All candidates unhealthy -> REJECT, production not authorised. ... ok
+test_repeated_state_events_no_race (test_selector_failures.TestFailurePaths.test_repeated_state_events_no_race)
+The same cycle repeated 20x (and concurrently) must never ... ok
+test_restart_recovery (test_selector_failures.TestFailurePaths.test_restart_recovery)
+Restart: fresh controller instance + same state file + same ... ok
+test_single_failing_proxy_never_selects_direct (test_selector_failures.TestFailurePaths.test_single_failing_proxy_never_selects_direct)
+One must-fail proxy: controller must not fall back to DIRECT ... ok
+test_stale_selection_not_reported_safe (test_selector_failures.TestFailurePaths.test_stale_selection_not_reported_safe)
+Persisted PROXY_VERIFIED with expired evidence must not be ... ok
+test_stop_blocks_production (test_selector_failures.TestFailurePaths.test_stop_blocks_production)
+STOP checker active -> STOPPED, proxy never selected. ... ok
+test_wifi_cellular_switch_reverifies (test_selector_failures.TestFailurePaths.test_wifi_cellular_switch_reverifies)
+After a network switch the live selection is re-read. Same ... ok
+
+----------------------------------------------------------------------
+Ran 92 tests in 15.437s
+
+OK

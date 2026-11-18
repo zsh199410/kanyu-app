@@ -1,0 +1,116 @@
+[20:47:06] === P0-G VPS systemd test start ===
+[20:47:06] setup done; prod sha before=606dcfca229e26c0ac83882085f957be40e43cc0b0904d8388cb34398c51247a
+[20:47:06] production guard stdout: {"ok": false, "reason": "old_timer_not_disabled", "subject": "pool-publish.timer"}
+[20:47:06] production guard exit: 1
+[20:47:06] PASS S1-production-guard-refuses -- exit=1 reason=old_timer_not_disabled
+[20:47:06] prod timers: {"pool-publish.timer": "active", "pool-sync.timer": "active", "pool-crawl.timer": "active", "pool-test.timer": "active", "pool-test-full.timer": "active"}
+[20:47:06] PASS S1-production-sha-baseline -- served=606dcfca229e staging=606dcfca229e
+[20:47:06] wrote unit p2p3-legacy-publish.timer
+[20:47:06] wrote unit p2p3-legacy-sync.timer
+[20:47:06] wrote unit p2p3-legacy-publish.service
+[20:47:06] wrote unit p2p3-legacy-sync.service
+[20:47:06] wrote unit p2p3-gate-publish.timer
+[20:47:06] wrote unit p2p3-gate-sync.timer
+[20:47:06] wrote unit p2p3-gate-publish.service
+[20:47:06] wrote unit p2p3-gate-sync.service
+[20:47:06] legacy publish timer state: {"Result": "success", "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "UnitFileState": "disabled", "Job": ""}
+[20:47:06] legacy publish service state: {"MainPID": "0", "ControlPID": "0", "Result": "success", "ExecMainStatus": "0", "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "UnitFileState": "disabled", "Job": ""}
+[20:47:06] PASS S2a-ban-proven-when-drained-disabled -- evidence=22 checks
+[20:47:06] PASS S2a-gate-ban-proven -- gate units drained+disabled
+[20:47:08] legacy timer after enable+start: {"Result": "success", "LoadState": "loaded", "ActiveState": "active", "SubState": "waiting", "UnitFileState": "enabled-runtime", "Job": ""}
+[20:47:08] PASS S2b-timer-reenable-fails-proof -- failed=['timer_disabled:p2p3-legacy-publish.timer']
+[20:47:08] PASS S2b-timer-restored-proof-passes-again -- 
+[20:47:09] ps rows for pool-sync.sh: ['19820 /bin/bash /opt/p2p3-single-writer/bin/pool-sync.sh']
+[20:47:09] PASS S2c-legacy-process-fails-proof -- failed=['no_legacy_process'] ps_rows=1
+[20:47:10] PASS S2c-process-gone-proof-passes-again -- 
+[20:47:11] legacy sync service while running: {"MainPID": "19834", "ControlPID": "0", "Result": "success", "ExecMainStatus": "0", "LoadState": "loaded", "ActiveState": "active", "SubState": "running", "UnitFileState": "disabled", "Job": ""}
+[20:47:11] PASS S2d-running-service-fails-proof -- failed=['service_drained:p2p3-legacy-sync.service']
+[20:47:11] killing legacy sync MainPID 19834 with SIGKILL (out-of-band)
+[20:47:13] legacy sync service after out-of-band SIGKILL: {"MainPID": "0", "ControlPID": "0", "Result": "signal", "ExecMainStatus": "9", "LoadState": "loaded", "ActiveState": "failed", "SubState": "failed", "UnitFileState": "disabled", "Job": ""}
+[20:47:13] PASS S2d-signal-killed-service-fails-proof -- Result=signal failed=['service_drained:p2p3-legacy-sync.service']
+[20:47:14] legacy sync service after restore: {"MainPID": "0", "ControlPID": "0", "Result": "success", "ExecMainStatus": "0", "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "UnitFileState": "disabled", "Job": ""}
+[20:47:14] PASS S2d-service-restored-proof-passes-again -- Result=success after restore
+[20:47:15] gate publish service while masked: {"MainPID": "0", "ControlPID": "0", "Result": "success", "ExecMainStatus": "0", "LoadState": "masked", "ActiveState": "inactive", "SubState": "dead", "UnitFileState": "masked", "Job": ""}
+[20:47:15] PASS S2e-masked-service-fails-verbatim-guard -- guard reason=service_not_loaded LoadState=masked
+[20:47:15] PASS S2e-masked-service-passes-masked-variant-proof -- opt-in require_masked_services=True passes while masked
+[20:47:17] PASS S2e-unmasked-guard-and-proof-pass-again -- guard reason=legacy_writers_drained
+[20:47:17] wrote unit p2p3-pub-a.service
+[20:47:17] wrote unit p2p3-pub-b.service
+[20:47:18] round 1 systemctl start exit=1
+[20:47:18] round 1 A: inactive=True Result=success ExecMainStatus=0
+[20:47:18] round 1 B: inactive=True Result=exit-code ExecMainStatus=2
+[20:47:18] PASS S3-round1-exactly-one-winner -- A=('success', '0') B=('exit-code', '2')
+[20:47:18] PASS S3-round1-final-file-complete -- final=9428a1919e3f staging_match=True tmp=[]
+[20:47:18] PASS S3-round1-lock-intervals-no-overlap -- 1 interval(s), no overlap
+[20:47:19] round 2 systemctl start exit=1
+[20:47:19] round 2 A: inactive=True Result=success ExecMainStatus=0
+[20:47:19] round 2 B: inactive=True Result=exit-code ExecMainStatus=2
+[20:47:19] PASS S3-round2-exactly-one-winner -- A=('success', '0') B=('exit-code', '2')
+[20:47:19] PASS S3-round2-final-file-complete -- final=9428a1919e3f staging_match=True tmp=[]
+[20:47:19] PASS S3-round2-lock-intervals-no-overlap -- 1 interval(s), no overlap
+[20:47:19] round 3 systemctl start exit=1
+[20:47:19] round 3 A: inactive=True Result=success ExecMainStatus=0
+[20:47:19] round 3 B: inactive=True Result=exit-code ExecMainStatus=2
+[20:47:19] PASS S3-round3-exactly-one-winner -- A=('success', '0') B=('exit-code', '2')
+[20:47:19] PASS S3-round3-final-file-complete -- final=9428a1919e3f staging_match=True tmp=[]
+[20:47:19] PASS S3-round3-lock-intervals-no-overlap -- 1 interval(s), no overlap
+[20:47:19] PASS S3-all-three-rounds-one-winner -- 3/3 rounds
+[20:47:19] wrote unit p2p3-holder.service
+[20:47:20] holder pid: 20442 MainPID=20442 state={"MainPID": "20442", "ControlPID": "0", "Result": "success", "ExecMainStatus": "0", "LoadState": "loaded", "ActiveState": "active", "SubState": "running", "UnitFileState": "static", "Job": ""}
+[20:47:20] flock --nonblock while held: exit=1 out=''
+[20:47:20] PASS S4-lock-held-by-holder -- flock exit=1 holder_pid=20442 alive=True
+[20:47:22] holder after SIGKILL: {"MainPID": "0", "ControlPID": "0", "Result": "signal", "ExecMainStatus": "9", "LoadState": "loaded", "ActiveState": "failed", "SubState": "failed", "UnitFileState": "static", "Job": ""} ps_still=[]
+[20:47:22] PASS S4-holder-killed-by-sigkill -- kill_exit=0 ActiveState=failed
+[20:47:22] wrote unit p2p3-pub-c.service
+[20:47:23] publish C after SIGKILL: inactive=True Result=success ExecMainStatus=0
+[20:47:23] PASS S4-publish-succeeds-after-sigkill -- ExecMainStatus=0 complete=True tmp=[]
+[20:47:23] PASS S4-no-half-product -- served was complete before and after
+[20:47:24] PASS S5-http-server-bound -- our server answers 200 on 18099 before readers start
+[20:47:40] FAIL S5-http-never-shows-partial-write -- errors=['fetch failed: <urlopen error timed out>'] seen=3 distinct=['0337f235', '9428a191', 'd54745cc']
+[20:47:40] wrote unit p2p3-pub-a.service
+[20:47:41] PASS S6-good-publish-via-service -- ExecMainStatus=0 counts=(50, 50, 25) (before=(50, 50, 24))
+[20:47:41] wrote unit p2p3-pub-b.service
+[20:47:42] PASS S6-faulty-publish-refused -- ExecMainStatus=2 (2 = refused)
+[20:47:42] PASS S6-rollback-restores-files-and-keeps-data -- served_ok=True staging_ok=True counts=(50, 50, 25)
+[20:47:54] PASS S7-test-units-removed -- leftovers=[]
+[20:47:54] PASS S7-production-sha-unchanged -- served=606dcfca229e staging=606dcfca229e before=606dcfca229e
+[20:47:54] PASS S7-production-timers-still-active -- {"pool-publish.timer": "active", "pool-sync.timer": "active", "pool-crawl.timer": "active", "pool-test.timer": "active", "pool-test-full.timer": "active"}
+[20:47:54] === SUMMARY ===
+[20:47:54] PASS S1-production-guard-refuses -- exit=1 reason=old_timer_not_disabled
+[20:47:54] PASS S1-production-sha-baseline -- served=606dcfca229e staging=606dcfca229e
+[20:47:54] PASS S2a-ban-proven-when-drained-disabled -- evidence=22 checks
+[20:47:54] PASS S2a-gate-ban-proven -- gate units drained+disabled
+[20:47:54] PASS S2b-timer-reenable-fails-proof -- failed=['timer_disabled:p2p3-legacy-publish.timer']
+[20:47:54] PASS S2b-timer-restored-proof-passes-again -- 
+[20:47:54] PASS S2c-legacy-process-fails-proof -- failed=['no_legacy_process'] ps_rows=1
+[20:47:54] PASS S2c-process-gone-proof-passes-again -- 
+[20:47:54] PASS S2d-running-service-fails-proof -- failed=['service_drained:p2p3-legacy-sync.service']
+[20:47:54] PASS S2d-signal-killed-service-fails-proof -- Result=signal failed=['service_drained:p2p3-legacy-sync.service']
+[20:47:54] PASS S2d-service-restored-proof-passes-again -- Result=success after restore
+[20:47:54] PASS S2e-masked-service-fails-verbatim-guard -- guard reason=service_not_loaded LoadState=masked
+[20:47:54] PASS S2e-masked-service-passes-masked-variant-proof -- opt-in require_masked_services=True passes while masked
+[20:47:54] PASS S2e-unmasked-guard-and-proof-pass-again -- guard reason=legacy_writers_drained
+[20:47:54] PASS S3-round1-exactly-one-winner -- A=('success', '0') B=('exit-code', '2')
+[20:47:54] PASS S3-round1-final-file-complete -- final=9428a1919e3f staging_match=True tmp=[]
+[20:47:54] PASS S3-round1-lock-intervals-no-overlap -- 1 interval(s), no overlap
+[20:47:54] PASS S3-round2-exactly-one-winner -- A=('success', '0') B=('exit-code', '2')
+[20:47:54] PASS S3-round2-final-file-complete -- final=9428a1919e3f staging_match=True tmp=[]
+[20:47:54] PASS S3-round2-lock-intervals-no-overlap -- 1 interval(s), no overlap
+[20:47:54] PASS S3-round3-exactly-one-winner -- A=('success', '0') B=('exit-code', '2')
+[20:47:54] PASS S3-round3-final-file-complete -- final=9428a1919e3f staging_match=True tmp=[]
+[20:47:54] PASS S3-round3-lock-intervals-no-overlap -- 1 interval(s), no overlap
+[20:47:54] PASS S3-all-three-rounds-one-winner -- 3/3 rounds
+[20:47:54] PASS S4-lock-held-by-holder -- flock exit=1 holder_pid=20442 alive=True
+[20:47:54] PASS S4-holder-killed-by-sigkill -- kill_exit=0 ActiveState=failed
+[20:47:54] PASS S4-publish-succeeds-after-sigkill -- ExecMainStatus=0 complete=True tmp=[]
+[20:47:54] PASS S4-no-half-product -- served was complete before and after
+[20:47:54] PASS S5-http-server-bound -- our server answers 200 on 18099 before readers start
+[20:47:54] FAIL S5-http-never-shows-partial-write -- errors=['fetch failed: <urlopen error timed out>'] seen=3 distinct=['0337f235', '9428a191', 'd54745cc']
+[20:47:54] PASS S6-good-publish-via-service -- ExecMainStatus=0 counts=(50, 50, 25) (before=(50, 50, 24))
+[20:47:54] PASS S6-faulty-publish-refused -- ExecMainStatus=2 (2 = refused)
+[20:47:54] PASS S6-rollback-restores-files-and-keeps-data -- served_ok=True staging_ok=True counts=(50, 50, 25)
+[20:47:54] PASS S7-test-units-removed -- leftovers=[]
+[20:47:54] PASS S7-production-sha-unchanged -- served=606dcfca229e staging=606dcfca229e before=606dcfca229e
+[20:47:54] PASS S7-production-timers-still-active -- {"pool-publish.timer": "active", "pool-sync.timer": "active", "pool-crawl.timer": "active", "pool-test.timer": "active", "pool-test-full.timer": "active"}
+[20:47:54] TOTAL 35/36 passed
+{"total": 36, "passed": 35, "results": [{"name": "S1-production-guard-refuses", "ok": true, "detail": "exit=1 reason=old_timer_not_disabled"}, {"name": "S1-production-sha-baseline", "ok": true, "detail": "served=606dcfca229e staging=606dcfca229e"}, {"name": "S2a-ban-proven-when-drained-disabled", "ok": true, "detail": "evidence=22 checks"}, {"name": "S2a-gate-ban-proven", "ok": true, "detail": "gate units drained+disabled"}, {"name": "S2b-timer-reenable-fails-proof", "ok": true, "detail": "failed=['timer_disabled:p2p3-legacy-publish.timer']"}, {"name": "S2b-timer-restored-proof-passes-again", "ok": true, "detail": ""}, {"name": "S2c-legacy-process-fails-proof", "ok": true, "detail": "failed=['no_legacy_process'] ps_rows=1"}, {"name": "S2c-process-gone-proof-passes-again", "ok": true, "detail": ""}, {"name": "S2d-running-service-fails-proof", "ok": true, "detail": "failed=['service_drained:p2p3-legacy-sync.service']"}, {"name": "S2d-signal-killed-service-fails-proof", "ok": true, "detail": "Result=signal failed=['service_drained:p2p3-legacy-sync.service']"}, {"name": "S2d-service-restored-proof-passes-again", "ok": true, "detail": "Result=success after restore"}, {"name": "S2e-masked-service-fails-verbatim-guard", "ok": true, "detail": "guard reason=service_not_loaded LoadState=masked"}, {"name": "S2e-masked-service-passes-masked-variant-proof", "ok": true, "detail": "opt-in require_masked_services=True passes while masked"}, {"name": "S2e-unmasked-guard-and-proof-pass-again", "ok": true, "detail": "guard reason=legacy_writers_drained"}, {"name": "S3-round1-exactly-one-winner", "ok": true, "detail": "A=('success', '0') B=('exit-code', '2')"}, {"name": "S3-round1-final-file-complete", "ok": true, "detail": "final=9428a1919e3f staging_match=True tmp=[]"}, {"name": "S3-round1-lock-intervals-no-overlap", "ok": true, "detail": "1 interval(s), no overlap"}, {"name": "S3-round2-exactly-one-winner", "ok": true, "detail": "A=('success', '0') B=('exit-code', '2')"}, {"name": "S3-round2-final-file-complete", "ok": true, "detail": "final=9428a1919e3f staging_match=True tmp=[]"}, {"name": "S3-round2-lock-intervals-no-overlap", "ok": true, "detail": "1 interval(s), no overlap"}, {"name": "S3-round3-exactly-one-winner", "ok": true, "detail": "A=('success', '0') B=('exit-code', '2')"}, {"name": "S3-round3-final-file-complete", "ok": true, "detail": "final=9428a1919e3f staging_match=True tmp=[]"}, {"name": "S3-round3-lock-intervals-no-overlap", "ok": true, "detail": "1 interval(s), no overlap"}, {"name": "S3-all-three-rounds-one-winner", "ok": true, "detail": "3/3 rounds"}, {"name": "S4-lock-held-by-holder", "ok": true, "detail": "flock exit=1 holder_pid=20442 alive=True"}, {"name": "S4-holder-killed-by-sigkill", "ok": true, "detail": "kill_exit=0 ActiveState=failed"}, {"name": "S4-publish-succeeds-after-sigkill", "ok": true, "detail": "ExecMainStatus=0 complete=True tmp=[]"}, {"name": "S4-no-half-product", "ok": true, "detail": "served was complete before and after"}, {"name": "S5-http-server-bound", "ok": true, "detail": "our server answers 200 on 18099 before readers start"}, {"name": "S5-http-never-shows-partial-write", "ok": false, "detail": "errors=['fetch failed: <urlopen error timed out>'] seen=3 distinct=['0337f235', '9428a191', 'd54745cc']"}, {"name": "S6-good-publish-via-service", "ok": true, "detail": "ExecMainStatus=0 counts=(50, 50, 25) (before=(50, 50, 24))"}, {"name": "S6-faulty-publish-refused", "ok": true, "detail": "ExecMainStatus=2 (2 = refused)"}, {"name": "S6-rollback-restores-files-and-keeps-data", "ok": true, "detail": "served_ok=True staging_ok=True counts=(50, 50, 25)"}, {"name": "S7-test-units-removed", "ok": true, "detail": "leftovers=[]"}, {"name": "S7-production-sha-unchanged", "ok": true, "detail": "served=606dcfca229e staging=606dcfca229e before=606dcfca229e"}, {"name": "S7-production-timers-still-active", "ok": true, "detail": "{\"pool-publish.timer\": \"active\", \"pool-sync.timer\": \"active\", \"pool-crawl.timer\": \"active\", \"pool-test.timer\": \"active\", \"pool-test-full.timer\": \"active\"}"}]}

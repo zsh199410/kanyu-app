@@ -1,0 +1,80 @@
+test_mutations_fail (test_device_gate.TestConfAudit.test_mutations_fail) ... ok
+test_real_conf_passes (test_device_gate.TestConfAudit.test_real_conf_passes) ... ok
+test_corrupt_lease_revoked (test_device_gate.TestCronSweep.test_corrupt_lease_revoked) ... ok
+test_expired_lease_revoked_and_reject (test_device_gate.TestCronSweep.test_expired_lease_revoked_and_reject) ... ok
+test_no_lease_already_reject_no_action (test_device_gate.TestCronSweep.test_no_lease_already_reject_no_action) ... ok
+test_no_lease_with_proxy_selected_forces_reject (test_device_gate.TestCronSweep.test_no_lease_with_proxy_selected_forces_reject) ... ok
+test_valid_lease_untouched (test_device_gate.TestCronSweep.test_valid_lease_untouched) ... ok
+test_engine_started_revokes_and_mints_boot (test_device_gate.TestEventScripts.test_engine_started_revokes_and_mints_boot) ... ok
+test_manual_event_preserves_state (test_device_gate.TestEventScripts.test_manual_event_preserves_state) ... ok
+test_network_changed_revokes (test_device_gate.TestEventScripts.test_network_changed_revokes) ... ok
+test_old_lease_denied_after_reboot (test_device_gate.TestEventScripts.test_old_lease_denied_after_reboot)
+Full chain: boot 1 lease valid -> engine-started (boot 2) -> ... ok
+test_profile_reloaded_revokes (test_device_gate.TestEventScripts.test_profile_reloaded_revokes) ... ok
+test_check_status_active_then_expired (test_device_gate.TestGateControllerIssue.test_check_status_active_then_expired) ... ok
+test_issue_gate_script_missing (test_device_gate.TestGateControllerIssue.test_issue_gate_script_missing) ... ok
+test_issue_happy_path_active (test_device_gate.TestGateControllerIssue.test_issue_happy_path_active) ... ok
+test_issue_no_echo_is_unverified_not_active (test_device_gate.TestGateControllerIssue.test_issue_no_echo_is_unverified_not_active) ... ok
+test_issue_scripting_disabled (test_device_gate.TestGateControllerIssue.test_issue_scripting_disabled) ... ok
+test_issue_sha_mismatch (test_device_gate.TestGateControllerIssue.test_issue_sha_mismatch) ... ok
+test_issue_stop_flag (test_device_gate.TestGateControllerIssue.test_issue_stop_flag) ... ok
+test_renew_reissues_with_new_timestamps (test_device_gate.TestGateControllerIssue.test_renew_reissues_with_new_timestamps) ... ok
+test_revoke_after_issue (test_device_gate.TestGateControllerIssue.test_revoke_after_issue) ... ok
+test_startup_reverify_no_prior_state (test_device_gate.TestGateControllerIssue.test_startup_reverify_no_prior_state) ... ok
+test_startup_reverify_reconfirms_active (test_device_gate.TestGateControllerIssue.test_startup_reverify_reconfirms_active) ... ok
+test_bad_lease_version_denies (test_device_gate.TestRuleScriptJS.test_bad_lease_version_denies) ... ok
+test_boot_mismatch_denies (test_device_gate.TestRuleScriptJS.test_boot_mismatch_denies) ... ok
+test_clock_back_before_issue_denies (test_device_gate.TestRuleScriptJS.test_clock_back_before_issue_denies) ... ok
+test_clock_back_vs_lastseen_denies (test_device_gate.TestRuleScriptJS.test_clock_back_vs_lastseen_denies) ... ok
+test_corrupt_lease_json_denies (test_device_gate.TestRuleScriptJS.test_corrupt_lease_json_denies) ... ok
+test_expired_lease_denies (test_device_gate.TestRuleScriptJS.test_expired_lease_denies) ... ok
+test_fingerprint_parity_python_vs_js (test_device_gate.TestRuleScriptJS.test_fingerprint_parity_python_vs_js)
+networkFingerprint in gate-script.js must equal the Python oracle. ... ok
+test_js_syntax_parses (test_device_gate.TestRuleScriptJS.test_js_syntax_parses) ... ok
+test_network_change_denies (test_device_gate.TestRuleScriptJS.test_network_change_denies) ... ok
+test_no_boot_id_denies (test_device_gate.TestRuleScriptJS.test_no_boot_id_denies) ... ok
+test_no_lease_denies (test_device_gate.TestRuleScriptJS.test_no_lease_denies) ... ok
+test_proxy_not_allowed_denies (test_device_gate.TestRuleScriptJS.test_proxy_not_allowed_denies) ... ok
+test_selection_mismatch_denies (test_device_gate.TestRuleScriptJS.test_selection_mismatch_denies) ... ok
+test_sha_mismatch_denies (test_device_gate.TestRuleScriptJS.test_sha_mismatch_denies) ... ok
+test_stopped_denies (test_device_gate.TestRuleScriptJS.test_stopped_denies) ... ok
+test_ttl_inconsistent_denies (test_device_gate.TestRuleScriptJS.test_ttl_inconsistent_denies) ... ok
+test_unknown_selection_denies (test_device_gate.TestRuleScriptJS.test_unknown_selection_denies) ... ok
+test_valid_lease_matches (test_device_gate.TestRuleScriptJS.test_valid_lease_matches) ... ok
+test_evaluate_500_blocks_issue (test_device_gate_failures.TestControllerApiFailures.test_evaluate_500_blocks_issue) ... ok
+test_get_groups_500_blocks_issue (test_device_gate_failures.TestControllerApiFailures.test_get_groups_500_blocks_issue) ... ok
+test_group_not_loaded (test_device_gate_failures.TestControllerApiFailures.test_group_not_loaded) ... ok
+test_lying_get_override_blocks_active (test_device_gate_failures.TestControllerApiFailures.test_lying_get_override_blocks_active) ... ok
+test_no_boot_id_on_device_blocks_active (test_device_gate_failures.TestControllerApiFailures.test_no_boot_id_on_device_blocks_active)
+engine-started never ran -> issue script reports no-boot-id -> ... ok
+test_post_ignored_readback_mismatch (test_device_gate_failures.TestControllerApiFailures.test_post_ignored_readback_mismatch) ... ok
+test_post_timeout_is_not_active (test_device_gate_failures.TestControllerApiFailures.test_post_timeout_is_not_active) ... ok
+test_duplicate_candidates_refused (test_device_gate_failures.TestControllerCandidateFailures.test_duplicate_candidates_refused) ... ok
+test_non_testnet_host_refused (test_device_gate_failures.TestControllerCandidateFailures.test_non_testnet_host_refused) ... ok
+test_stale_evidence_refused (test_device_gate_failures.TestControllerCandidateFailures.test_stale_evidence_refused) ... ok
+test_unhealthy_latency_no_lease (test_device_gate_failures.TestControllerCandidateFailures.test_unhealthy_latency_no_lease) ... ok
+test_unknown_member_refused (test_device_gate_failures.TestControllerCandidateFailures.test_unknown_member_refused) ... ok
+test_concurrent_issue_is_serialised (test_device_gate_failures.TestControllerConcurrencyAndRestart.test_concurrent_issue_is_serialised) ... ok
+test_restart_then_lease_expired (test_device_gate_failures.TestControllerConcurrencyAndRestart.test_restart_then_lease_expired) ... ok
+test_corrupt_stored_lease_is_unknown (test_device_gate_failures.TestControllerLeaseStateFailures.test_corrupt_stored_lease_is_unknown) ... ok
+test_damaged_state_file_is_not_trusted (test_device_gate_failures.TestControllerLeaseStateFailures.test_damaged_state_file_is_not_trusted) ... ok
+test_forged_active_state_file_is_not_trusted (test_device_gate_failures.TestControllerLeaseStateFailures.test_forged_active_state_file_is_not_trusted)
+A state file claiming LEASE_ACTIVE/verified must be re-read ... ok
+test_lease_from_future_clock_is_unknown (test_device_gate_failures.TestControllerLeaseStateFailures.test_lease_from_future_clock_is_unknown) ... ok
+test_never_selects_direct (test_device_gate_failures.TestControllerLeaseStateFailures.test_never_selects_direct) ... ok
+test_no_lease_status (test_device_gate_failures.TestControllerLeaseStateFailures.test_no_lease_status) ... ok
+test_revoke_unconfirmed_when_post_ignored (test_device_gate_failures.TestControllerLeaseStateFailures.test_revoke_unconfirmed_when_post_ignored) ... ok
+test_selection_differs_from_lease_is_unknown (test_device_gate_failures.TestControllerLeaseStateFailures.test_selection_differs_from_lease_is_unknown) ... ok
+test_lastseen_cache_survives_across_requests (test_device_gate_failures.TestRuleScriptEdgeCases.test_lastseen_cache_survives_across_requests)
+Two sequential requests share the store: the second sees the ... ok
+test_missing_script_file_is_a_harness_error_not_a_match (test_device_gate_failures.TestRuleScriptEdgeCases.test_missing_script_file_is_a_harness_error_not_a_match)
+Models 'script missing': the rule cannot run, so in Surge the ... ok
+test_setselectgrouppolicy_failure_still_revokes_lease (test_device_gate_failures.TestRuleScriptEdgeCases.test_setselectgrouppolicy_failure_still_revokes_lease)
+Even if setSelectGroupPolicy fails, the event must delete the ... ok
+test_stale_boot_after_second_reboot (test_device_gate_failures.TestRuleScriptEdgeCases.test_stale_boot_after_second_reboot)
+Two engine-started runs mint two different boot ids; a lease ... ok
+
+----------------------------------------------------------------------
+Ran 67 tests in 25.514s
+
+OK
