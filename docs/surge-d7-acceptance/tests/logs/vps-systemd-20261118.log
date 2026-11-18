@@ -1,0 +1,40 @@
+[20:35:02] === P0-G VPS systemd test start ===
+[20:35:02] setup done; prod sha before=606dcfca229e26c0ac83882085f957be40e43cc0b0904d8388cb34398c51247a
+[20:35:02] production guard stdout: {"ok": false, "reason": "old_timer_not_disabled", "subject": "pool-publish.timer"}
+[20:35:02] production guard exit: 1
+[20:35:02] PASS S1-production-guard-refuses -- exit=1 reason=old_timer_not_disabled
+[20:35:02] prod timers: {"pool-publish.timer": "active", "pool-sync.timer": "active", "pool-crawl.timer": "active", "pool-test.timer": "active", "pool-test-full.timer": "active"}
+[20:35:02] PASS S1-production-sha-baseline -- served=606dcfca229e staging=606dcfca229e
+[20:35:02] wrote unit p2p3-legacy-publish.timer
+[20:35:02] wrote unit p2p3-legacy-sync.timer
+[20:35:02] wrote unit p2p3-legacy-publish.service
+[20:35:02] wrote unit p2p3-legacy-sync.service
+[20:35:02] wrote unit p2p3-gate-publish.timer
+[20:35:02] wrote unit p2p3-gate-sync.timer
+[20:35:02] wrote unit p2p3-gate-publish.service
+[20:35:02] wrote unit p2p3-gate-sync.service
+[20:35:03] legacy publish timer state: {"Result": "success", "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "UnitFileState": "disabled", "Job": ""}
+[20:35:03] legacy publish service state: {"MainPID": "0", "ControlPID": "0", "Result": "success", "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "UnitFileState": "disabled", "Job": ""}
+[20:35:03] FAIL S2a-ban-proven-when-drained-masked -- evidence=14 checks
+[20:35:03] FAIL S2a-gate-ban-proven -- gate units drained+masked
+[20:35:05] legacy timer after enable+start: {"Result": "success", "LoadState": "loaded", "ActiveState": "active", "SubState": "waiting", "UnitFileState": "enabled-runtime", "Job": ""}
+[20:35:05] PASS S2b-timer-reenable-fails-proof -- failed=['timer_disabled:p2p3-legacy-publish.timer']
+[20:35:06] FAIL S2b-timer-restored-proof-passes-again -- 
+[20:35:07] ps rows for pool-sync.sh: ['58409 /bin/bash /opt/p2p3-single-writer/bin/pool-sync.sh']
+[20:35:07] FAIL S2c-legacy-process-fails-proof -- failed=['service_masked:p2p3-legacy-publish.service'] ps_rows=1
+[20:35:07] FAIL S2c-process-gone-proof-passes-again -- 
+[20:35:08] legacy sync service while running: {"MainPID": "58472", "ControlPID": "0", "Result": "success", "LoadState": "loaded", "ActiveState": "active", "SubState": "running", "UnitFileState": "disabled", "Job": ""}
+[20:35:08] FAIL S2d-running-service-fails-proof -- failed=['service_masked:p2p3-legacy-publish.service']
+[20:35:09] legacy sync service after stop: {"MainPID": "0", "ControlPID": "0", "Result": "success", "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "UnitFileState": "disabled", "Job": ""}
+[20:35:09] FAIL S2d-signal-killed-service-fails-proof -- Result=success failed=['service_masked:p2p3-legacy-publish.service']
+[20:35:10] legacy sync service after reset-failed: {"MainPID": "0", "ControlPID": "0", "Result": "success", "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "UnitFileState": "disabled", "Job": ""}
+[20:35:10] FAIL S2d-service-remasked-state -- Result=success after reset-failed
+[20:35:10] wrote unit p2p3-pub-a.service
+[20:35:10] wrote unit p2p3-pub-b.service
+[20:35:11] round 1 systemctl start exit=1
+[20:37:12] round 1 A: inactive=False Result=exit-code ExecMainStatus=?
+[20:37:12] round 1 B: inactive=False Result=exit-code ExecMainStatus=?
+[20:37:12] FAIL S3-round1-exactly-one-winner -- A=('exit-code', '?') B=('exit-code', '?')
+[20:37:12] FAIL S3-round1-final-file-complete -- final=0337f235815c staging_match=True tmp=[]
+[20:37:12] PASS S3-round1-lock-intervals-no-overlap -- 0 interval(s), no overlap
+[20:37:12] round 2 systemctl start exit=1
