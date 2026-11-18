@@ -186,8 +186,16 @@ class TestConfAudit(unittest.TestCase):
             "script not first": text.replace(
                 "SCRIPT,gate-rule,测试安全出口\nFINAL,REJECT",
                 "FINAL,REJECT\nSCRIPT,gate-rule,测试安全出口"),
-            "missing network-changed event": text.replace(
-                "gate-events-net = type=event,event-name=network-changed,script-path=gate-events.js,engine=jsc\n", ""),
+            "missing network-changed event": "\n".join(
+                line for line in text.splitlines()
+                if not line.startswith("gate-events-net = ")
+            ) + "\n",
+            "untrusted script host": text.replace(
+                "https://muse.ai/files/", "https://evil.invalid/files/"),
+            "untrusted script filename": text.replace(
+                "/gate-script.js", "/replace-gate-script.js"),
+            "script query substitution": text.replace(
+                "/gate-script.js", "/gate-script.js?payload=changed"),
             "cron too frequent": text.replace('"*/10 * * * *"', '"* * * * *"'),
             "proxy outside test-net": text.replace("192.0.2.1", "203.0.113.1"),
             "wrong password": text.replace("password=test123", "password=hunter2"),
