@@ -171,6 +171,7 @@ new_test_blobs = {
     'Tests/PosterDynamicSnapshotTests.swift': '4bf2f9f9a43268ffa3a93966b7b8bfc764d21714',
     'Tests/PosterBatch2OwnershipTests.swift': '04a129c6bbac6b407e5779957ef2c6e20c1a3d2b',
     'Tests/PosterFormalExportTests.swift': '442bce8a0e2f8f98e836084aa80152340085fa5e',
+    'Tests/PosterFamilyExportPathTests.swift': 'ee53f3951c496a881ae246d37881f5c92b8fe482',
     'Tests/PosterOwnershipGatesTests.swift': 'c3f8a0379d0fa3281941d76c6fc74cc2725d9c5b',
     'UITests/PosterExportAcceptanceUITests.swift': 'b2581be6ea39110b1e1233ea181e10022ed6ad9c',
     'Resources/PosterDesignPreviews/PosterConceptBazi.jpg': '530227d387a88685055dd801d9f1c92d16b4795c',
