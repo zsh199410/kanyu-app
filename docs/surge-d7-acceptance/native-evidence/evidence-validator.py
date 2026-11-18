@@ -279,8 +279,10 @@ def validate_evidence(record: dict, candidate_record: dict, pinned_names=None, n
             reasons.append("测速>=300ms仅表示未达优选目标，连通则保留，不可下架")
     if qualified_failure_sample:
         reasons.append("独立连接失败样本待跨时段累计；单次失败仍不得下架")
-    elif verdict in ("FAIL", "FAIL_LATENCY"):
-        reasons.append("证据不足或不构成持久连接故障，禁止自动下架")
+    elif verdict == "FAIL":
+        reasons.append("单次连接失败不能证明长期不可用，禁止自动下架")
+    elif verdict in ("ABOVE_TARGET", "FAIL_LATENCY"):
+        reasons.append("仅超过300ms优选目标，不能当作断线，不可下架")
 
     return {
         "valid": valid,
