@@ -101,7 +101,7 @@ class StabilityTest(unittest.TestCase):
 
     def test_repeated_fast_probes_cannot_inflate_sample_count(self):
         first = record(2, 100)
-        second = record(2 + (1 / 3600), 350)
+        second = record(2 - (1 / 3600), 350)
         result = self.classify([first, second])
         self.assertEqual(result["sample_count"], 1)
 
