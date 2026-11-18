@@ -1,34 +1,32 @@
 name: RC context cancellation diagnostics (manual only)
 
 # Isolated diagnostic workflow: never changes existing RC workflows or test/golden sources.
-# A manually dispatched run must target this diagnostic branch and the exact reviewed SHA.
+# PR-scoped diagnostics run without merging to default branch.
+# Checkout is pinned to the PR head SHA rather than GitHub's synthetic merge ref.
 on:
-  workflow_dispatch:
-    inputs:
-      suite:
-        description: Which previously cancelled dark-standard case to reproduce
-        required: true
-        type: choice
-        options: [profile, illustrated]
-      expected_sha:
-        description: Full 40-character SHA expected at checkout (prevents testing a moved branch)
-        required: true
-        type: string
+  pull_request:
+    branches: [qa/poster-export-acceptance-20261117]
+    paths: ['.github/workflows/rc-cancel-diagnostics.yml']
 
 permissions:
   contents: read
 
 jobs:
   reproduce:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [profile, illustrated]
     runs-on: macos-26
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Verify exact checkout
         env:
-          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -57,7 +55,7 @@ jobs:
         run: brew install xcodegen
       - name: Reproduce one dark-standard XCTest context
         env:
-          SUITE: ${{ inputs.suite }}
+          SUITE: ${{ matrix.suite }}
         shell: bash
         run: |
           set -euo pipefail
@@ -70,7 +68,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rc-cancel-diagnostic-${{ inputs.suite }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: rc-cancel-diagnostic-${{ matrix.suite }}-${{ github.sha }}-${{ github.run_attempt }}
           path: build/context-evidence
           if-no-files-found: warn
           retention-days: 14
