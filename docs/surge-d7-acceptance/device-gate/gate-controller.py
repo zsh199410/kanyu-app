@@ -650,9 +650,13 @@ class GateController:
                                      False)
             if not healthy:
                 self._log("no_healthy_proxy")
-                self.revoke_lease("no healthy proxy")
-                return self._persist("LEASE_REVOKED", REJECT, sha, None,
-                                     "no healthy proxy; lease revoked, REJECT selected",
+                revoked = self.revoke_lease("no healthy proxy")
+                if revoked.get("state") == "LEASE_REVOKED" and revoked.get("verified"):
+                    return self._persist("LEASE_REVOKED", REJECT, sha, None,
+                                         "no healthy proxy; lease deletion and REJECT verified",
+                                         True)
+                return self._persist("GATE_UNKNOWN", REJECT, sha, None,
+                                     "no healthy proxy; lease revocation unconfirmed",
                                      False)
 
             best = min(healthy, key=lambda c: float(c["latency_ms"]))
