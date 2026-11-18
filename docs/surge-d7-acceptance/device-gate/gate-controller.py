@@ -244,6 +244,8 @@ def build_issue_script(lease_fields: dict) -> str:
         "for(var i=0;i<16;i++){r+=c.charAt(Math.floor(Math.random()*16));}"
         "return 'boot-'+String(now)+'-'+r;}" +
         "lease.net_fp=__netFp($network);" +
+        "if(!/^fnv1a-[0-9a-f]{8}$/.test(lease.net_fp)){" +
+        "throw new Error(\'network-fingerprint-unavailable\');}" +
         "try{lease.boot_id=$persistentStore.read(" +
         json.dumps(BOOT_KEY) + ");}catch(e){lease.boot_id=null;}" +
         "if(!lease.boot_id){lease.boot_id=__mintBoot(Math.floor(Date.now()/1000));"
