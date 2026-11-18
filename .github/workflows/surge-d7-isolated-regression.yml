@@ -1,0 +1,33 @@
+name: Surge D7 isolated regression (no production writes)
+
+on:
+  push:
+    branches:
+      - gpt6-issue73-p0-safety-fixes-20261118
+    paths:
+      - docs/surge-d7-acceptance/**
+      - .github/workflows/surge-d7-isolated-regression.yml
+  pull_request:
+    paths:
+      - docs/surge-d7-acceptance/**
+      - .github/workflows/surge-d7-isolated-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: docs/surge-d7-acceptance
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime and gate config validation
+        run: |
+          python3 --version
+          node --version
+          python3 device-gate/check_gate_conf.py device-gate/device-gate-test.conf
+      - name: All isolated unit tests (no phone or production access)
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
