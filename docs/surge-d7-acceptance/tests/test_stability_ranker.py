@@ -91,6 +91,15 @@ class StabilityTest(unittest.TestCase):
         self.assertEqual(result["state"], "OBSERVE")
         self.assertFalse(result["eligible_for_removal"])
 
+    def test_last_probe_recovery_blocks_quarantine_without_saved_state(self):
+        # After a restart, previous_state may be unavailable. A newly
+        # verified success still must keep the node out of quarantine.
+        samples = [record(9-i, fail=True) for i in range(8)]
+        samples.append(record(0, 360))
+        result = self.classify(samples)
+        self.assertEqual(result["state"], "OBSERVE")
+        self.assertFalse(result["eligible_for_removal"])
+
     def test_mixed_bearers_and_unverified_not_counted(self):
         samples = [record(i, 180) for i in range(1, 4)]
         samples += [record(i + 4, 180, bearer="wifi") for i in range(5)]
