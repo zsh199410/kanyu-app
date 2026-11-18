@@ -48,8 +48,17 @@ async function api(method, path, body) {
       pending: true, data: { state: "unknown", reason: viaApi.reason }
     };
   }
+  // Original bridge http() only distinguishes GET from POST; every other
+  // verb would silently become a POST. Never mutate with the wrong verb.
+  if (!["GET", "POST"].includes(verb)) {
+    return {
+      via: "httpAPI", status: 0, err: "unsupported_http_fallback",
+      pending: viaApi.kind === "unknown",
+      data: { state: "blocked", reason: "fallback_method_unsupported" }
+    };
+  }
   // If $httpAPI was truly unavailable, direct HTTP is the one and only
-  // attempt. For a read-only method, retry is safe after an ambiguous call.
+  // attempt. For a read-only GET, retry after ambiguous transport is safe.
   const r = await http(verb, "http://127.0.0.1:6171" + path,
     { "X-Key": APIKEY, "Content-Type": "application/json" }, body);
   let data = r.data;
