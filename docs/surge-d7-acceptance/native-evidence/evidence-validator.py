@@ -397,7 +397,10 @@ def audit_shadow(
         if validation["eligible_for_removal"] and name:
             removal_names.add(name)
 
-    if stopped:
+    # Global safety interlock. Missing one of the 21 protected members,
+    # a missing frozen candidate, or STOP all prohibit deletion regardless
+    # of any individual probe verdict.
+    if stopped or not pinned_intact or candidate_record is None:
         removal_names = set()
     removal_candidates = len(removal_names)
     decision = "NO_SAFE_REMOVAL" if removal_candidates == 0 else "REMOVAL_CANDIDATES:{}".format(
