@@ -960,7 +960,7 @@ yuceSection(num: "五", title: "婚恋感情", rows: [
 ("1. 配偶星与配偶宫", "配偶星\(peiOu.names.joined(separator: "／"))\(peiOu.present ? "入局" : "未入原局")；配偶宫日支\(chart.dayPillar.last!)本气\(peiOu.palace)"),
 ("2. 婚龄与伴侣", conclusion("婚姻感情")),
 ("3. 相处之道", conclusion("六亲情境深读", "婚姻感情")),
-("4. 感情关口与解法", conclusion("婚姻感情")),
+// The same 婚姻感情 conclusion is already shown in row 2; do not duplicate it under a misleading second heading.
 ])
 yuceSection(num: "六", title: "健康调理", rows: [
 ("1. 体质弱项", conclusion("健康倾向")),
