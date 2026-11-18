@@ -31,6 +31,7 @@ from __future__ import annotations
 import ipaddress
 import re
 import sys
+from urllib.parse import urlsplit
 
 GATE_GROUP = "测试安全出口"
 GATE_RULE_SCRIPT = "gate-rule"
@@ -39,32 +40,40 @@ GATE_SWEEP_SCRIPT = "gate-sweep.js"
 EXPECTED_CRON_MAX_PER_HOUR = 10
 TEST_NET = ipaddress.ip_network("192.0.2.0/24")
 TEST_PROXIES = {"Test-Proxy-1", "Test-Proxy-2", "Test-Proxy-3"}
-# A script-path may be a bare filename (local file next to the profile)
-# or an https URL whose path ends in that filename. The URL form is
-# what the device actually loads (relative paths failed to resolve:
-# 'Failed to load external resource: gate-events.js resource does not
-# exist'), so both forms must be accepted — and only these three
-# filenames are ever legitimate URLs in this test profile.
-GATE_SCRIPT_FILES = {"gate-script.js", GATE_EVENTS_SCRIPT, GATE_SWEEP_SCRIPT}
+# Isolation-only test URLs. This is deliberately NOT a production trust
+# model: temporary muse.ai downloads expire and are not content-addressed.
+_SCRIPT_FILES = {
+    "gate-rule": "gate-script.js",
+    "gate-events-boot": "gate-events.js",
+    "gate-events-net": "gate-events.js",
+    "gate-events-profile": "gate-events.js",
+    "gate-sweep": "gate-sweep.js",
+}
 
 
 def script_path_matches(value: str, filename: str) -> bool:
-    """True if `value` is the bare `filename` or an https URL ending in it."""
+    """Only exact local files or the limited HTTPS isolation download path."""
     if value == filename:
         return True
-    if value.startswith("https://"):
-        path = value.split("?", 1)[0].split("#", 1)[0]
-        return path.endswith("/" + filename)
-    return False
-
-
-def is_gate_script_url(line: str) -> bool:
-    """True if the line's only URL is a gate script URL (not a subscription)."""
-    m = re.search(r"https?://[^\s,]+", line)
-    if not m:
+    if not isinstance(value, str):
         return False
-    url = m.group(0).split("?", 1)[0].split("#", 1)[0]
-    return any(url.endswith("/" + f) for f in GATE_SCRIPT_FILES)
+    try:
+        u = urlsplit(value)
+        return bool(
+            u.scheme == "https"
+            and u.hostname == "muse.ai"
+            and u.username is None
+            and u.password is None
+            and u.port is None
+            and not u.query
+            and not u.fragment
+            and re.fullmatch(
+                r"/files/[0-9]+/[0-9]+/[a-z0-9]+/" + re.escape(filename),
+                u.path,
+            )
+        )
+    except ValueError:
+        return False
 
 
 def parse_conf(text: str) -> dict[str, list[str]]:
@@ -134,13 +143,21 @@ def check_conf(path: str) -> list[str]:
     except ValueError as exc:
         return [str(exc)]
 
+    # Only declared/validated gate resources may contain a remote URL.
+    trusted_lines = set()
+    for line in sections.get("Script", []):
+        name, params = parse_kv(line)
+        expected = _SCRIPT_FILES.get(name)
+        if expected and script_path_matches(params.get("script-path", ""), expected):
+            trusted_lines.add(line)
+
     # --- no DIRECT / no real egress anywhere in the raw text -----------
     for i, line in enumerate(text.splitlines(), 1):
         if line.strip().startswith("#"):
             continue
         if re.search(r"\bDIRECT\b", line):
             problems.append(f"line {i}: DIRECT present: {line.strip()!r}")
-        if "://" in line and "test.invalid" not in line and not is_gate_script_url(line):
+        if "://" in line and "test.invalid" not in line and line.strip() not in trusted_lines:
             problems.append(f"line {i}: URL-like content: {line.strip()!r}")
 
     # --- [Proxy]: only TEST-NET test proxies ----------------------------
@@ -195,6 +212,9 @@ def check_conf(path: str) -> list[str]:
     for line in scripts:
         name, params = parse_kv(line)
         decls[name] = params
+    if set(decls) != set(_SCRIPT_FILES):
+        problems.append("[Script] unexpected/missing scripts: "
+                        + repr(sorted(set(decls) ^ set(_SCRIPT_FILES))))
     rule = decls.get(GATE_RULE_SCRIPT)
     if rule is None:
         problems.append(f"[Script] missing rule script {GATE_RULE_SCRIPT!r}")
