@@ -69,6 +69,32 @@ async function main() {
   f = fixture({ behavior: 'ok' });
   result = await f.context.api('GET', '/v1/test');
   assert.equal(f.apiCalls, 1); assert.equal(f.directCalls, 0);
-  console.log('6/6 bridge API non-retry cases passed');
+  f = fixture({ behavior: 'hang' });
+  const deletePromise = f.context.api('DELETE', '/v1/mutation', {});
+  f.timeout(); result = await deletePromise;
+  assert.equal(result.err, 'outcome_unknown_no_retry');
+  assert.equal(result.pending, true);
+  assert.equal(f.apiCalls, 1); assert.equal(f.directCalls, 0);
+
+  f = fixture({ behavior: 'hang' });
+  const emptyCallback = f.context.api('POST', '/v1/mutation', {});
+  f.callback(null); result = await emptyCallback;
+  assert.equal(result.err, 'outcome_unknown_no_retry');
+  assert.equal(result.pending, true);
+  assert.equal(f.apiCalls, 1); assert.equal(f.directCalls, 0);
+
+  f = fixture({ available: false });
+  result = await f.context.api('PUT', '/v1/mutation', {});
+  assert.equal(result.err, 'unsupported_http_fallback');
+  assert.equal(f.apiCalls, 0); assert.equal(f.directCalls, 0);
+
+  f = fixture({ behavior: 'hang' });
+  const headPromise = f.context.api('HEAD', '/v1/test', undefined);
+  f.timeout(); result = await headPromise;
+  assert.equal(result.err, 'unsupported_http_fallback');
+  assert.equal(result.pending, true);
+  assert.equal(f.apiCalls, 1); assert.equal(f.directCalls, 0);
+
+  console.log('10/10 bridge API non-retry cases passed');
 }
 main().catch(e => { console.error(e); process.exitCode = 1; });
