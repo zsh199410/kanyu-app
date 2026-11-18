@@ -1,0 +1,61 @@
+{
+  "candidate": {
+    "candidate_created_at": "2026-11-18T12:03:43.247239Z",
+    "candidate_id": "cand-007b438520df44b517b849809c470f7f",
+    "member_count": 30,
+    "member_set_sha256": "cdd07e952f82ce2f4be3567079d82a96a490d1dccfbdd1ee28023eca2ad337e0",
+    "payload_sha256": "6fb8fb685c4c651c2d29c3468dcecfba16f63b39344ab1cb7e16a82f79ac44cb",
+    "policy_fingerprint": "2899740140ec3f168d0a154441b42875fc2b3338d10825b98619aede17b3b811",
+    "policy_identifier": "native-evidence-policy-v1",
+    "source_revision": "test-revision-001"
+  },
+  "candidate_verify": {
+    "checks": {
+      "candidate_id_match": true,
+      "member_set_match": true,
+      "payload_match": true,
+      "policy_fingerprint_match": true,
+      "record_complete": true
+    },
+    "reason": "候选绑定有效: 字节、成员集合、策略指纹、candidate_id 全部一致",
+    "valid": true
+  },
+  "evidence": {
+    "candidate_id": "cand-007b438520df44b517b849809c470f7f",
+    "latency_ms": 131,
+    "measurement_verified": false,
+    "member_set_sha": "cdd07e952f82ce2f4be3567079d82a96a490d1dccfbdd1ee28023eca2ad337e0",
+    "network_bearer": "UNKNOWN",
+    "payload_sha": "6fb8fb685c4c651c2d29c3468dcecfba16f63b39344ab1cb7e16a82f79ac44cb",
+    "phone_loaded_sha": "UNKNOWN",
+    "policy_identifier": "native-evidence-policy-v1",
+    "raw_result": {
+      "available_ms": 387,
+      "latency_ms": 131,
+      "node_name": "TEST-ROTATION-01",
+      "note": "TEST-NET 示例: latency_ms 为显式测速值; round_one_total_ms 仅作原始字段保留, 不等于组内显示分。",
+      "round_one_total_ms": 1315
+    },
+    "test_url": "https://example.invalid/generate_204",
+    "tested_at": "2026-11-18T12:03:43.247341Z",
+    "uri_fingerprint": "abe5f520ef7698603275064b5630700cf2c28bfa39495a0638325a5568c8df7a",
+    "verdict": "UNVERIFIED"
+  },
+  "phone_loaded_sha_honest": "UNKNOWN",
+  "validation": {
+    "checks": {
+      "candidate_binding_ok": true,
+      "measurement_verified": false,
+      "not_expired": true,
+      "phone_verified": false,
+      "schema_ok": true
+    },
+    "eligible_for_removal": false,
+    "is_pinned": false,
+    "reasons": [
+      "phone_loaded_sha 为 UNKNOWN (手机实际加载未独立验证), 禁止用于生产下架"
+    ],
+    "valid": true,
+    "verdict": "UNVERIFIED"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "candidate_count": 30,
+  "decision": "NO_SAFE_REMOVAL",
+  "evidence_coverage": 1,
+  "evidence_coverage_total": 30,
+  "failed_count": 0,
+  "generated_at": "2026-11-18T12:03:43.247876Z",
+  "gte_300_count": 0,
+  "lt_300_count": 1,
+  "pinned_expected": 21,
+  "pinned_intact": true,
+  "pinned_integrity": "21/21",
+  "pinned_present": 21,
+  "removal_candidate_names": [],
+  "removal_candidates": 0,
+  "safe_removal_eligible_count": 0,
+  "stop_status": "RUNNING",
+  "summary_10": [
+    "1. 当前候选节点数: 30",
+    "2. 原生证据覆盖数: 1/30",
+    "3. 有效测试数: 1",
+    "4. 小于 300ms 数量: 1",
+    "5. 大于等于 300ms 数量: 0",
+    "6. 明确失败数量: 0",
+    "7. UNKNOWN 数量: 0",
+    "8. 具有安全删除资格的非钉选数量: 0",
+    "9. 21 条钉选完整性: 21/21 (intact=True)",
+    "10. STOP 状态: RUNNING"
+  ],
+  "unknown_count": 0,
+  "valid_test_count": 1
+}
