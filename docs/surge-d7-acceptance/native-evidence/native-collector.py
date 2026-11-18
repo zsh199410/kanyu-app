@@ -57,11 +57,11 @@ MIN_BATCH_INTERVAL_SECONDS = 3600
 
 # verdict 取值 (judge_evidence 产出):
 #   PASS         严格 <300ms, 且语义已校准、手机加载已验证、未过期
-#   FAIL_LATENCY 测速不达标 (>=300ms, 原始延迟如实保留)
+#   ABOVE_TARGET 延迟 >=300ms 但仍连通（保留；不是连接失败）
 #   FAIL         超时或失败 (latency_ms 为 null, 原始失败证据保留)
 #   UNKNOWN      未测试 (latency_ms 为 null, 且无失败信号)
 #   UNVERIFIED   默认 / 版本不一致 / 已过期 / 语义未校准 / 手机加载未验证
-VERDICTS = ("PASS", "FAIL_LATENCY", "FAIL", "UNKNOWN", "UNVERIFIED")
+VERDICTS = ("PASS", "ABOVE_TARGET", "FAIL_LATENCY", "FAIL", "UNKNOWN", "UNVERIFIED")
 
 # 证据记录 schema: 字段名 -> 允许的类型 (tuple)。
 # latency_ms 允许 int/float 或 None; bool 不是合法延迟 (Python bool 是 int 子类, 须排除)。
@@ -351,7 +351,7 @@ def judge_evidence(record: dict) -> str:
            <300ms 且 phone_loaded_sha 已验证 -> PASS (合格候选条件之一)
            <300ms 但 phone_loaded_sha 为 UNKNOWN -> UNVERIFIED
                (无法确认手机加载的是同一候选, 不能算合格)
-           >=300ms -> FAIL_LATENCY (测速不达标, 原始延迟如实保留)
+           >=300ms -> ABOVE_TARGET (超过优选目标，但连通成功，必须保留)
 
     注意: PASS 只是“合格候选条件之一”, 不是生产准入。
     生产下架另由 evidence-validator.py 把关
@@ -380,7 +380,7 @@ def judge_evidence(record: dict) -> str:
         if record.get("phone_loaded_sha") == "UNKNOWN":
             return "UNVERIFIED"
         return "PASS"
-    return "FAIL_LATENCY"
+    return "ABOVE_TARGET"
 
 
 def annotate_verdict(record: dict) -> dict:
