@@ -1,0 +1,55 @@
+test_conf_static_check_passes_on_real_file (test_selector_controller.TestNormalPaths.test_conf_static_check_passes_on_real_file)
+The real conf file parses clean under the real checker. ... ok
+test_explicit_reject_verified (test_selector_controller.TestNormalPaths.test_explicit_reject_verified)
+No candidates -> explicit REJECT, read-back REJECT. ... ok
+test_logs_contain_no_secrets (test_selector_controller.TestNormalPaths.test_logs_contain_no_secrets)
+Structured logs must never carry passwords, tokens or URIs. ... ok
+test_manual_rollback_to_reject (test_selector_controller.TestNormalPaths.test_manual_rollback_to_reject)
+Human rollback entry point: explicit REJECT + read-back. ... ok
+test_readback_mismatch_is_unknown_not_safe (test_selector_controller.TestNormalPaths.test_readback_mismatch_is_unknown_not_safe)
+POST ok but GET returns a different policy -> UNKNOWN. ... ok
+test_select_healthy_proxy_verified (test_selector_controller.TestNormalPaths.test_select_healthy_proxy_verified)
+Healthy candidates -> lowest-latency proxy, read-back agrees. ... ok
+test_state_persistence_roundtrip (test_selector_controller.TestNormalPaths.test_state_persistence_roundtrip)
+Save -> load is marked unverified -> startup re-verify trusts it ... ok
+test_stop_check_blocks_and_rejects (test_selector_controller.TestNormalPaths.test_stop_check_blocks_and_rejects)
+STOP file present -> STOPPED, device ends on REJECT. ... ok
+test_api_error_refuses_to_continue (test_selector_failures.TestFailurePaths.test_api_error_refuses_to_continue)
+POST 500 -> SELECTION_UNKNOWN, no production authorisation. ... ok
+test_api_timeout_is_unknown_never_claims_reject (test_selector_failures.TestFailurePaths.test_api_timeout_is_unknown_never_claims_reject)
+POST timeout -> SELECTION_UNKNOWN. The controller must not ... ok
+test_candidate_sha_mismatch_refuses_selection (test_selector_failures.TestFailurePaths.test_candidate_sha_mismatch_refuses_selection)
+Candidate set SHA != expected version -> VERSION_MISMATCH, ... ok
+test_concurrent_calls (test_selector_failures.TestFailurePaths.test_concurrent_calls)
+Concurrent run_cycle + rollback calls: no crash, no torn ... ok
+test_controller_crash_recovery_state_is_verifiable (test_selector_failures.TestFailurePaths.test_controller_crash_recovery_state_is_verifiable)
+Simulated crash: state file survives, new controller instance ... ok
+test_device_config_not_loaded_refuses_operation (test_selector_failures.TestFailurePaths.test_device_config_not_loaded_refuses_operation)
+Device does not report the expected group/members -> refuse ... ok
+test_duplicate_identifiers_refuse_selection (test_selector_failures.TestFailurePaths.test_duplicate_identifiers_refuse_selection)
+Two candidates with the same name -> refuse, fall back to REJECT. ... ok
+test_expired_candidate_evidence_refuses_proxy (test_selector_failures.TestFailurePaths.test_expired_candidate_evidence_refuses_proxy)
+Candidate evidence older than 24h -> unhealthy -> REJECT. ... ok
+test_get_readback_failure_is_unknown (test_selector_failures.TestFailurePaths.test_get_readback_failure_is_unknown)
+POST ok but GET read-back 500 -> SELECTION_UNKNOWN. ... ok
+test_identifier_mapping_failure_refuses_selection (test_selector_failures.TestFailurePaths.test_identifier_mapping_failure_refuses_selection)
+Candidate name not in the device member list -> refuse. ... ok
+test_no_healthy_proxy_does_not_authorise_production (test_selector_failures.TestFailurePaths.test_no_healthy_proxy_does_not_authorise_production)
+All candidates unhealthy -> REJECT, production not authorised. ... ok
+test_repeated_state_events_no_race (test_selector_failures.TestFailurePaths.test_repeated_state_events_no_race)
+The same cycle repeated 20x (and concurrently) must never ... ok
+test_restart_recovery (test_selector_failures.TestFailurePaths.test_restart_recovery)
+Restart: fresh controller instance + same state file + same ... ok
+test_single_failing_proxy_never_selects_direct (test_selector_failures.TestFailurePaths.test_single_failing_proxy_never_selects_direct)
+One must-fail proxy: controller must not fall back to DIRECT ... ok
+test_stale_selection_not_reported_safe (test_selector_failures.TestFailurePaths.test_stale_selection_not_reported_safe)
+Persisted PROXY_VERIFIED with expired evidence must not be ... ok
+test_stop_blocks_production (test_selector_failures.TestFailurePaths.test_stop_blocks_production)
+STOP checker active -> STOPPED, proxy never selected. ... ok
+test_wifi_cellular_switch_reverifies (test_selector_failures.TestFailurePaths.test_wifi_cellular_switch_reverifies)
+After a network switch the live selection is re-read. Same ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 15.326s
+
+OK
