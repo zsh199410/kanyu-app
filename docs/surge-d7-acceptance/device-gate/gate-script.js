@@ -208,6 +208,14 @@ function decide(lease, ctx) {
       ctx.now < ctx.lastSeen - CLOCK_SKEW_SECONDS) {
     return deny("clock-back-vs-lastseen");
   }
+  /* Invalid/error fingerprints must NEVER match, even if issuance and
+   * checking both failed in the same way (e.g. fp-error==fp-error). */
+  if (typeof lease.net_fp !== "string" ||
+      !/^fnv1a-[0-9a-f]{8}$/.test(lease.net_fp) ||
+      typeof ctx.netFp !== "string" ||
+      !/^fnv1a-[0-9a-f]{8}$/.test(ctx.netFp)) {
+    return deny("network-fingerprint-unavailable");
+  }
   /* Network environment changed since issuance. */
   if (!lease.net_fp || lease.net_fp !== ctx.netFp) {
     return deny("network-fingerprint-mismatch");
