@@ -269,10 +269,11 @@ class TestRemovalEligibility(ValidatorTestBase):
         self.assertEqual(result["verdict"], "FAIL_LATENCY")
         self.assertFalse(result["eligible_for_removal"])
 
-    def test_verified_failure_can_count_for_removal(self):
+    def test_slow_but_connected_is_never_a_removal(self):
         record = self.make_evidence("TEST-ROTATION-01", 101, latency=500)
         result = validator.validate_evidence(record, self.candidate, pinned_names=PINNED_NAMES)
-        self.assertTrue(result["eligible_for_removal"])
+        self.assertEqual(result["verdict"], "FAIL_LATENCY")
+        self.assertFalse(result["eligible_for_removal"])
 
     def test_pinned_failure_never_removable(self):
         record = self.make_evidence("TEST-PINNED-01", 1, latency=900)
@@ -281,13 +282,27 @@ class TestRemovalEligibility(ValidatorTestBase):
         self.assertEqual(result["verdict"], "FAIL_LATENCY")
         self.assertFalse(result["eligible_for_removal"])
 
-    def test_verified_timeout_counts_as_credible_failure(self):
+    def test_single_timeout_is_never_an_automatic_removal(self):
         record = self.make_evidence(
             "TEST-ROTATION-01", 101, latency=None, raw_extra={"status": "timeout"}
         )
         result = validator.validate_evidence(record, self.candidate, pinned_names=PINNED_NAMES)
         self.assertEqual(result["verdict"], "FAIL")
-        self.assertTrue(result["eligible_for_removal"])
+        self.assertFalse(result["eligible_for_removal"])
+
+    def test_plausible_but_wrong_phone_sha_not_verified(self):
+        record = self.make_evidence("TEST-ROTATION-01", 101, latency=None,
+                                    raw_extra={"status": "timeout"})
+        result = validator.validate_evidence(record, self.candidate, pinned_names=PINNED_NAMES)
+        self.assertFalse(result["checks"]["phone_verified"])
+        self.assertFalse(result["eligible_for_removal"])
+
+    def test_valid_freeze_required_for_failure_evidence(self):
+        record = self.make_evidence("TEST-ROTATION-01", 101, latency=None,
+                                    raw_extra={"status": "timeout"})
+        result = validator.validate_evidence(record, None, pinned_names=PINNED_NAMES)
+        self.assertFalse(result["checks"]["candidate_binding_ok"])
+        self.assertFalse(result["eligible_for_removal"])
 
     def test_uncalibrated_failure_cannot_remove(self):
         record = self.make_evidence(
@@ -366,13 +381,13 @@ class TestShadowAudit(ValidatorTestBase):
         self.assertEqual(audit["gte_300_count"], 2)
         self.assertEqual(audit["failed_count"], 1)
         self.assertEqual(audit["unknown_count"], 1)
-        self.assertEqual(audit["safe_removal_eligible_count"], 1)
-        self.assertEqual(audit["removal_candidates"], 1)
-        self.assertEqual(audit["removal_candidate_names"], ["TEST-ROTATION-02"])
+        self.assertEqual(audit["safe_removal_eligible_count"], 0)
+        self.assertEqual(audit["removal_candidates"], 0)
+        self.assertEqual(audit["removal_candidate_names"], [])
         self.assertEqual(audit["pinned_integrity"], "21/21")
         self.assertTrue(audit["pinned_intact"])
         self.assertEqual(audit["stop_status"], "RUNNING")
-        self.assertEqual(audit["decision"], "REMOVAL_CANDIDATES:1")
+        self.assertEqual(audit["decision"], "NO_SAFE_REMOVAL")
         self.assertEqual(len(audit["summary_10"]), 10)
 
     def test_zero_of_30_no_safe_removal(self):
