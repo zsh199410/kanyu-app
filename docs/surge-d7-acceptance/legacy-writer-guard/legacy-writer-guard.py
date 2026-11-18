@@ -78,7 +78,31 @@ def check(show=unit_state, processes=process_rows):
 
         for unit in SERVICES:
             data = show(unit)
-            if data.get("LoadState") != "loaded":
+            load = data.get("LoadState")
+            if load == "masked":
+                # Guard amendment (GPT review P0, 2026-11-18): a masked
+                # unit cannot be started by any means (systemctl start
+                # and enable both fail), so it is drained by
+                # construction and counts as closed -- stronger than
+                # "disabled", which a manual `systemctl start` can still
+                # revive. Require UnitFileState == "masked" for
+                # consistency, plus the same drain fields (inactive /
+                # dead, no PID, no job). The Result check is skipped
+                # for masked units: it describes the last run's
+                # outcome, which is meaningless for a unit that cannot
+                # run. (Previously the guard refused every masked
+                # service as "service_not_loaded", which made masking
+                # and the guard mutually exclusive.)
+                if data.get("UnitFileState") != "masked":
+                    return False, "service_mask_inconsistent", unit
+                if data.get("ActiveState") != "inactive" or data.get("SubState") != "dead":
+                    return False, "old_service_not_drained", unit
+                if data.get("MainPID") != "0" or data.get("ControlPID") != "0":
+                    return False, "old_service_pid_present", unit
+                if data.get("Job", "") not in ("", "0"):
+                    return False, "old_service_has_job", unit
+                continue
+            if load != "loaded":
                 return False, "service_not_loaded", unit
             if data.get("ActiveState") != "inactive" or data.get("SubState") != "dead":
                 return False, "old_service_not_drained", unit
