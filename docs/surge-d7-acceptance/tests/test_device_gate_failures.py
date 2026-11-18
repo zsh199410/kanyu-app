@@ -95,6 +95,16 @@ class TestControllerApiFailures(_ControllerCase):
                       ("CONTROLLER_UNAVAILABLE", "GATE_UNKNOWN"))
         self.assertFalse(rec["verified"])
 
+    def test_fingerprint_error_does_not_issue_active_lease(self):
+        # Invalid $network.dns makes the JS fingerprint helper return
+        # fp-error. Controller must not write/store an active lease.
+        invalid = dict(NETWORK_A, dns="invalid")
+        base_url = self.start_server(network=invalid)
+        ctrl = self.make_controller(base_url)
+        rec = ctrl.issue_lease(make_candidates(), EXPECTED_SHA)
+        self.assertNotEqual(rec["state"], "LEASE_ACTIVE")
+        self.assertFalse(rec["verified"])
+
     def test_get_groups_500_blocks_issue(self):
         base_url = self.start_server(groups_status=500)
         ctrl = self.make_controller(base_url)
