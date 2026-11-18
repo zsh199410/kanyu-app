@@ -511,7 +511,11 @@ def publish(*, lock_path, served_path, staging_path, candidate_bytes,
                                  "legacy-writer-guard.py")
         guard_check = guard.check
     if ban_proof_fn is None:
-        ban_proof_fn = lambda: legacy_ban_proof()  # noqa: E731
+        # Live publication MUST prevent old systemd services from being
+        # started manually after the pre-check. The amended guard already
+        # accepts genuinely masked/drained services; require that stronger
+        # state by default. Injected mock ban_proof_fn remains test-only.
+        ban_proof_fn = lambda: legacy_ban_proof(require_masked_services=True)  # noqa: E731
     if stop_check is None:
         stop_path = os.path.join(
             os.path.dirname(os.path.abspath(served_path)), "STOP")
@@ -640,10 +644,9 @@ def _build_arg_parser():
     c = sub.add_parser("check", help="run guard + ban proof, no write")
     c.add_argument("--timers", nargs="*", default=list(LEGACY_TIMERS))
     c.add_argument("--services", nargs="*", default=list(LEGACY_SERVICES))
-    c.add_argument("--require-masked", action="store_true",
-                   help="require masked services instead of disabled "
-                        "(opt-in; incompatible with the verbatim guard, "
-                        "see legacy_ban_proof docstring)")
+    c.add_argument("--require-masked", action="store_true", default=True,
+                   help="production default: require old services masked "
+                        "so unlocked legacy publishers cannot re-enter")
     return parser
 
 
