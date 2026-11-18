@@ -63,7 +63,7 @@ VPS 生成订阅字节
 | 原生语义未校准 (`measurement_verified` 为 False) | `UNVERIFIED` |
 | 延迟 <300ms, 且语义已校准、手机加载已验证、未过期 | `PASS` (合格候选条件之一, 不是生产准入) |
 | 延迟 <300ms 但 phone_loaded_sha 为 UNKNOWN | `UNVERIFIED` |
-| 延迟 >=300ms | `FAIL_LATENCY` (测速不达标, 原始延迟如实保留) |
+| 延迟 >=300ms | `ABOVE_TARGET` (超过优选目标，但连接正常，保留并降低优先级；原始延迟保留) |
 | 超时或失败 (`latency_ms` 为 null 且 raw_result 有明确失败信号) | `FAIL` (原始失败证据保留) |
 | 未测试 (`latency_ms` 为 null 且无失败信号) | `UNKNOWN` |
 
@@ -76,7 +76,7 @@ VPS 生成订阅字节
 - 可用于生产下架的“可信失败证据”须同时满足:
   绑定一致 + 未过期 + `measurement_verified=True` +
   `phone_loaded_sha` 已验证 + 失败信号真实
-  (延迟 >=300ms, 或延迟为 null 且有明确失败信号) + 非钉选。
+  (仅原生连接失败的多次独立可信样本；单次超时或 >=300ms 不可下架) + 非钉选。
   任一不满足即不计入 `removal_candidates`。
 - STOP 状态下 `removal_candidates` 强制为 0, decision 为 `NO_SAFE_REMOVAL`。
 
