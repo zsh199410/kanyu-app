@@ -214,14 +214,22 @@ def validate_evidence(record: dict, candidate_record: dict, pinned_names=None, n
     else:
         checks["not_expired"] = True
 
-    # phone_loaded_sha。
+    # Actual byte-level binding: a plausible nonempty hex is not proof.
+    # Source identity must equal the exact frozen payload SHA; members-only
+    # matches or self-asserted SHA without independent proof never authorize
+    # production removal.
     phone_sha = record.get("phone_loaded_sha")
     if phone_sha == "UNKNOWN":
         reasons.append('phone_loaded_sha 为 UNKNOWN (手机实际加载未独立验证), 禁止用于生产下架')
-    elif isinstance(phone_sha, str) and phone_sha:
+    elif (isinstance(candidate_record, dict)
+          and isinstance(phone_sha, str)
+          and collector_mod._SHA256_RE.fullmatch(phone_sha)
+          and phone_sha == candidate_record.get("payload_sha256")
+          and record.get("loaded_proof_level") == "BYTE_PROOF"
+          and record.get("production_admission") == "GRANTED"):
         checks["phone_verified"] = True
     else:
-        reasons.append("phone_loaded_sha 缺失或非法")
+        reasons.append("手机字节级 SHA 未通过冻结候选一致性/独立证明校验，禁止下架")
 
     if record.get("measurement_verified") is True:
         checks["measurement_verified"] = True
@@ -246,39 +254,40 @@ def validate_evidence(record: dict, candidate_record: dict, pinned_names=None, n
     else:
         verdict = collector_mod.judge_evidence(record)
 
-    # 可用于生产下架: 极严, 全部条件同时满足。
+    # Single measurements never authorize irreversible deletion.
+    # High latency is NOT a connectivity failure, and a single timeout can
+    # recover. A later temporal stability gate must aggregate independent
+    # verified failures across different times and reject recovered nodes.
     latency = record.get("latency_ms")
-    has_failure_signal = False
-    if isinstance(latency, (int, float)) and not isinstance(latency, bool):
-        has_failure_signal = latency >= LATENCY_THRESHOLD_MS
-    elif latency is None:
-        has_failure_signal = collector_mod._raw_indicates_failure(
-            record.get("raw_result") or {}
-        )
-    eligible = bool(
+    has_failure_signal = (
+        latency is None
+        and collector_mod._raw_indicates_failure(record.get("raw_result") or {})
+    )
+    qualified_failure_sample = bool(
         valid
-        and verdict in ("FAIL", "FAIL_LATENCY")
+        and verdict == "FAIL"
+        and has_failure_signal
         and checks["phone_verified"]
         and checks["measurement_verified"]
-        and has_failure_signal
+        and record.get("calibration_verdict") == "CALIBRATED"
+        and record.get("network_bearer") in ("wifi", "cellular")
         and not is_pinned
     )
-    if not eligible:
-        if verdict in ("FAIL", "FAIL_LATENCY") and not is_pinned:
-            if not checks["phone_verified"]:
-                reasons.append("不可下架: phone_loaded_sha 未验证")
-            if not checks["measurement_verified"]:
-                reasons.append("不可下架: measurement_verified 为 False (语义未校准)")
-            if not valid:
-                reasons.append("不可下架: 证据未通过 schema/绑定/时效校验")
-    if eligible:
-        reasons.append("满足可信失败证据全部条件, 可计入 removal_candidates")
+    eligible = False  # no deletion from a single timestamp
+    if isinstance(latency, (int, float)) and not isinstance(latency, bool):
+        if latency >= LATENCY_THRESHOLD_MS:
+            reasons.append("测速>=300ms仅表示未达优选目标，连通则保留，不可下架")
+    if qualified_failure_sample:
+        reasons.append("独立连接失败样本待跨时段累计；单次失败仍不得下架")
+    elif verdict in ("FAIL", "FAIL_LATENCY"):
+        reasons.append("证据不足或不构成持久连接故障，禁止自动下架")
 
     return {
         "valid": valid,
         "verdict": verdict,
         "reasons": reasons,
         "eligible_for_removal": eligible,
+        "qualified_failure_sample": qualified_failure_sample,
         "is_pinned": is_pinned,
         "checks": checks,
     }
