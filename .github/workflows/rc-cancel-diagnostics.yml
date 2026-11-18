@@ -1,0 +1,76 @@
+name: RC context cancellation diagnostics (manual only)
+
+# Isolated diagnostic workflow: never changes existing RC workflows or test/golden sources.
+# A manually dispatched run must target this diagnostic branch and the exact reviewed SHA.
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Which previously cancelled dark-standard case to reproduce
+        required: true
+        type: choice
+        options: [profile, illustrated]
+      expected_sha:
+        description: Full 40-character SHA expected at checkout (prevents testing a moved branch)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    runs-on: macos-26
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact checkout
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git rev-parse HEAD)"
+          echo "Expected: $EXPECTED_SHA"
+          echo "Actual:   $ACTUAL"
+          test "${#EXPECTED_SHA}" -eq 40
+          test "$ACTUAL" = "$EXPECTED_SHA"
+      - name: Capture runner environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          sw_vers
+          xcodebuild -version
+          xcrun simctl list devices available
+      - name: Verify protected sources
+        run: python3 design/verify_v6.py
+      - name: Select Xcode 26
+        shell: bash
+        run: |
+          set -euo pipefail
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Reproduce one dark-standard XCTest context
+        env:
+          SUITE: ${{ inputs.suite }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$SUITE" = "illustrated" ]; then
+            python3 design/run_context_acceptance.py --suite guides --case dark-standard
+          else
+            python3 design/run_context_acceptance.py --case dark-standard
+          fi
+      - name: Preserve raw context evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-cancel-diagnostic-${{ inputs.suite }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/context-evidence
+          if-no-files-found: warn
+          retention-days: 14
