@@ -6,6 +6,8 @@ struct ForecastExport: Codable { var schemaVersion: Int; var entries: [ForecastE
 
 struct ForecastEntry: Codable, Identifiable {
     var id: UUID = UUID()
+    /// P0-4：归属人物 UUID（可选，兼容旧档；旧档 personID 为空，读档时按姓名尽力迁移）。
+    var personID: UUID? = nil
     var personName: String
     var text: String
     var targetYear: Int
@@ -16,15 +18,46 @@ struct ForecastEntry: Codable, Identifiable {
 @MainActor
 final class ForecastStore: ObservableObject {
     @Published var entries: [ForecastEntry] = []
-    private var fileURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("forecasts.json")
-    }
-    init() {
+    /// P0-4：可注入目录（默认仍为真实 Documents），只为让单元测试能用临时目录；默认行为不变。
+    private let directory: URL
+    private var fileURL: URL { directory.appendingPathComponent("forecasts.json") }
+    init(directory: URL? = nil) {
+        self.directory = directory ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         if let data = try? Data(contentsOf: fileURL) {
-            if let list = try? JSONDecoder().decode([ForecastEntry].self, from: data) { entries = list }
+            if let list = try? JSONDecoder().decode([ForecastEntry].self, from: data) {
+                entries = list
+                migratePersonIDs()
+            }
             else { try? FileManager.default.copyItem(at: fileURL, to: fileURL.deletingPathExtension().appendingPathExtension("corrupt.json")) }
         }
+    }
+    /// P0-4 尽力迁移：personID 为空且 personName 精确匹配到唯一现有人物时挂上该人 UUID；
+    /// 匹配到零个或多个时留作孤儿（personID 保持空）。改动过才回写，幂等。
+    private func migratePersonIDs() {
+        let people = Person.loadPeopleForMigration(directory: directory)
+        var changed = false
+        for i in entries.indices {
+            if entries[i].personID == nil, let id = Person.uniqueID(forName: entries[i].personName, in: people) {
+                entries[i].personID = id
+                changed = true
+            }
+        }
+        if changed { save() }
+    }
+    /// P0-4：按人物 UUID 取登记（同名不同人互不可见；孤儿 personID 为空，不属于任何人）。
+    func entries(for person: Person) -> [ForecastEntry] { entries.filter { $0.personID == person.id } }
+    /// P0-4 级联删除：删掉该人的全部登记（personID 归属的必删；旧姓名键记录只在
+    /// 姓名唯一时才按名删，同名时留孤儿）。
+    func removeAll(for person: Person, nameIsShared: Bool) {
+        let before = entries.count
+        entries.removeAll {
+            $0.personID == person.id || (!nameIsShared && $0.personID == nil && $0.personName == person.name)
+        }
+        if entries.count != before { save() }
+    }
+    /// 供 PeopleStore.remove() 级联调用（用一次性实例，不碰任何共享 store 的内存状态）。
+    static func removeAll(for person: Person, nameIsShared: Bool, in directory: URL) {
+        ForecastStore(directory: directory).removeAll(for: person, nameIsShared: nameIsShared)
     }
     func save() {
         do {
@@ -128,20 +161,23 @@ struct ForecastView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingNew) { ForecastFormView(store: store) }
+        .sheet(isPresented: $showingNew) { ForecastFormView(store: store, person: PeopleStore.shared.currentPerson) }
     }
 }
 
 struct ForecastFormView: View {
     @ObservedObject var store: ForecastStore
-    @State private var personName = ""
+    /// P0-4：登记归到当前命主（由前瞻列表页传入）；无当前命主时不可登记，须先去人物档案建人并设为当前命主。
+    let person: Person?
     @State private var text = ""
     @State private var year = Calendar.current.component(.year, from: Date()) + 1
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
             Form {
-                TextField("人物（姓名）", text: $personName)
+                // P0-4：登记给当前命主，不再自由填姓名（自由文本姓名会串人）。
+                Text(person.map { "登记给：\($0.name)" } ?? "请先在人物档案里建好人物并设为当前命主，再回来登记")
+                    .foregroundStyle(person == nil ? Ky.cinnabar : Ky.ink)
                 Stepper("目标年份：\(year)", value: $year, in: 2024...2100)
                 TextField("断语原文（写下冻结，不可改）", text: $text, axis: .vertical).lineLimit(3...6)
             }
@@ -151,9 +187,9 @@ struct ForecastFormView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("取消".scriptConverted) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("登记".scriptConverted) {
-                        store.add(ForecastEntry(personName: personName, text: text, targetYear: year))
+                        store.add(ForecastEntry(personID: person?.id, personName: person?.name ?? "", text: text, targetYear: year))
                         dismiss()
-                    }.disabled(personName.isEmpty || text.isEmpty)
+                    }.disabled(person == nil || text.isEmpty)
                 }
             }
         }
