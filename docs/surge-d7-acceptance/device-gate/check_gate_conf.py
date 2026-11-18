@@ -39,6 +39,32 @@ GATE_SWEEP_SCRIPT = "gate-sweep.js"
 EXPECTED_CRON_MAX_PER_HOUR = 10
 TEST_NET = ipaddress.ip_network("192.0.2.0/24")
 TEST_PROXIES = {"Test-Proxy-1", "Test-Proxy-2", "Test-Proxy-3"}
+# A script-path may be a bare filename (local file next to the profile)
+# or an https URL whose path ends in that filename. The URL form is
+# what the device actually loads (relative paths failed to resolve:
+# 'Failed to load external resource: gate-events.js resource does not
+# exist'), so both forms must be accepted — and only these three
+# filenames are ever legitimate URLs in this test profile.
+GATE_SCRIPT_FILES = {"gate-script.js", GATE_EVENTS_SCRIPT, GATE_SWEEP_SCRIPT}
+
+
+def script_path_matches(value: str, filename: str) -> bool:
+    """True if `value` is the bare `filename` or an https URL ending in it."""
+    if value == filename:
+        return True
+    if value.startswith("https://"):
+        path = value.split("?", 1)[0].split("#", 1)[0]
+        return path.endswith("/" + filename)
+    return False
+
+
+def is_gate_script_url(line: str) -> bool:
+    """True if the line's only URL is a gate script URL (not a subscription)."""
+    m = re.search(r"https?://[^\s,]+", line)
+    if not m:
+        return False
+    url = m.group(0).split("?", 1)[0].split("#", 1)[0]
+    return any(url.endswith("/" + f) for f in GATE_SCRIPT_FILES)
 
 
 def parse_conf(text: str) -> dict[str, list[str]]:
@@ -114,7 +140,7 @@ def check_conf(path: str) -> list[str]:
             continue
         if re.search(r"\bDIRECT\b", line):
             problems.append(f"line {i}: DIRECT present: {line.strip()!r}")
-        if "://" in line and "test.invalid" not in line:
+        if "://" in line and "test.invalid" not in line and not is_gate_script_url(line):
             problems.append(f"line {i}: URL-like content: {line.strip()!r}")
 
     # --- [Proxy]: only TEST-NET test proxies ----------------------------
@@ -175,8 +201,8 @@ def check_conf(path: str) -> list[str]:
     else:
         if rule.get("type") != "rule":
             problems.append("[Script] gate-rule type is not 'rule'")
-        if rule.get("script-path") != "gate-script.js":
-            problems.append("[Script] gate-rule script-path is not gate-script.js")
+        if not script_path_matches(rule.get("script-path", ""), "gate-script.js"):
+            problems.append("[Script] gate-rule script-path is not gate-script.js (bare file or https URL ending in /gate-script.js)")
         if rule.get("engine") != "jsc":
             problems.append("[Script] gate-rule engine is not jsc")
     events = {
@@ -189,8 +215,8 @@ def check_conf(path: str) -> list[str]:
     if got_events != want_events:
         problems.append(f"[Script] event-names {sorted(got_events)} != {sorted(want_events)}")
     for name, params in events.items():
-        if params.get("script-path") != GATE_EVENTS_SCRIPT:
-            problems.append(f"[Script] event {name} script-path is not {GATE_EVENTS_SCRIPT}")
+        if not script_path_matches(params.get("script-path", ""), GATE_EVENTS_SCRIPT):
+            problems.append(f"[Script] event {name} script-path is not {GATE_EVENTS_SCRIPT} (bare file or https URL ending in /{GATE_EVENTS_SCRIPT})")
         if params.get("engine") != "jsc":
             problems.append(f"[Script] event {name} engine is not jsc")
     crons = {
@@ -202,8 +228,8 @@ def check_conf(path: str) -> list[str]:
         problems.append("[Script] expected exactly one cron script 'gate-sweep'")
     else:
         sweep = crons["gate-sweep"]
-        if sweep.get("script-path") != GATE_SWEEP_SCRIPT:
-            problems.append("[Script] gate-sweep script-path is not gate-sweep.js")
+        if not script_path_matches(sweep.get("script-path", ""), GATE_SWEEP_SCRIPT):
+            problems.append(f"[Script] gate-sweep script-path is not gate-sweep.js (bare file or https URL ending in /{GATE_SWEEP_SCRIPT})")
         if sweep.get("engine") != "jsc":
             problems.append("[Script] gate-sweep engine is not jsc")
         runs = cron_runs_per_hour(sweep.get("cronexp", ""))
@@ -240,6 +266,17 @@ def check_conf(path: str) -> list[str]:
         key = line.split("=")[0].strip().lower()
         if key in ("subscription", "mitm", "module", "rule-set"):
             problems.append(f"[General] unexpected {key} line: {line!r}")
+        if key == "http-api":
+            # P1 (GPT review 2026-11-18): the test profile's HTTP API
+            # is test-only by design (public key test123, LAN listener).
+            # It must never carry a real credential: only the test key
+            # is allowed here, so a production key can never be baked
+            # into this file by accident.
+            value = line.split("=", 1)[1].strip() if "=" in line else ""
+            if not value.startswith("test123@"):
+                problems.append(
+                    f"[General] http-api must use the test key test123: {line!r}"
+                )
     return problems
 
 

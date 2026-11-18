@@ -725,9 +725,14 @@ class GateController:
     def revoke_lease(self, reason: str):
         """Delete the on-device lease and force the group to REJECT.
 
-        Best-effort evaluate + verified select. Only a REJECT read-back
-        yields LEASE_REVOKED; anything else is GATE_UNKNOWN — never claim
-        a revoke that was not confirmed."""
+        Revocation is confirmed only by TWO independent read-backs:
+        (a) the group selection reads back REJECT, AND (b) the lease
+        read-back shows no lease stored on the device. A REJECT
+        selection alone is not enough: the group can sit on REJECT for
+        other reasons while the lease is still in $persistentStore, and
+        a stored lease is a live credential (re-selecting its proxy
+        would admit traffic again). Anything short of both is
+        GATE_UNKNOWN — never claim a revoke that was not confirmed."""
         with self._lock:
             self._log("revoke_lease", reason=reason)
             try:
@@ -735,12 +740,25 @@ class GateController:
             except (ApiTimeout, ApiError) as exc:
                 self._log("revoke_evaluate_failed", error=str(exc))
             verified, actual, error = self.select_and_verify(REJECT)
-            if verified:
-                return self._persist("LEASE_REVOKED", REJECT, None, None,
-                                     f"revoked ({reason}); REJECT read-back verified",
-                                     True)
-            return self._persist("GATE_UNKNOWN", actual, None, None,
-                                 f"revoke unconfirmed ({reason}): {error}", False)
+            if not verified:
+                return self._persist("GATE_UNKNOWN", actual, None, None,
+                                     f"revoke unconfirmed ({reason}): {error}", False)
+            lease, echoed, read_error = self.read_lease_back()
+            if not echoed:
+                return self._persist("GATE_UNKNOWN", REJECT, None, None,
+                                     f"revoke unconfirmed ({reason}): lease read-back "
+                                     f"unconfirmed: {read_error}", False)
+            if read_error:
+                return self._persist("GATE_UNKNOWN", REJECT, None, lease,
+                                     f"revoke unconfirmed ({reason}): lease read-back "
+                                     f"error: {read_error}", False)
+            if lease is not None:
+                return self._persist("GATE_UNKNOWN", REJECT, None, lease,
+                                     f"revoke unconfirmed ({reason}): lease still "
+                                     f"stored on device after revoke", False)
+            return self._persist("LEASE_REVOKED", REJECT, None, None,
+                                 f"revoked ({reason}); REJECT read-back verified "
+                                 f"and no lease stored on device", True)
 
     def check_lease_status(self):
         """Re-read the on-device lease and classify it. Never trusts the

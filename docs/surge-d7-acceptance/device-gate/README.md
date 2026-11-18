@@ -213,13 +213,36 @@ python3 -m unittest test_device_gate test_device_gate_failures -v
 
 测试日志见 `tests/logs/device-gate-run-20261118.log`。
 
+## 仅测试用，不可直接用于生产（P1，GPT 复核 2026-11-18）
+
+本 profile 与控制器是隔离测试工具，以下两点决定了它们不能直接
+用于生产；生产化须先解决这两项。
+
+1. **脚本 URL 是临时的，会过期。** `device-gate-test.conf` 的
+   `[Script]` 五条 `script-path` 目前是 remote-storage 公共直链
+   （`https://muse.ai/files/...`），**2026-11-20T14:03 UTC 过期**。
+   过期后若需重新导入 profile，须先重新托管脚本再更新链接。
+   永久托管路径：极空间桥 `/m/`（`/opt/surge-bridge/modules/`，
+   经 `sgcmd.vip668.xin` 访问）——该路径在 2026-11-18 因 VPS SSH
+   密钥登录失败未能实施，待 SSH 恢复后把三个 JS 传到桥上并把
+   conf 里的 URL 改为桥地址；在此之前，重新导入一律先重传换链，
+   不得把过期链接当作可用状态。
+2. **测试 HTTP API 用公开密钥监听局域网。** conf 里
+   `http-api = test123@0.0.0.0:6171`：密钥 `test123` 是公开的测试
+   值，且监听全部接口（0.0.0.0）以便局域网内的台式控制器访问。
+   这是测试专用设计，**绝不能出现在生产配置里**：生产配置不得
+   开启 `http-api`，不得用已知密钥监听局域网；控制器与签发流程
+   仅用于本隔离测试 profile，不得用于日用配置。
+
 ## 真机验证（下一步，须机主操作的最短指令）
 
 在隔离测试 profile 上逐项验证（不要动日用配置与生产池）：
 
-1. 手机 Surge 导入 `device-gate-test.conf` 与三个 JS 文件（`gate-script.js`、
-   `gate-events.js`、`gate-sweep.js` 放在 profile 同目录），确认出站模式为
-   **rule**，加载该 profile。
+1. 手机 Surge 导入 `device-gate-test.conf`（`[Script]` 五条
+   `script-path` 为 remote-storage 直链，见上一节；相对路径放
+   profile 同目录的方式已证实加载不到——2026-11-18 引擎日志
+   `Failed to load external resource: gate-events.js 资源不存在`），
+   确认出站模式为 **rule**，加载该 profile。
 2. 不签发租约时打开 `example.com`：应失败／被拒绝（FINAL,REJECT 生效）。
 3. 在电脑上对手机 HTTP API（`http://127.0.0.1:6171`，key `test123`，
    须与手机同一网络／USB 映射，见控制器用法）跑一次
