@@ -18,7 +18,7 @@ MIN_SAMPLES = 8
 TARGET_MS = 300
 QUARANTINE_MIN_SPAN_SECONDS = 6 * 3600
 STATES = ("INSUFFICIENT_EVIDENCE", "PREFERRED", "USABLE",
-          "OBSERVE", "QUARANTINE_REVIEW")
+          "OBSERVE", "FAILED_EXCLUDED", "QUARANTINE_REVIEW")
 
 
 def _time(value):
@@ -120,21 +120,30 @@ def classify(records, node_name, bearer, expected_payload_sha, *,
     span = (observations[-1][0] - observations[0][0]).total_seconds() if count else 0.0
     recovered = bool(previous_state == "QUARANTINE_REVIEW"
                      and observations and observations[-1][1])
+    # A confirmed native connection failure immediately excludes a candidate
+    # from active automatic selection. Slow yet CONNECTED nodes are instead
+    # scheduled for retest, regardless of whether they crossed 300 ms.
+    latest_failed = bool(observations and not observations[-1][1])
+    last_latency = observations[-1][2] if observations else None
+    latest_slow = bool(
+        observations and observations[-1][1]
+        and isinstance(last_latency, (int, float))
+        and not isinstance(last_latency, bool)
+        and isfinite(last_latency) and last_latency >= target_ms
+    )
     if count < min_samples:
-        state = "INSUFFICIENT_EVIDENCE"
+        state = "FAILED_EXCLUDED" if latest_failed else "INSUFFICIENT_EVIDENCE"
     elif recovered:
         state = "OBSERVE"
+    elif (latest_failed and span >= QUARANTINE_MIN_SPAN_SECONDS
+          and failures >= min_samples and ratio < 0.2):
+        state = "QUARANTINE_REVIEW"
+    elif latest_failed:
+        state = "FAILED_EXCLUDED"
     elif ratio >= 0.8 and med is not None and med < target_ms:
         state = "PREFERRED"
     elif ratio >= 0.6:
         state = "USABLE"
-    elif ratio >= 0.2:
-        state = "OBSERVE"
-    elif (span >= QUARANTINE_MIN_SPAN_SECONDS and failures >= min_samples
-          and not (observations and observations[-1][1])):
-        # A verified most-recent recovery blocks quarantine even when the
-        # previously persisted state is missing; start observing again.
-        state = "QUARANTINE_REVIEW"
     else:
         state = "OBSERVE"
     return {
@@ -148,6 +157,11 @@ def classify(records, node_name, bearer, expected_payload_sha, *,
         "median_latency_ms": med,
         "over_300ms_count": over_target,
         "recovered": recovered,
+        "latest_native_probe_failed": latest_failed,
+        "exclude_from_active_selection": latest_failed,
+        "retest_high_latency": latest_slow,
         "eligible_for_removal": False,
-        "decision": "RETAIN_OR_REVIEW_ONLY",
+        "decision": ("EXCLUDE_ACTIVE_ONLY" if latest_failed
+                     else "RETEST_SLOW_CONNECTION" if latest_slow
+                     else "RETAIN_OR_REVIEW_ONLY"),
     }
