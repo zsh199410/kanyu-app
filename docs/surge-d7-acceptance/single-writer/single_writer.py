@@ -2,7 +2,7 @@
 """Single-writer lock for the Surge node-pool production publisher (task G).
 
 This module closes the gap found in task C: the PR #80 legacy-writer guard
-(``legacy-writer-guard.py``, head eaa52023, reused verbatim) is a
+(``legacy-writer-guard.py``, derived from PR #80 and amended to accept masked services) is a
 point-in-time check only. Two concurrent checks can both pass, so the guard
 alone cannot serialize writers. This module adds the missing continuous,
 cross-process exclusive critical section around the whole publish:
@@ -19,8 +19,9 @@ in the database or in any file that must be cleaned up by hand.
 
 Design notes (see single-writer/README.md for the full discussion):
 
-* Guard semantics are unchanged. The guard is imported, never copied or
-  edited; if it cannot be imported the publish refuses fail-closed.
+* The guard is imported and must be available; if it cannot be imported
+  the publish refuses. The local PR #80-derived guard has been amended
+  to accept genuinely masked, drained services (PR #80 itself is unchanged).
 * The legacy-writer ban proof goes beyond flock on purpose: flock cannot
   bind writers that never take the lock (the old timers do not use any
   lock at all). The proof chain is: guard passes AND the old timers are
@@ -238,21 +239,12 @@ def legacy_ban_proof(show=None, processes=None,
       UnitFileState == "disabled";
     * no legacy writer process visible in the process table.
 
-    About masking (verified on the VPS 2026-11-18): a masked service
-    reports LoadState == "masked", and the verbatim PR #80 guard
-    refuses any service whose LoadState is not "loaded"
-    (``service_not_loaded``). Masked services and the verbatim guard
-    therefore CANNOT pass together -- masking an old service would make
-    the guard refuse every future publish forever. Masking is the
-    stronger bar, but it needs a guard amendment (accept LoadState
-    "masked" as drained), which is a separate decision outside this
-    task. The opt-in ``require_masked_services=True`` checks
-    UnitFileState == "masked" instead of "disabled" for callers that
-    have made that decision and do not run the verbatim guard alongside;
-    in that mode a masked unit's LoadState ("masked") is also accepted
-    as loaded, since the unit is known to systemd and its state is
-    fully determined. The default (False) is the strongest chain that
-    stays compatible with the verbatim guard.
+    About masking: the local guard copy now supports masked old services
+    when inactive/dead and with no PIDs/Jobs; this is stronger than merely
+    disabled because systemctl start cannot revive a masked service. The
+    production publish() path defaults to require_masked_services=True.
+    Direct calls to legacy_ban_proof() retain the old disabled-mode default
+    for isolated compatibility tests; they are NOT production approval.
 
     Returns ``(proven, evidence)`` where ``evidence`` is a list of
     ``{"check": ..., "ok": ..., "detail": ...}`` dicts, one per assertion,
