@@ -176,6 +176,14 @@ class TestControllerCandidateFailures(_ControllerCase):
         self.assertEqual(rec["state"], "LEASE_REVOKED")
         self.assertEqual(self.server.selection[GROUP_NAME], "REJECT")
 
+    def test_unhealthy_candidates_revoke_error_is_not_claimed_success(self):
+        base_url = self.start_server(evaluate_status=500)
+        ctrl = self.make_controller(base_url)
+        cands = [dict(c, latency_ms=999) for c in make_candidates()]
+        rec = ctrl.issue_lease(cands, EXPECTED_SHA)
+        self.assertEqual(rec["state"], "GATE_UNKNOWN")
+        self.assertFalse(rec["verified"])
+
     def test_non_testnet_host_refused(self):
         base_url = self.start_server()
         ctrl = self.make_controller(base_url)
