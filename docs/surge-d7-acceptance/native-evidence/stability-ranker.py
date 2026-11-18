@@ -130,7 +130,10 @@ def classify(records, node_name, bearer, expected_payload_sha, *,
         state = "USABLE"
     elif ratio >= 0.2:
         state = "OBSERVE"
-    elif span >= QUARANTINE_MIN_SPAN_SECONDS and failures >= min_samples:
+    elif (span >= QUARANTINE_MIN_SPAN_SECONDS and failures >= min_samples
+          and not (observations and observations[-1][1])):
+        # A verified most-recent recovery blocks quarantine even when the
+        # previously persisted state is missing; start observing again.
         state = "QUARANTINE_REVIEW"
     else:
         state = "OBSERVE"
