@@ -13,6 +13,7 @@
 | `evidence-validator.py` | B3 证据校验 + 影子审计: `validate_evidence()` / `audit_shadow()` / `run_example()`；F 轮新增 `loaded_proof_ok` 一致性检查 |
 | `phone-loaded-proof.py` | F2 手机已加载订阅证明: `verify_byte_level()` / `verify_loaded_members()` / `classify_loaded_proof()` / `attach_loaded_proof()` |
 | `calibration.py` | F3 口径对照校准: `parse_api_latency()` / `build_paired_row()` / `calibrate()` / `measurement_verified_from_calibration()` |
+| `stability-ranker.py` | 48小时同网络分轨稳定性排名：连接成功率优先、300ms仅优选目标、独立15分钟窗口去重、任何结果均不授权删除 |
 | `api-capability-report.json` | F1 只读查询真实原始响应 (脱敏后) |
 | `README.md` | 本说明 |
 | `isolated-evidence-example/` | 示例入口产出的隔离证据 (运行后生成, 非生产路径) |
@@ -78,6 +79,11 @@ VPS 生成订阅字节
   `phone_loaded_sha` 已验证 + 失败信号真实
   (仅原生连接失败的多次独立可信样本；单次超时或 >=300ms 不可下架) + 非钉选。
   任一不满足即不计入 `removal_candidates`。
+- **当前独立修复版主动锁定 `eligible_for_removal=False`，任何单次证据均不可触发自动删除。**
+  即使多个时段持续失败，目前也只进入 `QUARANTINE_REVIEW`，须另行实现并验证
+  跨时段删除许可、来源可信度、回滚与21钉选完整性才能启用删除。
+- `ABOVE_TARGET` 不等于 `FAIL`；历史 `FAIL_LATENCY` 仅保留旧记录解析兼容，
+  新版本不再生成该状态。
 - STOP 状态下 `removal_candidates` 强制为 0, decision 为 `NO_SAFE_REMOVAL`。
 
 ## Surge API 测试值与手机界面显示值的语义对照
@@ -204,7 +210,7 @@ audit = audit_shadow(
     pinned_names=["TEST-PINNED-01", "..."],     # 21 条钉选名
     stop_status="RUNNING",                      # "STOP" 时强制 NO_SAFE_REMOVAL
     output_dir="/path/to/isolated-evidence",    # 隔离目录; 不传则不写文件
-    candidate_record=candidate,                 # 冻结候选记录 (可选, 用于绑定校验)
+    candidate_record=candidate,                 # 冻结候选记录 (必须; 缺失即 NO_SAFE_REMOVAL)
 )
 ```
 
