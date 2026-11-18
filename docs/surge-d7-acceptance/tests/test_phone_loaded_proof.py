@@ -321,7 +321,7 @@ class TestAttachAndValidatorIntegration(unittest.TestCase):
         result = validator.validate_evidence(
             calibrated, self.candidate, pinned_names=PINNED_NAMES
         )
-        self.assertEqual(result["verdict"], "FAIL_LATENCY")
+        self.assertEqual(result["verdict"], "ABOVE_TARGET")
         self.assertFalse(result["eligible_for_removal"])
         self.assertFalse(result["qualified_failure_sample"])
 
