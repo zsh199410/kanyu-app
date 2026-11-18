@@ -44,6 +44,7 @@ def main():
         binary = archive.read('Payload/Kanyu.app/Kanyu')
         assert b'--v6-export-qa' not in binary, 'Debug QA launch flag in Release'
         assert b'backup-verification.json' not in binary, 'Debug backup QA in Release'
+        assert b'--context-acceptance' not in binary, 'Debug context QA launch flag in Release'
     result = {'build': args.build, 'version': info['CFBundleShortVersionString'],
               'commit': args.commit, 'ipaBytes': ipa.stat().st_size, 'sha256': digest,
               'zipCRC': 'pass', 'releaseExcludesQALaunchFlag': True}
