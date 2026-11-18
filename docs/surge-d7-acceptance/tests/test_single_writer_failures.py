@@ -21,6 +21,7 @@ import sqlite3
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _MOD_PATH = os.path.normpath(
@@ -36,6 +37,27 @@ from test_single_writer import (  # noqa: E402
 
 
 class TestSingleWriterFailures(unittest.TestCase):
+    def test_production_default_requires_masked_legacy_services(self):
+        # Inject a failing proof, assert that the actual default publish
+        # requests the stronger masked mode, never merely 'disabled'.
+        with tempfile.TemporaryDirectory() as tmp:
+            env = PublishEnv(tmp)
+            gate = FakeGate()
+            failure = (False, [{"check": "service_masked", "ok": False,
+                                "detail": "disabled"}])
+            with patch.object(sw, "legacy_ban_proof", return_value=failure) as proof:
+                with self.assertRaises(sw.PublishRefused) as cm:
+                    sw.publish(
+                        lock_path=env.lock, served_path=env.served,
+                        staging_path=env.staging,
+                        candidate_bytes=make_payload("NEW"),
+                        expected_current_sha=env.initial_sha,
+                        db_path=env.db, guard_check=gate.guard_check,
+                        stop_check=gate.stop_check)
+            proof.assert_called_once_with(require_masked_services=True)
+            self.assertIn("legacy_ban_unproven", cm.exception.reason)
+            self.assertEqual(read_file(env.served), env.initial)
+
     # Lock contention with a short timeout refuses loudly (no silent queue).
     def test_f01_lock_timeout_is_fail_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
