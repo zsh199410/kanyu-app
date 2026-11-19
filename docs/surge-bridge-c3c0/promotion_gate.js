@@ -17,6 +17,7 @@
  *   const r = promote(store, { keys: DEV_KEYS, proof, oldTokenId });
  *   // r = { ok: boolean, status: "<enum>" }
  */
+const { validSignedProof } = require("./signed_promotion_proof");
 const DEV_KEYS = {
   candidateKey: "sgbridge_cred_dev_candidate",
   activeKey: "sgbridge_cred_dev",
@@ -50,20 +51,15 @@ function validCandidate(value) {
   return true;
 }
 
-/* Mock /credential-proof validation (see PROMOTION_GATE_DESIGN.md §3).
- * The proof binds the candidate to a server-issued token id without
- * ever transmitting the token itself. */
-function validProof(proof, oldTokenId) {
-  if (!proof || typeof proof !== "object") return false;
-  if (proof.ok !== true) return false;
-  if (proof.fingerprint_matches !== true) return false;
-  if (typeof proof.token_id !== "string" || !proof.token_id) return false;
-  if (proof.token_id === oldTokenId) return false;
-  if (typeof proof.issued_at !== "number") return false;
-  const now = Date.now();
-  if (proof.issued_at > now + PROOF_FUTURE_SKEW_MS) return false;
-  if (now - proof.issued_at > PROOF_FRESH_MS) return false;
-  return true;
+/* Cryptographically authenticated reference proof, never a self-asserted
+ * fingerprint_matches boolean. The pinned public key and challenge nonce
+ * MUST be trusted inputs from outside the response and NOT supplied by
+ * the server's proof payload. This is Node-only reference code. */
+function validProof(proof, oldTokenId, candidate, expectedNonce, pinnedPublicKeyPem,
+                    kind) {
+  return validSignedProof(proof, {
+    candidate, oldTokenId, expectedNonce, pinnedPublicKeyPem, kind,
+  });
 }
 
 /* Clears the candidate key. Uses store.remove() when available;
@@ -85,12 +81,17 @@ function clearCandidate(store, candidateKey) {
   }
 }
 
-/* Promotes a staged candidate to the active slot. Fails closed at
- * every step: any failure before the read-back verification leaves
- * the active token unchanged and the candidate intact. See
- * PROMOTION_GATE_DESIGN.md §4 for the full sequence. */
-function promote(store, { keys, proof, oldTokenId }) {
+/* Promotes only when the signed proof verifies against the candidate.
+ * A store write may persist and then report failure, so an ambiguous
+ * write DOES NOT guarantee the original active value is unchanged.
+ * The result must be reconciled before any further rotation. */
+function promote(store, { keys, proof, oldTokenId, expectedNonce, pinnedPublicKeyPem }) {
   const { candidateKey, activeKey, statusKey } = keys;
+  const kind = candidateKey === DEV_KEYS.candidateKey &&
+      activeKey === DEV_KEYS.activeKey && statusKey === DEV_KEYS.statusKey ?
+      "dev" : candidateKey === KEY_KEYS.candidateKey &&
+      activeKey === KEY_KEYS.activeKey && statusKey === KEY_KEYS.statusKey ?
+      "localkey" : null;
   const writeStatus = (s) => {
     try { store.write(s, statusKey); } catch (_e) { /* best-effort */ }
   };
@@ -99,6 +100,8 @@ function promote(store, { keys, proof, oldTokenId }) {
     return { ok: false, status };
   };
 
+  if (!kind) return { ok: false, status: "promotion_invalid_keys" };
+
   let candidate;
   try {
     candidate = store.read(candidateKey);
@@ -106,25 +109,15 @@ function promote(store, { keys, proof, oldTokenId }) {
     return fail("promotion_store_error");
   }
   if (candidate === undefined || candidate === null) {
-    /* No candidate. If the last promotion completed and nothing has
-     * been staged since, this is a repeat attempt after a successful
-     * promotion (candidate cleared), not a failure: report the
-     * already-promoted no-op. Any other last status means there is
-     * genuinely nothing to promote. */
-    let lastStatus = null;
-    try {
-      lastStatus = store.read(statusKey);
-    } catch (_e) { /* fall through to no_candidate */ }
-    if (lastStatus === "promotion_done") {
-      writeStatus("promotion_already_active");
-      return { ok: true, status: "promotion_already_active" };
-    }
+    /* A best-effort status marker is NOT an authorization proof:
+     * active state may have changed after a previous promotion. */
     return fail("promotion_no_candidate");
   }
   if (!validCandidate(candidate)) {
     return fail("promotion_invalid_candidate");
   }
-  if (!validProof(proof, oldTokenId)) {
+  if (!validProof(proof, oldTokenId, candidate, expectedNonce,
+                  pinnedPublicKeyPem, kind)) {
     return fail("promotion_invalid_proof");
   }
   let active;
