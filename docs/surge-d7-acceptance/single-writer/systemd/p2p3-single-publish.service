@@ -1,0 +1,33 @@
+# PROPOSAL ONLY. DO NOT enable on the live VPS until source-adapter tests
+# and site-specific paths/STOP/authentication/backup checks are accepted.
+[Unit]
+Description=Surge single-writer candidate generator and guarded publisher
+Documentation=https://github.com/zsh199410/kanyu-app/issues/73
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/p2p3-single-writer/release-ready
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/p2p3-single-writer
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/p2p3-single-writer/production.env
+# Check legacy writers only after they are separately disabled/drained/masked.
+ExecStartPre=/usr/bin/python3 /opt/p2p3-single-writer/single-writer/single_writer.py check
+ExecStart=/usr/bin/python3 /opt/p2p3-single-writer/single-writer/production_cycle.py
+TimeoutStartSec=300
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/p2p3-single-writer /opt/free-node-program/publish /opt/surge-bridge/modules
+StandardOutput=journal
+StandardError=journal
+# Never auto-retry a failed publishing attempt: fail-closed on errors.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
