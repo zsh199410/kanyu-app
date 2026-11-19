@@ -314,6 +314,75 @@ class TestSingleWriterFailures(unittest.TestCase):
             processes=lambda: list(benign_ps))
         self.assertFalse(proven)
 
+    def test_masked_service_stale_result_matches_actual_guard(self):
+        # A masked/inactive/dead service cannot restart, regardless of
+        # its last systemd Result. The guard and production ban must agree.
+        import importlib.util
+        from pathlib import Path
+
+        guard_path = (Path(__file__).resolve().parent.parent
+                      / "legacy-writer-guard" / "legacy-writer-guard.py")
+        spec = importlib.util.spec_from_file_location(
+            "_surge_legacy_guard_contract", guard_path)
+        guard = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(guard)
+
+        base = {
+            "LoadState": "loaded", "UnitFileState": "disabled",
+            "ActiveState": "inactive", "SubState": "dead",
+            "MainPID": "0", "ControlPID": "0", "Job": "",
+            "Result": "success"
+        }
+        units = {
+            unit: dict(base)
+            for unit in (guard.TIMERS + guard.SERVICES)
+        }
+        for unit in guard.SERVICES:
+            units[unit].update(
+                LoadState="masked", UnitFileState="masked",
+                Result="signal"
+            )
+        show = lambda name: dict(units[name])
+        processes = lambda: ["1 /usr/lib/systemd/systemd"]
+
+        # The exact production pair must accept the same safe system state.
+        self.assertTrue(guard.check(show=show, processes=processes)[0])
+        okay, details = sw.legacy_ban_proof(
+            show=show, processes=processes,
+            require_masked_services=True
+        )
+        self.assertTrue(okay, details)
+        self.assertFalse(any(
+            item["check"].startswith("service_result_success:")
+            for item in details
+        ))
+
+        # Merely disabled services with a stale 'signal' Result still
+        # fail the historical non-production relaxed-mode chain.
+        for unit in guard.SERVICES:
+            units[unit].update(
+                LoadState="loaded", UnitFileState="disabled",
+                Result="signal"
+            )
+        self.assertFalse(sw.legacy_ban_proof(
+            show=show, processes=processes,
+            require_masked_services=False
+        )[0])
+
+        # Masked but still active / holding a PID is never drained.
+        for unit in guard.SERVICES:
+            units[unit].update(
+                LoadState="masked", UnitFileState="masked",
+                Result="signal"
+            )
+        units["pool-publish.service"]["ActiveState"] = "active"
+        units["pool-publish.service"]["MainPID"] = "900"
+        self.assertFalse(guard.check(show=show, processes=processes)[0])
+        self.assertFalse(sw.legacy_ban_proof(
+            show=show, processes=processes,
+            require_masked_services=True
+        )[0])
+
     # atomic_write: a failed write leaves the destination untouched and
     # no temp file behind.
     def test_f07_atomic_write_failure_leaves_destination_intact(self):
