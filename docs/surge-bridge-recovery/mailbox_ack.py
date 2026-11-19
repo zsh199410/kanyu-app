@@ -125,7 +125,7 @@ def issue_if_empty(state: dict, command: Any):
     return updated,200,{"ok":True,"issued":True},True
 
 
-def receipt_status(state: dict, command_id: int, posted_result: Any):
+def receipt_status(state: dict, command_id: int, posted_result: Any = None):
     """Read-only authenticated GET /receipt check, does NOT modify mailbox.
 
     A cached result can be confirmed after /result ACK was lost, even
@@ -139,7 +139,8 @@ def receipt_status(state: dict, command_id: int, posted_result: Any):
         return 200, {"confirmed":False}
     try:
         verified=(record["data"].get("id")==command_id and
-                  _encoded(record["data"]) == _encoded(posted_result))
+                  (posted_result is None or
+                   _encoded(record["data"]) == _encoded(posted_result)))
     except (ValueError,TypeError):
         verified=False
     return 200, {"confirmed":bool(verified)}
