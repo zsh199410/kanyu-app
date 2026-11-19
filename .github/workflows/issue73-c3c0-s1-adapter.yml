@@ -1,0 +1,29 @@
+name: Issue73 S1 real-script credential gate (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/**"
+      - ".github/workflows/issue73-c3c0-s1-adapter.yml"
+permissions:
+  contents: read
+jobs:
+  real-script-s1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check docs/surge-bridge-c3c0/bridge_fixed_v2.js
+          node --check docs/surge-bridge-c3c0/simulator.js
+          node --check docs/surge-bridge-c3c0/test_s1_live_adapter.js
+      - name: Existing v2.1 regression, storage, S1 and S3
+        working-directory: docs/surge-bridge-c3c0
+        run: |
+          node test_fixed_v2.js
+          node test_store_failure.js
+          node s1/test_s1.js
+          node s3/test_s3.js
+      - name: S1 real-script credential safety (synthetic only)
+        working-directory: docs/surge-bridge-c3c0
+        run: node test_s1_live_adapter.js
