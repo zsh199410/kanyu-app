@@ -54,6 +54,39 @@ VPS 生成订阅字节
 - 沙盒内无真机: 测试与示例中的 `phone_loaded_sha` 必须为 `"UNKNOWN"`,
   这是诚实结论, 不是缺陷。真机验证链路接通后才可填入真实 SHA。
 
+## 只读影子筛选：可以执行，但**绝不修改生产**（2026-11-19）
+
+两个纯 Python 标准库文件：
+- `shadow-selection-plan.py`：基于 `stability-ranker.py` 汇总按网络分轨的节点候选排序、可信失败的建议排除、高延迟复测；输出 `publishable=false`、`production_write_authorized=false`、`production_delete_authorized=false`。21条钉选缺失、STOP 或状态未知时所有候选不可放行。
+- `shadow-readonly-cli.py`：受信私有环境从标准输入读取一份**已脱敏** JSON 清单，输出不含节点名、节点URI、真实IP或密码的统计报告到标准输出。不打开生产文件、不发网络请求、不写文件、不触发测速POST。用于验收和审计，不是发布器。
+
+输入 JSON 必须包括：
+`candidate_names`（完整且去重的节点名称列表）、
+`pinned_names`（真实21个受保护名称）、
+`evidence_records`（原生采集证据；缺可信证明用空列表）、
+`frozen_payload_sha`（源候选冻结字节的64位小写SHA256）、
+`network_bearer`（wifi/cellular）、`stop_status`（RUNNING/STOP）。
+**请只在受信的本地设备上生成并保管清单**，不把任何实际节点URL、口令、
+手机完整配置、原始证据提交到 GitHub。没有可靠手机来源证明时
+`evidence_records=[]`，输出 `verified_observation_nodes=0`、
+`eligible_shadow_count=0`，这是诚实结果，不代表可用池为空。
+
+离线执行（先在受信机准备非生产的 `/tmp/shadow-input.json`）：
+
+```bash
+cd docs/surge-d7-acceptance
+python3 native-evidence/shadow-readonly-cli.py \
+  < /tmp/shadow-input.json
+python3 -m unittest discover -s tests -p 'test_shadow*.py' -v
+```
+
+当前**没有**将此模块部署到 VPS 定时服务或改动手机 Surge 配置。
+GitHub Actions 测试只使用 TEST-NET 虚构样例，不能当成生产池节点质量证据。
+要启用生产自动筛选，先完成可信样本覆盖和发布器数据链的独立证明，
+以及旧写手排空/防 DIRECT/回滚验收与机主单独批准。
+永久节点删除另行门禁，不能因为当前 `proposed_active_exclusion_count>0`
+就自动编辑 served/staging。
+
 ## 节点即时筛选策略（机主 2026-11-19 更新）
 
 - **可信原生连接测速失败**（同一冻结候选、真实手机加载字节证明、
