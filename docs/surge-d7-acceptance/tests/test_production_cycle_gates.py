@@ -104,6 +104,15 @@ class ProductionCycleGates(unittest.TestCase):
                 prod.run_cycle(env=env,mode="publish",
                                previewer=self.preview_same)
 
+    def test_legacy_stop_sentinel_still_blocks_new_writer(self):
+        with tempfile.TemporaryDirectory() as d:
+            env, served, staging, _, _ = self.fixture(d)
+            (served.parent/"STOP").write_text("STOP",encoding="utf-8")
+            with self.assertRaisesRegex(prod.CycleRefused,"stop_or_unknown_state"):
+                prod.run_cycle(env=env,mode="publish",
+                               previewer=self.preview_same)
+            self.assertEqual(served.read_bytes(),staging.read_bytes())
+
     def test_same_bytes_calls_single_writer_with_guard_default(self):
         with tempfile.TemporaryDirectory() as d:
             env, served, staging, stop, _ = self.fixture(d)
