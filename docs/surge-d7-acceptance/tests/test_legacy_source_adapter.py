@@ -63,6 +63,7 @@ def modules():
 
 def yaml_loader(_):
     return {
+        "publish_max_lines":150,"per_country_cap":40,
         "publish_fresh_hours":24,"publish_max_vps_ms":300,
         "publish_min_pass_rate":0.5,"winner_clean_enabled":False,
         "winner_clean_window_days":1,"winner_clean_min_winner_days":1,
