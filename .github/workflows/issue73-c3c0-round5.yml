@@ -1,0 +1,19 @@
+name: Issue73 C3-C0 Round 5 signed-proof negative control
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/test_signed_proof_negative_control.js"
+      - ".github/workflows/issue73-c3c0-round5.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check docs/surge-bridge-c3c0/test_signed_proof_negative_control.js
+      - name: Signed-proof negative control (5 hostile proofs fail closed)
+        run: node docs/surge-bridge-c3c0/test_signed_proof_negative_control.js

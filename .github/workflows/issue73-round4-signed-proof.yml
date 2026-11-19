@@ -1,0 +1,27 @@
+name: Issue73 Round4 signed promotion proof reference
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/signed_promotion_proof.js"
+      - "docs/surge-bridge-c3c0/promotion_gate.js"
+      - "docs/surge-bridge-c3c0/test_promotion_gate.js"
+      - "docs/surge-bridge-c3c0/test_signed_promotion_proof.js"
+      - ".github/workflows/issue73-round4-signed-proof.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check docs/surge-bridge-c3c0/signed_promotion_proof.js
+          node --check docs/surge-bridge-c3c0/promotion_gate.js
+          node --check docs/surge-bridge-c3c0/test_promotion_gate.js
+          node --check docs/surge-bridge-c3c0/test_signed_promotion_proof.js
+      - name: Existing 17 promotion regressions with ephemeral Ed25519 proofs
+        run: node docs/surge-bridge-c3c0/test_promotion_gate.js
+      - name: Independent 14 adversarial signed-proof cases
+        run: node docs/surge-bridge-c3c0/test_signed_promotion_proof.js
