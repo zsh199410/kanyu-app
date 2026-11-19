@@ -36,7 +36,9 @@ def _commit(current: dict, transition, posted: Any, *, now: float, persist):
     try:
         # The private original must atomically save and fsync (or have an
         # audited durable atomic-save guarantee) BEFORE returning.
-        persist(updated)
+        persisted = persist(updated)
+        if persisted is False:
+            raise OSError("durable_store_refused")
     except Exception:
         # No exception contents on wire or public logs.
         return 503, {"ok": False, "accepted": False,
