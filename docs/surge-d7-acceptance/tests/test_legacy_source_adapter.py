@@ -155,33 +155,33 @@ class AdapterTests(unittest.TestCase):
             # Importing this fixture CLI would raise: only the old
             # load_yaml_simple FunctionDef may execute.
             (pool/"cli.py").write_text(
-                'raise RuntimeError("pool.cli module imported: forbidden")\\n'
-                'def load_yaml_simple(path):\\n'
-                '    out = {}\\n'
-                '    for raw in open(path, encoding="utf-8"):\\n'
-                '        if raw.strip().startswith("#") or not raw.strip():\\n'
-                '            continue\\n'
-                '        key, val = raw.strip().split(":",1)\\n'
-                '        val=val.strip()\\n'
-                '        if val in ("true","false"):\\n'
-                '            out[key]=(val=="true")\\n'
-                '        elif val.isdecimal():\\n'
-                '            out[key]=int(val)\\n'
-                '        elif val.replace(".", "", 1).isdecimal():\\n'
-                '            out[key]=float(val)\\n'
-                '        else:\\n'
-                '            out[key]=val\\n'
-                '    return out\\n',
+                'raise RuntimeError("pool.cli module imported: forbidden")\n'
+                'def load_yaml_simple(path):\n'
+                '    out = {}\n'
+                '    for raw in open(path, encoding="utf-8"):\n'
+                '        if raw.strip().startswith("#") or not raw.strip():\n'
+                '            continue\n'
+                '        key, val = raw.strip().split(":",1)\n'
+                '        val=val.strip()\n'
+                '        if val in ("true","false"):\n'
+                '            out[key]=(val=="true")\n'
+                '        elif val.isdecimal():\n'
+                '            out[key]=int(val)\n'
+                '        elif val.replace(".", "", 1).isdecimal():\n'
+                '            out[key]=float(val)\n'
+                '        else:\n'
+                '            out[key]=val\n'
+                '    return out\n',
                 encoding="utf-8")
             (root/"config.yaml").write_text(
-                "publish_max_lines: 150\\n"
-                "publish_fresh_hours: 24\\n"
-                "publish_max_vps_ms: 300\\n"
-                "publish_min_pass_rate: 0.5\\n"
-                "winner_clean_enabled: true\\n"
-                "winner_clean_window_days: 1\\n"
-                "winner_clean_min_winner_days: 1\\n"
-                "vmess_tls_only: true\\n",
+                "publish_max_lines: 150\n"
+                "publish_fresh_hours: 24\n"
+                "publish_max_vps_ms: 300\n"
+                "publish_min_pass_rate: 0.5\n"
+                "winner_clean_enabled: true\n"
+                "winner_clean_window_days: 1\n"
+                "winner_clean_min_winner_days: 1\n"
+                "vmess_tls_only: true\n",
                 encoding="utf-8")
             x=adapt.normalize_config(root/"config.yaml", {})
             self.assertEqual(x["publish_fresh_hours"],24)
@@ -195,7 +195,7 @@ class AdapterTests(unittest.TestCase):
             pool=root/"pool"
             pool.mkdir()
             (pool/"cli.py").write_text(
-                'def unrelated(path):\\n    return {}\\n',
+                'def unrelated(path):\n    return {}\n',
                 encoding="utf-8")
             with self.assertRaisesRegex(adapt.LegacyAdapterRefused,
                                         "legacy_yaml_signature_unverified"):
@@ -207,8 +207,8 @@ class AdapterTests(unittest.TestCase):
             pool=root/"pool"
             pool.mkdir()
             (pool/"cli.py").write_text(
-                'def helper(path):\\n    return {}\\n'
-                'def load_yaml_simple(path):\\n    return helper(path)\\n',
+                'def helper(path):\n    return {}\n'
+                'def load_yaml_simple(path):\n    return helper(path)\n',
                 encoding="utf-8")
             # No import nor helper execution is allowed.
             with self.assertRaisesRegex(adapt.LegacyAdapterRefused,
