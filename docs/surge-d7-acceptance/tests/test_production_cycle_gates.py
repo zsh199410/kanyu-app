@@ -147,6 +147,93 @@ class ProductionCycleGates(unittest.TestCase):
             with self.assertRaisesRegex(prod.CycleRefused,"unsafe_candidate_claim"):
                 prod.run_cycle(env=env,mode="publish",previewer=malicious)
 
+    @staticmethod
+    def preview_add(db, current, root, now):
+        return {
+            "proposed_bytes": current +
+                b"Extra = trojan, 192.0.2.222, 443, password=test123\\n",
+            "proposed_count": len(current.splitlines()) + 1,
+            "safe_additions_count": 1,
+            "production_write_authorized": False,
+        }, {
+            "decision": "REVIEW_GENERATED_CHANGES",
+            "production_delete_authorized": False,
+        }
+
+    def test_additions_rejected_without_new_explicit_release(self):
+        with tempfile.TemporaryDirectory() as d:
+            env, served, staging, _, _ = self.fixture(d)
+            original=served.read_bytes()
+            called=[]
+            x=prod.run_cycle(env=env,mode="publish",
+                             previewer=self.preview_add,
+                             publisher=lambda **k:called.append(k))
+            self.assertFalse(x["ok"])
+            self.assertEqual(x["decision"],"HOLD_ADDITIONS_NOT_RELEASED")
+            self.assertEqual(called,[])
+            self.assertEqual(served.read_bytes(),original)
+
+    def test_additions_require_separate_env_authorization(self):
+        with tempfile.TemporaryDirectory() as d:
+            env, _, _, _, release = self.fixture(d)
+            release.write_text("PR93_APPROVED_VPS_ADDITIONS")
+            with self.assertRaisesRegex(prod.CycleRefused,
+                                        "vps_additions_not_authorized"):
+                prod.run_cycle(env=env,mode="publish",
+                               previewer=self.preview_add)
+
+    def test_additions_require_installed_source_attestation(self):
+        with tempfile.TemporaryDirectory() as d:
+            env, _, _, _, release = self.fixture(d)
+            release.write_text("PR93_APPROVED_VPS_ADDITIONS")
+            env["P2P3_ALLOW_VPS_ADDITIONS"]="YES_EXPLICITLY"
+            with self.assertRaisesRegex(prod.CycleRefused,"source_attestation_missing"):
+                prod.run_cycle(env=env,mode="publish",
+                               previewer=self.preview_add)
+
+    def test_additions_publish_only_with_approved_source_digest(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as d:
+            env, served, staging, stop, release=self.fixture(d)
+            release.write_text("PR93_APPROVED_VPS_ADDITIONS")
+            env["P2P3_ALLOW_VPS_ADDITIONS"]="YES_EXPLICITLY"
+            root=Path(d)/"pool"
+            root.mkdir()
+            digest=hashlib.sha256()
+            for filename in ("rules.py","crawler.py","geo.py","winner_clean.py"):
+                raw=(filename+"-safe-fixture").encode()
+                (root/filename).write_bytes(raw)
+                digest.update(filename.encode()+b"\\0")
+                digest.update(len(raw).to_bytes(8,"big"))
+                digest.update(raw)
+            env["P2P3_LEGACY_SOURCE_SHA256"]=digest.hexdigest()
+            called=[]
+            def mock_publisher(**kwargs):
+                self.assertFalse(kwargs["stop_check"]())
+                staging.write_bytes(kwargs["candidate_bytes"])
+                served.write_bytes(kwargs["candidate_bytes"])
+                called.append(kwargs)
+                return {"ok":True}
+            x=prod.run_cycle(env=env,mode="publish",
+                previewer=self.preview_add,publisher=mock_publisher)
+            self.assertTrue(x["ok"])
+            self.assertTrue(x["production_changed"])
+            self.assertEqual(x["new_additions"],1)
+            self.assertEqual(x["decision"],"VPS_ADDITIONS_PUBLISHED")
+            self.assertEqual(len(called),1)
+            self.assertEqual(served.read_bytes(),staging.read_bytes())
+
+    def test_additions_wrong_attestation_refused_before_write(self):
+        with tempfile.TemporaryDirectory() as d:
+            env, served, staging, stop, release=self.fixture(d)
+            release.write_text("PR93_APPROVED_VPS_ADDITIONS")
+            env["P2P3_ALLOW_VPS_ADDITIONS"]="YES_EXPLICITLY"
+            env["P2P3_LEGACY_SOURCE_SHA256"]="a"*64
+            with self.assertRaisesRegex(prod.CycleRefused,"source_attestation"):
+                prod.run_cycle(env=env,mode="publish",
+                    previewer=self.preview_add,
+                    publisher=lambda **kwargs:self.fail("unexpected write"))
+
     def test_invalid_source_inputs_refuse_no_mutations(self):
         with tempfile.TemporaryDirectory() as d:
             env, served, staging, _, _ = self.fixture(d)
