@@ -1,0 +1,21 @@
+name: Issue73 S1 Shortcuts bootstrap isolated
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/bootstrap_candidate_shortcuts.template.js"
+      - "docs/surge-bridge-c3c0/test_bootstrap_candidate_shortcuts.js"
+      - ".github/workflows/issue73-s1-shortcuts-bootstrap.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static JavaScript syntax
+        run: |
+          node --check docs/surge-bridge-c3c0/bootstrap_candidate_shortcuts.template.js
+          node --check docs/surge-bridge-c3c0/test_bootstrap_candidate_shortcuts.js
+      - name: Candidate-only bootstrap test (no network, synthetic tokens)
+        run: node docs/surge-bridge-c3c0/test_bootstrap_candidate_shortcuts.js
