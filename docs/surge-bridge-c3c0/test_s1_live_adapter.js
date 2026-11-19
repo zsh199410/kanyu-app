@@ -45,7 +45,7 @@ async function main(){
     assert.equal(o.httpCalls.length,0);
   });
   await test("storage read throws -> strict fail closed",async()=>{
-    const {o}=await play({dev:DEV,cfg:{storeReadThrows:true},command:{id:NEW,actions:[]}});
+    const {o}=await play({dev:DEV,cfg:{credentialReadThrows:true},command:{id:NEW,actions:[]}});
     assert.equal(o.httpCalls.length,0);
     assert.equal(o.dispatches,0);
   });
