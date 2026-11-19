@@ -73,6 +73,10 @@ test("wrong or absent nonce rejected",()=>{
 test("old exposed token id rejected",()=>{
   assert.equal(verify(signed({token_id:OLD_ID})),false);
 });
+test("missing old-token identity fails closed even with a valid signature",()=>{
+  assert.equal(verify(signed(),TOKEN,{oldTokenId:undefined}),false);
+  assert.equal(verify(signed(),TOKEN,{oldTokenId:""}),false);
+});
 test("expired, too-old, future and non-integer proofs rejected",()=>{
   const now=Date.now();
   for (const p of [
