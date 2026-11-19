@@ -20,6 +20,10 @@
 "use strict";
 
 const VALID_PHASES = new Set(["in_progress", "result_ready"]);
+// Quarantine the incident's inherited command INDEPENDENT of first-run
+// mailbox timing, legacy checkpoint units, or ledger contents. It is
+// OUTCOME_UNKNOWN; no automatic action execution or /result POST is safe.
+const FENCED_LEGACY_COMMAND_ID = 1795063030;
 
 function validId(value) {
   return Number.isSafeInteger(value) && value >= 0;
@@ -114,6 +118,13 @@ async function runOnce(io) {
   try { cmd = await io.poll(); }
   catch (_) {
     return {decision:"POLL_FAILED",action_executed:false};
+  }
+  // This guard deliberately precedes ANY new-ledger bootstrap/reconciliation
+  // or dispatch. A bootstrap that observed an empty mailbox must not
+  // make the inherited old command executable on the next cron tick.
+  if (cmd && cmd.id === FENCED_LEGACY_COMMAND_ID) {
+    await diagnose(io,"LEGACY_PENDING_FENCED",cmd.id,legacyId,"none");
+    return {decision:"LEGACY_COMMAND_QUARANTINED",action_executed:false};
   }
   const raw=io.getLedger();
   let state;
@@ -211,4 +222,4 @@ async function runOnce(io) {
   const ack=await acknowledge(io,claimed,result,legacyId);
   return {...ack,action_executed:true};
 }
-module.exports={runOnce,validId,saneState,orderMillis,newerRawId};
+module.exports={runOnce,validId,saneState,orderMillis,newerRawId,FENCED_LEGACY_COMMAND_ID};
