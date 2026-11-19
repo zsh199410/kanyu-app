@@ -1,0 +1,27 @@
+name: Issue73 C3-C0 hermetic rollback gate
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/rollback_test.sh"
+      - "docs/surge-bridge-c3c0/bridge_fixed_v2.js"
+      - "docs/surge-bridge-c3c0/v1/bridge_fixed.js"
+      - ".github/workflows/issue73-c3c0-hermetic-rollback.yml"
+permissions:
+  contents: read
+jobs:
+  rollback-isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: bash -n docs/surge-bridge-c3c0/rollback_test.sh
+      - name: Hermetic code-only rollback preserves state
+        run: bash docs/surge-bridge-c3c0/rollback_test.sh
+      - name: Negative control detects a corrupted state
+        run: |
+          if bash docs/surge-bridge-c3c0/rollback_test.sh --inject-state-change; then
+            echo "FAIL: state mutation incorrectly accepted"
+            exit 1
+          fi
+          echo "PASS: injected mutation rejected"
