@@ -198,6 +198,7 @@ class ProductionCycleGates(unittest.TestCase):
             env, _, _, _, release = self.fixture(d)
             release.write_text("PR93_APPROVED_VPS_ADDITIONS")
             env["P2P3_ALLOW_VPS_ADDITIONS"]="YES_EXPLICITLY"
+            env.pop("P2P3_LEGACY_SOURCE_SHA256")
             with self.assertRaisesRegex(prod.CycleRefused,"source_attestation_missing"):
                 prod.run_cycle(env=env,mode="publish",
                                previewer=self.preview_add)
