@@ -1,0 +1,47 @@
+# Issue73 C3-C0 v2 full isolated regression (no network, no phone, no secrets).
+#
+# Runs every suite in docs/surge-bridge-c3c0/ so the PR #97 package
+# re-runs independently from a clean checkout:
+#   - test_fixed_v2.js        v2 bridge regressions (28 PASS / 1 LIMITATION)
+#   - test_store_failure.js   PR #99 durable-store injections (5/5)
+#   - s1/test_s1.js           secret-free distribution (11/0/0)
+#   - s3/test_s3.js           server ID allocator draft (see s3_out.json)
+# Modelled on GPT's PR #99 workflow issue73-c3c0-v2-storage.yml, extended
+# to the full set. Every suite exits non-zero on any FAIL.
+name: Issue73 C3-C0 v2 full isolated regression
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/**"
+      - ".github/workflows/issue73-c3c0-v2.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check (every .js file in the package)
+        run: |
+          for f in docs/surge-bridge-c3c0/bridge_fixed_v2.js \
+                   docs/surge-bridge-c3c0/test_fixed_v2.js \
+                   docs/surge-bridge-c3c0/test_store_failure.js \
+                   docs/surge-bridge-c3c0/simulator.js \
+                   docs/surge-bridge-c3c0/v1/bridge_fixed.js \
+                   docs/surge-bridge-c3c0/s1/test_s1.js \
+                   docs/surge-bridge-c3c0/s3/test_s3.js; do
+            node --check "$f"
+          done
+      - name: v2 bridge regressions (no network)
+        working-directory: docs/surge-bridge-c3c0
+        run: node test_fixed_v2.js
+      - name: Durable-store failure injections (no network)
+        working-directory: docs/surge-bridge-c3c0
+        run: node test_store_failure.js
+      - name: S1 secret-free distribution (no network)
+        working-directory: docs/surge-bridge-c3c0
+        run: node s1/test_s1.js
+      - name: S3 ID allocator draft (no network)
+        working-directory: docs/surge-bridge-c3c0
+        run: node s3/test_s3.js
