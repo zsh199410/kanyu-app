@@ -113,6 +113,25 @@ class BuildCandidateTests(unittest.TestCase):
         with self.assertRaisesRegex(mod.CandidateRefused, "canonical_21"):
             self.run_candidate(**inp)
 
+    def test_real_25_db_pins_minus_four_blocklisted_yield_21(self):
+        inp = test_input()
+        blocked = [
+            ("trojan", f"203.0.113.{i}", 8000 + i)
+            for i in range(1, 5)
+        ]
+        inp["db_pins"] = {
+            **{k: f"美国{i}" for i, k in enumerate(PINS, start=1)},
+            **{k: f"封禁{i}" for i, k in enumerate(blocked, start=1)}
+        }
+        inp["blocked_keys"] = set(blocked)
+        inp["pinned_file_lines"] += [
+            line(f"封禁{i}", k) for i, k in enumerate(blocked, start=1)
+        ]
+        out = self.run_candidate(**inp)
+        self.assertEqual(out["canonical_pin_count"], 21)
+        self.assertFalse(any("封禁" in line for line in
+                             out["proposed_bytes"].decode().splitlines()))
+
     def test_duplicate_key_in_pinned_refuses(self):
         inp = test_input()
         inp["pinned_file_lines"].append(inp["pinned_file_lines"][0])
