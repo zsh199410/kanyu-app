@@ -13,7 +13,7 @@ import json
 from dataclasses import dataclass
 from typing import Callable
 
-from nonce_ledger_sqlite import NonceLedger, NonceLedgerError, binding
+from nonce_ledger_sqlite import NonceLedger, binding
 
 PURPOSE = "issue73/credential-promotion/v1"
 DEFAULT_TTL_MS = 60_000
@@ -90,7 +90,7 @@ class SignedProofIssuer:
                 nonce, kind=kind, candidate_fingerprint=fp,
                 token_id=token_id, now_ms=now_ms
             )
-        except (NonceLedgerError, Exception) as exc:
+        except Exception as exc:
             # This must not authorize a retry. The DB may have committed.
             raise ProofIssuanceError("nonce_commit_unknown") from exc
         if not was_consumed:
