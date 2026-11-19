@@ -16,7 +16,18 @@ class ProductionCycleGates(unittest.TestCase):
         stop.write_text("RUNNING", encoding="utf-8")
         release = Path(directory) / "release-ready"
         release.write_text("PR93_APPROVED_SAME_BYTES_ONLY", encoding="utf-8")
+        import hashlib
+        source_dir = Path(directory) / "pool"
+        source_dir.mkdir()
+        source_digest = hashlib.sha256()
+        for filename in ("rules.py", "crawler.py", "geo.py", "winner_clean.py"):
+            raw = (filename + "-approved-fixture").encode()
+            (source_dir / filename).write_bytes(raw)
+            source_digest.update(filename.encode() + b"\\0")
+            source_digest.update(len(raw).to_bytes(8, "big"))
+            source_digest.update(raw)
         env = {
+            "P2P3_LEGACY_SOURCE_SHA256": source_digest.hexdigest(),
             "P2P3_POOL_DB": str(db),
             "P2P3_POOL_SERVED": str(served),
             "P2P3_POOL_STAGING": str(staging),
