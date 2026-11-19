@@ -17,8 +17,8 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 EnvironmentFile=/etc/p2p3-single-writer/production.env
 # Check legacy writers only after they are separately disabled/drained/masked.
 ExecStartPre=/usr/bin/python3 /opt/p2p3-single-writer/single-writer/single_writer.py check
-ExecStart=/usr/bin/python3 /opt/p2p3-single-writer/single-writer/production_cycle.py
-TimeoutStartSec=300
+ExecStart=/opt/free-node-program/venv/bin/python /opt/p2p3-single-writer/single-writer/production_cycle.py --publish
+TimeoutStartSec=900
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
