@@ -100,9 +100,10 @@ def _preflight(db_path, served_path, staging_path):
     pool = _contract._parse_pool(served)
     pins = {k: n for k, n in db["db_pins"].items()
             if k not in db["blocked_keys"]}
-    if (len(pins) != 21 or len(set(pins.values())) != 21 or
-            not set(pins.values()) <= pool.keys()):
+    if len(pins) != 21 or len(set(pins.values())) != 21:
         raise CycleRefused("canonical_pins_missing")
+    if not set(pins.values()) <= pool.keys():
+        raise CycleRefused("pinned_names_not_in_served")
     blocked_names = {n for k, n in db["db_pins"].items()
                      if k in db["blocked_keys"]}
     if blocked_names & pool.keys():
@@ -245,6 +246,8 @@ def run_cycle(*, env=None, mode="inspect-only", now=None, publisher=None,
         lock_timeout=30.0,
     )
     # Fail closed on mismatch, never claim a successful publish.
+    if not isinstance(receipt, dict) or receipt.get("ok") is not True:
+        raise CycleRefused("writer_receipt_invalid")
     if (_read_bytes(cfg["served"]) != served or
             _read_bytes(cfg["staging"]) != served):
         raise CycleRefused("post_publish_sha_mismatch")
