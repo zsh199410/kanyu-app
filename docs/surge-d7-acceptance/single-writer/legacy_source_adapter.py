@@ -127,6 +127,21 @@ def _parse_fn(crawler):
     return parse
 
 
+def _private_hosts_path(root):
+    """Reject missing/ambiguous private-host denylist rather than using {}."""
+    base = Path(root)
+    choices = [
+        base / "private-hosts.txt",
+        base / "private_hosts.txt",
+        base / "data" / "private-hosts.txt",
+        base / "data" / "private_hosts.txt",
+    ]
+    found = [p for p in choices if p.is_file() and not p.is_symlink()]
+    if len(found) != 1:
+        raise LegacyAdapterRefused("private_hosts_path_missing_or_ambiguous")
+    return found[0]
+
+
 def _pinned_file(base):
     # Matches disclosed old priority: bridge override, then base.
     choices = [
@@ -191,7 +206,7 @@ def make_preview(*, db_snapshot, current_pool, legacy_root,
     config = normalize_config(root / "config.yaml", db_snapshot["config_raw"],
                               yaml_loader=yaml_loader)
     parse = _parse_fn(crawler)
-    private = rules.load_private_hosts(str(root / "private-hosts.txt"))
+    private = rules.load_private_hosts(str(_private_hosts_path(root)))
     if pinned_lines_provider is None:
         pinned_lines = _pinned_file(root)
     else:
