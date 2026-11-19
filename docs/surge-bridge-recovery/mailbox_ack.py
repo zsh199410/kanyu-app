@@ -23,6 +23,7 @@ ALLOWED_DIAG = frozenset({
     "LEDGER_CORRUPT", "PENDING_ID_MISMATCH", "OUTCOME_UNKNOWN",
     "RESULT_DELIVERY_UNKNOWN", "ACK_UNVERIFIED", "DUPLICATE_OR_FENCED",
     "MALFORMED_COMMAND", "INVALID_RESULT", "RESULT_NOT_DURABLE",
+    "PENDING_WITHOUT_COMMAND", "RECEIPT_RECONCILED",
 })
 
 
@@ -122,3 +123,23 @@ def issue_if_empty(state: dict, command: Any):
     updated=deepcopy(state)
     updated["cmd"]=deepcopy(command)
     return updated,200,{"ok":True,"issued":True},True
+
+
+def receipt_status(state: dict, command_id: int, posted_result: Any):
+    """Read-only authenticated GET /receipt check, does NOT modify mailbox.
+
+    A cached result can be confirmed after /result ACK was lost, even
+    though the server has already removed cmd. A new pending command is
+    NOT erased by this check.
+    """
+    if not isinstance(state, dict) or not _valid_id(command_id):
+        return 400, {"confirmed": False}
+    record=state.get("result")
+    if not isinstance(record,dict) or not isinstance(record.get("data"),dict):
+        return 200, {"confirmed":False}
+    try:
+        verified=(record["data"].get("id")==command_id and
+                  _encoded(record["data"]) == _encoded(posted_result))
+    except (ValueError,TypeError):
+        verified=False
+    return 200, {"confirmed":bool(verified)}
