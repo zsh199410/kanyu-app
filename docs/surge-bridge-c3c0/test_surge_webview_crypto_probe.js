@@ -64,9 +64,14 @@ async function execute({
     assert.ok(writes.every((v) => v.key !== k), "forbidden write to " + k);
   }
   for (const [k, v] of before) assert.equal(store.get(k), v);
+  const allowedStatuses = new Set([
+    "crypto_ready", "no_webcrypto", "no_text_encoder", "sha256_failed",
+    "ed25519_unavailable", "signature_failed", "random_unavailable",
+    "probe_error"
+  ]);
   assert.ok(writes.every(({key, value}) =>
-    key === STATUS_KEY && typeof value === "string" &&
-    /^[a-z_]+$/.test(value)), "only fixed-format non-secret status");
+    key === STATUS_KEY && allowedStatuses.has(value)),
+    "only allowlisted non-secret status");
   return { status: store.get(STATUS_KEY) || null, writes, store };
 }
 
