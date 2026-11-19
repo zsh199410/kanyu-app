@@ -82,6 +82,9 @@ private struct PosterFamilyExportCanvas: View {
         .foregroundStyle(snapshot.kind.ink)
         .padding(45)
         .frame(width: 1080, alignment: .topLeading)
+        // Short reports must still satisfy the full-resolution export contract.
+        // Keep content top-aligned; longer reports retain their natural height.
+        .frame(minHeight: 1081, alignment: .top)
         .background(snapshot.kind.paper)
     }
 }
