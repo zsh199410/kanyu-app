@@ -65,3 +65,32 @@ then: `DEVICE_EVIDENCE_CORRELATION=OPEN`,
   server deployment. Those need explicit launch approval and staged
   release in the private environment — not one user sentence
   "真机通过".
+
+## Scope clarification addendum (Round 6, 2026-11-20)
+
+**The owner's reported device acceptance covers the NODE POOL
+only.** In chat on 2026-11-20 06:30 CST the owner clarified the
+"真机验收通过" report with the single word "节点池" (node pool).
+That clarification is recorded here as the scope of
+`DEVICE_ACCEPTANCE=USER_REPORTED`. It does **NOT** cover any of
+the following, and those rows stay UNVERIFIED:
+
+- Ed25519 / WebCrypto support on the phone (Surge WebView
+  `engine=webview` capability). The PR #104 probe has NOT been run
+  on the real device and is NOT approved for auto-execution. CI
+  passing in a Node VM is not device proof.
+- The two cron cycles actually verifying the old-ID fence (rows
+  5–8). A node-pool acceptance does not substitute for bridge cron
+  fence verification.
+- The logs / Shortcuts history privacy check (rows 11–14).
+- The running source script SHA, Surge version, or iOS version
+  (rows 2–4) — no values for these were supplied with the
+  node-pool report.
+
+Row 15 (acceptance scope) is therefore recorded as:
+**scope = node pool only; bridge / Ed25519 / cron-fence /
+logs-privacy scope NOT covered.** The node-pool acceptance and
+Ed25519 support are different things and must not be conflated.
+Nothing in this addendum invents device evidence; every row
+remains UNVERIFIED until the owner supplies the observation from
+the real device with source + time.

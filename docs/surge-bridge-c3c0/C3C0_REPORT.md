@@ -612,3 +612,68 @@ GitHub #73) and are not secrets.
   no real signed `/credential-proof`, no durable nonce replay
   rejection, no real server token-table persistence yet. P2/P3 NOT
   opened.
+
+## Round 6 addendum (2026-11-20) — PR #104/#105 WebView crypto cross-review
+
+- **Trigger:** GPT comment 7024399594 (2026-11-20 06:49 CST).
+  GPT directly submitted two isolated Draft PRs at the owner's
+  request to "continue the task": PR #104 (WebView crypto
+  capability probe, head `44ad192`, 6 commits, 4 files,
+  +415/−0) and PR #105 (WebView signed-proof verifier
+  library, head `09db336`, 4 commits, 4 files, +400/−0).
+  Neither modified Muse's branch, main, the real device,
+  the production VPS, tokens, mailbox state, or the node
+  pool.
+- **Absorption:** all 8 files byte-identical (git-apply
+  reconstruction == GitHub API fetch). Probe template SHA
+  `6b76f8ef…5eb4`, probe test SHA `fa275f32…4501`,
+  verifier SHA `02b18dbd…3bfe`, verifier test SHA
+  `21118d7d…8c8c`. Head CIs re-verified via check-runs API:
+  PR #104 head 3/3 success, PR #105 head 3/3 success.
+- **Cross-review:** RFC 8032 §7.1 vector #1 independently
+  verified with Node `crypto` (valid verifies, tampered
+  rejected, SHA-256(empty) and TextEncoder "abc" match);
+  canonical JSON field order byte-identical to PR #103
+  `payload()` (source inspection + the test's direct
+  equality assertion); probe has 0 network / device-control
+  / credential-key references, editor/intent-only trigger
+  gate, `$done` exactly once; verifier has 0 `require(`,
+  0 device-control APIs, all bindings present
+  (candidate / expectedNonce / pinned key / old token id /
+  purpose-kind / issuance-expiry / fingerprint /
+  signature), 14 fail-closed returns. Test counts match:
+  18 probe, 19 verifier.
+- **Named finding F1 (minor, coverage gap, GPT's files
+  unchanged):** the PR #104 probe does not check `atob`
+  availability, but the PR #105 verifier requires `atob`
+  and fails closed without it — so a `crypto_ready`
+  result does not guarantee the verifier can run. Fix is
+  for GPT to decide.
+- **Tests:** probe 18/18, verifier 19/0/1 (named replay
+  limitation), new replay negative control 4/0/1 (same
+  proof passes twice with reused nonce — documented
+  limitation, not a verifier failure; rejected with a
+  different nonce or candidate). Seventeen suites total:
+  **197 PASS / 0 FAIL / 1 LIMITATION**; clean-copy PASS
+  (`/tmp/c3c0-clean-copy-r6/`, 63 files).
+- **Device evidence scope note:** the owner's reported
+  device acceptance covers the NODE POOL only (chat
+  clarification "节点池"); it does NOT cover
+  Ed25519/WebCrypto support, the two cron fence
+  verifications, or the logs/Shortcuts privacy check. All
+  15 rows remain UNVERIFIED.
+  `DEVICE_EVIDENCE_CORRELATION=OPEN`.
+- **v2.2 unchanged:** 571 lines, SHA `8691e962…abfc`.
+- Full record: `C3C0_ROUND6_REPORT.md`.
+- Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`,
+  `BOOTSTRAP_SECURITY_GATE=BLOCKED`, `C3-C1=NO-GO`,
+  `PR93_CUTOVER=BLOCKED`, `AUTO_DELETE=OFF`,
+  `DEVICE_EVIDENCE_CORRELATION=OPEN`,
+  `DEVICE_ACCEPTANCE=USER_REPORTED` (node-pool scope
+  only), `RELEASE_EVIDENCE_NOT_YET_COMPLETE`, old command
+  1795063030 `OUTCOME_UNKNOWN`. The WebView probe has NOT
+  been run on the real device and is NOT approved for
+  auto-execution; the PR #105 verifier is a library, NOT
+  a standalone Surge script; the stateless replay
+  limitation is open (durable one-time nonce consumption
+  still required). P2/P3 NOT opened.
