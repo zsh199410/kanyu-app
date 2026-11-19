@@ -1,6 +1,7 @@
 {
   "suite": "s1-secret-free-distribution",
-  "pass": 8,
+  "revision": "rev1 (GPT review 7010615307)",
+  "pass": 11,
   "fail": 0,
   "limitation": 0,
   "results": [
@@ -24,9 +25,9 @@
     },
     {
       "id": "S1-T4",
-      "name": "rotation cutover (parallel window, then revoke)",
+      "name": "rotation cutover (parallel window, credential-proof, then revoke)",
       "status": "PASS",
-      "detail": "round1-old posted=1 new-token rounds=3 audit old=2 new=6 old-after-revoke=403"
+      "detail": "round1-old fenced=1 new-polls=3 new-proofs=3 audit old-ok=1 new-ok=6 pending-unchanged=true no-legacy-result=true old-after-revoke=403"
     },
     {
       "id": "S1-T5",
@@ -36,9 +37,15 @@
     },
     {
       "id": "S1-T6",
-      "name": "rollback restores old-token acceptance",
+      "name": "rollback via pre-issued backup token (old token stays revoked)",
       "status": "PASS",
-      "detail": "posted=1 done=1"
+      "detail": "posted=1 done=1 old-token-still-403=true"
+    },
+    {
+      "id": "S1-T9",
+      "name": "rollback with no backup token -> fail-closed (leaked token not re-enabled)",
+      "status": "PASS",
+      "detail": "revoked-token run: done=1 dispatched=0 posted=0 pending-unchanged=true results-posted=0 | empty-store run: networkCalls=0"
     },
     {
       "id": "S1-T7",
@@ -51,6 +58,18 @@
       "name": "local key absent -> direct-HTTP fallback skipped",
       "status": "PASS",
       "detail": "phases=credential_present,local_key_missing,result_acked dispatched=0 posted=1"
+    },
+    {
+      "id": "S1-T10",
+      "name": "credential read throws -> 0 network calls (fail-closed)",
+      "status": "PASS",
+      "detail": "networkCalls=0 done=1 phases=credential_read_failed server-audit-entries=0"
+    },
+    {
+      "id": "S1-T11",
+      "name": "rotation acceptance never touches the mailbox",
+      "status": "PASS",
+      "detail": "fenced=3 proofs=3 dispatched=0 posted=0 pending-id=1795063030 results-posted=0 proof-calls=3"
     }
   ]
 }
