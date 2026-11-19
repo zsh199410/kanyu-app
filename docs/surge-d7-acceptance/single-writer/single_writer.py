@@ -307,16 +307,23 @@ def legacy_ban_proof(show=None, processes=None,
                            data.get("Job", "") in ("", "0"),
                            data.get("Job", "")):
                 return False, evidence
-            if not _record("service_result_success:" + unit,
-                           data.get("Result") == "success",
-                           data.get("Result", "")):
-                return False, evidence
             if require_masked_services:
+                # A genuinely masked and fully drained unit cannot be
+                # restarted. Result describes its LAST execution and is not
+                # a current liveness signal (systemctl stop may also leave
+                # success). Match the amended legacy guard: require
+                # masked+no PID/Job/inactive, but do not reject stale Result.
                 if not _record("service_masked:" + unit,
                                data.get("UnitFileState") == "masked",
                                data.get("UnitFileState", "")):
                     return False, evidence
             else:
+                # Disabled is not masked and can still be manually started.
+                # Retain stricter historical Result requirement here.
+                if not _record("service_result_success:" + unit,
+                               data.get("Result") == "success",
+                               data.get("Result", "")):
+                    return False, evidence
                 if not _record("service_disabled:" + unit,
                                data.get("UnitFileState") == "disabled",
                                data.get("UnitFileState", "")):
