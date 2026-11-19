@@ -17,6 +17,11 @@ jobs:
           node --check docs/surge-bridge-c3c0/bridge_fixed_v2.js
           node --check docs/surge-bridge-c3c0/simulator.js
           node --check docs/surge-bridge-c3c0/test_s1_live_adapter.js
+          node --check docs/surge-bridge-c3c0/bootstrap_candidate_shortcuts.template.js
+          node --check docs/surge-bridge-c3c0/test_bootstrap_candidate_shortcuts.js
+          node --check docs/surge-bridge-c3c0/bootstrap_candidate_localkey.template.js
+          node --check docs/surge-bridge-c3c0/test_bootstrap_candidate_regressions.js
+          node --check docs/surge-bridge-c3c0/s1/bootstrap_test.js
       - name: Existing v2.1 regression, storage, S1 and S3
         working-directory: docs/surge-bridge-c3c0
         run: |
@@ -27,3 +32,17 @@ jobs:
       - name: S1 real-script credential safety (synthetic only)
         working-directory: docs/surge-bridge-c3c0
         run: node test_s1_live_adapter.js
+      # Round 3C (P0-B2 evidence gap): the bootstrap suites were
+      # previously isolated-only. This step runs ALL of them in CI;
+      # any failure exits nonzero (node exits 1 on an uncaught
+      # assertion failure, and the regressions file sets
+      # process.exitCode = 1 when its SUMMARY reports FAIL > 0).
+      # The paths filter above already covers every file below
+      # (all live under docs/surge-bridge-c3c0/**), so no filter
+      # change is needed.
+      - name: Bootstrap tests — deprecated record + candidate staging (synthetic only)
+        working-directory: docs/surge-bridge-c3c0
+        run: |
+          node s1/bootstrap_test.js
+          node test_bootstrap_candidate_shortcuts.js
+          node test_bootstrap_candidate_regressions.js
