@@ -1,0 +1,268 @@
+"use strict";
+const assert=require("node:assert/strict");
+const {runOnce}=require("./bridge_delivery_state");
+
+const STUCK=1234567; // Synthetic default; incident ID is tested separately
+function fixture({cmd={id:STUCK,actions:[{type:"api",method:"GET"}]},
+                  legacy=0,ledger=null}={}) {
+  const f={
+    cmd,legacy,ledger,done:0,sent:[],diag:[],reply:null,
+    receipt:null,storageFail:false,executeFail:false,
+    getLegacyLastId(){return this.legacy},
+    getLedger(){return this.ledger},
+    putLedger(s){if(this.storageFail)return false;this.ledger=s;return true},
+    async poll(){return this.cmd},
+    async execute(command){
+      this.done++;
+      if(this.executeFail) throw Error("simulated script kill");
+      return [{ok:true,kind:"GET"}];
+    },
+    async sendResult(data){
+      this.sent.push(JSON.parse(JSON.stringify(data)));
+      if(this.reply) return this.reply;
+      return {status:200,body:{ok:true,accepted:true,acked_id:data.id}};
+    },
+    async sendDiagnostic(data){this.diag.push(data)},
+    async lookupReceipt(id,result){return this.receipt || {confirmed:false}},
+  };
+  return f;
+}
+const tests=[];
+function test(name,fn){tests.push([name,fn])}
+
+test("first migration fences a synthetic pending command and records floor",async()=>{
+ const f=fixture({legacy:STUCK});
+ const r=await runOnce(f);
+ assert.equal(r.decision,"LEGACY_PENDING_FENCED");
+ assert.equal(f.done,0);
+ assert.equal(f.sent.length,0);
+ assert.equal(JSON.parse(f.ledger).floor,STUCK);
+ assert.equal(f.diag[0].code,"LEGACY_PENDING_FENCED");
+ assert.equal(f.diag[0].legacy_last_id,STUCK);
+});
+test("23 repeated polls cannot replay an old unknown command",async()=>{
+ const f=fixture({legacy:STUCK});
+ await runOnce(f);
+ for(let i=0;i<23;i++) {
+   assert.equal((await runOnce(f)).decision,"DUPLICATE_OR_FENCED");
+ }
+ assert.equal(f.done,0);
+ assert.equal(f.sent.length,0);
+});
+test("empty first poll initializes safe floor without running actions",async()=>{
+ const f=fixture({cmd:{id:0},legacy:100});
+ assert.equal((await runOnce(f)).decision,"NO_COMMAND_BOOTSTRAPPED");
+ assert.equal(JSON.parse(f.ledger).floor,100);
+ f.cmd={id:101,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,1);
+});
+test("new command persists result and acknowledges exactly once",async()=>{
+ const f=fixture({legacy:42});
+ f.cmd={id:0};
+ await runOnce(f);
+ f.cmd={id:100,actions:[{type:"api",method:"GET"}]};
+ const r=await runOnce(f);
+ assert.equal(r.decision,"ACK_CONFIRMED");
+ assert.equal(r.action_executed,true);
+ assert.equal(f.done,1);
+ assert.equal(f.sent.length,1);
+ assert.equal(JSON.parse(f.ledger).pending,null);
+});
+test("missing network ACK caches result, retries only result not action",async()=>{
+ const f=fixture({legacy:10,cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:123,actions:[{type:"api",method:"POST"}]};
+ f.reply={status:0,body:null};
+ assert.equal((await runOnce(f)).decision,"ACK_UNVERIFIED");
+ assert.equal(JSON.parse(f.ledger).pending.phase,"result_ready");
+ assert.equal(f.done,1);
+ const original=JSON.stringify(f.sent[0]);
+ f.reply={status:200,body:{ok:true,accepted:true,acked_id:123}};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,1);
+ assert.equal(JSON.stringify(f.sent[1]),original);
+ assert.equal(JSON.parse(f.ledger).pending,null);
+});
+test("plain legacy 200 ok:true is NEVER treated as matched ACK",async()=>{
+ const f=fixture({cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:2,actions:[]};
+ f.reply={status:200,body:{ok:true}};
+ assert.equal((await runOnce(f)).decision,"ACK_UNVERIFIED");
+ assert.equal(JSON.parse(f.ledger).pending.phase,"result_ready");
+});
+test("action crash becomes OUTCOME_UNKNOWN and never retried",async()=>{
+ const f=fixture({cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:9,actions:[{type:"api",method:"POST"}]};
+ f.executeFail=true;
+ assert.equal((await runOnce(f)).decision,"OUTCOME_UNKNOWN");
+ f.executeFail=false;
+ assert.equal((await runOnce(f)).decision,"OUTCOME_UNKNOWN");
+ assert.equal(f.done,1);
+ assert.equal(f.sent.length,0);
+});
+test("no persisted claim means no execution",async()=>{
+ const f=fixture({cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:9,actions:[]};
+ f.storageFail=true;
+ assert.equal((await runOnce(f)).decision,"CHECKPOINT_WRITE_FAILED");
+ assert.equal(f.done,0);
+});
+test("a corrupt ledger never replays a command",async()=>{
+ const f=fixture({cmd:{id:99,actions:[{type:"api",method:"POST"}]},ledger:"{garbage"});
+ assert.equal((await runOnce(f)).decision,"LEDGER_CORRUPT");
+ assert.equal(f.done,0);
+});
+test("new cmd cannot overwrite an unresolved claimed command",async()=>{
+ const f=fixture({cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:9,actions:[]};
+ f.executeFail=true;
+ await runOnce(f);
+ f.cmd={id:10,actions:[]};
+ assert.equal((await runOnce(f)).decision,"PENDING_ID_MISMATCH");
+ assert.equal(f.done,1);
+});
+test("lost ACK after server clears cmd reconciles by read-only receipt",async()=>{
+ const f=fixture({cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:11,actions:[{type:"api",method:"POST"}]};
+ f.reply={status:0,body:{}};
+ await runOnce(f);
+ f.cmd={id:0};
+ f.receipt={confirmed:true};
+ assert.equal((await runOnce(f)).decision,"RECEIPT_RECONCILED");
+ assert.equal(f.done,1);
+ assert.equal(JSON.parse(f.ledger).pending,null);
+});
+test("no server receipt leaves cached result without re-execution",async()=>{
+ const f=fixture({cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:11,actions:[]};
+ f.reply={status:0,body:null};
+ await runOnce(f);
+ f.cmd={id:0};
+ assert.equal((await runOnce(f)).decision,"PENDING_WITHOUT_COMMAND");
+ assert.equal(f.done,1);
+ assert.equal(JSON.parse(f.ledger).pending.phase,"result_ready");
+});
+test("even if a newer command appears, pending receipt reconciles first",async()=>{
+ const f=fixture({cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:11,actions:[{type:"api",method:"POST"}]};
+ f.reply={status:0,body:null};
+ await runOnce(f);
+ f.cmd={id:12,actions:[{type:"api",method:"POST"}]};
+ f.receipt={confirmed:true};
+ assert.equal((await runOnce(f)).decision,"RECEIPT_RECONCILED");
+ assert.equal(f.done,1);
+ assert.equal((await runOnce(f)).decision,"ACK_UNVERIFIED");
+ assert.equal(f.done,2);
+});
+test("a diagnostic transport failure never allows command replay",async()=>{
+ const f=fixture({legacy:STUCK});
+ f.sendDiagnostic=async()=>{throw Error("offline")};
+ assert.equal((await runOnce(f)).decision,"LEGACY_PENDING_FENCED");
+ assert.equal(f.done,0);
+});
+
+
+const LEGACY_MS=1795055213880, PENDING_SEC=1795063030;
+test("regression: 13-digit ms legacy does not eternally block newer 10-digit sec IDs",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ assert.equal((await runOnce(f)).decision,"NO_COMMAND_BOOTSTRAPPED");
+ assert.equal(JSON.parse(f.ledger).floor,LEGACY_MS);
+ f.cmd={id:PENDING_SEC+1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,1);
+ assert.equal(f.sent[0].id,PENDING_SEC+1); // raw ID unchanged on wire
+});
+test("old production pending is hard fenced even before ledger bootstrap",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:PENDING_SEC,actions:[{type:"api",method:"GET"}]}});
+ assert.equal((await runOnce(f)).decision,"LEGACY_COMMAND_QUARANTINED");
+ assert.equal(f.ledger,null);
+ for(let i=0;i<23;i++) {
+   assert.equal((await runOnce(f)).decision,"LEGACY_COMMAND_QUARANTINED");
+ }
+ assert.equal(f.done,0);
+ assert.equal(f.sent.length,0);
+ assert.equal(f.ledger,null);
+ f.cmd={id:0};
+ assert.equal((await runOnce(f)).decision,"NO_COMMAND_BOOTSTRAPPED");
+ f.cmd={id:PENDING_SEC+1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,1);
+});
+test("old production command stays quarantined if it appears AFTER empty bootstrap",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ assert.equal((await runOnce(f)).decision,"NO_COMMAND_BOOTSTRAPPED");
+ const unchanged=f.ledger;
+ f.cmd={id:PENDING_SEC,actions:[{type:"api",method:"POST"}]};
+ for(let i=0;i<23;i++){
+   assert.equal((await runOnce(f)).decision,"LEGACY_COMMAND_QUARANTINED");
+ }
+ assert.equal(f.done,0);
+ assert.equal(f.sent.length,0);
+ assert.equal(f.ledger,unchanged);
+});
+test("old production command never sends cached result even with a pre-existing result_ready ledger",async()=>{
+ const cached={id:PENDING_SEC,timestamp:1795064000,outputs:[{ok:true}]};
+ const state={version:1,floor:LEGACY_MS,last_acked_id:0,
+   pending:{id:PENDING_SEC,phase:"result_ready",result:cached}};
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:PENDING_SEC,actions:[{type:"api",method:"POST"}]},ledger:JSON.stringify(state)});
+ assert.equal((await runOnce(f)).decision,"LEGACY_COMMAND_QUARANTINED");
+ assert.equal(f.done,0);
+ assert.equal(f.sent.length,0);
+});
+test("a millisecond ID issued later within same second is not silently deduped",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:LEGACY_MS+1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,1);
+ assert.equal(f.sent[0].id,LEGACY_MS+1);
+});
+test("an older millisecond ID in the same second remains deduped",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:LEGACY_MS-1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"DUPLICATE_OR_FENCED");
+ assert.equal(f.done,0);
+});
+test("a second ID for a second containing a newer ms checkpoint is safely deduped",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:Math.floor(LEGACY_MS/1000),actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"DUPLICATE_OR_FENCED");
+ assert.equal(f.done,0);
+});
+test("last acknowledged comparison carries correct ordering across raw unit switches",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ await runOnce(f);
+ // The incident's original ID remains quarantined even when numerically newer.
+ assert.equal((await runOnce(Object.assign(f,{cmd:{id:PENDING_SEC,actions:[{type:"api",method:"GET"}]}}))).decision,"LEGACY_COMMAND_QUARANTINED");
+ f.cmd={id:PENDING_SEC+1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(JSON.parse(f.ledger).last_acked_id,PENDING_SEC+1);
+ f.cmd={id:(PENDING_SEC+1)*1000+1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,2);
+ assert.equal(JSON.parse(f.ledger).last_acked_id,(PENDING_SEC+1)*1000+1);
+});
+test("a non-safe legacy epoch number fails closed without action",async()=>{
+ const f=fixture({legacy:Number.MAX_SAFE_INTEGER+1,cmd:{id:0}});
+ assert.equal((await runOnce(f)).decision,"LEGACY_CHECKPOINT_INVALID");
+ assert.equal(f.done,0);
+ assert.equal(f.sent.length,0);
+});
+
+(async()=>{
+ for(const [name,fn] of tests) {
+   await fn();
+   process.stdout.write("PASS "+name+"\n");
+ }
+ process.stdout.write(tests.length+"/"+tests.length+" bridge delivery tests passed\n");
+})().catch(err=>{process.stderr.write(String(err.stack||err)+"\n");process.exitCode=1});

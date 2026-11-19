@@ -1,0 +1,30 @@
+name: Surge Bridge Recovery Isolated
+on:
+  push:
+    branches:
+      - fix-issue73-bridge-durable-ack-20261119
+    paths:
+      - "docs/surge-bridge-recovery/**"
+      - ".github/workflows/surge-bridge-recovery-isolated.yml"
+  pull_request:
+    paths:
+      - "docs/surge-bridge-recovery/**"
+      - ".github/workflows/surge-bridge-recovery-isolated.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: JavaScript syntax
+        run: node --check docs/surge-bridge-recovery/bridge_delivery_state.js && node --check docs/surge-bridge-recovery/test_bridge_delivery_state.js
+      - name: Phone bridge crash and ACK transitions
+        run: node docs/surge-bridge-recovery/test_bridge_delivery_state.js
+      - name: Surge diagnostic-only canary syntax
+        run: node --check docs/surge-bridge-recovery/surge_diagnostic_canary.template.js && node --check docs/surge-bridge-recovery/test_surge_diagnostic_canary.js
+      - name: No-replay diagnostic canary isolated simulation
+        run: node docs/surge-bridge-recovery/test_surge_diagnostic_canary.js
+      - name: Python server mailbox and durable commit transitions
+        run: python3 -m unittest discover -s docs/surge-bridge-recovery -p 'test_*.py' -v
