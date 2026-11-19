@@ -2,9 +2,9 @@
 /* C3-C0 Round 4 — Item 2 test: staging-to-active promotion gate.
  *
  * Synthetic tokens only, mock $persistentStore, no network, no phone.
- * The gate is required to fail closed at every step: any failure
- * before the read-back verification leaves the active token unchanged
- * and the candidate intact. A mock mailbox state (cmd 1795063030,
+ * The gate is required to fail closed on invalid proofs. An ambiguous
+ * persistentStore write may actually commit even when returning false;
+ * its caller must reconcile unknown state before another promotion. A mock mailbox state (cmd 1795063030,
  * OUTCOME_UNKNOWN) is snapshotted before and after EVERY test — the
  * gate must never touch it.
  *
@@ -17,7 +17,9 @@
  *          method at all — tombstone fallback path)
  */
 const assert = require("node:assert/strict");
-const { promote, validCandidate, validProof, DEV_KEYS, KEY_KEYS,
+const crypto = require("node:crypto");
+const { PURPOSE, payload, candidateFingerprint } = require("./signed_promotion_proof");
+const { promote: promoteCore, validCandidate, validProof, DEV_KEYS, KEY_KEYS,
   PROMOTED_TOMBSTONE } = require("./promotion_gate");
 
 const DEV_NEW = "TEST-NEW-DEV-CANDIDATE-0123456789ABCDEF";
@@ -33,13 +35,35 @@ const ALL_SYNTHETIC = [DEV_NEW, DEV_OTHER, DEV_OLD, KEY_NEW, KEY_OLD,
 const OLD_CMD_ID = 1795063030;
 const OLD_RESULT_ID = 1795055213880;
 
+// Ephemeral signing keys for isolated tests ONLY; no production key in repo.
+const {publicKey: testPublicKey, privateKey: testPrivateKey} =
+  crypto.generateKeyPairSync("ed25519");
+const PINNED_TEST_PUBLIC_PEM = testPublicKey.export({type:"spki",format:"pem"});
+const TEST_NONCE = "SYNTHETIC-NONCE-ONE-TIME-0123456789";
+
 function mockProof(overrides = {}) {
-  return Object.assign({
+  const now = Date.now();
+  const proof = Object.assign({
+    purpose: PURPOSE,
+    kind: "dev",
     ok: true,
     fingerprint_matches: true,
     token_id: NEW_TOKEN_ID,
-    issued_at: Date.now(),
+    fingerprint: candidateFingerprint(DEV_NEW),
+    nonce: TEST_NONCE,
+    issued_at: now,
+    expires_at: now + 60 * 60 * 1000,
   }, overrides);
+  proof.signature = crypto.sign(null, Buffer.from(payload(proof), "utf8"),
+                                testPrivateKey).toString("base64");
+  return proof;
+}
+
+function promote(store, options) {
+  return promoteCore(store, Object.assign({
+    expectedNonce: TEST_NONCE,
+    pinnedPublicKeyPem: PINNED_TEST_PUBLIC_PEM,
+  }, options));
 }
 
 /* Mock $persistentStore. Writes are recorded as {key, valueKind}
@@ -220,7 +244,7 @@ check("promotion attempted twice -> second is a no-op (already promoted, candida
   const first = promote(store, { keys: DEV_KEYS, proof: mockProof(), oldTokenId: OLD_TOKEN_ID });
   assert.deepEqual(first, { ok: true, status: "promotion_done" });
   const second = promote(store, { keys: DEV_KEYS, proof: mockProof(), oldTokenId: OLD_TOKEN_ID });
-  assert.deepEqual(second, { ok: true, status: "promotion_already_active" });
+  assert.deepEqual(second, { ok: false, status: "promotion_no_candidate" });
   assert.equal(store._map.get(DEV_KEYS.activeKey), DEV_NEW);
 });
 
@@ -261,7 +285,9 @@ check("local-key pair uses the same gate: happy path", () => {
   } });
   const mailbox = mockMailbox();
   const before = mailboxSnapshot(mailbox);
-  const r = promote(store, { keys: KEY_KEYS, proof: mockProof(), oldTokenId: OLD_TOKEN_ID });
+  const r = promote(store, { keys: KEY_KEYS, proof: mockProof({
+    kind: "localkey", fingerprint: candidateFingerprint(KEY_NEW),
+  }), oldTokenId: OLD_TOKEN_ID });
   assert.deepEqual(r, { ok: true, status: "promotion_done" });
   assert.equal(store._map.get(KEY_KEYS.activeKey), KEY_NEW);
   assert.equal(store._map.has(KEY_KEYS.candidateKey), false);
@@ -298,8 +324,10 @@ check("no secret in any returned result or recorded write", () => {
     assert.equal(blob.includes(s), false, "result leaks a synthetic value");
   }
   assert.equal(blob.includes("TEST-"), false, "result contains a TEST- string");
-  assert.equal(validProof(mockProof(), OLD_TOKEN_ID), true);
-  assert.equal(validProof(mockProof({ token_id: OLD_TOKEN_ID }), OLD_TOKEN_ID), false);
+  assert.equal(validProof(mockProof(), OLD_TOKEN_ID, DEV_NEW,
+    TEST_NONCE, PINNED_TEST_PUBLIC_PEM, "dev"), true);
+  assert.equal(validProof(mockProof({ token_id: OLD_TOKEN_ID }), OLD_TOKEN_ID,
+    DEV_NEW, TEST_NONCE, PINNED_TEST_PUBLIC_PEM, "dev"), false);
 });
 
 console.log("SUMMARY", count, "PASS, 0 FAIL");

@@ -1,25 +1,18 @@
-{
-  "suite": "test_promotion_gate.js",
-  "source": "C3-C0 Round 4 Item 2 (GPT receipt 7013674858)",
-  "pass": 17,
-  "fail": 0,
-  "tests": [
-    "happy path: candidate + valid proof -> promoted, candidate cleared, active = new",
-    "missing candidate -> fail-closed, active unchanged",
-    "invalid candidate -> fail-closed, active unchanged, candidate intact",
-    "invalid proof (ok=false) -> fail-closed, active unchanged, candidate intact",
-    "invalid proof (fingerprint mismatch) -> fail-closed",
-    "invalid proof (stale, 25h old) -> fail-closed",
-    "proof for the OLD token id -> fail-closed (never promote the exposed token)",
-    "active write returns false, not persisted -> commit_unknown, active unchanged, candidate intact",
-    "active write persisted then returns false -> commit_unknown, NOT reported as success, candidate intact",
-    "read-back mismatch -> fail-closed, candidate intact",
-    "promotion attempted twice -> second is a no-op (already promoted, candidate gone)",
-    "no active key -> fail-closed (initial provisioning is a different gate)",
-    "candidate clear fails -> active is the new verified value, candidate intact, retry converges to already-promoted",
-    "store without remove() -> tombstone fallback, candidate never validates again",
-    "local-key pair uses the same gate: happy path",
-    "old command id untouched in every path (mailbox snapshot)",
-    "no secret in any returned result or recorded write"
-  ]
-}
+PASS happy path: candidate + valid proof -> promoted, candidate cleared, active = new
+PASS missing candidate -> fail-closed, active unchanged
+PASS invalid candidate -> fail-closed, active unchanged, candidate intact
+PASS invalid proof (ok=false) -> fail-closed, active unchanged, candidate intact
+PASS invalid proof (fingerprint mismatch) -> fail-closed
+PASS invalid proof (stale, 25h old) -> fail-closed
+PASS proof for the OLD token id -> fail-closed (never promote the exposed token)
+PASS active write returns false, not persisted -> commit_unknown, active unchanged, candidate intact
+PASS active write persisted then returns false -> commit_unknown, NOT reported as success, candidate intact
+PASS read-back mismatch -> fail-closed, candidate intact
+PASS promotion attempted twice -> second is a no-op (already promoted, candidate gone)
+PASS no active key -> fail-closed (initial provisioning is a different gate)
+PASS candidate clear fails -> active is the new verified value, candidate intact, retry converges to already-promoted
+PASS store without remove() -> tombstone fallback, candidate never validates again
+PASS local-key pair uses the same gate: happy path
+PASS old command id untouched in every path (mailbox snapshot)
+PASS no secret in any returned result or recorded write
+SUMMARY 17 PASS, 0 FAIL

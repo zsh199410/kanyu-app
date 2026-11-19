@@ -200,3 +200,166 @@ tombstone fallback).
   keys; promotion is a separate approved gate.
 - `DUAL_TOKEN_DESIGN.md` (blocker 3): the server side of the
   dual-token window and revocation that this gate's proof depends on.
+
+---
+
+## Round 4 security review addendum — signed proof, fail-closed (2026-11-20)
+
+**This addendum supersedes the older unsigned `/credential-proof`
+response and status-only success behavior described in §§2(b), 3, 4.**
+
+The original sample accepted a caller-controlled JSON object containing
+`fingerprint_matches:true` but did not authenticate that assertion or
+bind it to the staged token. **That does not establish proof**, even
+when `token_id` and `issued_at` are present. Do not use the original
+unsigned contract to promote an active credential.
+
+The revised *Node-only isolation reference* (`signed_promotion_proof.js`
+and `promotion_gate.js`) requires all of the following before any
+write of an active key:
+
+1. A pinned, independently trusted **Ed25519 public key** (not returned
+   by the proof endpoint); reject missing or wrong key.
+2. Ed25519 signature over the canonical proof containing exactly
+   `purpose`, `kind` (dev/localkey), `ok`,
+   `fingerprint_matches`, `token_id`, `fingerprint`,
+   `nonce`, `issued_at`, `expires_at`. Both sides must sign
+   and verify **identical canonical bytes**.
+3. The fingerprint equals SHA-256 of the **actual candidate** read
+   from the local store, and the token ID is not the exposed old ID.
+4. A locally generated, cryptographically unpredictable,
+   **single-use expected nonce** matches the signed response;
+   24-hour maximum issuance age, 5-minute future clock skew, and
+   signed expiry in the future and no later than 24 hours after issue.
+5. The promotion key set is exactly the intended DEV or local-key
+   candidate/active/status triple; other keys fail closed.
+
+A caller-supplied `fingerprint_matches` boolean is never a trust
+anchor. An unsigned or replayed response cannot authorize a new
+active credential. The mock requires an expected nonce and pinned
+public key supplied separately; a real implementation must also
+**durably reject a reused challenge** (not yet implemented).
+
+A best-effort `promotion_done` status marker cannot authenticate
+the active credential. If the candidate is absent, the revised
+reference reports `promotion_no_candidate` even when that status
+marker says done. The prior status-only idempotence shortcut is
+withdrawn.
+
+**Durability correction:** If a write returned false or read-back was
+unverified, the active key **may already have changed**. The older
+claim that any failure before verified read-back leaves active
+unchanged is *withdrawn*. Report `promotion_commit_unknown` or
+`promotion_readback_unverified`, preserve the candidate, and
+reconcile durable state; never silently revert to a disclosed token.
+
+**Device release remains blocked.** Node's `crypto` module is not
+a Surge scripting API. The production verifier, trusted public key
+distribution, nonce storage, real authenticated proof endpoint, and
+server-to-device trust chain have not been verified on the phone.
+These new files are exclusively isolated evidence, not deployable
+phone/bootstrap scripts. Original pending command remains
+`OUTCOME_UNKNOWN`; C3-C1 and PR#93 remain blocked.
+
+---
+
+## Rev 3 addendum — explicit withdrawals, verbatim (2026-11-20)
+
+This addendum records, verbatim, the Round 4 statements that are
+withdrawn by the PR #103 signed-proof fix. It follows the same
+pattern as `BOOTSTRAP_DESIGN.md` Rev 2.1 §9.1 (verbatim withdrawal
+with a WITHDRAWN marker). The source of every quote below is the
+Round 4 version of this file (SHA
+`33098ce21634e4f272ba896fed5be8dc5aaa2e956cb1fc4dc753d1ec152bd73b`)
+and of `promotion_gate.js` (SHA
+`c3fb617dfeed0f6b5b48eb68af5206da298242aac941aa0700af70b75d11dab0`).
+GPT's PR #103 addendum above already supersedes these statements in
+prose; this section is the explicit verbatim record.
+
+### W1 — Unsigned `/credential-proof` contract (WITHDRAWN)
+
+Round 4 §3 defined the proof as a caller-controlled JSON object and
+accepted it on boolean fields alone:
+
+> Response (server → device):
+> `{ ok: true, fingerprint_matches: true, token_id: "<server token id>",
+>   issued_at: <unix ms>, expires_at: <unix ms> }`.
+>
+> The gate accepts the proof ONLY if: `ok === true`,
+> `fingerprint_matches === true`, `token_id` is a non-empty string
+> and is NOT the old token's id, `issued_at` is a number within the
+> freshness window (issued within the last 24 hours and not more than
+> 5 minutes in the future). Any other shape fails closed.
+
+**WITHDRAWN.** A self-asserted `fingerprint_matches: true` does not
+establish proof: it authenticates neither the issuer's identity, the
+signature, nor the binding to the staged candidate. The Round 4
+`validProof()` implementation that returned `true` on those booleans
+alone is removed (see the absorbed `promotion_gate.js`, which now
+delegates to `validSignedProof()` in `signed_promotion_proof.js`).
+The signed contract requires: a pinned, independently trusted
+Ed25519 public key; an Ed25519 signature over the canonical proof
+(`purpose`, `kind`, `ok`, `fingerprint_matches`, `token_id`,
+`fingerprint`, `nonce`, `issued_at`, `expires_at`); the fingerprint
+equal to SHA-256 of the ACTUAL candidate read from the local store;
+the token id not equal to the old exposed id; a locally generated
+single-use expected nonce matching the signed response; issuance
+within 24 hours, 5-minute future skew, signed expiry in the future
+and no later than 24 hours after issue. Without an independent public
+key / old token id / signature / candidate, the gate fails closed.
+
+### W2 — "Active value definitely unchanged on failure" (WITHDRAWN)
+
+Round 4 §2(d) guaranteed:
+
+> Write the new active value, read it back and verify it equals the
+> candidate, and ONLY THEN clear the candidate key. Any failure at
+> any step before the read-back verification leaves the active token
+> unchanged and the candidate intact (fail-closed). See §4 for the
+> exact sequence and the clear-failure case.
+
+**WITHDRAWN.** A `$persistentStore.write()` that returns `false`
+(or throws) may already have committed the new value; a read-back
+that cannot be verified leaves the active state UNKNOWN, not
+"unchanged". The gate now reports `promotion_commit_unknown` or
+`promotion_readback_unverified`, preserves the candidate, and
+requires durable-state reconciliation before any further rotation;
+it never silently reverts to a disclosed token. The Round 4 §4 step 5
+branches that read the active value back and distinguish
+"committed despite false return" from "did not commit" remain
+accurate as branches — only the blanket guarantee above is
+withdrawn.
+
+### W3 — Status-only idempotence shortcut (WITHDRAWN)
+
+Round 4 §4 step 1 allowed a success return with no candidate:
+
+> absent/null            -> if the status key reads
+>                            "promotion_done" (the last promotion
+>                            completed and nothing has been staged
+>                            since): promotion_already_active, OK
+>                            (no-op, idempotent). Otherwise:
+>                            promotion_no_candidate, FAIL,
+>                            nothing changed.
+
+**WITHDRAWN.** A best-effort `promotion_done` status marker cannot
+authenticate the active credential: the active state may have
+changed after a previous promotion. The revised gate returns
+`promotion_no_candidate` (fail-closed) whenever the candidate is
+absent, regardless of the status marker. The absorbed
+`test_promotion_gate.js` now asserts this (second promotion attempt
+returns `{ ok: false, status: "promotion_no_candidate" }`).
+
+### Findings carried forward
+
+(a) `$persistentStore` has NO documented delete method (already
+known from Round 4, §5 of this document): the sample clears via
+`remove()` when available and otherwise writes the tombstone
+`"__PROMOTED__"`. The production clear mechanism remains an OPEN
+ITEM for the real-device gate.
+
+(b) The no-candidate success path based on previous status is
+removed (see W3 above). Any caller that relied on
+`promotion_already_active` as a no-op after a completed promotion
+must now treat an absent candidate as `promotion_no_candidate`
+and reconcile state from the active key itself.

@@ -1,0 +1,16 @@
+PASS signed candidate-bound proof accepted
+PASS self-asserted fingerprint_matches boolean without signature rejected
+PASS signed proof for another candidate rejected
+PASS tampering a signed fingerprint or status rejected
+PASS wrong signing key rejected even when proof says matched
+PASS wrong or absent nonce rejected
+PASS old exposed token id rejected
+PASS missing old-token identity fails closed even with a valid signature
+PASS expired, too-old, future and non-integer proofs rejected
+PASS proof kind and purpose are domain-separated
+PASS malformed signature or missing pinned public key rejected
+PASS promotion FAILS without verifiable proof and active token unchanged
+PASS promotion with valid signed proof succeeds and clears candidate
+PASS stale promotion_done marker cannot fabricate success when candidate absent
+PASS wrong candidate with otherwise valid signed proof never changes active key
+SUMMARY 15 PASS, 0 FAIL

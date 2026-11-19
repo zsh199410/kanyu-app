@@ -1,0 +1,67 @@
+# C3-C1 Device Evidence Alignment — Desensitized Record Template (Round 5)
+
+## Status: OPEN
+
+`DEVICE_EVIDENCE_CORRELATION=OPEN` (GPT comment 7024105041,
+2026-11-20 06:34 CST). The owner reported "真机验收通过" in chat;
+that is recorded as `DEVICE_ACCEPTANCE=USER_REPORTED` only. GitHub
+Issue #73 has no corresponding desensitized device evidence record.
+**This file is a checklist and template. Every field below is
+UNVERIFIED. No device evidence is claimed here, and no value below
+may be filled in from memory, inference, or an unverified chat
+message — only from a real device observation, recorded as a
+boolean or a desensitized SHA.**
+
+## Rules for filling this record
+
+1. Never upload real tokens, API keys, phone source scripts, private
+   URIs/IPs, or privacy-containing logs (Surge logs, Shortcuts
+   history, screenshots with identifiers). Only boolean matrices and
+   desensitized SHAs.
+2. A field becomes VERIFIED only when the owner (or an approved
+   device-side check) supplies the observation and it is recorded
+   here with its source and time. Until then it stays UNVERIFIED.
+3. "The phone works" is not evidence. Each row must be answered
+   separately; a single blanket pass does not close this record.
+4. If any row is answered NO, the record stays OPEN and the
+   corresponding gate stays NO-GO. Do not average the rows.
+
+## Evidence matrix (all UNVERIFIED)
+
+| # | Field | Expected value / check | Status |
+|---|---|---|---|
+| 1 | Test time (device acceptance run) | Date + time (CST) the acceptance test ran on the real phone | UNVERIFIED |
+| 2 | Running source script SHA | SHA-256 of the bridge script actually running on the phone at test time (desensitized SHA only, never the script itself) | UNVERIFIED |
+| 3 | Surge version | Surge TF / App Store version on the phone at test time | UNVERIFIED |
+| 4 | iOS version | iOS version on the phone at test time | UNVERIFIED |
+| 5 | Cron cycle 1 — poll observed | Phone polled the bridge at least once in a 10-minute cron cycle and returned a 200 with no unexpected dispatch | UNVERIFIED |
+| 6 | Cron cycle 2 — poll observed | A second, separate 10-minute cron cycle also polled cleanly (two consecutive cycles) | UNVERIFIED |
+| 7 | Old-ID fence — command untouched | Old pending command 1795063030 still present, still `OUTCOME_UNKNOWN`, never replayed / overwritten / cleared during the test | UNVERIFIED |
+| 8 | Old-ID fence — result id unchanged | `result` id 1795055213880 unchanged after both cron cycles | UNVERIFIED |
+| 9 | Pins intact | All 21 pinned nodes still present in the pool after the test | UNVERIFIED |
+| 10 | Timers intact | All 5 production timers still active after the test | UNVERIFIED |
+| 11 | Logs privacy check | Device-side logs reviewed: no token, API key, or private URI present in any retained log | UNVERIFIED |
+| 12 | Shortcuts history privacy check | Shortcuts input history reviewed: no token or key value retained in history | UNVERIFIED |
+| 13 | Cross-script access check | No other script on the device reads the candidate/active credential keys | UNVERIFIED |
+| 14 | Backup exposure check | No credential value present in an iOS/iCloud backup or script cache copy | UNVERIFIED |
+| 15 | Acceptance scope | Which system the acceptance covered (bridge / node pool / other) and which steps were actually run | UNVERIFIED |
+
+## What closes this record
+
+All 15 rows VERIFIED with source + time, OR an explicit owner/GPT
+decision that a specific row is N/A with a recorded reason. Until
+then: `DEVICE_EVIDENCE_CORRELATION=OPEN`,
+`RELEASE_EVIDENCE_NOT_YET_COMPLETE`, `C3-C1=NO-GO`,
+`PR93_CUTOVER=BLOCKED`.
+
+## What this record is NOT
+
+- It is not a claim that the device acceptance passed.
+- It is not a substitute for the signed-proof trust chain, the
+  persistent server token table, the controlled dual-token window,
+  or the independent production rollback drill (all still pending
+  per GPT 7024105041).
+- It does not authorize any real token promotion, revocation, or
+  server deployment. Those need explicit launch approval and staged
+  release in the private environment — not one user sentence
+  "真机通过".

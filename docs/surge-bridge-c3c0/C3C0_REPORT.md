@@ -551,3 +551,64 @@ GitHub #73) and are not secrets.
 - Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`,
   `BOOTSTRAP_SECURITY_GATE=BLOCKED`, `C3-C1=NO-GO`,
   `PR93_CUTOVER=BLOCKED`, old command 1795063030 `OUTCOME_UNKNOWN`.
+
+## Round 5 addendum — PR #103 signed proof (2026-11-20)
+
+- **Trigger:** GPT comment 7024105041 (C3-C1 POST-DEVICE-ACCEPTANCE
+  SECURITY GATE). Owner reported "真机验收通过" in chat
+  (`DEVICE_ACCEPTANCE=USER_REPORTED`), but #73 has no desensitized
+  device evidence record, so `DEVICE_EVIDENCE_CORRELATION=OPEN`.
+- **PR #103 absorbed byte-identical** (head
+  `4ebac06a55f759fa4b7e747390cbe9df9943a427`, stacked on PR #97 head
+  `13e55c0`, 8 commits, +352/−43, 6 files; `git apply`
+  reconstruction == API fetch for all six files):
+  `promotion_gate.js` (`b12545be…67b9b90`),
+  `signed_promotion_proof.js` (`69d3f2fe…a2145`),
+  `test_promotion_gate.js` (`ef5579e2…e9364`),
+  `test_signed_promotion_proof.js` (`7d0c9981…438f5`),
+  `PROMOTION_GATE_DESIGN.md` (`8dfd60d4…600797`, before Rev 3),
+  workflow `issue73-round4-signed-proof.yml` (`8e80f5bc…6459c`).
+- **The fix:** the old `validProof()` trusted any passed
+  `{fingerprint_matches:true, ok:true}` without authenticating the
+  issuer, signature, or candidate fingerprint. The signed reference
+  requires a pinned Ed25519 public key, an Ed25519 signature over
+  the canonical proof (fixed domain `purpose/kind`), SHA-256 of the
+  ACTUAL candidate, token id ≠ old exposed id, a single-use
+  expected nonce, 24h issuance / 5-min skew / signed expiry. The
+  no-candidate success path based on the old `promotion_done`
+  status is removed. Old unsigned path verified GONE by grep.
+- **Rev 3 withdrawal (verbatim, WITHDRAWN):** W1 unsigned
+  `/credential-proof` contract; W2 "active value definitely
+  unchanged on failure"; W3 status-only idempotence shortcut. New
+  design doc SHA `a586c99e…70a82d6a` (365 lines).
+- **Device evidence:** `DEVICE_EVIDENCE_ALIGNMENT.md` (NEW) — 15-row
+  checklist/template (test time, running script SHA, Surge/iOS
+  versions, two cron cycles, old-ID fence, logs/Shortcuts privacy
+  checks, pins/timers, scope). ALL rows UNVERIFIED; nothing
+  invented. Record stays OPEN.
+- **CI:** GPT's `issue73-round4-signed-proof.yml` absorbed unchanged
+  (17 reference + 15 adversarial). New `issue73-c3c0-round5.yml`
+  runs the 5-case negative control. Note: the PR #103 workflow
+  step name says "14 adversarial cases" but the file contains 15
+  tests (SUMMARY 15 PASS) — label off by one, test file
+  authoritative.
+- **Tests:** fourteen suites, **156 PASS / 0 FAIL / 1 LIMITATION**
+  (v2 28/0/1, store 5/5, S1 live 10/10, S1 11/11, S3 14/14,
+  bootstrap-deprecated 7/7, bootstrap candidate 13/13, candidate
+  regressions 14/14, rollback positive PASS + negative control FAIL
+  as expected, provisioning demo 5/5, promotion gate signed-proof
+  17/17, signed-proof adversarial 15/15, negative control 5/5,
+  dual token 12/12); clean-copy verification PASS
+  (`/tmp/c3c0-clean-copy-r5/`, 51 files).
+- **v2.2 unchanged:** 571 lines, SHA `8691e962…abfc`.
+- Full record: `C3C0_ROUND5_REPORT.md`.
+- Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`,
+  `BOOTSTRAP_SECURITY_GATE=BLOCKED`, `C3-C1=NO-GO`,
+  `PR93_CUTOVER=BLOCKED`, `DEVICE_EVIDENCE_CORRELATION=OPEN`,
+  `DEVICE_ACCEPTANCE=USER_REPORTED`,
+  `RELEASE_EVIDENCE_NOT_YET_COMPLETE`, old command 1795063030
+  `OUTCOME_UNKNOWN`. The signed-proof reference is Node-only:
+  Surge/iOS `crypto` support UNPROVEN, no production pinned key,
+  no real signed `/credential-proof`, no durable nonce replay
+  rejection, no real server token-table persistence yet. P2/P3 NOT
+  opened.
