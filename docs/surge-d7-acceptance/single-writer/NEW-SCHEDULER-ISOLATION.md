@@ -42,6 +42,61 @@ VPS可信新增叠加、单写手锁、STOP、回滚与服务/定时器模板。
   `P2P3_ENABLE_PRODUCTION=YES_EXPLICITLY`、精确 `RUNNING` STOP文件、旧服务已mask排空、
   `single_writer.py check`返回0。失败直接退出78，不写文件。
 
+## D3 补充决策：YAML、winner-clean 和账本（2026-11-19）
+
+- **不安装PyYAML**，不变更现有venv依赖。新适配器用
+  `legacy_source_adapter._extract_legacy_yaml_parser()`从经过完整SHA验收
+  的 `pool/cli.py` 提取**单个**`load_yaml_simple(path)`函数AST，
+  只编译/调用该函数，**绝不import整个带副作用的pool.cli模块**。
+  旧函数签名、外部helpers、解析config的返回值必须在VPS
+  重新用`--preview`实测。若函数不存在、依赖外部helper或解析失败，
+  输出`CUTOVER_BLOCKED`，要求Muse提供真实函数原文后再修，
+  不猜解析规则，不用12h代替真实24h。
+- **停止把winner-clean称为已通过自动删除验收**。现网24轮换均在
+  一天宽限期内，无法从实际样本验证过窗非赢家删除。
+  合成fixture中的过滤测试与生产样本必须区分。
+  当前 `safe_additions` 把**所有**现用老成员原字节保留、
+  仅经独立VPS门禁增加最多4条，winner-clean输出仅参与预览，
+  `AUTO_DELETE=OFF`。别因为`published_first`过期而自动删成员。
+- **旧账本隔离交接**：`rotation_ledger.py`提供
+  `handover_plan(current_pool,db_snapshot,parse_fn,now)`：
+  只读取当时现场served及旧数据库`published_first`，
+  25个DB pinned减4个blocklisted后必须得到准确21pin，
+  剩余的24个rotation保留历史`legacy_first_published`用于审计，
+  新账本的`protection_since`在切换时统一从新cutover时间保守起算，
+  **不从历史时间推算自动删除许可**。
+  `deletion_approved`在新表受数据库CHECK约束永久=0。
+  `bootstrap_private_db`仅有独立显式approved参数时，
+  可以初始化**新单写手自己的writer DB**，并拒绝重新初始化，
+  **绝不触及pool.db / published_first / served / staging**。
+  当前生产周期未启用此bootstrap，不能宣称交接已在VPS完成。
+- **账本后续同步**：未来要允许自动清理，必须把每轮新增节点、
+  保留节点、旧赢家报告、宽限期和恢复记录与实际single-writer
+  锁内事务保持一致，建立完整实机过窗/失败/恢复回归；
+  这将是独立审批的后期功能，**不属于本次单写手安全切换授权**。
+- **S2e更新**：旧`vps_systemd_test.py`仍以未修订
+  的PR#80 guard会拒绝masked服务为预期，故新版amended guard真实通过
+  反而被计为FAIL。现已把S2e改成要求新版
+  `masked+inactive+no PID/Job`安全状态的guard**通过**，
+  与masked-ban一起核验；必须在VPS隔离重跑，
+  GitHub CI绿不能证明真实systemd已经36/36。
+
+### D3续验命令（只读/隔离）
+
+```bash
+cd /tmp/pr93-shadow/docs/surge-d7-acceptance
+/opt/free-node-program/venv/bin/python \
+  single-writer/production_cycle.py --preview
+sh single-writer/systemd/install-disabled.sh --dry-run
+```
+
+这里 `--preview` 会按原有旧程序进行远端GET读取源，但不运行
+`pool.cli publish`、不写生产文件。
+运行前需确认 `P2P3_POOL_DB`、`P2P3_POOL_SERVED`、
+`P2P3_POOL_STAGING` 等变量指向受信已核对的现场路径。
+现场旧:07发布与:15同步之间可能短暂有SHA不一致；
+必须在稳定窗口重试，不能绕过served/staging一致门禁。
+
 ## D3：VPS受信隔离核对（现在可做，不触碰生产）
 
 1. 将PR #93最新精确HEAD检出到隔离目录，记录`git rev-parse HEAD`
