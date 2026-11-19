@@ -155,9 +155,13 @@ def build_candidate(*, current_pool, config, node_rows, latest_pass_ms,
     if not isinstance(blocked_keys, (set, frozenset, tuple, list)):
         raise CandidateRefused("bad_blocklist")
     blocked = {_key(k) for k in blocked_keys}
-    pins = {_key(k): n for k, n in db_pins.items()}
-    if not all(isinstance(n, str) and n for n in pins.values()):
+    # Actual VPS DB keeps 25 pinned rows: 21 canonical protected plus
+    # 4 blocklisted entries. Remove blocked keys BEFORE the 21-pin
+    # canonical calculation; NEVER let a blocked pin back into output.
+    db_pin_rows = {_key(k): n for k, n in db_pins.items()}
+    if not all(isinstance(n, str) and n for n in db_pin_rows.values()):
         raise CandidateRefused("bad_pinned_names")
+    pins = {k: name for k, name in db_pin_rows.items() if k not in blocked}
     for k in fresh_records:
         _key(k)
     if not isinstance(pinned_file_lines, (list, tuple)):
