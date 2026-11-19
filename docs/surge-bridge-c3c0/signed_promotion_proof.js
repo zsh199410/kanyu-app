@@ -38,7 +38,8 @@ function validSignedProof(proof, {candidate, oldTokenId, expectedNonce, kind,
     if (kind !== "dev" && kind !== "localkey") return false;
     if (proof.purpose !== PURPOSE || proof.kind !== kind) return false;
     if (proof.ok !== true || proof.fingerprint_matches !== true) return false;
-    if (typeof proof.token_id !== "string" || !proof.token_id ||
+    if (typeof oldTokenId !== "string" || !oldTokenId ||
+        typeof proof.token_id !== "string" || !proof.token_id ||
         proof.token_id === oldTokenId) return false;
     if (typeof expectedNonce !== "string" || expectedNonce.length < 16 ||
         typeof proof.nonce !== "string" || proof.nonce !== expectedNonce) return false;
