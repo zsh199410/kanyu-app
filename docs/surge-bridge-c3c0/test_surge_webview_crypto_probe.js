@@ -101,7 +101,7 @@ async function test(name, fn) {
     assert.equal(r.status, null);
   });
   await test("missing crypto gives nonsecret no_webcrypto", async () => {
-    const r = await execute({suppliedCrypto: undefined});
+    const r = await execute({suppliedCrypto: null});
     assert.equal(r.status, "no_webcrypto");
   });
   await test("missing subtle gives no_webcrypto", async () => {
@@ -109,7 +109,7 @@ async function test(name, fn) {
     assert.equal(r.status, "no_webcrypto");
   });
   await test("missing TextEncoder is fail closed", async () => {
-    const r = await execute({suppliedEncoder: undefined});
+    const r = await execute({suppliedEncoder: null});
     assert.equal(r.status, "no_text_encoder");
   });
   await test("incorrect UTF8 encoder is rejected", async () => {
@@ -118,7 +118,11 @@ async function test(name, fn) {
   });
   await test("broken SHA-256 fails", async () => {
     const r = await execute({suppliedCrypto: {
-      subtle: {...webcrypto.subtle, digest: async () => new Uint8Array([1])}
+      subtle: {
+        digest: async () => new Uint8Array([1]),
+        importKey: webcrypto.subtle.importKey.bind(webcrypto.subtle),
+        verify: webcrypto.subtle.verify.bind(webcrypto.subtle),
+      }
     }});
     assert.equal(r.status, "sha256_failed");
   });
