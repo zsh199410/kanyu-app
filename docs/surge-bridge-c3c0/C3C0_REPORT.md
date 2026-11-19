@@ -349,3 +349,119 @@ GitHub #73) and are not secrets.
   `C3C0_V2_V22_DIFF.md`.
 - Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`, `C3-C1=NO-GO`,
   `PR93_CUTOVER=BLOCKED`, old command 1795063030 `OUTCOME_UNKNOWN`.
+
+---
+
+## Addendum — Round 3 continued (2026-11-19, PR #101 absorbed)
+
+- **PR #101 absorbed:** GPT's Shortcuts candidate bootstrap
+  (`gpt6-issue73-s1-shortcuts-bootstrap-20261119`, head `2e6c44d`,
+  4 commits, +236/−0, 3 files, Draft). Template
+  `bootstrap_candidate_shortcuts.template.js` (SHA `6bfa8838…ca7591`),
+  test `test_bootstrap_candidate_shortcuts.js` (SHA `5bde1810…8931b56`),
+  workflow `ci/issue73-s1-shortcuts-bootstrap.yml` (SHA `950e9602…499331`)
+  — all byte-identical to PR #101's files (verified by diff
+  reconstruction + SHA comparison against GitHub raw files).
+- **Cross-review:** all checks PASS (trigger rejection, validation,
+  occupied-slot, fail-closed writes, no leak path, no touch of active
+  token/ledger/last_id/old slot/timers/policies, CI). Minor notes:
+  no dedicated test for `$intent === null`/`undefined` with trigger
+  intent; production token format vs the 32–256 printable-ASCII window
+  still to confirm; template does not reject `<...>` placeholders
+  (bounded: bridge fails closed); `ACTIVE_KEY` declared but unused;
+  no approved bootstrap path for the local key yet.
+- **Bootstrap design corrected (Rev 2):** Rev 1's paste-into-source +
+  delete-the-script approach is **DEPRECATED and wrong** — Surge caches
+  script source and retains logs, the manual gives no wipe guarantee
+  on deletion, and `$persistentStore` keys are cross-script
+  accessible. `s1/bootstrap.js` kept as a record only (DEPRECATED
+  header added); `s1/bootstrap_test.js` 7/7 is a logic record of the
+  superseded approach, not an endorsement. Recommended path is now
+  PR #101: Shortcuts intent parameter at run time, candidate staged
+  under `sgbridge_cred_dev_candidate`, active token untouched,
+  promotion a separate approved gate. 12 open device-side items
+  (Shortcuts input history, iOS backup, script cache leakage,
+  device-side log check, other scripts' permissions, candidate key
+  visibility, token format window, local-key path, promotion gate,
+  gate 2 server change, real-device staging run, real-device loading +
+  two cron cycles) — none verified.
+- **Tests:** seven suites, **88 PASS / 0 FAIL / 1 LIMITATION**
+  (v2 28/0/1, store 5/5, S1 live 10/10, S1 11/11, S3 14/14,
+  bootstrap-deprecated 7/7, bootstrap candidate 13/13); rollback
+  PASS; clean-copy verification PASS
+  (`/tmp/c3c0-clean-copy-r3b/`).
+- **v2.2 unchanged:** 571 lines, SHA `8691e962…abfc`.
+- **Note on GPT receipt 7012275778:** it cites PR #97 head `13abefec` /
+  22 files — that is **stale**; PR #97 is at head `4ef98d4`
+  (12 commits, 31 files) after the Round 3 commit, both CIs green on
+  that head. The head is not regressed.
+- Full record: `C3C0_ROUND3B_REPORT.md`. Design: `BOOTSTRAP_DESIGN.md`
+  (Rev 2, SHA `3b188e24…e149b`).
+- Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`, `C3-C1=NO-GO`,
+  `PR93_CUTOVER=BLOCKED`, old command 1795063030 `OUTCOME_UNKNOWN`.
+
+## Addendum — Round 3C (2026-11-19, GPT P0-B1/B2/B3, review 7012623369)
+
+- **GPT's three P0 findings on the committed bootstrap artifacts:**
+  (B1) the deprecated `s1/bootstrap.js` embeds literal credentials in
+  script source; manual deletion is not evidence the source bytes are
+  absent from caches/sync/backups/logs, so "token only goes into
+  `$persistentStore`" / "never written to any file except
+  `$persistentStore`" are **not established**; (B2) the deprecated
+  script writes the two active keys separately (partial update
+  possible) and ignores a `false` return on the done-marker write, so
+  it can emit `bootstrap_ok` without a durable marker; (B3) it writes
+  straight to the active keys, bypassing the candidate→proof→promotion
+  gate. Also: the bootstrap 7/7 was isolated-only — neither PR #97
+  workflow ran `s1/bootstrap_test.js`.
+- **P0-B1 fix:** `BOOTSTRAP_DESIGN.md` Rev 2.1 addendum (§9.1) quotes
+  and **withdraws both statements explicitly**. The defect is proven,
+  not just asserted: regression file D1/D2 (below) run the deprecated
+  script's real logic and show the defect.
+- **P0-B2 fix:** new `test_bootstrap_candidate_regressions.js`
+  (14/14). D1 proves the deprecated script leaves a partial
+  active-key update (DEV changed, local key old, failure reported);
+  D2 proves it emits `bootstrap_ok` with no durable done marker.
+  R1–R6 prove the new candidate-staging approach has no such defect:
+  (a) independence — zero writes to either active key in both
+  directions; (b) local-key write-then-false → unknown, 1 write, no
+  retry; (c) both status writes false → no candidate rewrite,
+  candidates on disk, statuses absent (not misreported as staged);
+  (d) preloaded active keys unchanged; (e) ambiguous commit then a
+  different candidate → `candidate_slot_occupied`, original preserved;
+  (f) no token in logs/source/status on all paths. No two-key atomic
+  write BY DESIGN — staging never touches active keys. Never assume
+  an exception proves storage did not commit (both write-false
+  flavours tested).
+- **P0-B3 fix:** Rev 2.1 addendum §9.3 states it explicitly —
+  staging writes ONLY candidate keys; promotion is a separate approved
+  gate; no phone provisioning, no public script change, no server
+  token enablement, no credential revocation until explicit approval.
+- **Local-key candidate template (new):**
+  `bootstrap_candidate_localkey.template.js` stages the local key
+  under `sgbridge_cred_localkey_candidate` via the same
+  intent-parameter mechanism (status
+  `sgbridge_cred_localkey_bootstrap_status`). Tests L1–L5 in the
+  regression file cover valid staging, occupied/idempotent,
+  status-marker failure, write-false without persisting, and the
+  ambiguous-commit retry.
+- **CI coverage (evidence gap):** the S1 adapter workflow
+  (`.github/workflows/issue73-c3c0-s1-adapter.yml`) now runs ALL
+  bootstrap suites (`s1/bootstrap_test.js`,
+  `test_bootstrap_candidate_shortcuts.js`,
+  `test_bootstrap_candidate_regressions.js`) with a nonzero-failure
+  gate (verified by a forced-failure negative control, exit 1). The
+  `docs/surge-bridge-c3c0/**` path filter already covers every file,
+  so no filter change was needed. Note: the 7/7 bootstrap result is
+  isolated-only until this updated workflow runs on the new PR #97
+  head.
+- **Tests:** nine suites, **102 PASS / 0 FAIL / 1 LIMITATION**
+  (v2 28/0/1, store 5/5, S1 live 10/10, S1 11/11, S3 14/14,
+  bootstrap-deprecated 7/7, bootstrap candidate 13/13, candidate
+  regressions 14/14); rollback PASS; clean-copy verification PASS
+  (`/tmp/c3c0-clean-copy-r3c/`).
+- **v2.2 unchanged:** 571 lines, SHA `8691e962…abfc`.
+- Full record: `C3C0_ROUND3C_REPORT.md`. Design: `BOOTSTRAP_DESIGN.md`
+  (Rev 2 + Rev 2.1 addendum).
+- Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`, `C3-C1=NO-GO`,
+  `PR93_CUTOVER=BLOCKED`, old command 1795063030 `OUTCOME_UNKNOWN`.

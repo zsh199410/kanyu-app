@@ -1,0 +1,21 @@
+{
+  "suite": "test_bootstrap_candidate_shortcuts.js",
+  "source": "PR #101 (gpt6-issue73-s1-shortcuts-bootstrap-20261119, head 2e6c44d)",
+  "pass": 13,
+  "fail": 0,
+  "tests": [
+    "source does not embed raw token, network API calls or self-delete",
+    "editor trigger: zero state changes",
+    "HTTP API trigger: zero state changes",
+    "cron trigger: zero state changes",
+    "invalid / empty candidate never staged",
+    "valid candidate stages without modifying active token",
+    "existing candidate with same value is idempotent",
+    "different candidate cannot be silently overwritten",
+    "write returns false: record unknown, no extra secret writes",
+    "write reaches disk then returns false: still unknown, no auto retry",
+    "readback mismatch fails closed",
+    "store read exception fails closed",
+    "no secret in status, logs, or network on all trigger paths"
+  ]
+}
