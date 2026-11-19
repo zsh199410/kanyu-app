@@ -261,7 +261,12 @@ function createEnv(cfg) {
       read: (key) => {
         if (outcome.terminated) { outcome.postDoneAttempts.push("store.read " + key); return null; }
         outcome.storeReads.push(key);
-        if (cfg.storeReadThrows) throw new Error("mock store read throw");
+        // Separate credential bootstrap failure from later state-read
+        // failure. This preserves the original legacy-last_id fault test
+        // while making early credential-read failure independently testable.
+        const isCredentialKey = key === "sgbridge_cred_dev" || key === "sgbridge_cred_localkey";
+        if (cfg.credentialReadThrows && isCredentialKey) throw new Error("mock credential read throw");
+        if (cfg.storeReadThrows && !isCredentialKey) throw new Error("mock state read throw");
         const v = store.get(key);
         return (v === undefined) ? null : v;
       },
