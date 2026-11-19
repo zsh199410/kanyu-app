@@ -1,6 +1,6 @@
 # Issue #73 — 新节点池生成器与单写手定时发布器设计定稿（2026-11-19）
 
-状态：**DESIGN APPROVED; IMPLEMENTATION PENDING VERIFIED LEGACY SOURCE**。本文件不是生产安装凭证。
+状态：**REAL-LEGACY ADAPTER CODED / ISOLATED CI PASS; VPS D3 PROOF PENDING**。代码已具备只读生产预检、纯候选、VPS有证增补、安全门禁及默认禁用systemd模板，但尚未部署VPS或完成真实多场景对照。本文件不是生产安装凭证。
 
 ## 0. 为什么当前禁止切换
 
@@ -116,4 +116,4 @@ pool-test-full.timer ┘                  │
 - 完整源的去敏校验、再现46行旧算法结果的本地只读/隔离样例，
   便于把迁移后算法与原算法作字节/成员对照。
 
-**现阶段真实状态**：`CUTOVER_BLOCKED`，现网旧5个timer保持原状。
+**现阶段真实状态（2026-11-19）**：`GENERATOR_SOURCE_ADAPTER=CODED_NOT_VPS_PROVEN`、`PRODUCTION_CYCLE=HARD_GATED`、`NEW_TIMER=REPO_TEMPLATE_NOT_INSTALLED`、`CUTOVER_BLOCKED`。与旧发布器的45行单样本SHA一致；安装后仍须在VPS完成D3隔离测试和更多输入场景对照。现网旧5个timer保持原状，未做手机配置改动。
