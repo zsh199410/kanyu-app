@@ -7,9 +7,9 @@
   "results": [
     {
       "id": "S1-T1",
-      "name": "static scan: distributed script contains no credential",
+      "name": "static scan: script reads credentials at runtime only",
       "status": "PASS",
-      "detail": "0 forbidden patterns; placeholders <DEV_TOKEN>/<API_KEY>/<BRIDGE_BASE> present"
+      "detail": "0 forbidden patterns; persistent-store key names present; no token/key literal"
     },
     {
       "id": "S1-T2",

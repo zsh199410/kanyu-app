@@ -1,0 +1,36 @@
+{
+  "suite": "s1-bootstrap",
+  "pass": 7,
+  "fail": 0,
+  "limitation": 0,
+  "results": [
+    {
+      "name": "B1 successful bootstrap: write + read-back match, done flag set, only status logged",
+      "status": "PASS"
+    },
+    {
+      "name": "B2 second run finds done flag: no re-write, no token exposure",
+      "status": "PASS"
+    },
+    {
+      "name": "B3 failed write is detected: no done flag, failure reported, no token logged",
+      "status": "PASS"
+    },
+    {
+      "name": "B4 read-back mismatch is detected: failure reported, no done flag",
+      "status": "PASS"
+    },
+    {
+      "name": "B5 invalid pasted values are rejected: empty / placeholder / CR-LF / >512 chars write nothing",
+      "status": "PASS"
+    },
+    {
+      "name": "B6 bootstrap script source contains no real token: placeholder only",
+      "status": "PASS"
+    },
+    {
+      "name": "B7 bridge can read the bootstrapped credential (integration with v2.2 readCredential rules)",
+      "status": "PASS"
+    }
+  ]
+}

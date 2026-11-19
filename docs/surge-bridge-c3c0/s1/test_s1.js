@@ -217,13 +217,17 @@ function testStaticScan() {
     if (hexRun.test(s)) bad.push("src" + i + ":hex-run");
     if (realUrl.test(s)) bad.push("src" + i + ":real-url");
   });
-  // placeholders must be present (proves desensitisation, not omission)
-  const hasPlaceholder = v2.includes("<DEV_TOKEN>") && v2.includes("<API_KEY>")
-    && v2.includes("<BRIDGE_BASE>");
-  record("S1-T1", "static scan: distributed script contains no credential",
-    bad.length === 0 && hasPlaceholder,
+  // Integrated script intentionally has NO token/key placeholders:
+  // references are to runtime persistent-store keys, not hardcoded values.
+  const runtimeSecrets = v2.includes("sgbridge_cred_dev") &&
+    v2.includes("sgbridge_cred_localkey") &&
+    v2.includes("<BRIDGE_BASE>") &&
+    !v2.includes("<DEV_TOKEN>") && !v2.includes("<API_KEY>") &&
+    !/const\s+(DEV|APIKEY)\s*=\s*["']/.test(v2);
+  record("S1-T1", "static scan: script reads credentials at runtime only",
+    bad.length === 0 && runtimeSecrets,
     bad.length ? ("forbidden pattern: " + bad.join(",")) :
-      "0 forbidden patterns; placeholders <DEV_TOKEN>/<API_KEY>/<BRIDGE_BASE> present");
+      "0 forbidden patterns; persistent-store key names present; no token/key literal");
 }
 
 function testFailClosed() {
