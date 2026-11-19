@@ -262,7 +262,11 @@ function loadLedger() {
 }
 function saveLedger(state) {
   if (!saneState(state)) throw new Error("durable_checkpoint_failed");
-  $persistentStore.write(JSON.stringify(state), LEDGER_KEY);
+  // Surge $persistentStore.write returns true only on a successful write.
+  // Returning false is NOT an exception, but must block every dispatch
+  // and /result that relies on this durable checkpoint.
+  const saved = $persistentStore.write(JSON.stringify(state), LEDGER_KEY);
+  if (saved !== true) throw new Error("durable_checkpoint_failed");
 }
 
 // POST /result and check the STRICT ACK (PR#96): 200 + accepted:true +
