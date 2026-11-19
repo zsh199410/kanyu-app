@@ -42,6 +42,7 @@ _db = _load("pool_db_source.py", "surge_pool_db_source")
 _contract = _load("candidate_contract.py", "surge_pool_candidate_contract")
 _legacy = _load("legacy_source_adapter.py", "surge_legacy_adapter")
 _sw = _load("single_writer.py", "surge_single_writer_cycle")
+_add = _load("safe_additions.py", "surge_safe_additions")
 
 
 class CycleRefused(ValueError):
@@ -151,34 +152,60 @@ def _verify_pinned_keys(current, db, crawler):
 
 
 def build_preview(db, current, root, now):
-    """Untrusted preview: produces data, not a publish permit."""
+    """Compute a real legacy preview, then overlay VPS-proven additions.
+
+    Never drop an existing unverified non-pinned member. Additions are
+    still only proposals until an independent release-mode gate passes.
+    """
     crawler, rules, geo, winner = _legacy._load_installed_modules(root)
     pins = _verify_pinned_keys(current, db, crawler)
-    preview = _legacy.make_preview(
+    raw_preview = _legacy.make_preview(
         db_snapshot=db, current_pool=current, legacy_root=root,
         now=now, modules=(crawler, rules, geo, winner))
-    candidate = preview["proposed_bytes"]
-    if preview["canonical_pin_count"] != 21:
+    if raw_preview["canonical_pin_count"] != 21:
         raise CycleRefused("pin_count_mismatch")
-    # This strict contract refuses any missing/modified old member.
-    # Until F native evidence is calibrated, even legacy VPS-based
-    # pruning is not automatically allowed to remove existing nodes.
-    try:
-        admission = _contract.assess_candidate(
-            current, candidate, pins,
-            blocklisted_names=[n for k,n in db["db_pins"].items()
-                               if k in db["blocked_keys"]],
-            generator_verified=False,
-        )
-    except ValueError as exc:
-        return preview, {
-            "decision": "HOLD_UNVERIFIED_CHANGE",
-            "reason": str(exc),
-            "production_write_authorized": False,
-            "production_delete_authorized": False,
-            "candidate_count": len(_contract._parse_pool(current)),
-        }
-    return preview, admission
+    config = _legacy.normalize_config(
+        Path(root) / "config.yaml", db["config_raw"])
+    overlay = _add.safe_overlay(
+        current=current, proposed=raw_preview["proposed_bytes"],
+        db_snapshot=db, config=config,
+        parse_fn=_legacy._parse_fn(crawler),
+        country_fn=lambda n: geo.hint_to_code(n) or "unknown",
+        now=now)
+    candidate = overlay["candidate_bytes"]
+    admission = _contract.assess_candidate(
+        current, candidate, pins,
+        blocklisted_names=[n for k,n in db["db_pins"].items()
+                           if k in db["blocked_keys"]],
+        generator_verified=True,
+    )
+    return {
+        **raw_preview,
+        "proposed_bytes": candidate,
+        "proposed_count": overlay["candidate_count"],
+        "safe_additions_count": overlay["added_count"],
+        "preview_vps_evidence_only": True,
+        "production_write_authorized": False,
+        "production_delete_authorized": False,
+    }, admission
+
+
+def _attest_local_source(root, expected):
+    """Verify approved installed pure-source code snapshot before writes."""
+    if (not isinstance(expected, str) or len(expected) != 64 or
+            any(c not in "0123456789abcdef" for c in expected)):
+        raise CycleRefused("source_attestation_missing")
+    p = Path(root) / "pool"
+    parts = ("rules.py", "crawler.py", "geo.py", "winner_clean.py")
+    digest = hashlib.sha256()
+    for name in parts:
+        raw = _read_bytes(p / name)
+        digest.update(name.encode("utf-8") + b"\\0")
+        digest.update(len(raw).to_bytes(8, "big"))
+        digest.update(raw)
+    if digest.hexdigest() != expected:
+        raise CycleRefused("source_attestation_mismatch")
+    return True
 
 
 def _check_release_marker(path, env):
@@ -187,9 +214,16 @@ def _check_release_marker(path, env):
     p = Path(path)
     if not p.is_absolute() or p.is_symlink() or not p.is_file():
         raise CycleRefused("release_marker_missing")
-    if p.stat().st_size > 1024 or p.read_text(encoding="utf-8").strip() != "PR93_APPROVED_SAME_BYTES_ONLY":
+    if p.stat().st_size > 1024:
         raise CycleRefused("release_marker_malformed")
-    return True
+    state = p.read_text(encoding="utf-8").strip()
+    if state not in ("PR93_APPROVED_SAME_BYTES_ONLY",
+                     "PR93_APPROVED_VPS_ADDITIONS"):
+        raise CycleRefused("release_marker_malformed")
+    if (state == "PR93_APPROVED_VPS_ADDITIONS"
+            and env.get("P2P3_ALLOW_VPS_ADDITIONS") != "YES_EXPLICITLY"):
+        raise CycleRefused("vps_additions_not_authorized")
+    return state
 
 
 def run_cycle(*, env=None, mode="inspect-only", now=None, publisher=None,
@@ -198,9 +232,10 @@ def run_cycle(*, env=None, mode="inspect-only", now=None, publisher=None,
     cfg = _paths_from_env(env)
     if mode not in ("inspect-only", "preview", "publish"):
         raise CycleRefused("invalid_mode")
+    release_mode = None
     if mode == "publish":
         # Fail before any external requests when release is not enabled.
-        _check_release_marker(cfg["approval"], env)
+        release_mode = _check_release_marker(cfg["approval"], env)
         _read_explicit_stop_state(cfg["stop"])
     db, served, meta = _preflight(cfg["db"], cfg["served"], cfg["staging"])
     if mode == "inspect-only":
@@ -226,34 +261,46 @@ def run_cycle(*, env=None, mode="inspect-only", now=None, publisher=None,
         "admission_decision": admission["decision"],
         "production_changed": False,
     }
-    if admission["decision"] != "HOLD_NO_CHANGE":
+    proposed_bytes = preview["proposed_bytes"]
+    identical = proposed_bytes == served
+    if not identical and admission["decision"] != "REVIEW_GENERATED_CHANGES":
         return {**status, "decision": "HOLD_UNVERIFIED_CHANGE",
                 "ok": mode == "preview"}
     if mode == "preview":
-        return {**status, "decision": "PREVIEW_ONLY", "ok": True}
-    # Production same-byte only. Independently authorized by release marker,
-    # STOP state and real legacy bans. The structural contract intentionally
-    # never grants write authority itself.
-    if preview["proposed_bytes"] != served:
-        raise CycleRefused("same_byte_only_violation")
+        return {**status, "decision":
+                "PREVIEW_ONLY" if identical else "PREVIEW_VPS_ADDITIONS",
+                "ok": True}
+    # First deployment: same bytes; future additions are separately
+    # feature-gated and must verify the installed source-code hash.
+    if not identical:
+        if release_mode != "PR93_APPROVED_VPS_ADDITIONS":
+            return {**status, "decision": "HOLD_ADDITIONS_NOT_RELEASED",
+                    "ok": False}
+        _attest_local_source(
+            cfg["legacy_root"], env.get("P2P3_LEGACY_SOURCE_SHA256"))
+    else:
+        if admission["decision"] != "HOLD_NO_CHANGE":
+            raise CycleRefused("same_byte_admission_disagree")
     fn = _sw.publish if publisher is None else publisher
     receipt = fn(
         lock_path=cfg["lock"], served_path=cfg["served"],
-        staging_path=cfg["staging"], candidate_bytes=served,
+        staging_path=cfg["staging"], candidate_bytes=proposed_bytes,
         expected_current_sha=hashlib.sha256(served).hexdigest(),
         db_path=cfg["writer_db"],
         stop_check=lambda: not _stop_running(cfg["stop"]),
         lock_timeout=30.0,
     )
-    # Fail closed on mismatch, never claim a successful publish.
     if not isinstance(receipt, dict) or receipt.get("ok") is not True:
         raise CycleRefused("writer_receipt_invalid")
-    if (_read_bytes(cfg["served"]) != served or
-            _read_bytes(cfg["staging"]) != served):
+    if (_read_bytes(cfg["served"]) != proposed_bytes or
+            _read_bytes(cfg["staging"]) != proposed_bytes):
         raise CycleRefused("post_publish_sha_mismatch")
-    return {**status, "decision": "SAME_BYTES_PUBLISHED",
-            "ok": True, "production_changed": False,
-            "writer_receipt_ok": receipt.get("ok") is True}
+    return {**status,
+            "decision": ("SAME_BYTES_PUBLISHED" if identical else
+                         "VPS_ADDITIONS_PUBLISHED"),
+            "ok": True, "production_changed": not identical,
+            "new_additions": preview.get("safe_additions_count", 0),
+            "writer_receipt_ok": True}
 
 
 def _stop_running(path):
