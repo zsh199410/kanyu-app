@@ -223,7 +223,7 @@ function testStaticScan() {
     v2.includes("sgbridge_cred_localkey") &&
     v2.includes("<BRIDGE_BASE>") &&
     !v2.includes("<DEV_TOKEN>") && !v2.includes("<API_KEY>") &&
-    !/const\\s+(DEV|APIKEY)\\s*=\\s*["']/.test(v2);
+    !/const\s+(DEV|APIKEY)\s*=\s*["']/.test(v2);
   record("S1-T1", "static scan: script reads credentials at runtime only",
     bad.length === 0 && runtimeSecrets,
     bad.length ? ("forbidden pattern: " + bad.join(",")) :
