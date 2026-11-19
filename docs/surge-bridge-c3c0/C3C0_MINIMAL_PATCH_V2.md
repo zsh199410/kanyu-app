@@ -6,6 +6,31 @@ Date: 2026-11-19. Source: the real `bridge.js` (PR #85, SHA-256
 production keeps its real `BASE` / `DEV` / `APIKEY` values — the placeholders
 below are the only difference in those lines). The v2 script is 506 lines.
 
+## v2.1 addendum (Round 2, 2026-11-19 — GPT receipt 7010810585)
+
+v2.1 is v2.0 + the PR #99 `saveLedger` fix + the legacy-write check (530
+lines, SHA-256 in `C3C0_ROUND2_REPORT.md`). Full v2.0 → v2.1 diff:
+`C3C0_V2_V21_DIFF.md`.
+
+- `saveLedger()` now throws `durable_checkpoint_failed` when
+  `$persistentStore.write` returns anything other than exactly `true`
+  (PR #99, absorbed verbatim). A `false` return is not an exception but
+  must block every dispatch and `/result` that relies on the checkpoint.
+- Legacy `last_id` write: checked, no throw guard needed (the ledger is
+  the authoritative dedup state; dedup takes `max(floor, acked, legacy)`),
+  but a `false` return is now recorded as a `store_write` phase via the
+  new `writeLegacyLastId()` helper instead of being silently swallowed.
+- `test_store_failure.js` (PR #99, 5/5) added to the package; the v2
+  suite still passes 28/0/1; the simulator's mock `write` now returns
+  `true` on success (real Surge semantics) and gains a
+  `ledgerWriteFalseAfter` fault-injection mode.
+- The v1 control script is now packaged at `v1/bridge_fixed.js` and
+  `test_fixed_v2.js` loads it from `./v1/` (no `../pr96-c3b` dependency),
+  so the package re-runs independently from a clean checkout.
+- CI: `ci/issue73-c3c0-v2.yml` runs all four suites
+  (`test_fixed_v2.js`, `test_store_failure.js`, `s1/test_s1.js`,
+  `s3/test_s3.js`) plus a syntax check of every `.js` file.
+
 Reference baseline: PR #96 HEAD `7aba9184`
 (`bridge_delivery_state.js`, 226 lines; `test_bridge_delivery_state.js`,
 269 lines, 23 tests — re-run locally, 23/23 PASS). v2 mirrors that reference

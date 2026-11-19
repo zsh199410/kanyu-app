@@ -15,7 +15,7 @@ const path = require("path");
 const { MockMailbox, runScript } = require("./simulator");
 
 const V2_RAW = fs.readFileSync(path.join(__dirname, "bridge_fixed_v2.js"), "utf8");
-const V1_RAW = fs.readFileSync(path.join(__dirname, "..", "pr96-c3b", "bridge_fixed.js"), "utf8");
+const V1_RAW = fs.readFileSync(path.join(__dirname, "v1", "bridge_fixed.js"), "utf8"); // v1 control, packaged (no ../pr96-c3b dependency)
 const V2 = V2_RAW;
 const V1 = V1_RAW;
 
@@ -439,6 +439,8 @@ async function main() {
   console.log(`\nV2: PASS=${PASS} FAIL=${FAIL} LIMITATION=${LIMIT} (of ${results.length} checks).`);
   fs.writeFileSync(path.join(__dirname, "test_fixed_v2_out.json"),
     JSON.stringify({ suite: "fixed-v2-regressions", pass: PASS, fail: FAIL, limitation: LIMIT, results }, null, 2));
+  // CI gate: a failed check must fail the run (LIMITATIONs do not fail it).
+  if (FAIL > 0) process.exitCode = 1;
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

@@ -6,6 +6,52 @@ testing only). All work was done in isolation on this machine
 GitHub posts, no changes under `/opt/surge-bridge/`. C3-C1 live deployment
 is NOT AUTHORIZED by this task.
 
+## Round 2 addendum (2026-11-19 — GPT receipt 7010810585, PR #97 review)
+
+GPT reviewed the PR #97 package and found two P0 blockers plus two S3
+design blockers. Round 2 fixes all of them in isolation; see
+`C3C0_ROUND2_REPORT.md` for the full Round 2 record.
+
+1. **CODE P0 — `saveLedger()` ignored `$persistentStore.write === false`.**
+   Absorbed GPT's PR #99 fix verbatim into the private v2 (now v2.1, 530
+   lines): `saveLedger` throws `durable_checkpoint_failed` unless the
+   write returns exactly `true`. Cross-reviewed complete: it is the only
+   ledger-persisting call and every caller already catches its throw and
+   fails closed. The legacy `last_id` write was also checked: it does NOT
+   need the throw guard (the ledger is the authoritative dedup state;
+   dedup takes `max(floor, acked, legacy)`), but a `false` return is now
+   recorded as a `store_write` phase via the new `writeLegacyLastId()`
+   helper. Full diff: `C3C0_V2_V21_DIFF.md`.
+2. **EVIDENCE P0 — the PR #97 package could not re-run independently.**
+   `test_fixed_v2.js` depended on `./simulator` and
+   `../pr96-c3b/bridge_fixed.js`, neither of which was submitted. Fixed:
+   the v1 control is now packaged at `v1/bridge_fixed.js`, the suite
+   loads it from `./v1/`, `test_store_failure.js` (PR #99, fetched from
+   its branch) is included, and `ci/issue73-c3c0-v2.yml` runs all four
+   suites. Clean-copy verification (fresh `/tmp/c3c0-clean-copy/`, no
+   `pr96-c3b` dependency): all four suites pass.
+3. **S3 DESIGN P0 — auto-eviction and "persist fails = rolled back" were
+   unsafe (review comment 7010797396).** `ID_ALLOCATOR_DESIGN.md` Rev 1:
+   §2.3 auto-eviction replaced by durable tombstones for the 7-day retry
+   horizon, explicit 409 `retry_identity_unknown` for unknown/expired
+   retry identities, and fail-closed 503 `history_full` when history is
+   full; §2.7 "persist fails = rolled back" replaced by
+   `commit_state: unknown` + durable reconciliation. Four new adversarial
+   tests (S3-T11–T14) pass; the s3 suite is now 14/14.
+4. **Simulator fix required by the PR #99 absorption.** The mock
+   `$persistentStore.write` now returns `true` on success (real Surge
+   semantics) and gains a `ledgerWriteFalseAfter` fault-injection mode.
+   Without the `return true`, every `saveLedger` call would throw in the
+   simulator (the mock previously returned `undefined`).
+
+Round 2 results: v2 suite 28/0/1 (unchanged), store-failure 5/5,
+s1 11/0/0, s3 14/14. Clean-copy: all four suites pass from a fresh
+directory. `PUBLIC_SANITIZED_DIFF_COMMIT` is now Draft PR #97
+(branch `c3c0-sanitized-v2-review`, head `a4df7b4` at submission, plus
+the S1 Rev 1 follow-up commit); the Round 2 files are to be committed
+to PR #97 as a further follow-up — see `C3C0_ROUND2_REPORT.md` for the
+commit list with SHAs.
+
 ## Headline: v2 aligns the private phone script with the PR #96 reference
 
 The C3-B private fix (v1, 109 → 369 lines) used `toSec()` for dedup and
@@ -38,21 +84,26 @@ The PR #96 reference test suite was re-run locally against the saved HEAD:
 | PR #96 reference `bridge_delivery_state.js` (HEAD 7aba9184) | `3720594c8a6a48729420ab0e064a1751305cfe67dd1b6b82002a3b36c8d5b52e` | 226 |
 | PR #96 reference `test_bridge_delivery_state.js` | `bd7f24da27c324f0e51f45880707b86c1dd8de4216d783b7c9c6a528d00d6850` | 269 |
 | C3-B v1 `bridge_fixed.js` | `a056af65611588e1ef1ea1d5f89b2c9e0487ddbab0b6445b1e338b4964b43603` | 369 |
-| **v2 `bridge_fixed_v2.js`** | **`b3c0b34045d8b4cecbc86b1ae39ff8e7a778091f8aa45733592e704697986135`** | **506** |
-| v2 test suite `test_fixed_v2.js` | `c4fd41893b71faa72e4fa662dae02ea3e0f8970cc4a4b91ac2074c8563017eda` | — |
-| simulator (copied from C3-B, unchanged) | `7d2b6d0dca0a4bb1a8c21eaf3a6b54fbf74e65e0bf7abe20249234d6287f2521` | — |
+| **v2 `bridge_fixed_v2.js` (v2.1, Round 2)** | **`1658cea7ce6566e3a6703f4e962ac9fb37fd0a2b78d96661575a86d23f4f9c9a`** | **530** |
+| v2 test suite `test_fixed_v2.js` (v2.1: packaged v1 path + exit-code gate) | `348a6eee47bfd6305f86d66714df2664cefd6ea78ea3b15fdf6e5986df9324eb` | — |
+| `test_store_failure.js` (PR #99, fetched from its branch) | `24a20ea1a18a5bac0e2ee35965d08b1f93a6002e18a4f619abb426e3237efa68` | — |
+| v1 control `v1/bridge_fixed.js` (packaged, desensitised) | `36388819a8a9971a3031ed462a5f2793c09af4b8d19ae5908f50aa7ae22b9e8d` | 374 |
+| simulator (C3-B + Round 2 `return true` / `ledgerWriteFalseAfter`) | `f0ac1dab9c7be8fafb1d2425068e9b9145275a92fbb64fb50f632011b269b0ad` | — |
+| CI `ci/issue73-c3c0-v2.yml` (runs all four suites) | see `C3C0_ROUND2_REPORT.md` | — |
+| S3 design `ID_ALLOCATOR_DESIGN.md` (Rev 1) | `c72ef737b90dfb10e1d880451aef74d1a94cad3e9e2a20f3064817be59b1c5d2` | — |
+| v2.0 → v2.1 diff `C3C0_V2_V21_DIFF.md` | `f7265de9cdfb3b39a9de60ef15eacbbac3af3ea5d2e3e28cf2fa0fdcd54b4ac6` | — |
 | Original `bridge.js` (PR #85, desensitised) | `466cb56b5877bf2d1956833851540d6491c53b2e29a3ea5c53762049fddceb24` | 109 |
 
 ## C3-C0 acceptance fields
 
 | Field | Result | Evidence |
 |---|---|---|
-| PRIVATE_PATCH_SHA | PASS | v2 script SHA `b3c0b340…86135` (506 lines). Test suite SHA `c4fd4189…17eda`. The desensitised v2 script and its unified diff are in `C3C0_MINIMAL_PATCH_V2.md` (109 → 506 lines). |
-| PUBLIC_SANITIZED_DIFF_COMMIT | **PENDING (not done by this task)** | The desensitised diff is ready for review (`C3C0_MINIMAL_PATCH_V2.md`), but this subagent does not post to GitHub. No public commit exists yet. The parent agent must submit it as a Draft PR (PR #96 or a new independent Draft PR) and record the commit SHA. Do NOT treat this field as satisfied until that commit exists. |
+| PRIVATE_PATCH_SHA | PASS | v2.1 script SHA `1658cea7…f4f9c9a` (530 lines; v2.0 was `b3c0b340…86135`, 506 lines). Test suite SHA `348a6eee…9324eb`. The desensitised v2.1 script, its v2.0 → v2.1 diff (`C3C0_V2_V21_DIFF.md`), and the full unified diff are in `C3C0_MINIMAL_PATCH_V2.md` (109 → 530 lines). |
+| PUBLIC_SANITIZED_DIFF_COMMIT | **DONE — Draft PR #97** | Submitted by the parent agent: Draft PR #97 (branch `c3c0-sanitized-v2-review`, head `a4df7b4` at submission, 13 files, +3507/−0; v2 file SHA on the branch verified to match local v2.0 `b3c0b340…`). The S1 Rev 1 follow-up commit was added (head `a8f12cf`, 5 commits, 15 files). **Round 2 files are NOT yet committed** — they are listed with SHAs in `C3C0_ROUND2_REPORT.md` for the parent to commit as the next follow-up to PR #97. |
 | WIRE_RAW_ID_PRESERVED | PASS | V24: seconds cmd id and ms cmd id are unchanged in the posted result, in the ledger `last_acked_id`, and in the legacy `last_id` write. V18/V4 confirm the same for the strict-ACK path. |
 | ORDERING_CANONICAL_MS | PASS | V1–V8. All comparisons go through `orderMillis()` (ms precision); a seconds id converts by x1000, a ms id stays; non-safe-integer or overflow returns null and fails closed. |
 | SAME_SECOND_MS_CASE | PASS | V1: ms id LEGACY_MS+1 dispatches. V2: LEGACY_MS-1 is deduped. V5: M+1 and M+2 (same second) both dispatch; an exactly equal id is deduped. V8: v1 blocks M+1 (toSec collision), v2 dispatches it. |
-| ID_ALLOCATOR_UNIQUENESS | **GAP (server-side, not fixed by the phone script)** | The parent agent verified read-only that the server does NOT generate command IDs: `/issue` accepts a caller-supplied id, `_valid_id` only checks `int` in `(0, 2^53-1]`, and `issue_if_empty`'s `command_id_not_increasing` check is a RAW numeric comparison (unit-blind, the same bug class as the original dedup). Two callers issuing seconds-precision IDs in the same second would collide; the server cannot guarantee uniqueness. **Required:** a documented allocation rule (recommend ms-only IDs) and a server-side `orderMillis` fix in a later production step. The phone script must not depend on server-side uniqueness: it fails closed on an exactly equal id (dedup) and never assumes two distinct ids are ordered by their raw value. This gap does not block C3-C0 review, but it must be tracked as a production follow-up. |
+| ID_ALLOCATOR_UNIQUENESS | **DESIGN Rev 1 (server-side, not implemented)** | The parent agent verified read-only that the server does NOT generate command IDs: `/issue` accepts a caller-supplied id, `_valid_id` only checks `int` in `(0, 2^53-1]`, and `issue_if_empty`'s `command_id_not_increasing` check is a RAW numeric comparison (unit-blind, the same bug class as the original dedup). Two callers issuing seconds-precision IDs in the same second would collide; the server cannot guarantee uniqueness. **Rev 1 (Round 2, GPT review 7010797396 — addressed):** `ID_ALLOCATOR_DESIGN.md` §2.3 auto-eviction replaced by durable tombstones for the 7-day retry horizon, explicit 409 `retry_identity_unknown` for unknown/expired retry identities, and fail-closed 503 `history_full` when history is full; §2.7 "persist fails = rolled back" replaced by `commit_state: unknown` + durable reconciliation. Isolated tests 14/14 (S3-T11–T14 adversarial). Production implementation still needs a separate review. The phone script must not depend on server-side uniqueness: it fails closed on an exactly equal id (dedup) and never assumes two distinct ids are ordered by their raw value. |
 | LEGACY_FLOOR_MIXED_UNIT_FIXED | PASS | V6: old 13-digit ms last + future 10-digit sec cmd dispatches (R0 regression). V3: a second id for a second containing a newer ms checkpoint is deduped. V4: mixed s/ms bidirectional ordering carries the raw id each time. |
 | FENCE_INDEPENDENT_OF_LEDGER | PASS | V9: 23 rounds old cmd with NO ledger → fenced, ledger stays null, 0/0/0. V10: empty-mailbox bootstrap, then 23 rounds old cmd → all fenced, ledger unchanged, 0/0/0. V11/V12: pre-stored old `result_ready` (polled old cmd, and empty mailbox) → never re-sent, 0 sends. V13: first-migration fence — a synthetic pending cmd on first run is fenced, floor recorded, not executed. |
 | PR85_NO_POST_REPLAY | PASS | V17: a timed-out mutating POST via `$httpAPI` is NOT retried via direct HTTP (`outcome_unknown_no_retry` in the outputs, 0 direct local POSTs). |
@@ -245,30 +296,37 @@ GitHub #73) and are not secrets.
 
 ## Deliverables (all under `~/workspace/pr96-c3c0/`)
 
-- [bridge_fixed_v2.js](sandbox://workspace/pr96-c3c0/bridge_fixed_v2.js) — v2 fixed script (desensitised, 506 lines, SHA `b3c0b340…86135`)
-- [test_fixed_v2.js](sandbox://workspace/pr96-c3c0/test_fixed_v2.js) — v2 regression suite (29 checks)
+- [bridge_fixed_v2.js](sandbox://workspace/pr96-c3c0/bridge_fixed_v2.js) — v2.1 fixed script (desensitised, 530 lines, SHA `1658cea7…f4f9c9a`)
+- [test_fixed_v2.js](sandbox://workspace/pr96-c3c0/test_fixed_v2.js) — v2 regression suite (29 checks; packaged v1 path + exit-code gate)
 - [test_fixed_v2_out.json](sandbox://workspace/pr96-c3c0/test_fixed_v2_out.json) — v2 results (28 PASS, 0 FAIL, 1 LIMITATION)
-- [C3C0_MINIMAL_PATCH_V2.md](sandbox://workspace/pr96-c3c0/C3C0_MINIMAL_PATCH_V2.md) — desensitised unified diff v2 vs original (109 → 506 lines) + v1→v2 change list
+- [test_store_failure.js](sandbox://workspace/pr96-c3c0/test_store_failure.js) — PR #99 durable-store injections (5/5, fetched from its branch)
+- [C3C0_MINIMAL_PATCH_V2.md](sandbox://workspace/pr96-c3c0/C3C0_MINIMAL_PATCH_V2.md) — desensitised unified diff v2 vs original (109 → 530 lines) + v1→v2 change list + v2.1 addendum
+- [C3C0_V2_V21_DIFF.md](sandbox://workspace/pr96-c3c0/C3C0_V2_V21_DIFF.md) — desensitised v2.0 → v2.1 diff (PR #99 absorption + legacy-write check)
+- [C3C0_ROUND2_REPORT.md](sandbox://workspace/pr96-c3c0/C3C0_ROUND2_REPORT.md) — Round 2 report (PR #99 absorption, package completion, S3 Rev 1, clean-copy verification)
 - [C3C0_REPORT.md](sandbox://workspace/pr96-c3c0/C3C0_REPORT.md) — this report
-- [simulator.js](sandbox://workspace/pr96-c3c0/simulator.js) — isolated Surge mock (copied from C3-B, unchanged)
+- [simulator.js](sandbox://workspace/pr96-c3c0/simulator.js) — isolated Surge mock (C3-B + Round 2 `return true` / `ledgerWriteFalseAfter`)
+- [v1/bridge_fixed.js](sandbox://workspace/pr96-c3c0/v1/bridge_fixed.js) — v1 control script (packaged, desensitised, 374 lines)
+- [ci/issue73-c3c0-v2.yml](sandbox://workspace/pr96-c3c0/ci/issue73-c3c0-v2.yml) — CI workflow (syntax check + all four suites)
 - [rollback_test.sh](sandbox://workspace/pr96-c3c0/rollback_test.sh) — isolated rollback simulation (PASS)
 - [pr96-head-7aba9184/bridge_delivery_state.js](sandbox://workspace/pr96-c3c0/pr96-head-7aba9184/bridge_delivery_state.js) — PR #96 reference (HEAD 7aba9184, as received)
 - [pr96-head-7aba9184/test_bridge_delivery_state.js](sandbox://workspace/pr96-c3c0/pr96-head-7aba9184/test_bridge_delivery_state.js) — PR #96 reference tests (23/23 PASS locally)
 
 ## Notes for the parent agent / GPT
 
-- **PUBLIC_SANITIZED_DIFF_COMMIT is the one open item from this task.**
-  The desensitised diff is review-ready, but no public commit exists because
-  this subagent does not post to GitHub. The parent must submit
-  `C3C0_MINIMAL_PATCH_V2.md` (and/or the desensitised `bridge_fixed_v2.js`
-  with its test suite) as a Draft PR and record the commit SHA.
+- **Round 2 files to commit to PR #97 (the open item from this task).**
+  The parent must commit the Round 2 files listed with SHAs in
+  `C3C0_ROUND2_REPORT.md` as the next follow-up to Draft PR #97
+  (branch `c3c0-sanitized-v2-review`). The package then re-runs
+  independently (clean-copy verified) and the CI workflow
+  `ci/issue73-c3c0-v2.yml` runs all four suites on the branch.
 - **PUBLIC_JS_SECRET_EXPOSURE = YES blocks C3-C1.** Do not load the v2
   script from the current anonymously reachable distribution path, and do
   not treat a new script SHA as a fix for the exposure. Rotation/isolation
   of the exposed long-lived credentials must pass first.
-- **ID_ALLOCATOR_UNIQUENESS is a server-side gap.** Recommend ms-only IDs
-  and a server-side `orderMillis` fix in a later production step; the phone
-  script must not depend on server-side uniqueness.
+- **ID_ALLOCATOR_UNIQUENESS is a server-side design (Rev 1).** The
+  allocator is a draft with 14/14 isolated tests; production
+  implementation needs a separate review. The phone script must not
+  depend on server-side uniqueness.
 - The frozen-timer case remains `RUNTIME_HARD_TIMEOUT_UNPROVEN` (V23). Only
   real device script logs can confirm whether it ever occurs on the phone.
 - The old command 1795063030 stays `OUTCOME_UNKNOWN` and is permanently

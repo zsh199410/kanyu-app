@@ -58,8 +58,10 @@ but the server should be fixed so the guarantee holds by construction.
   while holding the lock. No separate lock, no new process, no new store.
 - Allocator state is persisted in the same `state.json`, under a new key
   `allocator`, so it is atomically committed together with the mailbox:
-  `allocator: { last_allocated_ms: <int>, keys: { <idempotency-key>: <id> } }`.
-  (The `keys` map is bounded — see §2.4.)
+  `allocator: { last_allocated_ms: <int>, keys: { <idempotency-key>: <tombstone> } }`.
+  A tombstone is `{ id, issued_at_ms, status: "pending" | "resolved",
+  action_hash }` (see §2.3). The map is bounded by count and fails
+  closed when full — see §2.3.
 - If `state.json` is missing or corrupt, or the allocator state is absent
   or invalid, allocation FAILS CLOSED (503, do not allocate, do not store
   a command). Never guess a starting id.
@@ -108,8 +110,15 @@ Why this works:
 - The caller supplies an `Idempotency-Key` header (or an
   `idempotency_key` field in the JSON body) with every /issue request.
   The key must be a client-generated unique string (e.g. a UUID).
-- The server persists the mapping `keys[idempotency_key] -> allocated id`
+  A retry of the same request MUST reuse the same key; a new request
+  MUST use a fresh key. The caller also sends `retry: true` on a retry
+  (and `retry: false` or omits it on a first attempt), so the server can
+  tell a retry from a genuinely new request.
+- The server persists the mapping `keys[idempotency_key] -> tombstone`
   (and the command) in the allocator state, atomically with the command.
+  A tombstone is `{ id, issued_at_ms, status: "pending" | "resolved",
+  action_hash }` — it records the request identity, not just the id, so
+  a replay can be recognised even after the command itself resolves.
 - **Order matters: the idempotency-key check comes BEFORE the
   pending-command check.** A retry with a known key is for the command
   that is already pending, so it must return the same id — it must NOT
@@ -125,12 +134,35 @@ Why this works:
     reference (or 409 `already_resolved` — the exact code is a production
     detail; the invariant is: no second allocation, no second execution).
   - If the key is unknown, allocate normally.
-- The `keys` map is bounded: keep at most the last 100 keys (or keys from
-  the last 24h, whichever is smaller); evict the oldest first. A retry
-  with an evicted key is treated as a new request (it will be rejected by
-  `pending_command_exists` if a command is pending, or allocated a fresh
-  id if the mailbox is empty — this is safe because the old command is
-  already resolved and its id is below the allocator's high-water mark).
+- **Durable tombstones, no silent eviction (GPT review 7010797396 —
+  addressed).** The `keys` map is NOT auto-evicted. Tombstones are
+  retained for the supported retry horizon
+  `RETRY_HORIZON_MS = 7 days` (604800000 ms), which must be at least as
+  long as the longest supported client retry window (the bridge's
+  operational retry window is minutes to hours; 7 days exceeds it by
+  orders of magnitude). The map is bounded by count as well
+  (`MAX_TOMBSTONES = 10000`, ~100 bytes each — a few MB at most).
+  When the map is FULL (count limit reached), allocation FAILS CLOSED
+  with 503 `history_full` — it never silently evicts a tombstone and
+  reissues the action. A full history is an operator event (archive /
+  extend the store), not a reason to replay a non-idempotent action.
+  Tombstones older than the horizon are NOT deleted by the allocator;
+  expiry is an operator/archival decision, recorded, and never applied
+  while a retry could still be in flight.
+- **Unknown / expired retry identities are explicitly rejected (GPT
+  review 7010797396 — addressed).** If a request is marked
+  `retry: true` but its key is NOT in the tombstone store (unknown, or
+  the tombstone was archived after the horizon), return 409
+  `retry_identity_unknown` — do NOT allocate a fresh id and do NOT
+  execute the action as if it were new. The server cannot prove the
+  action was not already executed, so it must not execute it again.
+  A first attempt (`retry: false` / absent) with an unknown key is a
+  new request and is allocated normally (subject to the history-full
+  503 above). This is why the client retry window must be shorter than
+  the horizon and retries must reuse the same key: the guarantee holds
+  only inside the horizon, and the server enforces the boundary by
+  rejecting out-of-horizon retries instead of silently treating them
+  as new requests.
 
 ### 2.4 Ordering check fix (required production change)
 
@@ -195,8 +227,10 @@ a colliding or non-monotonic id.
 | Allocator state missing/corrupt | 503. No allocation, no command stored. |
 | Wall clock invalid (<=0 or > 2^53-1 ms) | 503. No allocation. |
 | Candidate would exceed 2^53-1 | 503. No allocation. (Not reachable in practice for ms timestamps.) |
-| Persist fails after allocation | 503 `durable_commit_failed`. The in-memory `last_allocated` is NOT advanced (the allocation is rolled back in memory), so a retry can allocate the same id safely. The command is not stored. |
+| Persist fails after allocation | 503 `durable_commit_failed`, `commit_state: "unknown"`. A persist exception does NOT prove the command was not stored: filesystem sync/rename may succeed *before* persist reports an exception (PR#96 `server_http_commit.py` documents this). The allocator therefore does NOT roll back in memory and does NOT assume the command is absent. The transaction is marked unknown and must be **reconciled** before any further allocation: re-read the durable state; if it contains the command (same idempotency key / same id), return that id — the original allocation succeeded; if it is readable and contains no such command, the original transaction is provably absent and a new allocation may proceed; if it is unreadable or corrupt, fail closed with 503 and stay unknown. **A retry with a DIFFERENT idempotency key must not create another action until this reconciliation proves the previous transaction's outcome with durable server-side proof** (GPT review 7010797396 — addressed). |
 | Retry with a known idempotency key | Same id returned, no second allocation, no second command. |
+| Retry marked `retry: true` with an unknown/expired key | 409 `retry_identity_unknown`. No allocation, no execution (GPT review 7010797396 — addressed). |
+| Tombstone history full (count limit reached) | 503 `history_full`. No eviction, no reissue (GPT review 7010797396 — addressed). |
 | Retry with an evicted/unknown key while a command is pending | 409 `pending_command_exists`. |
 | Caller sends a seconds id (option a) | Ignored; server allocates an ms id and returns it. |
 
@@ -217,6 +251,9 @@ store + mock global lock) verifies the allocator. See `s3/README.md` and
 | Allocator refuses when a pending command exists (409) | No allocation, no state change, mailbox untouched. |
 | Clock going backwards preserves monotonicity | Mock clock set backwards; the next allocated id is still above the previous one. |
 | Overflow / invalid clock fails closed | Candidate beyond the safe-integer range (or an invalid wall clock) returns 503 and allocates nothing. |
+| Retry with an evicted/expired key (marked `retry: true`) is explicitly rejected, never re-executed | A retry whose key is not in the tombstone store returns 409 `retry_identity_unknown`; zero dispatches, no new allocation, mailbox unchanged. |
+| History full fails closed (503), never silently evicts and reissues | With the tombstone store at its count limit, a new first-attempt request returns 503 `history_full`; no allocation, no command stored. |
+| Persist error leaves `commit_state: unknown`; a retry with a DIFFERENT key creates no second action until reconciled | After a persist exception, the allocator re-reads durable state: if the command is durably present, the retry returns the existing id (no second action); if durable state is unreadable, it fails closed 503 and stays unknown. |
 
 ## 4. Required production changes (not done here)
 
@@ -228,8 +265,11 @@ before the allocator is deployed to production:
 2. Change `issue_if_empty`'s increasing check to `orderMillis`
    (§2.4). Add the `orderMillis` helper to the server (same semantics as
    the phone's).
-3. Add idempotency-key handling to /issue (§2.3), with the bounded `keys`
-   map persisted atomically.
+3. Add idempotency-key handling to /issue (§2.3 Rev 1), with durable
+   tombstones for the 7-day retry horizon, explicit rejection of
+   unknown/expired retry identities (409 `retry_identity_unknown`), and
+   fail-closed 503 `history_full` when the tombstone store is full.
+   No auto-eviction.
 4. Change /issue so the server allocates the id (option (a) in §2.6) and
    returns it; update all callers to use the returned id (and to stop
    generating their own seconds/ms ids).
@@ -256,9 +296,13 @@ before the allocator is deployed to production:
 
 ## 6. Gate statement
 
-**ID_ALLOCATOR_DESIGN = DRAFT (isolated tests pass, production not
-implemented).** The design is ready for review. Production implementation
-requires the separate review in §4 and must not be done as an experiment
-on live state. The phone-side fix (v2) does not depend on the allocator:
-it fails closed on equal ids and orders by ms regardless of how the id
-was produced.
+**ID_ALLOCATOR_DESIGN = DRAFT Rev 1 (isolated tests pass, production not
+implemented).** Rev 1 (2026-11-19) addresses GPT review 7010797396:
+§2.3 auto-eviction replaced by durable tombstones + explicit rejection
+of unknown/expired retries + fail-closed 503 when history is full;
+§2.7 "persist fails = rolled back" replaced by `commit_state: unknown`
++ durable reconciliation. The design is ready for review. Production
+implementation requires the separate review in §4 and must not be done
+as an experiment on live state. The phone-side fix (v2) does not depend
+on the allocator: it fails closed on equal ids and orders by ms
+regardless of how the id was produced.

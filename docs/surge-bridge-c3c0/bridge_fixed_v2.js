@@ -262,7 +262,31 @@ function loadLedger() {
 }
 function saveLedger(state) {
   if (!saneState(state)) throw new Error("durable_checkpoint_failed");
-  $persistentStore.write(JSON.stringify(state), LEDGER_KEY);
+  // PR #99 (GPT): Surge $persistentStore.write returns true only on a
+  // successful write. Returning false is NOT an exception, but it must
+  // block every dispatch and /result that relies on this durable
+  // checkpoint — otherwise an action could run while in_progress was
+  // never persisted, or a receipt could be POSTed while result_ready
+  // was never persisted. Absorbed verbatim from PR #99.
+  const saved = $persistentStore.write(JSON.stringify(state), LEDGER_KEY);
+  if (saved !== true) throw new Error("durable_checkpoint_failed");
+}
+
+// Legacy last_id checkpoint write (secondary to the ledger).
+// v2.1 note: unlike saveLedger, this does NOT throw on a false return.
+// The ledger (floor / last_acked_id) is the authoritative dedup state
+// and is persisted via saveLedger, which now throws on false (PR #99);
+// dedup takes max(floor, acked, legacy), so a stale legacy value cannot
+// cause a re-dispatch of an ACKed command. In resendCached() the legacy
+// write is reached only AFTER saveLedger persisted the cleared pending +
+// updated last_acked_id; in the ACK path the saveLedger that follows
+// persists last_acked_id, and if it throws the result stays cached and
+// is re-sent next run, never re-executed. A false return is recorded as
+// a phase (same as a thrown write) so it is not silently swallowed.
+function writeLegacyLastId(id) {
+  let saved = false;
+  try { saved = $persistentStore.write(String(id), STORE); } catch (_e) { phaseErr("store_write", id, "store"); return; }
+  if (saved !== true) phaseErr("store_write", id, "store");
 }
 
 // POST /result and check the STRICT ACK (PR#96): 200 + accepted:true +
@@ -290,7 +314,7 @@ async function resendCached(ledger, pend) {
     if (na !== null) ledger.last_acked_id = na;
     ledger.pending = null;
     try { saveLedger(ledger); } catch (_e) { phaseErr("ledger_write", pend.id, "store"); }
-    try { $persistentStore.write(String(pend.id), STORE); } catch (_e) { phaseErr("store_write", pend.id, "store"); }
+    writeLegacyLastId(pend.id);
     phase("result_acked", pend.id, "resend");
     return true;
   }
@@ -483,7 +507,7 @@ async function resendCached(ledger, pend) {
     phase("result_delivery", cmd.id, "none");
     const res = await sendResult(result);
     if (res.acked) {
-      try { $persistentStore.write(String(cmd.id), STORE); } catch (_e) { phaseErr("store_write", cmd.id, "store"); }
+      writeLegacyLastId(cmd.id);
       const na = newerRawId(ledger.last_acked_id, cmd.id);
       if (na !== null) ledger.last_acked_id = na;
       ledger.pending = null;
