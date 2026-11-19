@@ -200,3 +200,63 @@ tombstone fallback).
   keys; promotion is a separate approved gate.
 - `DUAL_TOKEN_DESIGN.md` (blocker 3): the server side of the
   dual-token window and revocation that this gate's proof depends on.
+
+---
+
+## Round 4 security review addendum — signed proof, fail-closed (2026-11-20)
+
+**This addendum supersedes the older unsigned `/credential-proof`
+response and status-only success behavior described in §§2(b), 3, 4.**
+
+The original sample accepted a caller-controlled JSON object containing
+`fingerprint_matches:true` but did not authenticate that assertion or
+bind it to the staged token. **That does not establish proof**, even
+when `token_id` and `issued_at` are present. Do not use the original
+unsigned contract to promote an active credential.
+
+The revised *Node-only isolation reference* (`signed_promotion_proof.js`
+and `promotion_gate.js`) requires all of the following before any
+write of an active key:
+
+1. A pinned, independently trusted **Ed25519 public key** (not returned
+   by the proof endpoint); reject missing or wrong key.
+2. Ed25519 signature over the canonical proof containing exactly
+   `purpose`, `kind` (dev/localkey), `ok`,
+   `fingerprint_matches`, `token_id`, `fingerprint`,
+   `nonce`, `issued_at`, `expires_at`. Both sides must sign
+   and verify **identical canonical bytes**.
+3. The fingerprint equals SHA-256 of the **actual candidate** read
+   from the local store, and the token ID is not the exposed old ID.
+4. A locally generated, cryptographically unpredictable,
+   **single-use expected nonce** matches the signed response;
+   24-hour maximum issuance age, 5-minute future clock skew, and
+   signed expiry in the future and no later than 24 hours after issue.
+5. The promotion key set is exactly the intended DEV or local-key
+   candidate/active/status triple; other keys fail closed.
+
+A caller-supplied `fingerprint_matches` boolean is never a trust
+anchor. An unsigned or replayed response cannot authorize a new
+active credential. The mock requires an expected nonce and pinned
+public key supplied separately; a real implementation must also
+**durably reject a reused challenge** (not yet implemented).
+
+A best-effort `promotion_done` status marker cannot authenticate
+the active credential. If the candidate is absent, the revised
+reference reports `promotion_no_candidate` even when that status
+marker says done. The prior status-only idempotence shortcut is
+withdrawn.
+
+**Durability correction:** If a write returned false or read-back was
+unverified, the active key **may already have changed**. The older
+claim that any failure before verified read-back leaves active
+unchanged is *withdrawn*. Report `promotion_commit_unknown` or
+`promotion_readback_unverified`, preserve the candidate, and
+reconcile durable state; never silently revert to a disclosed token.
+
+**Device release remains blocked.** Node's `crypto` module is not
+a Surge scripting API. The production verifier, trusted public key
+distribution, nonce storage, real authenticated proof endpoint, and
+server-to-device trust chain have not been verified on the phone.
+These new files are exclusively isolated evidence, not deployable
+phone/bootstrap scripts. Original pending command remains
+`OUTCOME_UNKNOWN`; C3-C1 and PR#93 remain blocked.
