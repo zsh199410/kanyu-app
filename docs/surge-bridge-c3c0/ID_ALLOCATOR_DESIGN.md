@@ -1,0 +1,264 @@
+# C3-C0-S3 — Server Unique ID Allocator (DRAFT DESIGN + isolated tests)
+
+Date: 2026-11-19. Project: PR #96 / Issue #73, C3-C0-S3.
+Scope: DRAFT DESIGN + isolated verification only. No production file
+touched, no production state modified, no GitHub post, no phone contact.
+Status: DESIGN ONLY — production implementation needs a separate review
+(see §6).
+
+All IDs below are synthetic examples. No credential, URL, IP, or device
+identifier appears in this document.
+
+## 1. The gap (verified read-only against the live server code)
+
+The live server (`mailbox_ack.py`, `server_http_commit.py`) does NOT
+generate command IDs. `POST /issue` accepts a caller-supplied `command.id`:
+
+- `_valid_id(v)`: `type(v) is int and 0 < v <= 2**53 - 1`. Any safe integer
+  is accepted; there is no check that it is a timestamp, no check that it
+  is unique, and no allocation.
+- `issue_if_empty` rejects only if (a) a pending command already exists
+  (409 `pending_command_exists`), or (b) the new id is not strictly
+  greater than the last stored result id (409 `command_id_not_increasing`).
+- The increasing check at (b) is a **raw numeric comparison**:
+  `command["id"] <= old_result["data"]["id"]`. It is unit-blind — the
+  same bug class as the original phone dedup that caused this incident:
+  - A millisecond last-result id (13 digits) blocks any newer
+    seconds id (10 digits), because the seconds value is numerically
+    smaller even though it is temporally newer.
+  - Conversely, a seconds last-result id does NOT block a millisecond id
+    that is temporally older, because the millisecond value is numerically
+    larger.
+- Two callers issuing seconds-precision IDs in the same second produce
+  the SAME id. The single-slot mailbox prevents two commands being pending
+  simultaneously, but it does not prevent the same id being reused for two
+  different commands at different times (e.g. after the first command's
+  result is stored and the slot clears, a second caller issuing the same
+  seconds id would be rejected by the increasing check only if a result
+  with that id exists — if the first command was fenced/skipped and never
+  produced a result, the duplicate id can be accepted later, creating
+  receipt ambiguity: two different commands, one id).
+- There is no persisted allocator state. If the server restarts, nothing
+  prevents re-allocating an id that was already used (the only guard is
+  the last-result comparison, which depends on a result existing).
+
+Consequence: the server cannot currently guarantee that command IDs are
+unique or strictly increasing. The phone script must not depend on
+server-side uniqueness (it already fails closed on an exactly equal id),
+but the server should be fixed so the guarantee holds by construction.
+
+## 2. Draft design: server-side unique ID allocator
+
+### 2.1 Where it lives
+
+- Inside the existing server, under the existing global request lock and
+  the existing atomic persist (`persist(next_state)`). Allocation and
+  mailbox write happen in ONE atomic commit: the allocator reads the
+  current state, allocates the id, stores the command, and persists — all
+  while holding the lock. No separate lock, no new process, no new store.
+- Allocator state is persisted in the same `state.json`, under a new key
+  `allocator`, so it is atomically committed together with the mailbox:
+  `allocator: { last_allocated_ms: <int>, keys: { <idempotency-key>: <id> } }`.
+  (The `keys` map is bounded — see §2.4.)
+- If `state.json` is missing or corrupt, or the allocator state is absent
+  or invalid, allocation FAILS CLOSED (503, do not allocate, do not store
+  a command). Never guess a starting id.
+
+### 2.2 Allocation algorithm (strictly increasing unique millisecond integers)
+
+```
+allocate(now_ms, last_allocated):
+    # now_ms = int(time.time() * 1000) — wall-clock milliseconds.
+    # last_allocated = persisted highest id ever allocated (0 if none).
+    if not (0 < now_ms <= 2**53 - 1): fail closed (503)
+    candidate = max(now_ms, last_allocated + 1)
+    if candidate > 2**53 - 1: fail closed (503)
+    new_last_allocated = candidate
+    return candidate
+```
+
+Why this works:
+
+- **Strictly increasing:** `candidate >= last_allocated + 1`, always.
+  Every allocated id is greater than every previously allocated id.
+- **Unique:** strict increase implies uniqueness (no two allocations can
+  return the same value).
+- **Same-millisecond safe:** if 50 allocations happen in the same
+  millisecond, the first gets `now_ms`, the second gets `now_ms + 1`,
+  the third `now_ms + 2`, and so on. The ids are still millisecond-range
+  integers (13 digits) and strictly increasing. There is no separate
+  per-ms sequence counter to persist — the `+1` IS the sequence.
+- **Clock skew safe:** if the wall clock goes backwards,
+  `max(now_ms, last_allocated + 1)` still returns `last_allocated + 1`,
+  so monotonicity is preserved. If the clock jumps forward, the new id
+  is the new wall-clock ms (which is greater than `last_allocated`).
+- **Restart safe:** `last_allocated` is persisted atomically with the
+  mailbox. After a restart the allocator reloads it and continues above
+  it. It can never re-allocate an id that was already handed out.
+- **Millisecond integers:** the returned id is always a 13-digit ms-range
+  integer (while wall-clock ms stays below 2^53, i.e. for ~285,000 years).
+  This matches the phone's `orderMillis()` canonical ordering: a server
+  allocated id is already in ms, so no conversion is needed on the phone.
+- **Fail-closed:** if the wall clock is invalid, if the candidate would
+  exceed the safe-integer range, or if the allocator state is missing /
+  corrupt, allocation returns 503 and no command is stored.
+
+### 2.3 Idempotency (retried /issue must not allocate twice)
+
+- The caller supplies an `Idempotency-Key` header (or an
+  `idempotency_key` field in the JSON body) with every /issue request.
+  The key must be a client-generated unique string (e.g. a UUID).
+- The server persists the mapping `keys[idempotency_key] -> allocated id`
+  (and the command) in the allocator state, atomically with the command.
+- **Order matters: the idempotency-key check comes BEFORE the
+  pending-command check.** A retry with a known key is for the command
+  that is already pending, so it must return the same id — it must NOT
+  be rejected as `pending_command_exists`. (This ordering was caught by
+  the isolated test S3-T4: checking "pending" first wrongly 409s a
+  legitimate retry.)
+- On a retry with the same key:
+  - If the key is known AND the mapped command is still pending, return
+    200 with the SAME command (same id) — do not allocate a new id, do
+    not overwrite the mailbox.
+  - If the key is known AND the command has already been resolved (a
+    result exists with that id), return 200 with the stored result
+    reference (or 409 `already_resolved` — the exact code is a production
+    detail; the invariant is: no second allocation, no second execution).
+  - If the key is unknown, allocate normally.
+- The `keys` map is bounded: keep at most the last 100 keys (or keys from
+  the last 24h, whichever is smaller); evict the oldest first. A retry
+  with an evicted key is treated as a new request (it will be rejected by
+  `pending_command_exists` if a command is pending, or allocated a fresh
+  id if the mailbox is empty — this is safe because the old command is
+  already resolved and its id is below the allocator's high-water mark).
+
+### 2.4 Ordering check fix (required production change)
+
+Change `issue_if_empty`'s increasing check from the raw comparison to
+millisecond-canonical ordering:
+
+```
+# BEFORE (unit-blind, buggy):
+if command["id"] <= old_result["data"]["id"]: -> 409
+
+# AFTER (canonical ms ordering):
+if orderMillis(command["id"]) <= orderMillis(old_result["data"]["id"]): -> 409
+```
+
+where `orderMillis(v)` is the same function as the phone's: ms ids stay,
+seconds ids convert by x1000, non-safe-integers return null (fail closed
+with 400). With the allocator in place, all NEW ids are ms and strictly
+increasing, so the check will pass for allocator-issued ids; the
+canonical comparison is still required so that OLD commands (which may
+carry seconds ids) are compared correctly against ms last-result ids.
+
+### 2.5 What does NOT change
+
+- **Old commands keep their original raw IDs** for receipts and ACKs.
+  The allocator never rewrites history. `accept_result` still matches on
+  exact raw id equality (`pending.id == result.id`), and `receipt_status`
+  still confirms by exact raw id. No migration of existing ids.
+- **Wire format unchanged.** /issue still accepts a JSON command with an
+  `id` field; the only change is that the server now ALLOCATES the id
+  (the caller may omit it, or the server overwrites a caller-supplied id
+  with the allocated one — see §2.6). /poll, /result, /diagnostic,
+  /receipt are untouched.
+- **Single-slot mailbox unchanged.** `pending_command_exists` (409) still
+  applies: the allocator refuses to allocate when a command is already
+  pending. Allocation happens only when the mailbox is empty.
+- **The phone script does not change for this.** The phone already uses
+  `orderMillis()` and fails closed on equal ids. The allocator is a
+  server-side guarantee; the phone's defence in depth stays as is.
+
+### 2.6 Caller-supplied id: ignore or reject?
+
+Two options; the design recommends (a):
+
+- (a) **Server allocates, caller id ignored.** The caller omits `id` (or
+  sends any value) and the server returns the allocated id in the 200
+  response (`{"ok": true, "issued": true, "id": <allocated>}`). The
+  caller uses the returned id for tracking. This is simplest and removes
+  the whole class of caller-side unit mistakes. Recommended.
+- (b) **Server allocates, caller id rejected if present.** The caller
+  must omit `id`; if it sends one, return 400. Stricter, but breaks
+  existing callers that send an id. Not recommended as a first step.
+
+Under (a), a caller that still sends a seconds id gets it replaced by the
+allocated ms id; the response tells it the real id. No caller can inject
+a colliding or non-monotonic id.
+
+### 2.7 Failure modes (all fail closed)
+
+| Situation | Behaviour |
+|---|---|
+| Mailbox already has a pending command | 409 `pending_command_exists`. No allocation, no state change. |
+| Allocator state missing/corrupt | 503. No allocation, no command stored. |
+| Wall clock invalid (<=0 or > 2^53-1 ms) | 503. No allocation. |
+| Candidate would exceed 2^53-1 | 503. No allocation. (Not reachable in practice for ms timestamps.) |
+| Persist fails after allocation | 503 `durable_commit_failed`. The in-memory `last_allocated` is NOT advanced (the allocation is rolled back in memory), so a retry can allocate the same id safely. The command is not stored. |
+| Retry with a known idempotency key | Same id returned, no second allocation, no second command. |
+| Retry with an evicted/unknown key while a command is pending | 409 `pending_command_exists`. |
+| Caller sends a seconds id (option a) | Ignored; server allocates an ms id and returns it. |
+
+## 3. Isolated verification (s3/)
+
+The simulation in `s3/` (Node.js, no real tokens/URLs, mock persistent
+store + mock global lock) verifies the allocator. See `s3/README.md` and
+`s3_out.json`. Summary:
+
+| Check | What it proves |
+|---|---|
+| Strictly increasing across 1000 allocations | Every allocated id is greater than the previous one. |
+| No duplicates, 50 allocations in the same millisecond | Mock clock frozen at one ms value; all 50 ids distinct and increasing. |
+| No repeats across a simulated restart | Allocator state persisted, process "restarted" (new instance loads the persisted state), next id is above all previously allocated ids. |
+| Retry with the same idempotency key returns the same id | No double allocation; the mailbox still holds exactly one command. |
+| Caller-supplied seconds id normalized to ms for ordering, raw id preserved for receipt | A seconds id is converted by x1000 for the increasing check; the stored command and the receipt keep the caller's raw id. |
+| New id always greater (ms ordering) than any existing last result id (both s and ms) | With a ms last-result id and with a seconds last-result id, the allocated id is greater in ms ordering. |
+| Allocator refuses when a pending command exists (409) | No allocation, no state change, mailbox untouched. |
+| Clock going backwards preserves monotonicity | Mock clock set backwards; the next allocated id is still above the previous one. |
+| Overflow / invalid clock fails closed | Candidate beyond the safe-integer range (or an invalid wall clock) returns 503 and allocates nothing. |
+
+## 4. Required production changes (not done here)
+
+This is a draft. The following must be done (and reviewed separately)
+before the allocator is deployed to production:
+
+1. Implement `allocate()` in the server (inside the existing global lock
+   + atomic persist), with the `allocator` key in `state.json`.
+2. Change `issue_if_empty`'s increasing check to `orderMillis`
+   (§2.4). Add the `orderMillis` helper to the server (same semantics as
+   the phone's).
+3. Add idempotency-key handling to /issue (§2.3), with the bounded `keys`
+   map persisted atomically.
+4. Change /issue so the server allocates the id (option (a) in §2.6) and
+   returns it; update all callers to use the returned id (and to stop
+   generating their own seconds/ms ids).
+5. Isolated tests for the production implementation (port the s3 suite to
+   the real server code), plus a restart test on a staging copy of
+   `state.json`.
+6. A migration note: existing pending command 1795063030 keeps its raw id
+   and stays OUTCOME_UNKNOWN and fenced; the allocator never touches it.
+   The first allocator-issued id must be greater (ms ordering) than
+   every existing id (last result 1795055213880 ms, pending 1795063030 s
+   → 1795063030000 ms), which holds automatically because wall-clock ms
+   is already above both.
+
+## 5. What this design deliberately does NOT do
+
+- It does not change the phone script (the phone already handles mixed
+  units via `orderMillis()` and fails closed on equal ids).
+- It does not rewrite, migrate, or re-issue any existing command id.
+- It does not add a new network endpoint or change the /poll, /result,
+  /diagnostic, or /receipt wire format.
+- It does not use the wall clock as the sole uniqueness source (the
+  persisted high-water mark + `+1` is what guarantees uniqueness even
+  when the clock is frozen or goes backwards).
+
+## 6. Gate statement
+
+**ID_ALLOCATOR_DESIGN = DRAFT (isolated tests pass, production not
+implemented).** The design is ready for review. Production implementation
+requires the separate review in §4 and must not be done as an experiment
+on live state. The phone-side fix (v2) does not depend on the allocator:
+it fails closed on equal ids and orders by ms regardless of how the id
+was produced.
