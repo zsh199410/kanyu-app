@@ -1,0 +1,56 @@
+{
+  "suite": "s1-secret-free-distribution",
+  "pass": 8,
+  "fail": 0,
+  "limitation": 0,
+  "results": [
+    {
+      "id": "S1-T1",
+      "name": "static scan: distributed script contains no credential",
+      "status": "PASS",
+      "detail": "0 forbidden patterns; placeholders <DEV_TOKEN>/<API_KEY>/<BRIDGE_BASE> present"
+    },
+    {
+      "id": "S1-T2",
+      "name": "fail-closed with no credential",
+      "status": "PASS",
+      "detail": "networkCalls=0 done=1 phases=credential_missing"
+    },
+    {
+      "id": "S1-T3",
+      "name": "normal operation with credential from $persistentStore",
+      "status": "PASS",
+      "detail": "done=1 dispatched=1 posted=1 audit-leak=false"
+    },
+    {
+      "id": "S1-T4",
+      "name": "rotation cutover (parallel window, then revoke)",
+      "status": "PASS",
+      "detail": "round1-old posted=1 new-token rounds=3 audit old=2 new=6 old-after-revoke=403"
+    },
+    {
+      "id": "S1-T5",
+      "name": "old token rejected after revocation (fail-closed)",
+      "status": "PASS",
+      "detail": "done=1 dispatched=0 phases=credential_present,auth_forbidden"
+    },
+    {
+      "id": "S1-T6",
+      "name": "rollback restores old-token acceptance",
+      "status": "PASS",
+      "detail": "posted=1 done=1"
+    },
+    {
+      "id": "S1-T7",
+      "name": "anomalous-access audit (unknown IP flagged, no full token logged)",
+      "status": "PASS",
+      "detail": "alerts=2 all-unknown-ip=true full-token-in-log=false"
+    },
+    {
+      "id": "S1-T8",
+      "name": "local key absent -> direct-HTTP fallback skipped",
+      "status": "PASS",
+      "detail": "phases=credential_present,local_key_missing,result_acked dispatched=0 posted=1"
+    }
+  ]
+}
