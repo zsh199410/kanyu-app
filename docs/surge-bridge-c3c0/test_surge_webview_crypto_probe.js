@@ -20,7 +20,8 @@ const FORBIDDEN_KEYS = [
 
 async function execute({
   trigger = "editor", suppliedCrypto = webcrypto,
-  suppliedEncoder = TextEncoder, writeBehavior = "ok",
+  suppliedEncoder = TextEncoder, suppliedDecoder = atob,
+  writeBehavior = "ok",
 } = {}) {
   const store = new Map([["sgbridge_cred_dev", "TEST-OLD-ACTIVE-NEVER-TOUCH"],
     ["ledger", "TEST-LEDGER-NEVER-TOUCH"]]);
@@ -34,6 +35,7 @@ async function execute({
     $trigger: trigger,
     crypto: suppliedCrypto,
     TextEncoder: suppliedEncoder,
+    atob: suppliedDecoder,
     $persistentStore: {
       read: (key) => store.has(key) ? store.get(key) : null,
       write: (value, key) => {
@@ -67,6 +69,7 @@ async function execute({
   const allowedStatuses = new Set([
     "crypto_ready", "no_webcrypto", "no_text_encoder", "sha256_failed",
     "ed25519_unavailable", "signature_failed", "random_unavailable",
+    "base64_unavailable", "base64_failed",
     "probe_error"
   ]);
   assert.ok(writes.every(({key, value}) =>
@@ -120,6 +123,14 @@ async function test(name, fn) {
   await test("incorrect UTF8 encoder is rejected", async () => {
     const r = await execute({suppliedEncoder: class {encode(){return new Uint8Array([1])}}});
     assert.equal(r.status, "no_text_encoder");
+  });
+  await test("missing atob fails before crypto_ready", async () => {
+    const r = await execute({suppliedDecoder: null});
+    assert.equal(r.status, "base64_unavailable");
+  });
+  await test("incorrect atob decoding fails before crypto_ready", async () => {
+    const r = await execute({suppliedDecoder: () => "incorrect"});
+    assert.equal(r.status, "base64_failed");
   });
   await test("broken SHA-256 fails", async () => {
     const r = await execute({suppliedCrypto: {
