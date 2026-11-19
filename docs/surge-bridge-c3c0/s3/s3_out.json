@@ -1,6 +1,6 @@
 {
   "suite": "s3-id-allocator",
-  "pass": 10,
+  "pass": 14,
   "fail": 0,
   "limitation": 0,
   "results": [
@@ -63,6 +63,30 @@
       "name": "corrupt allocator state fails closed (no allocation)",
       "status": "PASS",
       "detail": "ok=false error=allocator_state_invalid"
+    },
+    {
+      "id": "S3-T11",
+      "name": "evicted/expired-key retry explicitly rejected, never re-executed",
+      "status": "PASS",
+      "detail": "never-issued=retry_identity_unknown archived-retry=retry_identity_unknown mailbox-still=1795064000010 last_allocated-unchanged=true"
+    },
+    {
+      "id": "S3-T12",
+      "name": "history full fails closed (503), never silently evicts and reissues",
+      "status": "PASS",
+      "detail": "code=503 error=history_full last_allocated-unchanged=true tombstones-kept=3"
+    },
+    {
+      "id": "S3-T13",
+      "name": "persist error leaves commit_state=unknown; retry with a different key creates no second action",
+      "status": "PASS",
+      "detail": "first=durable_commit_failed/unknown retry-id=1795064000000 duplicate=true mailbox-cmds=1 second-key-recorded=false"
+    },
+    {
+      "id": "S3-T14",
+      "name": "persist error + unreadable durable state fails closed, stays unknown",
+      "status": "PASS",
+      "detail": "first=durable_commit_failed retry=reconcile_unreadable commit_state=unknown mailbox-empty=true"
     }
   ]
 }
