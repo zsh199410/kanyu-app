@@ -226,9 +226,9 @@ test("last acknowledged comparison carries correct ordering across raw unit swit
  assert.equal(f.done,2);
  assert.equal(JSON.parse(f.ledger).last_acked_id,PENDING_SEC*1000+1);
 });
-test("a checkpoint whose second-to-millisecond conversion overflows fails closed",async()=>{
- const f=fixture({legacy:999999999999,cmd:{id:0}});
- assert.equal((await runOnce(f)).decision,"CHECKPOINT_WRITE_FAILED");
+test("a non-safe legacy epoch number fails closed without action",async()=>{
+ const f=fixture({legacy:Number.MAX_SAFE_INTEGER+1,cmd:{id:0}});
+ assert.equal((await runOnce(f)).decision,"LEGACY_CHECKPOINT_INVALID");
  assert.equal(f.done,0);
  assert.equal(f.sent.length,0);
 });
