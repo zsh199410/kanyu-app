@@ -242,13 +242,15 @@ test("a second ID for a second containing a newer ms checkpoint is safely dedupe
 test("last acknowledged comparison carries correct ordering across raw unit switches",async()=>{
  const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
  await runOnce(f);
- f.cmd={id:PENDING_SEC,actions:[{type:"api",method:"GET"}]};
+ // The incident's original ID remains quarantined even when numerically newer.
+ assert.equal((await runOnce(Object.assign(f,{cmd:{id:PENDING_SEC,actions:[{type:"api",method:"GET"}]}}))).decision,"LEGACY_COMMAND_QUARANTINED");
+ f.cmd={id:PENDING_SEC+1,actions:[{type:"api",method:"GET"}]};
  assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
- assert.equal(JSON.parse(f.ledger).last_acked_id,PENDING_SEC);
- f.cmd={id:PENDING_SEC*1000+1,actions:[{type:"api",method:"GET"}]};
+ assert.equal(JSON.parse(f.ledger).last_acked_id,PENDING_SEC+1);
+ f.cmd={id:(PENDING_SEC+1)*1000+1,actions:[{type:"api",method:"GET"}]};
  assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
  assert.equal(f.done,2);
- assert.equal(JSON.parse(f.ledger).last_acked_id,PENDING_SEC*1000+1);
+ assert.equal(JSON.parse(f.ledger).last_acked_id,(PENDING_SEC+1)*1000+1);
 });
 test("a non-safe legacy epoch number fails closed without action",async()=>{
  const f=fixture({legacy:Number.MAX_SAFE_INTEGER+1,cmd:{id:0}});
