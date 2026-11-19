@@ -99,6 +99,14 @@ class MailboxAckTests(unittest.TestCase):
         self.assertEqual(committed["cmd"],None)
         self.assertFalse(m.receipt_status(committed,ID,result(ID-1))[1]["confirmed"])
 
+    def test_bodyless_receipt_confirms_only_last_stored_id(self):
+        committed,_,_,_=m.accept_result(mailbox(),result(),now=25)
+        status,body=m.receipt_status(committed,ID)
+        self.assertEqual(status,200)
+        self.assertTrue(body["confirmed"])
+        self.assertFalse(m.receipt_status(committed,ID+1)[1]["confirmed"])
+        self.assertIsNone(committed["cmd"])
+
     def test_receipt_does_not_consume_next_command(self):
         committed,_,_,_=m.accept_result(mailbox(),result(),now=25)
         committed["cmd"]=cmd(ID+100)
