@@ -118,7 +118,7 @@ State rules:
 ## Deployment and recovery gates
 
 1. Muse first audits exact original private `bridge.js` and
-   `server.py` handlers; only the DIL? No: preserve exact private
+   `server.py` handlers; keep the existing private
    credentials and paths locally. Do not copy real files to public
    GitHub. Run Node and Python isolated tests, plus **old-protocol
    compatibility and race/crash/clock tests** in isolated simulation.
