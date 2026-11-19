@@ -237,6 +237,11 @@ def run_cycle(*, env=None, mode="inspect-only", now=None, publisher=None,
         # Fail before any external requests when release is not enabled.
         release_mode = _check_release_marker(cfg["approval"], env)
         _read_explicit_stop_state(cfg["stop"])
+        # Root must NEVER import or execute an unapproved legacy module.
+        # Attest the installed code BEFORE any pure-source callback import
+        # or outbound crawl, even for an initially same-byte publish.
+        _attest_local_source(
+            cfg["legacy_root"], env.get("P2P3_LEGACY_SOURCE_SHA256"))
     db, served, meta = _preflight(cfg["db"], cfg["served"], cfg["staging"])
     if mode == "inspect-only":
         return {**meta, "decision": "INSPECT_ONLY", "ok": True}
@@ -276,8 +281,7 @@ def run_cycle(*, env=None, mode="inspect-only", now=None, publisher=None,
         if release_mode != "PR93_APPROVED_VPS_ADDITIONS":
             return {**status, "decision": "HOLD_ADDITIONS_NOT_RELEASED",
                     "ok": False}
-        _attest_local_source(
-            cfg["legacy_root"], env.get("P2P3_LEGACY_SOURCE_SHA256"))
+        # Attestation was performed before all source imports.
     else:
         if admission["decision"] != "HOLD_NO_CHANGE":
             raise CycleRefused("same_byte_admission_disagree")
