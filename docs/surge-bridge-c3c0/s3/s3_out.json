@@ -1,0 +1,68 @@
+{
+  "suite": "s3-id-allocator",
+  "pass": 10,
+  "fail": 0,
+  "limitation": 0,
+  "results": [
+    {
+      "id": "S3-T1",
+      "name": "strictly increasing across 1000 allocations",
+      "status": "PASS",
+      "detail": "count=1000 last=1795064000999"
+    },
+    {
+      "id": "S3-T2",
+      "name": "no duplicates, 50 allocations in the same millisecond",
+      "status": "PASS",
+      "detail": "distinct=50 first=1795064000000 last=1795064000049"
+    },
+    {
+      "id": "S3-T3",
+      "name": "no repeats across a simulated restart",
+      "status": "PASS",
+      "detail": "max-before-restart=1795064000009 first-after=1795064000010"
+    },
+    {
+      "id": "S3-T4",
+      "name": "retry with same idempotency key returns the same id",
+      "status": "PASS",
+      "detail": "first=1795064000000 retry=1795064000000 duplicate=true"
+    },
+    {
+      "id": "S3-T5",
+      "name": "seconds id normalized to ms for ordering, raw preserved",
+      "status": "PASS",
+      "detail": "raw(sec>ms)=false canon(sec>ms)=true raw(ms>sec)=true canon-rejects-older-ms=true"
+    },
+    {
+      "id": "S3-T6",
+      "name": "new id greater (ms ordering) than any last result id (s and ms)",
+      "status": "PASS",
+      "detail": "id1=1795064000000 >ms-last=true id2=1795064000001 >sec-last=true"
+    },
+    {
+      "id": "S3-T7",
+      "name": "allocator refuses when a pending command exists (409)",
+      "status": "PASS",
+      "detail": "code=409 last_allocated-unchanged=true"
+    },
+    {
+      "id": "S3-T8",
+      "name": "clock going backwards preserves monotonicity",
+      "status": "PASS",
+      "detail": "ids=1795064000100,1795064000101,1795064000102"
+    },
+    {
+      "id": "S3-T9",
+      "name": "overflow / invalid clock fails closed (503, nothing allocated)",
+      "status": "PASS",
+      "detail": "badClock=invalid_clock zero=invalid_clock overflow=overflow"
+    },
+    {
+      "id": "S3-T10",
+      "name": "corrupt allocator state fails closed (no allocation)",
+      "status": "PASS",
+      "detail": "ok=false error=allocator_state_invalid"
+    }
+  ]
+}
