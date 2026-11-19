@@ -169,6 +169,70 @@ test("a diagnostic transport failure never allows command replay",async()=>{
  assert.equal(f.done,0);
 });
 
+
+const LEGACY_MS=1795055213880, PENDING_SEC=1795063030;
+test("regression: 13-digit ms legacy does not eternally block newer 10-digit sec IDs",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ assert.equal((await runOnce(f)).decision,"NO_COMMAND_BOOTSTRAPPED");
+ assert.equal(JSON.parse(f.ledger).floor,LEGACY_MS);
+ f.cmd={id:PENDING_SEC,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,1);
+ assert.equal(f.sent[0].id,PENDING_SEC); // raw ID unchanged on wire
+});
+test("old production pending is fenced despite ms/sec mixed ID units",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:PENDING_SEC,actions:[{type:"api",method:"GET"}]}});
+ assert.equal((await runOnce(f)).decision,"LEGACY_PENDING_FENCED");
+ assert.equal(JSON.parse(f.ledger).floor,PENDING_SEC);
+ for(let i=0;i<23;i++) {
+   assert.equal((await runOnce(f)).decision,"DUPLICATE_OR_FENCED");
+ }
+ assert.equal(f.done,0);
+ assert.equal(f.sent.length,0);
+ f.cmd={id:PENDING_SEC+1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,1);
+});
+test("a millisecond ID issued later within same second is not silently deduped",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:LEGACY_MS+1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,1);
+ assert.equal(f.sent[0].id,LEGACY_MS+1);
+});
+test("an older millisecond ID in the same second remains deduped",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:LEGACY_MS-1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"DUPLICATE_OR_FENCED");
+ assert.equal(f.done,0);
+});
+test("a second ID for a second containing a newer ms checkpoint is safely deduped",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:Math.floor(LEGACY_MS/1000),actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"DUPLICATE_OR_FENCED");
+ assert.equal(f.done,0);
+});
+test("last acknowledged comparison carries correct ordering across raw unit switches",async()=>{
+ const f=fixture({legacy:LEGACY_MS,cmd:{id:0}});
+ await runOnce(f);
+ f.cmd={id:PENDING_SEC,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(JSON.parse(f.ledger).last_acked_id,PENDING_SEC);
+ f.cmd={id:PENDING_SEC*1000+1,actions:[{type:"api",method:"GET"}]};
+ assert.equal((await runOnce(f)).decision,"ACK_CONFIRMED");
+ assert.equal(f.done,2);
+ assert.equal(JSON.parse(f.ledger).last_acked_id,PENDING_SEC*1000+1);
+});
+test("a checkpoint whose second-to-millisecond conversion overflows fails closed",async()=>{
+ const f=fixture({legacy:999999999999,cmd:{id:0}});
+ assert.equal((await runOnce(f)).decision,"CHECKPOINT_WRITE_FAILED");
+ assert.equal(f.done,0);
+ assert.equal(f.sent.length,0);
+});
+
 (async()=>{
  for(const [name,fn] of tests) {
    await fn();
