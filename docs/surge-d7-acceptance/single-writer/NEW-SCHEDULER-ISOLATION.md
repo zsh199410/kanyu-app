@@ -90,6 +90,38 @@ cd /tmp/pr93-shadow/docs/surge-d7-acceptance
    如实际源变化，记录时间和版本，不可拿不同快照的hash要求相等。
    *当前仅现网45行样本同SHA，是D3的一项证据，不是全部D3。*
 
+### 已安装源码完整性校验（只读）
+
+新周期在**执行任何旧源码导入或爬取前**核对`P2P3_LEGACY_SOURCE_SHA256`。
+哈希覆盖 `/opt/free-node-program/pool/` 的**全部**`*.py`文件（含
+`__init__.py`及传递依赖），而不只是rules/crawler四个文件。
+受信VPS上可只读计算该摘要，不输出源码与真实节点：
+
+```bash
+/opt/free-node-program/venv/bin/python - <<'PY'
+from pathlib import Path
+import hashlib
+base = Path("/opt/free-node-program/pool")
+names = sorted(x.name for x in base.glob("*.py"))
+assert {"__init__.py","rules.py","crawler.py","geo.py","winner_clean.py"} <= set(names)
+h = hashlib.sha256()
+for name in names:
+    p = base / name
+    assert p.is_file() and not p.is_symlink()
+    raw = p.read_bytes()
+    h.update(name.encode("utf-8") + b"\\0")
+    h.update(len(raw).to_bytes(8, "big"))
+    h.update(raw)
+print("legacy_source_sha256=" + h.hexdigest())
+PY
+```
+
+实际哈希只由Muse保存在私有`production.env`（权限600）；
+**不要在GitHub发布真实env配置/凭据**。代码发生任何改动
+必须重做隔离验收并更新已批准SHA，不能临时跳过哈希核验。
+`P2P3_STOP_STATE_FILE`还需Muse找到独立实际RUNNING/STOP状态文件；
+状态文件缺失或不为精确`RUNNING`时发布拒绝，不能用默认常量掩盖。
+
 6. 隔离systemd只允许`p2p3-*`测试单元和隔离目录：
    复用已有`single-writer/vps_systemd_test.py`测试真实flock、
    并发、SIGKILL、HTTP读回与回滚。若安装新模板，
