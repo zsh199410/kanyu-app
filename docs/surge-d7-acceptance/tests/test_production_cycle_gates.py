@@ -249,6 +249,16 @@ class ProductionCycleGates(unittest.TestCase):
                     previewer=self.preview_add,
                     publisher=lambda **kwargs:self.fail("unexpected write"))
 
+    def test_added_transitive_package_file_invalidates_attestation(self):
+        with tempfile.TemporaryDirectory() as d:
+            env, _, _, _, _ = self.fixture(d)
+            (Path(d)/"pool"/"unreviewed_helper.py").write_text(
+                "def import_side_effect(): pass", encoding="utf-8")
+            with self.assertRaisesRegex(prod.CycleRefused,
+                                        "source_attestation_mismatch"):
+                prod.run_cycle(env=env,mode="publish",
+                               previewer=self.preview_same)
+
     def test_invalid_source_inputs_refuse_no_mutations(self):
         with tempfile.TemporaryDirectory() as d:
             env, served, staging, _, _ = self.fixture(d)
