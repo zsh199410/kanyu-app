@@ -14,7 +14,7 @@ What is verified here (with real systemctl / ps output as evidence):
   S2 legacy-ban proof chain on real systemd: timer re-enable, service
      running, signal-killed service, legacy process in ps -- each must
      fail the proof; drained + disabled state must pass it; plus the
-     demonstrated mask-vs-verbatim-guard conflict (S2e)
+     amended masked-service guard positive proof (S2e)
   S3 two concurrent systemd publish services: exactly one wins, the
      other is refused; lock intervals never overlap; final file complete
   S4 SIGKILL of the lock holder under systemd: lock released, next
@@ -447,11 +447,11 @@ def step_s2():
     record("S2d-service-restored-proof-passes-again", proven,
            "Result=%s after restore" % state.get("Result"))
 
-    # S2e: the mask / verbatim-guard conflict, demonstrated on the gate
-    # units. Masking is the stronger bar, but a masked service reports
-    # LoadState=masked and the verbatim guard refuses it -- so mask and
-    # guard cannot pass together. This step proves the conflict exists
-    # (both directions) instead of leaving it as an assumption.
+    # S2e: UPDATED production guard must accept fully drained services
+    # under LoadState=masked (the original PR#80 guard used to reject
+    # them). The earlier S2e expected rejection and thus produced the
+    # known 35/36 FAIL; keep the actual real-systemd test and assert the
+    # AMENDED guard succeeds, alongside masked ban proof.
     run(["systemctl", "mask", "p2p3-gate-publish.service"])
     run(["systemctl", "mask", "p2p3-gate-sync.service"])
     daemon_reload()
@@ -463,9 +463,8 @@ def step_s2():
     proven_masked, _ = sw.legacy_ban_proof(
         timers=GATE_TIMERS, services=GATE_SERVICES,
         require_masked_services=True)
-    record("S2e-masked-service-fails-verbatim-guard",
-           not allowed and reason == "service_not_loaded"
-           and subject == "p2p3-gate-publish.service",
+    record("S2e-masked-service-passes-amended-guard",
+           allowed and state.get("LoadState") == "masked",
            "guard reason=%s LoadState=%s"
            % (reason, state.get("LoadState")))
     record("S2e-masked-service-passes-masked-variant-proof",
