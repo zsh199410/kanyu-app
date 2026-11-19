@@ -51,7 +51,7 @@ class CycleRefused(ValueError):
 def _read_bytes(path):
     p = Path(path)
     if not p.is_absolute() or p.is_symlink() or not p.is_file():
-        raise CycleRefused("unsafe_or_missing_input_file")
+        raise CycleRefused("invalid_file_or_symlink")
     size = p.stat().st_size
     if not 0 < size <= _contract.MAX_BYTES:
         raise CycleRefused("invalid_pool_size")
