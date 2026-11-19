@@ -135,35 +135,35 @@
       "name": "store read throws",
       "gate": "DONE_AT_MOST_ONCE",
       "pass": true,
-      "detail": "done=1 phase_store_read=true phases=[cron_enter,store_read] dispatch=0 resultPOST=0"
+      "detail": "done=1 phase_store_read=true phases=[cron_enter,credential_present,store_read] dispatch=0 resultPOST=0"
     },
     {
       "id": "V19b",
       "name": "poll invalid JSON",
       "gate": "DONE_AT_MOST_ONCE",
       "pass": true,
-      "detail": "done=1 phase_poll_parse=true phases=[cron_enter,poll_http_done,poll_parse,cmd_parsed,dedup_decision] dispatch=0 resultPOST=0"
+      "detail": "done=1 phase_poll_parse=true phases=[cron_enter,credential_present,poll_http_done,poll_parse,cmd_parsed,dedup_decision] dispatch=0 resultPOST=0"
     },
     {
       "id": "V19c",
       "name": "action throws (local API throws) -> action_error, result still posted",
       "gate": "DONE_AT_MOST_ONCE",
       "pass": true,
-      "detail": "done=1 phase_action_error=true phases=[cron_enter,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_error,action_complete_or_unknown,checkpoint_attempt,result_delivery,result_acked,done_or_catch] dispatch=1 resultPOST=1"
+      "detail": "done=1 phase_action_error=true phases=[cron_enter,credential_present,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_error,action_complete_or_unknown,checkpoint_attempt,result_delivery,result_acked,done_or_catch] dispatch=1 resultPOST=1"
     },
     {
       "id": "V19d",
       "name": "checkpoint ledger write throws -> checkpoint_failed, no result",
       "gate": "DONE_AT_MOST_ONCE",
       "pass": true,
-      "detail": "done=1 phase_checkpoint_failed=true phases=[cron_enter,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_complete_or_unknown,checkpoint_attempt,checkpoint_failed] dispatch=1 resultPOST=0"
+      "detail": "done=1 phase_checkpoint_failed=true phases=[cron_enter,credential_present,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_complete_or_unknown,checkpoint_attempt,checkpoint_failed] dispatch=1 resultPOST=0"
     },
     {
       "id": "V19e",
       "name": "result POST throws ($httpClient post throws) -> outer_catch",
       "gate": "DONE_AT_MOST_ONCE",
       "pass": true,
-      "detail": "done=1 phase_outer_catch=true phases=[cron_enter,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_complete_or_unknown,checkpoint_attempt,result_delivery,outer_catch,done_or_catch] dispatch=1 resultPOST=1"
+      "detail": "done=1 phase_outer_catch=true phases=[cron_enter,credential_present,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_complete_or_unknown,checkpoint_attempt,result_delivery,outer_catch,done_or_catch] dispatch=1 resultPOST=1"
     },
     {
       "id": "V20",
@@ -177,7 +177,7 @@
       "name": "phase trace: all 9 required phases in order, {phase,id,cat,tb} only, no secrets",
       "gate": "PHASE_TRACE_TEST / TRACE_NO_SECRETS",
       "pass": true,
-      "detail": "phases=[cron_enter,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_complete_or_unknown,checkpoint_attempt,result_delivery,result_acked,done_or_catch] missing=[] inOrder=true keysClean=true leak=false done=1"
+      "detail": "phases=[cron_enter,credential_present,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_complete_or_unknown,checkpoint_attempt,result_delivery,result_acked,done_or_catch] missing=[] inOrder=true keysClean=true leak=false done=1"
     },
     {
       "id": "V22",

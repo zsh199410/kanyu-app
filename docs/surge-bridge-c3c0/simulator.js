@@ -92,6 +92,13 @@ function createEnv(cfg) {
   if (cfg.persistFailNext) mailbox.persistFailNext = true;
 
   const store = cfg.sharedStore || new Map(Object.entries(cfg.initialStore || {}));
+  // Existing v2 suites use a fully provisioned synthetic phone by default.
+  // Explicit injectCredentials:false is reserved for real missing-credential
+  // tests, so no test uses a production token or distribution path.
+  if (cfg.injectCredentials !== false) {
+    if (!store.has("sgbridge_cred_dev")) store.set("sgbridge_cred_dev", "TEST-DEV-MOCK-ONLY");
+    if (!store.has("sgbridge_cred_localkey")) store.set("sgbridge_cred_localkey", "TEST-LOCAL-MOCK-ONLY");
+  }
   let ledgerWrites = 0; // counts successful writes to the ledger key (see below)
   const outcome = {
     doneCalls: 0,
@@ -254,7 +261,12 @@ function createEnv(cfg) {
       read: (key) => {
         if (outcome.terminated) { outcome.postDoneAttempts.push("store.read " + key); return null; }
         outcome.storeReads.push(key);
-        if (cfg.storeReadThrows) throw new Error("mock store read throw");
+        // Separate credential bootstrap failure from later state-read
+        // failure. This preserves the original legacy-last_id fault test
+        // while making early credential-read failure independently testable.
+        const isCredentialKey = key === "sgbridge_cred_dev" || key === "sgbridge_cred_localkey";
+        if (cfg.credentialReadThrows && isCredentialKey) throw new Error("mock credential read throw");
+        if (cfg.storeReadThrows && !isCredentialKey) throw new Error("mock state read throw");
         const v = store.get(key);
         return (v === undefined) ? null : v;
       },

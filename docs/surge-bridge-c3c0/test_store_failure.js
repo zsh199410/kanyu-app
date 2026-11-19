@@ -12,7 +12,9 @@ const ID = 1795063031;
 const LAST = 1795055213880;
 
 async function run({ failLedgerAt = 0, throwLedgerAt = 0, bootstrap = false } = {}) {
-  const store = new Map([["sgbridge_last_id", String(LAST)]]);
+  const store = new Map([["sgbridge_last_id", String(LAST)],
+    ["sgbridge_cred_dev", "TEST-DEV-MOCK-ONLY"],
+    ["sgbridge_cred_localkey", "TEST-LOCAL-MOCK-ONLY"]]);
   if (!bootstrap) store.set("sgbridge_ledger_v1", JSON.stringify({
     version: 1, floor: LAST, last_acked_id: 0, pending: null
   }));

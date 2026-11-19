@@ -1,0 +1,50 @@
+{
+  "suite": "s1-live-adapter",
+  "script_sha": "8691e962cba4ab40",
+  "pass": 10,
+  "fail": 0,
+  "limitation": 0,
+  "results": [
+    {
+      "name": "public v2.1 contains no embedded reusable token/key",
+      "status": "PASS"
+    },
+    {
+      "name": "no device token -> no network, dispatch, result or legacy writes",
+      "status": "PASS"
+    },
+    {
+      "name": "empty token -> strict fail closed",
+      "status": "PASS"
+    },
+    {
+      "name": "storage read throws -> strict fail closed",
+      "status": "PASS"
+    },
+    {
+      "name": "403 never dispatches or sends result",
+      "status": "PASS"
+    },
+    {
+      "name": "valid token + native API -> GET and strict ACK with absent local key",
+      "status": "PASS"
+    },
+    {
+      "name": "missing local key + $httpAPI absent -> no localhost HTTP",
+      "status": "PASS"
+    },
+    {
+      "name": "missing local key + MCP action -> no localhost call",
+      "status": "PASS"
+    },
+    {
+      "name": "old command still fenced with new credential",
+      "status": "PASS"
+    },
+    {
+      "name": "403 cannot resend cached result_ready",
+      "status": "PASS"
+    }
+  ],
+  "summary_line": "SUMMARY 10 PASS 0 FAIL"
+}

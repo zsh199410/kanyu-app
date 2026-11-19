@@ -331,3 +331,21 @@ GitHub #73) and are not secrets.
   real device script logs can confirm whether it ever occurs on the phone.
 - The old command 1795063030 stays `OUTCOME_UNKNOWN` and is permanently
   fenced in v2. C3-C1 remains NOT AUTHORIZED; PR #93 stays BLOCKED.
+
+## Round 3 addendum (2026-11-19): PR #100 absorbed → v2.2
+
+- v2.2 SHA `8691e962cba4ab40e961702b7d30090aaaedc29fdbe46b63a257878f9f90abfc`
+  (571 lines). GPT Draft PR #100 (S1 secret-free credential adapter) applied
+  verbatim via `git apply` (zero conflicts; base SHAs matched exactly).
+  `DEV`/`APIKEY` are now read at runtime from `$persistentStore`
+  (`sgbridge_cred_dev` / `sgbridge_cred_localkey`); missing DEV fails closed
+  (zero network/action/result); 403 fails closed with no fallback to old
+  credentials; missing local key blocks localhost HTTP/MCP.
+- Five suites against v2.2: v2 regression 28/0/1, store-failure 5/5,
+  S1 live adapter 10/10 (new), S1 11/11, S3 14/14. Clean-copy verification
+  PASS (23 files, fresh directory). Bootstrap design + 7/7 isolated tests
+  (`BOOTSTRAP_DESIGN.md`, `s1/bootstrap.js`, `s1/bootstrap_test.js`).
+- Full record: `C3C0_ROUND3_REPORT.md`. Desensitised v2.1→v2.2 diff:
+  `C3C0_V2_V22_DIFF.md`.
+- Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`, `C3-C1=NO-GO`,
+  `PR93_CUTOVER=BLOCKED`, old command 1795063030 `OUTCOME_UNKNOWN`.
