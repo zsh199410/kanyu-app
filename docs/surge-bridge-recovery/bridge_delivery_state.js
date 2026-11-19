@@ -13,6 +13,7 @@
  *   execute(command): Promise<outputs>
  *   sendResult({id,timestamp,outputs}): Promise<{status,body}>
  *   sendDiagnostic({code,command_id,legacy_last_id,phase}): Promise<void>
+ *   lookupReceipt(id, result): Promise<{confirmed:boolean}> (optional)
  * A diagnostic is sent ONLY to a distinct /diagnostic endpoint, NEVER
  * to /result (because the legacy result endpoint clears the mailbox).
  */
@@ -69,6 +70,22 @@ async function acknowledge(io, state, command, legacyId) {
             pending:null});
   return {decision:"ACK_CONFIRMED", action_executed:false};
 }
+
+async function reconcileReceipt(io, state, legacyId) {
+  const p=state.pending;
+  if (!p || p.phase !== "result_ready" ||
+      typeof io.lookupReceipt !== "function") return false;
+  let checked;
+  try { checked=await io.lookupReceipt(p.id,p.result); }
+  catch (_) { return false; }
+  if (!checked || checked.confirmed !== true) return false;
+  save(io,{version:1,floor:state.floor,
+           last_acked_id:Math.max(state.last_acked_id,p.id),
+           pending:null});
+  await diagnose(io,"RECEIPT_RECONCILED",p.id,legacyId,"result_ready");
+  return true;
+}
+
 async function runOnce(io) {
   const legacyId = io.getLegacyLastId();
   if (!validId(legacyId)) {
@@ -80,32 +97,45 @@ async function runOnce(io) {
   catch (_) {
     return {decision:"POLL_FAILED",action_executed:false};
   }
-  if (!cmd || !validId(cmd.id) || cmd.id === 0) {
-    return {decision:"NO_COMMAND",action_executed:false};
-  }
-  const raw = io.getLedger();
+  const raw=io.getLedger();
   let state;
   if (raw === null || raw === undefined || raw === "") {
-    // FIRST MIGRATION IS ALWAYS OBSERVATION ONLY. This prevents the
-    // old 12:37 unknown command from being executed by new code.
-    state={version:1,floor:Math.max(cmd.id,legacyId),
+    // Empty mailbox first-run: record only the old checkpoint.
+    // Pending mailbox first-run: FENCE the inherited command.
+    const observed=cmd && validId(cmd.id) ? cmd.id : 0;
+    state={version:1,floor:Math.max(observed,legacyId),
            last_acked_id:0,pending:null};
     try { save(io,state); }
     catch (_) {
       return {decision:"CHECKPOINT_WRITE_FAILED",action_executed:false};
     }
-    await diagnose(io,"LEGACY_PENDING_FENCED",cmd.id,legacyId,"none");
-    return {decision:"LEGACY_PENDING_FENCED",action_executed:false};
+    if (observed !== 0) {
+      await diagnose(io,"LEGACY_PENDING_FENCED",observed,legacyId,"none");
+      return {decision:"LEGACY_PENDING_FENCED",action_executed:false};
+    }
+    return {decision:"NO_COMMAND_BOOTSTRAPPED",action_executed:false};
   }
-  try { state = JSON.parse(raw); } catch (_) { state=null; }
+  try { state=JSON.parse(raw); } catch (_) { state=null; }
   if (!saneState(state)) {
-    await diagnose(io,"LEDGER_CORRUPT",cmd.id,legacyId,"none");
+    await diagnose(io,"LEDGER_CORRUPT",cmd && cmd.id,legacyId,"none");
     return {decision:"LEDGER_CORRUPT",action_executed:false};
+  }
+  if (!cmd || !validId(cmd.id) || cmd.id === 0) {
+    if (await reconcileReceipt(io,state,legacyId)) {
+      return {decision:"RECEIPT_RECONCILED",action_executed:false};
+    }
+    if (state.pending) {
+      await diagnose(io,"PENDING_WITHOUT_COMMAND",
+                     state.pending.id,legacyId,state.pending.phase);
+      return {decision:"PENDING_WITHOUT_COMMAND",action_executed:false};
+    }
+    return {decision:"NO_COMMAND",action_executed:false};
   }
   const p=state.pending;
   if (p && p.id !== cmd.id) {
-    // Do not overwrite in-progress or result-ready evidence even when
-    // single-slot server overwrites its mailbox with a different command.
+    if (await reconcileReceipt(io,state,legacyId)) {
+      return {decision:"RECEIPT_RECONCILED",action_executed:false};
+    }
     await diagnose(io,"PENDING_ID_MISMATCH",cmd.id,legacyId,p.phase);
     return {decision:"PENDING_ID_MISMATCH",action_executed:false};
   }
