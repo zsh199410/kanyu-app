@@ -196,7 +196,16 @@ def _attest_local_source(root, expected):
             any(c not in "0123456789abcdef" for c in expected)):
         raise CycleRefused("source_attestation_missing")
     p = Path(root) / "pool"
-    parts = ("rules.py", "crawler.py", "geo.py", "winner_clean.py")
+    # The imported package may execute its __init__ and transitive helpers.
+    # Cover ALL Python files in the approved local pool package rather than
+    # only four direct imports. A new or removed .py requires re-approval.
+    if not p.is_dir() or p.is_symlink():
+        raise CycleRefused("source_directory_unverified")
+    parts = sorted(path.name for path in p.glob("*.py"))
+    if not 4 <= len(parts) <= 100 or not {
+        "__init__.py", "rules.py", "crawler.py", "geo.py", "winner_clean.py"
+    } <= set(parts):
+        raise CycleRefused("source_file_set_invalid")
     digest = hashlib.sha256()
     for name in parts:
         raw = _read_bytes(p / name)
