@@ -229,6 +229,10 @@ class ProductionCycleGates(unittest.TestCase):
             release.write_text("PR93_APPROVED_VPS_ADDITIONS")
             env["P2P3_ALLOW_VPS_ADDITIONS"]="YES_EXPLICITLY"
             env["P2P3_LEGACY_SOURCE_SHA256"]="a"*64
+            root=Path(d)/"pool"
+            root.mkdir()
+            for name in ("rules.py","crawler.py","geo.py","winner_clean.py"):
+                (root/name).write_text("safe_test_content",encoding="utf-8")
             with self.assertRaisesRegex(prod.CycleRefused,"source_attestation"):
                 prod.run_cycle(env=env,mode="publish",
                     previewer=self.preview_add,
