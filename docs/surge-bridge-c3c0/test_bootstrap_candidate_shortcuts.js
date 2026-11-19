@@ -72,7 +72,9 @@ check("HTTP API trigger: zero state changes",()=>{
   assert.equal(r.writes.length,0);
 });
 check("cron trigger: zero state changes",()=>{
-  const r=run({trigger:undefined});
+  // Destructuring defaults convert undefined to "intent" in run(); use
+  // null to model an absent/unsupported runtime trigger faithfully.
+  const r=run({trigger:null});
   assert.equal(r.writes.length,0);
 });
 check("invalid / empty candidate never staged",()=>{
