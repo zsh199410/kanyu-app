@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import importlib
+import ast
 import json
 from pathlib import Path
 import sys
@@ -66,24 +67,77 @@ def _scalar(raw, key):
         return raw.strip()
 
 
-def normalize_config(yaml_path, raw_db_config, *, yaml_loader=None):
-    """Use real YAML config first; DB config overrides per old publisher.
+def _extract_legacy_yaml_parser(cli_path):
+    """Load ONLY the old load_yaml_simple function, never import pool.cli.
 
-    Refuse a missing YAML parser: never silently substitute cmd_publish's
-    12-hour fallback for the live 24-hour freshness window.
+    CLI import could run module-level initialization and is deliberately
+    forbidden. Extract its standalone top-level function AST from the
+    SHA-attested installed CLI source. Its exact semantics, not PyYAML,
+    parse config.yaml. Reject imports, calls outside the function, or any
+    missing/incompatible helper rather than guessing a YAML fallback.
+
+    The source root's full Python package hash is checked by production
+    cycle before calling this function in publish mode.
     """
-    if yaml_loader is None:
-        try:
-            import yaml
-        except ImportError as exc:
-            raise LegacyAdapterRefused("pyyaml_required_for_legacy_config") from exc
-        yaml_loader = yaml.safe_load
+    p = Path(cli_path)
+    if not p.is_absolute() or p.is_symlink() or not p.is_file():
+        raise LegacyAdapterRefused("legacy_yaml_source_unavailable")
+    try:
+        raw = p.read_text(encoding="utf-8")
+        tree = ast.parse(raw, filename=str(p))
+    except (SyntaxError, UnicodeError, OSError) as exc:
+        raise LegacyAdapterRefused("legacy_yaml_source_invalid") from exc
+    functions = [
+        n for n in tree.body
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and n.name == "load_yaml_simple"
+    ]
+    if (len(functions) != 1 or
+            not isinstance(functions[0], ast.FunctionDef) or
+            functions[0].decorator_list or
+            len(functions[0].args.posonlyargs) != 0 or
+            len(functions[0].args.args) != 1 or
+            functions[0].args.vararg or functions[0].args.kwarg or
+            functions[0].args.kwonlyargs):
+        raise LegacyAdapterRefused("legacy_yaml_signature_unverified")
+    fn = functions[0]
+    # A module AST containing ONLY this function cannot execute other
+    # pool.cli module-level statements, imports or command dispatch.
+    ns = {"__builtins__": __builtins__, "json": json}
+    try:
+        compiled = compile(ast.Module(body=[fn], type_ignores=[]),
+                           str(p), "exec")
+        exec(compiled, ns, ns)
+        loader = ns["load_yaml_simple"]
+    except (SyntaxError, TypeError, KeyError) as exc:
+        raise LegacyAdapterRefused("legacy_yaml_function_unavailable") from exc
+    return loader
+
+
+def normalize_config(yaml_path, raw_db_config, *, yaml_loader=None):
+    """Read real old config without adding third-party dependencies.
+
+    By default executes ONLY the audited legacy function
+    pool/cli.py::load_yaml_simple on an absolute config file path.
+    Injection of yaml_loader(text) is reserved for isolated unit tests.
+    Required live settings still fail-closed instead of guessing 12h
+    when production config explicitly specifies 24h.
+    """
     p = Path(yaml_path)
-    if not p.is_absolute() or not p.is_file():
+    if not p.is_absolute() or p.is_symlink() or not p.is_file():
         raise LegacyAdapterRefused("missing_legacy_yaml")
     try:
-        cfg = yaml_loader(p.read_text(encoding="utf-8")) or {}
-    except (ValueError, TypeError, OSError) as exc:
+        if yaml_loader is None:
+            loader = _extract_legacy_yaml_parser(
+                p.parent / "pool" / "cli.py")
+            cfg = loader(str(p))
+        else:
+            cfg = yaml_loader(p.read_text(encoding="utf-8"))
+        cfg = cfg or {}
+    except LegacyAdapterRefused:
+        raise
+    except (ValueError, TypeError, OSError, KeyError, NameError,
+            RuntimeError, UnicodeError) as exc:
         raise LegacyAdapterRefused("invalid_legacy_yaml") from exc
     if not isinstance(cfg, dict) or not isinstance(raw_db_config, dict):
         raise LegacyAdapterRefused("invalid_legacy_config")
@@ -99,12 +153,10 @@ def normalize_config(yaml_path, raw_db_config, *, yaml_loader=None):
     )
     if any(k not in merged for k in required):
         raise LegacyAdapterRefused("missing_effective_legacy_setting")
-    # Use the actual live per-country default only if absent, as reported
-    # by the audited original cmd_publish configuration path.
     merged.setdefault("per_country_cap", 40)
     disabled = merged.get("disabled_sources", [])
     if not isinstance(disabled, (list, tuple, set)) or not all(
-        isinstance(s, str) for s in disabled
+        isinstance(v, str) for v in disabled
     ):
         raise LegacyAdapterRefused("invalid_disabled_sources")
     for key in ("winner_clean_window_days", "winner_clean_min_winner_days"):
