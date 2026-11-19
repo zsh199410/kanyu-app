@@ -1,4 +1,23 @@
-// One-time Surge credential bootstrap (C3-C0 S1).
+// ============================================================================
+// DEPRECATED — SUPERSEDED BY PR #101 (Shortcuts candidate bootstrap).
+// DO NOT USE this script to bootstrap a credential.
+//
+// Why it is deprecated (2026-11-19, Round 3 continued):
+//   - The token is pasted INTO the script source. Surge caches script
+//     source and retains script-run logs; the official manual gives NO
+//     guarantee that deleting a script wipes its cached source or logs.
+//     Deleting the script is therefore NOT a security mechanism.
+//   - $persistentStore keys are cross-script accessible (Surge manual:
+//     explicit keys can be accessed by different scripts), so writing
+//     the credential into the store does not hide it from other scripts.
+//   - This file is kept ONLY as a record of the superseded approach.
+//     The recommended path is now bootstrap_candidate_shortcuts.template.js
+//     (PR #101): source never contains the token; the candidate is staged
+//     under sgbridge_cred_dev_candidate via a Shortcuts intent parameter
+//     supplied at RUN time; promotion is a separate approved gate.
+// See BOOTSTRAP_DESIGN.md Rev 2.
+// ============================================================================
+// One-time Surge credential bootstrap (C3-C0 S1). [DEPRECATED — see above]
 //
 // PURPOSE: write the NEW DEV token and the local Surge HTTP API key into
 // the phone's $persistentStore, so the distributed bridge script
