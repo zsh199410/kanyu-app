@@ -246,6 +246,8 @@ def run_cycle(*, env=None, mode="inspect-only", now=None, publisher=None,
         # Fail before any external requests when release is not enabled.
         release_mode = _check_release_marker(cfg["approval"], env)
         _read_explicit_stop_state(cfg["stop"])
+        if _stop_present(cfg["stop"], cfg["served"]):
+            raise CycleRefused("stop_or_unknown_state")
         # Root must NEVER import or execute an unapproved legacy module.
         # Attest the installed code BEFORE any pure-source callback import
         # or outbound crawl, even for an initially same-byte publish.
@@ -300,7 +302,7 @@ def run_cycle(*, env=None, mode="inspect-only", now=None, publisher=None,
         staging_path=cfg["staging"], candidate_bytes=proposed_bytes,
         expected_current_sha=hashlib.sha256(served).hexdigest(),
         db_path=cfg["writer_db"],
-        stop_check=lambda: not _stop_running(cfg["stop"]),
+        stop_check=lambda: _stop_present(cfg["stop"], cfg["served"]),
         lock_timeout=30.0,
     )
     if not isinstance(receipt, dict) or receipt.get("ok") is not True:
@@ -321,6 +323,12 @@ def _stop_running(path):
         return _read_explicit_stop_state(path)
     except (ValueError, OSError, UnicodeError):
         return False
+
+
+def _stop_present(explicit_path, served_path):
+    """Preserve BOTH the new fail-closed state and old sentinel STOP."""
+    return (not _stop_running(explicit_path) or
+            (Path(served_path).parent / "STOP").exists())
 
 
 def main(argv=None):
