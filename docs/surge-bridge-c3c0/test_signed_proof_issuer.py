@@ -179,7 +179,7 @@ class SignerTests(unittest.TestCase):
                 return str(exc)
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = sorted(pool.map(attempt, [1, 2]))
-        self.assertEqual(results, ["challenge_not_usable", NEW_ID])
+        self.assertEqual(results, sorted(["challenge_not_usable", NEW_ID]))
         self.assertEqual(self.ledger.counts(), (1, 1))
 
     def test_16_no_secret_or_private_key_in_proof(self):
