@@ -92,6 +92,13 @@ function createEnv(cfg) {
   if (cfg.persistFailNext) mailbox.persistFailNext = true;
 
   const store = cfg.sharedStore || new Map(Object.entries(cfg.initialStore || {}));
+  // Existing v2 suites use a fully provisioned synthetic phone by default.
+  // Explicit injectCredentials:false is reserved for real missing-credential
+  // tests, so no test uses a production token or distribution path.
+  if (cfg.injectCredentials !== false) {
+    if (!store.has("sgbridge_cred_dev")) store.set("sgbridge_cred_dev", "TEST-DEV-MOCK-ONLY");
+    if (!store.has("sgbridge_cred_localkey")) store.set("sgbridge_cred_localkey", "TEST-LOCAL-MOCK-ONLY");
+  }
   let ledgerWrites = 0; // counts successful writes to the ledger key (see below)
   const outcome = {
     doneCalls: 0,
