@@ -1,0 +1,13 @@
+{
+  "suite": "test_provisioning_demo.js",
+  "source": "C3-C0 Round 4 Item 1 (GPT receipt 7013674858)",
+  "pass": 5,
+  "fail": 0,
+  "tests": [
+    "demo exits 0 with no stderr",
+    "both candidates staged",
+    "verification confirms candidates present, active keys unchanged",
+    "demo lists what is still unverified on the real device",
+    "no secret in any output"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "suite": "test_dual_token.js",
+  "source": "C3-C0 Round 4 Item 3 (GPT receipt 7013674858)",
+  "pass": 12,
+  "fail": 0,
+  "tests": [
+    "old token accepted before revocation",
+    "new token accepted",
+    "both tokens accepted during the window",
+    "old token rejected (403) after revocation; new token still accepted",
+    "request with no token is rejected (401 token_missing)",
+    "unknown token is rejected (401 unknown_token), not 403",
+    "window expiry fails closed: old token 403 window_expired even without explicit revocation",
+    "window expiry does not affect the new token, and the window never silently extends",
+    "revocation is a status change, never a delete (append-only audit)",
+    "rollback activates a NEW backup token; rollback with the OLD token value is refused",
+    "revocation, expiry, and rollback never touch the old command id",
+    "no token value is stored in the table (fingerprints only)"
+  ]
+}

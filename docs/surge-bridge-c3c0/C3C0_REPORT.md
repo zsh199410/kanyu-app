@@ -465,3 +465,89 @@ GitHub #73) and are not secrets.
   (Rev 2 + Rev 2.1 addendum).
 - Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`, `C3-C1=NO-GO`,
   `PR93_CUTOVER=BLOCKED`, old command 1795063030 `OUTCOME_UNKNOWN`.
+
+## Round 4 (P0 fast-track) addendum — 2026-11-19 23:xx CST
+- **Owner priority (GPT receipt 7013674858):** "抓紧上线、以最快可用版本为先"
+  — first complete the C3-C1 Bridge stable launch P0 gates; P2/P3 node
+  auto-isolation/deletion only as offline designs; do not delay P0 for
+  new features; do not open AUTO_DELETE early.
+- **PR #102 absorbed (hermetic rollback):** GPT's rewrite of
+  `rollback_test.sh` (head `d0ce8f94`, base PR #97 head `225d8dc`, CI
+  runs 44555342039 / 44555341540 / 44555341842 all success) is
+  byte-identical to the diff reconstruction (SHA `5a92efec…102ae6`) and
+  copied unmodified, plus its CI workflow
+  (`issue73-c3c0-hermetic-rollback.yml`, SHA `5e6fe7dd…302b7`). The old
+  version depended on private paths
+  `~/workspace/pr96-c3c0/bridge_fixed_v2.js` and
+  `/tmp/bridge_orig_desens.txt`; the new version sources v2.2 and v1
+  ONLY from the checkout, uses `mktemp -d` + `trap EXIT` cleanup,
+  `set -euo pipefail`. Local runs: positive PASS (exit 0); negative
+  control `--inject-state-change` FAIL as expected (exit 1,
+  `state.json altered`). New version contains no private paths.
+- **Item 1 — credential provisioning on device:** standalone executable
+  `provisioning_demo.js` runs the two PR #101 candidate templates for
+  real (vm sandbox, synthetic tokens): Shortcuts intent parameter →
+  candidate staging (DEV + local key, independent) → verification
+  (candidates present, active keys unchanged, status markers) → the
+  13 items still unverified on the real device (logs, Shortcuts
+  history, cross-script access, iOS backup, script cache, device-side
+  log check, other scripts' permissions, candidate key visibility,
+  token format window, promotion gate, server dual-token revocation,
+  real-device staging run, real-device loading + two cron cycles).
+  Prints only status enums/booleans, never a token or digest.
+  `test_provisioning_demo.js` spawns the demo and asserts on its real
+  output: **5/5 PASS** (exit 0, both staged, active unchanged,
+  unverified list present, no secret in any output).
+- **Item 2 — staging-to-active promotion gate:**
+  `PROMOTION_GATE_DESIGN.md` + `promotion_gate.js` +
+  `test_promotion_gate.js` (**17/17 PASS**). Promotion only when all
+  six conditions hold: (a) candidate exists and validates
+  (readCredential rules + 32–256 printable-ASCII window); (b)
+  `/credential-proof` present (fingerprint only, never the token;
+  ok, fingerprint_matches, token_id ≠ old id, issued within 24h);
+  (c) active still the old one (already-promoted is an idempotent
+  no-op; absent active fails closed); (d) write new active, read-back
+  verify, only then clear the candidate — any failure before
+  verification leaves active unchanged and candidate intact;
+  (e) old exposed token never re-enabled (rollback = new backup token
+  or fail-closed); (f) old command 1795063030 never touched (gate has
+  no code path to the mailbox). Two findings: a clear failure AFTER
+  the verified active write does NOT roll back (safer than rolling
+  back a verified promotion; retry converges to already-promoted);
+  `$persistentStore` has NO documented delete, so the sample clears
+  via `remove()` when available and otherwise writes the tombstone
+  `"__PROMOTED__"` (can never validate as a candidate; occupies the
+  slot until a separate approved device-side action clears it).
+- **Item 3 — server dual-token and revocation:**
+  `DUAL_TOKEN_DESIGN.md` + `dual_token_server.js` +
+  `test_dual_token.js` (**12/12 PASS**). Table stores FINGERPRINTS
+  (SHA-256 hex), never token values; append-only audit (revocation is
+  a status change, never a delete); two active rows during a bounded
+  window (48h upper bound per S1 Rev 1); bridge accepts either during
+  the window; old token → 403 after revocation (bridge 403 gate fails
+  closed, no fallback); 401 = missing/unknown token, 403 = revoked or
+  expired; expiry fails closed (old token 403 `window_expired` even
+  without explicit revocation); rollback = NEW backup token, never
+  the old exposed one (refused by the sample); revocation/expiry/
+  rollback never touch the old command id. One test bug caught and
+  fixed during the run (the "fingerprints only" assertion wrongly
+  included the non-secret row IDs); the sample code was not changed.
+- **CI:** new workflow `issue73-c3c0-round4.yml` runs syntax checks +
+  the three new test files with a nonzero-failure gate. The hermetic
+  rollback has its own workflow from PR #102.
+- **Tests:** twelve suites, **136 PASS / 0 FAIL / 1 LIMITATION**
+  (v2 28/0/1, store 5/5, S1 live 10/10, S1 11/11, S3 14/14,
+  bootstrap-deprecated 7/7, bootstrap candidate 13/13, candidate
+  regressions 14/14, rollback positive PASS + negative control FAIL
+  as expected, provisioning demo 5/5, promotion gate 17/17, dual
+  token 12/12); clean-copy verification PASS
+  (`/tmp/c3c0-clean-copy-r4/`, 42 files).
+- **Blockers (4) and (5) NOT built:** real-device release proof and
+  the release checklist / prod rollback need real-device gates and
+  explicit owner permission. P2/P3 node auto-isolation/deletion NOT
+  opened.
+- **v2.2 unchanged:** 571 lines, SHA `8691e962…abfc`.
+- Full record: `C3C0_ROUND4_REPORT.md`.
+- Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`,
+  `BOOTSTRAP_SECURITY_GATE=BLOCKED`, `C3-C1=NO-GO`,
+  `PR93_CUTOVER=BLOCKED`, old command 1795063030 `OUTCOME_UNKNOWN`.
