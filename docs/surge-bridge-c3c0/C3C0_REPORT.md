@@ -677,3 +677,59 @@ GitHub #73) and are not secrets.
   a standalone Surge script; the stateless replay
   limitation is open (durable one-time nonce consumption
   still required). P2/P3 NOT opened.
+
+## Round 7 addendum (2026-11-20) — PR #106 durable nonce ledger + PR #107 F1 close
+
+- **PR #106 absorbed (byte-identical):** SQLite one-time nonce ledger
+  (`nonce_ledger_sqlite.py` SHA `96dd9cb6…5d37`, 174 lines), 21 adversarial
+  tests (`test_nonce_ledger_sqlite.py` SHA `a612a32f…31a3c`, 21/21 PASS),
+  gate doc (`DURABLE_NONCE_LEDGER_GATE.md` SHA `3fd7c1e9…98f1`), workflow
+  (`issue73-durable-nonce.yml` SHA `c51abecf…885`). Head `af944050`, CI 3/3
+  re-verified via check-runs API (runs 44635572814 / 44635572821 /
+  44635572764, all success — matches GPT's claimed numbers).
+- **Cross-review (ledger):** BEGIN IMMEDIATE + WAL + synchronous=FULL +
+  busy_timeout + trusted_schema=OFF all present; only the SHA-256 digest
+  is stored (independently verified: nonce string absent from DB bytes,
+  32-byte digest equals sha256 of raw nonce bytes); INSERT OR IGNORE
+  duplicate → False; single conditional UPDATE consume (changed==1);
+  0 DELETE (tombstones never deleted); commit_state_unknown on
+  sqlite3/OSError, no auto-retry; max_records bound stops issuance;
+  path safety (:memory:/symlink/0o077 parent/0o600); user_version 0/1 +
+  integrity_check; 21 test methods counted. No discrepancies.
+  Observation O1 (not a finding): under lock contention past the 5 s
+  busy_timeout, a loser raises commit_state_unknown instead of returning
+  False — the documented fail-closed contract.
+- **PR #107 absorbed (byte-identical):** F1 fix. The `atob` check runs
+  BEFORE SHA-256/Ed25519/random checks and `crypto_ready` is assigned
+  only at the end; missing atob → `base64_unavailable`, broken atob →
+  `base64_failed`. Vector independently verified (`AQIDBA==` → bytes
+  1,2,3,4). Probe suite 18 → 20 tests, **20/20 PASS**; out record
+  regenerated (SHA `814a911e…cd2`). Workflow label 18 → 20 matches.
+  Gate doc records the fix honestly (still isolated, not a device result).
+  **F1 is CLOSED.** Head `1a0d7bd5`, CI 3/3 re-verified via check-runs API
+  (runs 44636206928 / 44636207032 / 44636207013, all success).
+- **New negative control:** `test_nonce_snapshot_restore_limitation.py`
+  (SHA `3c842de1…f4a`) proves GPT's documented limitation #3 is real:
+  restoring a pre-consume DB snapshot resurrects the consumed nonce
+  (checkpoint TRUNCATE + sidecar handling, deterministic across 5 repeats).
+  **1 PASS, 0 FAIL, 1 KNOWN LIMITATION**, exit 0. The ledger alone is not
+  end-to-end replay protection; production still needs a rollback-resistant
+  epoch / high-water mark / audit anchor.
+- **Tests:** eighteen suites total: **220 PASS / 0 FAIL / 1 LIMITATION**
+  (v2 V23 frozen timer); clean-copy PASS (`/tmp/c3c0-clean-copy-r7/`,
+  88 files, all suites + limitation demo). Delta vs Round 6 (197): +23
+  (probe +2, nonce ledger +21).
+- **Device evidence scope:** unchanged, 15 rows UNVERIFIED;
+  `DEVICE_EVIDENCE_ALIGNMENT.md` NOT touched.
+  `DEVICE_EVIDENCE_CORRELATION=OPEN`.
+- **v2.2 unchanged:** 571 lines, SHA `8691e962…abfc`.
+- Full record: `C3C0_ROUND7_REPORT.md`.
+- Gates unchanged: `CREDENTIAL_DISTRIBUTION_GATE=BLOCKED`,
+  `BOOTSTRAP_SECURITY_GATE=BLOCKED`, `C3-C1=NO-GO`, `PR93_CUTOVER=BLOCKED`,
+  `AUTO_DELETE=OFF`, `DEVICE_EVIDENCE_CORRELATION=OPEN`,
+  `DEVICE_ACCEPTANCE=USER_REPORTED` (node-pool scope only),
+  `RELEASE_EVIDENCE_NOT_YET_COMPLETE`, old command 1795063030
+  `OUTCOME_UNKNOWN`. The WebView probe has NOT been run on the real device
+  and is NOT approved for auto-execution; the PR #105 verifier is a library,
+  NOT a standalone Surge script; the nonce ledger is a single-host server
+  reference, NOT a deployed signing endpoint; P2/P3 NOT opened.

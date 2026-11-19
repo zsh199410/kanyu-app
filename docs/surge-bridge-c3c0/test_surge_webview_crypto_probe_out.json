@@ -7,6 +7,8 @@ PASS missing crypto gives nonsecret no_webcrypto
 PASS missing subtle gives no_webcrypto
 PASS missing TextEncoder is fail closed
 PASS incorrect UTF8 encoder is rejected
+PASS missing atob fails before crypto_ready
+PASS incorrect atob decoding fails before crypto_ready
 PASS broken SHA-256 fails
 PASS Ed25519 unsupported import fails closed
 PASS Ed25519 wrong verification result fails closed
@@ -16,4 +18,4 @@ PASS incorrect random return fails closed
 PASS status write false does not retrigger any secret or action
 PASS status write throws but $done still called
 PASS script is source-secret-free and contains no network or device-control API
-SUMMARY 18 PASS, 0 FAIL
+SUMMARY 20 PASS, 0 FAIL

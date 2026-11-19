@@ -1,0 +1,7 @@
+PASS register nonce before snapshot
+PASS first consume succeeds
+PASS second consume rejected before restore
+PASS counts (1,1) before restore
+PASS restored DB shows nonce issued again
+PASS snapshot restore resurrects consumed nonce (KNOWN LIMITATION, not replay protection)
+SUMMARY 1 PASS, 0 FAIL, 1 KNOWN LIMITATION (snapshot restore resurrects consumed nonce)

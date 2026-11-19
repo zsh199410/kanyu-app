@@ -11,7 +11,8 @@
  *
  * Written status key contains ONLY a fixed non-secret enum:
  *   crypto_ready; no_webcrypto; no_text_encoder; sha256_failed;
- *   ed25519_unavailable; signature_failed; random_unavailable; probe_error
+ *   ed25519_unavailable; signature_failed; random_unavailable;
+ *   base64_unavailable; base64_failed; probe_error
  * No secret input; no HTTP/Surge device-control APIs; no console output.
  *
  * Ed25519 RFC 8032 §7.1 test vector #1: public key and signature are
@@ -54,6 +55,17 @@
     const encoded = new TextEncoder().encode("abc");
     if (hexOf(encoded) !== "616263") {
       status = "no_text_encoder";
+      return;
+    }
+
+    // PR #105's WebView verifier decodes the signed proof via atob.
+    // A positive probe must not be possible when atob is absent or broken.
+    if (typeof atob !== "function") {
+      status = "base64_unavailable";
+      return;
+    }
+    if (atob("AQIDBA==") !== String.fromCharCode(1, 2, 3, 4)) {
+      status = "base64_failed";
       return;
     }
 
