@@ -102,6 +102,15 @@ class CommitTests(unittest.TestCase):
         self.assertEqual(status,409)
         self.assertEqual(called,[])
 
+    def test_persister_explicit_false_never_acks(self):
+        state=fixture()
+        status,body=h.post_result(state,result(),now=25,
+                                  persist=lambda updated:False)
+        self.assertEqual(status,503)
+        self.assertFalse(body["accepted"])
+        self.assertEqual(body["commit_state"],"unknown")
+        self.assertEqual(state["cmd"]["id"],ID)
+
     def test_missing_persister_never_acknowledges(self):
         state=fixture()
         status,body=h.post_result(state,result(),now=25,persist=None)
