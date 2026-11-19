@@ -24,9 +24,27 @@ const VALID_PHASES = new Set(["in_progress", "result_ready"]);
 function validId(value) {
   return Number.isSafeInteger(value) && value >= 0;
 }
+// Historical bridge IDs mix epoch seconds (10-digit) and epoch
+// milliseconds (13-digit). Normalize ONLY FOR TEMPORAL ORDERING.
+// Keep the ORIGINAL ID in /result, receipt, pending, ledger, and logs.
+// Millisecond-based ordering, rather than truncation to seconds,
+// preserves distinct ms IDs issued within the same second.
+function orderMillis(value) {
+  if (!validId(value)) return null;
+  if (value >= 1000000000000) return value;
+  const ms=value*1000;
+  return Number.isSafeInteger(ms) ? ms : null;
+}
+function newerRawId(a,b) {
+  const left=orderMillis(a),right=orderMillis(b);
+  if (left===null || right===null) return null;
+  return left >= right ? a : b;
+}
 function saneState(state) {
-  if (!state || state.version !== 1 || !validId(state.floor) ||
-      !validId(state.last_acked_id) || !("pending" in state)) return false;
+  if (!state || state.version !== 1 ||
+      orderMillis(state.floor) === null ||
+      orderMillis(state.last_acked_id) === null ||
+      !("pending" in state)) return false;
   if (state.pending === null) return true;
   const p = state.pending;
   return !!p && validId(p.id) && VALID_PHASES.has(p.phase) &&
@@ -66,7 +84,7 @@ async function acknowledge(io, state, command, legacyId) {
     return {decision:"ACK_UNVERIFIED", action_executed:false};
   }
   save(io, {version:1, floor:state.floor,
-            last_acked_id: Math.max(state.last_acked_id,command.id),
+            last_acked_id: newerRawId(state.last_acked_id,command.id),
             pending:null});
   return {decision:"ACK_CONFIRMED", action_executed:false};
 }
@@ -80,7 +98,7 @@ async function reconcileReceipt(io, state, legacyId) {
   catch (_) { return false; }
   if (!checked || checked.confirmed !== true) return false;
   save(io,{version:1,floor:state.floor,
-           last_acked_id:Math.max(state.last_acked_id,p.id),
+           last_acked_id:newerRawId(state.last_acked_id,p.id),
            pending:null});
   await diagnose(io,"RECEIPT_RECONCILED",p.id,legacyId,"result_ready");
   return true;
@@ -103,7 +121,7 @@ async function runOnce(io) {
     // Empty mailbox first-run: record only the old checkpoint.
     // Pending mailbox first-run: FENCE the inherited command.
     const observed=cmd && validId(cmd.id) ? cmd.id : 0;
-    state={version:1,floor:Math.max(observed,legacyId),
+    state={version:1,floor:newerRawId(observed,legacyId),
            last_acked_id:0,pending:null};
     try { save(io,state); }
     catch (_) {
@@ -148,7 +166,15 @@ async function runOnce(io) {
     // the command or HTTP API action. Server MUST provide idempotent ACK.
     return acknowledge(io,state,p.result,legacyId);
   }
-  if (cmd.id <= Math.max(state.floor,state.last_acked_id,legacyId)) {
+  const current=orderMillis(cmd.id);
+  const floor=orderMillis(state.floor);
+  const acked=orderMillis(state.last_acked_id);
+  const legacy=orderMillis(legacyId);
+  if ([current,floor,acked,legacy].some(x=>x===null)) {
+    await diagnose(io,"MALFORMED_COMMAND",cmd.id,legacyId,"none");
+    return {decision:"MALFORMED_COMMAND",action_executed:false};
+  }
+  if (current <= Math.max(floor,acked,legacy)) {
     await diagnose(io,"DUPLICATE_OR_FENCED",cmd.id,legacyId,"none");
     return {decision:"DUPLICATE_OR_FENCED",action_executed:false};
   }
@@ -185,4 +211,4 @@ async function runOnce(io) {
   const ack=await acknowledge(io,claimed,result,legacyId);
   return {...ack,action_executed:true};
 }
-module.exports={runOnce,validId,saneState};
+module.exports={runOnce,validId,saneState,orderMillis,newerRawId};
