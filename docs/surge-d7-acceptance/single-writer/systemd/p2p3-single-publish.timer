@@ -1,0 +1,14 @@
+# PROPOSAL ONLY. Installer MUST NOT enable before full D4 gates.
+[Unit]
+Description=Hourly guarded Surge single-writer publisher
+Documentation=https://github.com/zsh199410/kanyu-app/issues/73
+
+[Timer]
+OnCalendar=*-*-* *:55:00
+AccuracySec=1min
+RandomizedDelaySec=0
+Persistent=false
+Unit=p2p3-single-publish.service
+
+[Install]
+WantedBy=timers.target
