@@ -75,6 +75,7 @@ class AdapterTests(unittest.TestCase):
     def setup_root(self,d):
         root = Path(d)
         (root / "config.yaml").write_text("unused: valid",encoding="utf8")
+        (root / "private-hosts.txt").write_text("# test denylist",encoding="utf8")
         return root
 
     def make_preview(self,root,**kw):
