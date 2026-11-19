@@ -18,5 +18,5 @@ jobs:
         run: |
           node --check docs/surge-bridge-c3c0/surge_webview_crypto_probe.template.js
           node --check docs/surge-bridge-c3c0/test_surge_webview_crypto_probe.js
-      - name: Execute 18 adversarial checks against actual probe source (synthetic)
+      - name: Execute 20 adversarial checks against actual probe source (synthetic)
         run: node docs/surge-bridge-c3c0/test_surge_webview_crypto_probe.js
