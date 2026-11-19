@@ -22,5 +22,9 @@ jobs:
         run: node --check docs/surge-bridge-recovery/bridge_delivery_state.js && node --check docs/surge-bridge-recovery/test_bridge_delivery_state.js
       - name: Phone bridge crash and ACK transitions
         run: node docs/surge-bridge-recovery/test_bridge_delivery_state.js
-      - name: Python server mailbox transitions
-        run: python3 -m unittest discover -s docs/surge-bridge-recovery -p 'test_mailbox_ack.py' -v
+      - name: Surge diagnostic-only canary syntax
+        run: node --check docs/surge-bridge-recovery/surge_diagnostic_canary.template.js && node --check docs/surge-bridge-recovery/test_surge_diagnostic_canary.js
+      - name: No-replay diagnostic canary isolated simulation
+        run: node docs/surge-bridge-recovery/test_surge_diagnostic_canary.js
+      - name: Python server mailbox and durable commit transitions
+        run: python3 -m unittest discover -s docs/surge-bridge-recovery -p 'test_*.py' -v
