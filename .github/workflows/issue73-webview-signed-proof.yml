@@ -1,0 +1,22 @@
+name: Issue73 WebView signed-proof cross-runtime verification
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/surge_webview_signed_proof.js"
+      - "docs/surge-bridge-c3c0/test_surge_webview_signed_proof.js"
+      - "docs/surge-bridge-c3c0/SURGE_WEBVIEW_SIGNED_PROOF.md"
+      - ".github/workflows/issue73-webview-signed-proof.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check syntax
+        run: |
+          node --check docs/surge-bridge-c3c0/surge_webview_signed_proof.js
+          node --check docs/surge-bridge-c3c0/test_surge_webview_signed_proof.js
+      - name: Verify ephemeral Node-signed proof in WebCrypto runtime
+        run: node docs/surge-bridge-c3c0/test_surge_webview_signed_proof.js

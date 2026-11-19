@@ -1,0 +1,19 @@
+name: Issue73 C3-C0 Round 6 WebView replay negative control (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/test_webview_replay_negative_control.js"
+      - "docs/surge-bridge-c3c0/surge_webview_signed_proof.js"
+      - ".github/workflows/issue73-c3c0-round6.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: node --check docs/surge-bridge-c3c0/test_webview_replay_negative_control.js
+      - name: Run WebView replay negative control (stateless replay documented, not a failure)
+        run: node docs/surge-bridge-c3c0/test_webview_replay_negative_control.js
