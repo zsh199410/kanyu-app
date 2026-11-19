@@ -41,12 +41,15 @@ The source requires no arguments and contains no secrets. It checks:
 3. RFC 8032 Ed25519 public-key import, known-good signature verification,
    and deliberate corrupted-signature rejection.
 4. `crypto.getRandomValues` ability to fill a 32-byte nonce buffer.
+5. `atob` presence **and correct RFC 4648 base64 decoding**, which PR #105's
+   signature verifier requires. Without this check, a previous `crypto_ready`
+   result was insufficient to establish that all verifier primitives exist.
 
 The only data it may write is a **non-secret status enumeration** at
 `sgbridge_webcrypto_probe_status`: `crypto_ready`,
 `no_webcrypto`, `no_text_encoder`, `sha256_failed`,
 `ed25519_unavailable`, `signature_failed`, `random_unavailable`,
-`probe_error`. No network calls, notifications, policy mutation,
+`base64_unavailable`, `base64_failed`, `probe_error`. No network calls, notifications, policy mutation,
 Bridge ledger/state access, credential read or write. Unexpected cron/HTTP
 API/panel triggers have **zero state writes**, and it calls `$done` once.
 It cannot prove whether Surge internally logs raw script evaluations;
@@ -91,3 +94,11 @@ fall back to accepting a self-asserted boolean.
 
 Status remains `C3-C1=NO-GO`, `PR93=BLOCKED`, `AUTO_DELETE=OFF`.
 The 21 protected pins and five existing timers are unchanged.
+
+## Round 6 F1 resolved (2026-11-20)
+
+Muse's review F1 noted the missing `atob` prerequisite. This revision
+adds fail-closed states for missing/broken `atob` and two direct-VM negative
+tests. The accepted `crypto_ready` status now covers base64 decoding as
+well as Ed25519/SHA-256/randomness. It remains an isolated test, not a real
+Surge device result or production credential-promotion authorization.
