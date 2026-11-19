@@ -20,7 +20,7 @@ class ProductionCycleGates(unittest.TestCase):
         source_dir = Path(directory) / "pool"
         source_dir.mkdir()
         source_digest = hashlib.sha256()
-        for filename in ("rules.py", "crawler.py", "geo.py", "winner_clean.py"):
+        for filename in sorted(("__init__.py", "rules.py", "crawler.py", "geo.py", "winner_clean.py")):
             raw = (filename + "-approved-fixture").encode()
             (source_dir / filename).write_bytes(raw)
             source_digest.update(filename.encode() + b"\\0")
@@ -211,7 +211,7 @@ class ProductionCycleGates(unittest.TestCase):
             root=Path(d)/"pool"
             root.mkdir(exist_ok=True)
             digest=hashlib.sha256()
-            for filename in ("rules.py","crawler.py","geo.py","winner_clean.py"):
+            for filename in sorted(("__init__.py","rules.py","crawler.py","geo.py","winner_clean.py")):
                 raw=(filename+"-safe-fixture").encode()
                 (root/filename).write_bytes(raw)
                 digest.update(filename.encode()+b"\\0")
@@ -242,7 +242,7 @@ class ProductionCycleGates(unittest.TestCase):
             env["P2P3_LEGACY_SOURCE_SHA256"]="a"*64
             root=Path(d)/"pool"
             root.mkdir(exist_ok=True)
-            for name in ("rules.py","crawler.py","geo.py","winner_clean.py"):
+            for name in ("__init__.py","rules.py","crawler.py","geo.py","winner_clean.py"):
                 (root/name).write_text("safe_test_content",encoding="utf-8")
             with self.assertRaisesRegex(prod.CycleRefused,"source_attestation"):
                 prod.run_cycle(env=env,mode="publish",
