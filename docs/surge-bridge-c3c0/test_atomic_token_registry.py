@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from nonce_ledger_sqlite import NonceLedger, new_nonce
 from token_registry_sqlite import (
-    TokenRegistry, TokenRegistryError, OLD_MAX_MS, fingerprint
+    TokenRegistry, TokenRegistryError, OLD_MAX_MS, ACTIVE_MAX_MS, fingerprint
 )
 from atomic_signed_proof_issuer import AtomicSignedProofIssuer
 from signed_proof_issuer import ProofIssuanceError
