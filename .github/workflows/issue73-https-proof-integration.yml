@@ -5,6 +5,9 @@ on:
       - "docs/surge-bridge-c3c0/credential_proof_https.py"
       - "docs/surge-bridge-c3c0/test_credential_proof_https.py"
       - "docs/surge-bridge-c3c0/P0_THREE_GATES_CHECKLIST.md"
+      - "docs/surge-bridge-c3c0/surge_webview_crypto_status.js"
+      - "docs/surge-bridge-c3c0/issue73_webcrypto_readonly.sgmodule"
+      - "docs/surge-bridge-c3c0/test_device_probe_module.js"
       - ".github/workflows/issue73-https-proof-integration.yml"
 permissions:
   contents: read
@@ -27,3 +30,9 @@ jobs:
       - name: Real TLS localhost, auth, SQLite, Ed25519 and rollback safety tests
         working-directory: docs/surge-bridge-c3c0
         run: python -W error::ResourceWarning -m unittest -v test_credential_proof_https.py
+      - name: Manual-only Surge probe module and status-panel safety tests
+        working-directory: docs/surge-bridge-c3c0
+        run: |
+          node --check surge_webview_crypto_status.js
+          node --check test_device_probe_module.js
+          node test_device_probe_module.js
