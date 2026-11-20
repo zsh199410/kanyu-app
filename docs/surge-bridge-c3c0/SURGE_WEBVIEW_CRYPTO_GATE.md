@@ -49,7 +49,7 @@ The only data it may write is a **non-secret status enumeration** at
 `sgbridge_webcrypto_probe_status`: `crypto_ready`,
 `no_webcrypto`, `no_text_encoder`, `sha256_failed`,
 `ed25519_unavailable`, `signature_failed`, `random_unavailable`,
-`base64_unavailable`, `base64_failed`, `probe_error`. No network calls, notifications, policy mutation,
+`base64_unavailable`, `base64_failed`, `insecure_context`, `probe_error`. No network calls, notifications, policy mutation,
 Bridge ledger/state access, credential read or write. Unexpected cron/HTTP
 API/panel triggers have **zero state writes**, and it calls `$done` once.
 It cannot prove whether Surge internally logs raw script evaluations;
@@ -102,3 +102,34 @@ adds fail-closed states for missing/broken `atob` and two direct-VM negative
 tests. The accepted `crypto_ready` status now covers base64 decoding as
 well as Ed25519/SHA-256/randomness. It remains an isolated test, not a real
 Surge device result or production credential-promotion authorization.
+
+## 2026-11-20 — Actual iPhone editor WebView secure-context observation
+
+The owner manually ran the unmodified SHA-pinned probe and a separate
+read-only environment diagnostic with **Generic** context and **WebView**
+engine on iPhone Surge. The non-secret values visible in the supplied
+device screenshot are:
+
+```text
+secure=false
+crypto=yes
+subtle=no
+digest=missing
+trigger=editor
+```
+
+The original probe panel displayed `no_webcrypto`. In this precise
+**editor-triggered runtime**, `isSecureContext=false` explains the missing
+`crypto.subtle`; it does **not** establish that iOS hardware or all other
+Surge trigger contexts cannot support Ed25519. The probe now explicitly
+reports `insecure_context` when `isSecureContext === false`, even when
+a synthetic environment exposes `crypto.subtle`; the ordinary
+`no_webcrypto` diagnostic remains for other absence cases. Two regression
+cases model the observed device inputs. The status panel renders this
+enumeration in alert style without claiming release approval.
+
+**Gate B remains BLOCKED**: real signed-proof verification and device-side
+single-use nonce durability remain unproven. Existing installed module URLs
+are immutable/pinned: a new module release is needed before this diagnostic
+change is shown on the actual phone. No production mobile action or
+credential handling is authorized by this code-only PR.
