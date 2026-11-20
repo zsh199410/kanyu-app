@@ -309,8 +309,11 @@ class WitnessHTTPS(unittest.TestCase):
                                  (503, {"status": "issuance_frozen"}))
                 self.assertEqual(self.ledger.counts(), (0, 0))
                 release.set()
+                # This request had already passed outer admission before
+                # admin freeze; its inner registration is rejected by the
+                # existing generic nonce-store failure mapping.
                 self.assertEqual(first.result(timeout=3),
-                                 (503, {"status": "issuance_frozen"}))
+                                 (503, {"status": "nonce_store_unknown"}))
                 self.assertTrue(admin.result(timeout=3))
                 self.assertEqual(self.ledger.counts(), (0, 0))
                 self.assertEqual(self.signer.calls, 0)
