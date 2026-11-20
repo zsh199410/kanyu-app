@@ -68,6 +68,17 @@ class IssuanceDrainGate:
         with self.admission():
             return issuer.issue(**kwargs)
 
+    def freeze_for_reconciliation(self) -> None:
+        """Close future admissions immediately after any unknown DB state.
+
+        Safe to call from within an admitted request: other already active
+        requests must still drain before a trusted operator may resume.
+        """
+        self._same_process()
+        with self._cv:
+            self._frozen = True
+            self._cv.notify_all()
+
     def _freeze_and_drain(self, timeout_s: float) -> None:
         self._same_process()
         if not isinstance(timeout_s, (float, int)) or isinstance(timeout_s, bool) or not 0 <= timeout_s <= 600:
