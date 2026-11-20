@@ -11,6 +11,7 @@ tokens with it. All privileged admin actions must be invoked outside HTTP.
 from __future__ import annotations
 
 from typing import Callable
+from contextlib import closing
 
 from credential_proof_https import HTTPSProofService
 from recovery_signed_checkpoint import logical_state_sha256
@@ -65,12 +66,20 @@ class WitnessedHTTPSProofService(HTTPSProofService):
     def admin_activate_backup(self, backup_id: str, revoked_new_id: str,
                               *, now_ms: int) -> bool:
         """Privileged trusted-process method, intentionally NOT HTTP."""
+        def exact_readback():
+            # Verify the two trusted exact token IDs, not aggregate counts.
+            with closing(self.registry.ledger._connect()) as db:
+                old = db.execute(
+                    "SELECT role,status FROM token_registry WHERE token_id=?",
+                    (revoked_new_id,)).fetchone()
+                new = db.execute(
+                    "SELECT role,status FROM token_registry WHERE token_id=?",
+                    (backup_id,)).fetchone()
+            return old == ("new", "revoked") and new == ("backup", "active")
+
         return self.witnessed_service.admin_transition(
             lambda: self.registry.activate_backup(
                 backup_id, now_ms=now_ms),
-            lambda: (
-                self.registry.audit_counts().get("new:revoked", 0) >= 1 and
-                self.registry.audit_counts().get("backup:active", 0) >= 1
-            ),
+            exact_readback,
             revoked_token_id=revoked_new_id
         )
