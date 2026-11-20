@@ -31,6 +31,7 @@ from typing import Callable
 from atomic_signed_proof_issuer import AtomicSignedProofIssuer
 from nonce_ledger_sqlite import NonceLedger, nonce_hash
 from recovery_signed_checkpoint import logical_state_sha256
+from staging_issuance_drain import IssuanceDrainGate
 from token_registry_sqlite import TokenRegistry, valid_id
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -239,11 +240,13 @@ class WitnessedAtomicService:
 
     def __init__(self, registry: TokenRegistry, signer,
                  authorize_session: Callable, witness: IndependentWitnessTestDouble,
-                 now_ms: Callable):
+                 now_ms: Callable, gate: IssuanceDrainGate):
         if not isinstance(registry, TokenRegistry):
             raise ValueError("authoritative_registry_required")
         if not isinstance(witness, IndependentWitnessTestDouble):
             raise ValueError("trusted_external_witness_required")
+        if not isinstance(gate, IssuanceDrainGate):
+            raise ValueError("shared_admission_drain_gate_required")
         if registry.ledger.path == witness.path:
             raise ValueError("witness_must_not_share_business_sqlite")
         if not callable(authorize_session) or not callable(now_ms):
@@ -252,7 +255,7 @@ class WitnessedAtomicService:
             raise ValueError("real_ed25519_signer_required")
         self.registry, self.witness = registry, witness
         self.signer, self.authorize_session = signer, authorize_session
-        self.now_ms = now_ms
+        self.now_ms, self.gate = now_ms, gate
         self.lock = threading.RLock()
 
     def _checked_before(self):
@@ -262,7 +265,7 @@ class WitnessedAtomicService:
 
     def register(self, nonce, *, kind, candidate_fingerprint,
                  token_id, issued_ms, expires_ms) -> bool:
-        with self.lock:
+        with self.gate.admission(), self.lock:
             before = self._checked_before()
             ok = self.registry.ledger.register(
                 nonce, kind=kind, candidate_fingerprint=candidate_fingerprint,
@@ -277,7 +280,7 @@ class WitnessedAtomicService:
     def issue(self, *, session, nonce, token_id, kind,
               candidate_fingerprint, exposed_old_token_id,
               ttl_ms=60_000):
-        with self.lock:
+        with self.gate.admission(), self.lock:
             before = self._checked_before()
             wrapped_signer = _WitnessedSigner(
                 self.witness, self.signer,
@@ -294,16 +297,18 @@ class WitnessedAtomicService:
     def admin_transition(self, operation: Callable[[], bool],
                          readback: Callable[[], bool], *,
                          revoked_token_id: str | None = None) -> bool:
-        """Call ONLY from a fully drained and frozen admin-only handler."""
+        """Admin-only: admission freeze, drain, durable state, readback."""
         if not callable(operation) or not callable(readback):
             raise ValueError("trusted_admin_callbacks_required")
-        with self.lock:
-            before = self._checked_before()
-            if operation() is not True:
-                raise WitnessRejected("admin_change_failed_frozen")
-            after = logical_state_sha256(self.registry.ledger)
-            self.witness.advance(
-                before, after, revoke_token_id=revoked_token_id)
-            if readback() is not True:
-                raise WitnessRejected("admin_readback_failed_frozen")
-            return True
+
+        def change():
+            with self.lock:
+                before = self._checked_before()
+                if operation() is not True:
+                    raise WitnessRejected("admin_change_failed_frozen")
+                after = logical_state_sha256(self.registry.ledger)
+                self.witness.advance(
+                    before, after, revoke_token_id=revoked_token_id)
+                return True
+
+        return self.gate.guarded_admin_change(change, readback)
