@@ -1,21 +1,6 @@
-PASS real Node WebCrypto verifies positive and tampered RFC8032 Ed25519 vector
-PASS Shortcuts intent is allowed, but no actual user parameter accessed
-PASS cron trigger rejected with zero state writes
-PASS HTTP API trigger rejected with zero state writes
-PASS panel trigger rejected with zero state writes
-PASS missing crypto gives nonsecret no_webcrypto
-PASS missing subtle gives no_webcrypto
-PASS missing TextEncoder is fail closed
-PASS incorrect UTF8 encoder is rejected
-PASS missing atob fails before crypto_ready
-PASS incorrect atob decoding fails before crypto_ready
-PASS broken SHA-256 fails
-PASS Ed25519 unsupported import fails closed
-PASS Ed25519 wrong verification result fails closed
-PASS accepts-all verifier fails corrupted-signature check
-PASS missing secure random fails closed
-PASS incorrect random return fails closed
-PASS status write false does not retrigger any secret or action
-PASS status write throws but $done still called
-PASS script is source-secret-free and contains no network or device-control API
-SUMMARY 20 PASS, 0 FAIL
+{
+ "suite": "test_surge_webview_crypto_probe.js",
+ "stdout": "PASS real Node WebCrypto verifies positive and tampered RFC8032 Ed25519 vector\nPASS Shortcuts intent is allowed, but no actual user parameter accessed\nPASS cron trigger rejected with zero state writes\nPASS HTTP API trigger rejected with zero state writes\nPASS panel trigger rejected with zero state writes\nPASS insecure iPhone editor WebView context is distinct and fail closed\nPASS insecure context without subtle still reports insecure_context\nPASS missing crypto gives nonsecret no_webcrypto\nPASS missing subtle gives no_webcrypto\nPASS missing TextEncoder is fail closed\nPASS incorrect UTF8 encoder is rejected\nPASS missing atob fails before crypto_ready\nPASS incorrect atob decoding fails before crypto_ready\nPASS broken SHA-256 fails\nPASS Ed25519 unsupported import fails closed\nPASS Ed25519 wrong verification result fails closed\nPASS accepts-all verifier fails corrupted-signature check\nPASS missing secure random fails closed\nPASS incorrect random return fails closed\nPASS status write false does not retrigger any secret or action\nPASS status write throws but $done still called\nPASS script is source-secret-free and contains no network or device-control API\nSUMMARY 22 PASS, 0 FAIL\n",
+ "stderr": "",
+ "returncode": 0
+}

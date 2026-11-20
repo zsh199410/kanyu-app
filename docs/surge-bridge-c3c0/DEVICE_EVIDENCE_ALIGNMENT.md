@@ -94,3 +94,52 @@ Ed25519 support are different things and must not be conflated.
 Nothing in this addendum invents device evidence; every row
 remains UNVERIFIED until the owner supplies the observation from
 the real device with source + time.
+
+## Round 9 addendum — first real device-side crypto evidence (2026-11-20 09:31 CST)
+
+**Source: GitHub Issue #73 comment 7027571021** (author zsh199410,
+2026-11-20T01:32:48Z = 09:32 CST, titled "机主真机证据｜Issue #73
+WebCrypto P0｜2026-11-20 09:31 CST"). The owner manually ran the
+unmodified SHA-pinned probe and a separate read-only environment
+diagnostic in Surge iOS with **Generic context (`模拟上下文=Generic`)
+and WebView engine**, via the script editor. The non-secret values
+visible in the supplied device screenshot are:
+
+```text
+secure=false
+crypto=yes
+subtle=no
+digest=missing
+trigger=editor
+[Script Completed]
+```
+
+The original probe panel displayed `no_webcrypto`. These rows are
+**VERIFIED-DEVICE** — the first real device-side crypto evidence
+in this record. Their scope is strictly the **editor-trigger
+runtime** shown in the screenshot; nothing here covers any other
+trigger context.
+
+| # | Field | Observed value | Status |
+|---|---|---|---|
+| 16 | Editor WebView secure context | `isSecureContext=false` in Surge iOS script editor, Generic + WebView | VERIFIED-DEVICE (7027571021, 09:31 CST) |
+| 17 | `crypto` object present (editor) | `crypto=yes` — the `crypto` object exists | VERIFIED-DEVICE (7027571021) |
+| 18 | `crypto.subtle` absent (editor) | `subtle=no` — no `crypto.subtle` in this runtime | VERIFIED-DEVICE (7027571021) |
+| 19 | SHA-256 digest unavailable (editor) | `digest=missing` | VERIFIED-DEVICE (7027571021) |
+| 20 | `crypto_ready` NOT met (editor) | Probe status is `insecure_context`, not `crypto_ready`; the earlier `no_webcrypto` is now explained by the insecure context, not by hardware limitation | VERIFIED-DEVICE (7027571021) |
+| 21 | Module actual manual generic/intent context | NOT separately measured — the screenshot covers the editor trigger only; the module's generic/intent runtime has not been observed | UNVERIFIED |
+| 22 | Pure-JS probe on device | NOT run — `PUREJS_DEVICE_PROBE=UNVERIFIED`; the 85,914-byte bundle is CI-only until an owner-run manual test | UNVERIFIED |
+
+**Gate B status: `BLOCKED: EDITOR_WEBVIEW_INSECURE_CONTEXT`.**
+The editor WebView has no `crypto.subtle` because the context is
+not secure; this does **not** establish that iOS hardware or all
+other Surge trigger contexts cannot support Ed25519, and it must
+**not** be counted as `crypto_ready`. PR #111 models this as the
+`insecure_context` status (distinct from `no_webcrypto`), verified
+in isolation (probe 22/22, panel 9/9).
+
+**Overall record status remains OPEN.** The original 15 rows are
+still UNVERIFIED, row 21 (generic/intent context) and row 22
+(Pure-JS probe) are UNVERIFIED, and `DEVICE_EVIDENCE_CORRELATION`
+stays OPEN until those are measured. No device token, private URL,
+or sensitive log value was collected or published with this evidence.
