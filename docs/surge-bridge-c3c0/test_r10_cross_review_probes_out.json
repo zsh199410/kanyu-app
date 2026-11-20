@@ -1,0 +1,17 @@
+{
+  "suite": "test_r10_cross_review_probes.py",
+  "tests": [
+    "P1 drain gate refuses cross-process",
+    "P2 old epoch from old checkpoint passes restored DB (limitation confirmed real)",
+    "P3 F3 fix real: new invalid_challenge/0 lookups vs old nonce_commit_unknown/1 lookup",
+    "P4 recovery digest deterministic across fresh connections"
+  ],
+  "passed": 4,
+  "failed": 0,
+  "exit_code": 0,
+  "tail": [
+    "Ran 4 tests in 0.035s",
+    "",
+    "OK"
+  ]
+}
