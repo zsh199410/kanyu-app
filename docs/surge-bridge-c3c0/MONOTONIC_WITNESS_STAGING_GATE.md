@@ -55,15 +55,26 @@ This is an **expected known security limitation**, not a positive replay
 protection result. Simply moving the witness SQLite file to a different
 directory on the same VPS is insufficient.
 
-The reference is not an HTTP handler. The existing PR110
-`HTTPSProofService.handle()` still uses its original unwrapped ledger
-and issuer. It MUST NOT be deployed with this class merely imported:
-every nonce registration, signer, admin/revoke, restart/restore ingress
-and every worker/process MUST be routed through the corresponding
-witness+gate operations. The wrapper is **single-process**; other
-workers bypass its mutex and drain barrier, so production requires a
-hardened single-writer process topology or fully tested distributed
-fencing/transaction protocol.
+An additional `WitnessedHTTPSProofService` staging subclass now
+overrides BOTH nonce registration and issuer signing via reviewed
+extension points in PR110's existing loopback HTTPS parser. It refuses
+startup if the business database disagrees with the witness. Its
+separate `test_witnessed_https_adapter.py` tests use a REAL loopback
+HTTPS socket, ephemeral TLS and Ed25519 signing key, request pairing
+authentication, mismatch after old DB rollback, witness outage before
+and after consumed nonce, and backup token activation. Base
+`HTTPSProofService` remains the old isolation harness and intentionally
+does not claim witness protection.
+
+**The witness is still a same-host SQLite test double.** Running the
+new TLS adapter does NOT magically provision a separate authenticated
+high-water control plane or secure a real VPS against correlated
+snapshots. A live API cannot use it until all HTTP nonce registration,
+signing, admin/revoke, restart/restore ingress, and every worker/process
+are accounted for and connected to a truly remote witness. The wrapper
+is **single-process**; other workers bypass its mutex/drain barrier, so
+production requires a hardened single-writer process topology or
+independently tested distributed fencing/transaction protocol.
 
 The current service has no authenticated witness network protocol,
 independently pinned key or remote witness receipts, remote failure
@@ -106,3 +117,14 @@ Protected production state stays `C3-C1=NO-GO`,
 `PR93_CUTOVER=BLOCKED`, `AUTO_DELETE=OFF`, 21 pinned proxy nodes,
 five timers unchanged; old `1795063030` remains `OUTCOME_UNKNOWN`
 and never replayed/cleared.
+
+## HTTPS integration test receipts (synthetic)
+
+The dedicated CI must run both `test_witnessed_https_adapter.py` and
+the original `test_credential_proof_https.py`; all failures are checked
+by HTTP status and database/witness counts. A post-commit external witness
+failure returns a generic 403 (no signature), while an old database
+snapshot causes a 503 before signing/registering new challenges.
+These response codes are fail-closed staging conventions, not a
+production HTTP error contract. Actual HTTPS is loopback only and never
+accepts real credentials.
