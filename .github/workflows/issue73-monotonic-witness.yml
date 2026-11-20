@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - "docs/surge-bridge-c3c0/witness_fenced_issuer_reference.py"
+      - "docs/surge-bridge-c3c0/credential_proof_https.py"
+      - "docs/surge-bridge-c3c0/witnessed_credential_proof_https.py"
+      - "docs/surge-bridge-c3c0/test_witnessed_https_adapter.py"
       - "docs/surge-bridge-c3c0/test_witness_fenced_issuer.py"
       - "docs/surge-bridge-c3c0/MONOTONIC_WITNESS_STAGING_GATE.md"
       - ".github/workflows/issue73-monotonic-witness.yml"
@@ -23,12 +26,19 @@ jobs:
         run: |
           python -m py_compile docs/surge-bridge-c3c0/witness_fenced_issuer_reference.py
           python -m py_compile docs/surge-bridge-c3c0/test_witness_fenced_issuer.py
+          python -m py_compile docs/surge-bridge-c3c0/credential_proof_https.py
+          python -m py_compile docs/surge-bridge-c3c0/witnessed_credential_proof_https.py
+          python -m py_compile docs/surge-bridge-c3c0/test_witnessed_https_adapter.py
       - name: Real SQLite witness and Ed25519 signer resilience tests
         working-directory: docs/surge-bridge-c3c0
         run: python -W error::ResourceWarning -m unittest -v test_witness_fenced_issuer.py
+      - name: Actual HTTPS socket and protected witness proof path
+        working-directory: docs/surge-bridge-c3c0
+        run: python -W error::ResourceWarning -m unittest -v test_witnessed_https_adapter.py
       - name: Existing issuer, atomic registry and recovery verifier regression
         working-directory: docs/surge-bridge-c3c0
         run: |
           python -W error::ResourceWarning -m unittest -v test_atomic_token_registry.py
+          python -W error::ResourceWarning -m unittest -v test_credential_proof_https.py
           python -W error::ResourceWarning -m unittest -v test_staging_issuance_drain.py
           python -W error::ResourceWarning -m unittest -v test_recovery_signed_checkpoint.py
