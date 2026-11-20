@@ -82,6 +82,23 @@ class HTTPSProofService:
             registry, signer, lambda session, _token_id, _kind: session is self,
             now_ms=self._clock_ms)
 
+    def _register_nonce(self, nonce: str, *, kind: str,
+                        candidate_fingerprint: str, token_id: str,
+                        issued_ms: int, expires_ms: int) -> bool:
+        """Override ONLY with a separately reviewed witness-fenced writer."""
+        return self.ledger.register(
+            nonce, kind=kind, candidate_fingerprint=candidate_fingerprint,
+            token_id=token_id, issued_ms=issued_ms, expires_ms=expires_ms)
+
+    def _issue_proof(self, *, session: object, nonce: str, token_id: str,
+                     kind: str, candidate_fingerprint: str,
+                     exposed_old_token_id: str) -> dict:
+        """The default isolated historical path, NOT a production GO."""
+        return self.issuer.issue(
+            session=session, nonce=nonce, token_id=token_id,
+            kind=kind, candidate_fingerprint=candidate_fingerprint,
+            exposed_old_token_id=exposed_old_token_id)
+
     def _authenticated(self, authorization: str | None) -> bool:
         if not isinstance(authorization, str) or not authorization.startswith("Bearer "):
             return False
@@ -121,16 +138,18 @@ class HTTPSProofService:
         # Registration is an internal step of this authenticated request.
         # The nonce cannot be re-registered (even if previous signing failed).
         try:
-            registered = self.ledger.register(
+            registered = self._register_nonce(
                 nonce, kind=kind, candidate_fingerprint=fp,
                 token_id=token_id, issued_ms=now, expires_ms=now + 60_000)
-        except (NonceLedgerError, OSError):
+        except (NonceLedgerError, OSError, RuntimeError):
+            # RuntimeError covers an independently unavailable witness;
+            # abort before issuing a proof. Never retry an unknown commit.
             return 503, _encode({"status": "nonce_store_unknown"})
         if not registered:
             return 409, _encode({"status": "nonce_reused"})
 
         try:
-            signed_proof = self.issuer.issue(
+            signed_proof = self._issue_proof(
                 session=self, nonce=nonce, token_id=token_id, kind=kind,
                 candidate_fingerprint=fp, exposed_old_token_id=self.old_token_id)
             return 200, _encode(signed_proof)
