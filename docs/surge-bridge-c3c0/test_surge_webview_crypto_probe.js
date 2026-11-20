@@ -20,6 +20,7 @@ const FORBIDDEN_KEYS = [
 
 async function execute({
   trigger = "editor", suppliedCrypto = webcrypto,
+  suppliedSecureContext = true,
   suppliedEncoder = TextEncoder, suppliedDecoder = atob,
   writeBehavior = "ok",
 } = {}) {
@@ -33,6 +34,7 @@ async function execute({
   const done = new Promise((resolve) => { resolveDone = resolve; });
   const sandbox = {
     $trigger: trigger,
+    isSecureContext: suppliedSecureContext,
     crypto: suppliedCrypto,
     TextEncoder: suppliedEncoder,
     atob: suppliedDecoder,
@@ -69,7 +71,7 @@ async function execute({
   const allowedStatuses = new Set([
     "crypto_ready", "no_webcrypto", "no_text_encoder", "sha256_failed",
     "ed25519_unavailable", "signature_failed", "random_unavailable",
-    "base64_unavailable", "base64_failed",
+    "base64_unavailable", "base64_failed", "insecure_context",
     "probe_error"
   ]);
   assert.ok(writes.every(({key, value}) =>
@@ -107,6 +109,18 @@ async function test(name, fn) {
   await test("panel trigger rejected with zero state writes", async () => {
     const r = await execute({trigger: "button"});
     assert.equal(r.status, null);
+  });
+  await test("insecure iPhone editor WebView context is distinct and fail closed", async () => {
+    const r = await execute({suppliedSecureContext: false});
+    assert.equal(r.status, "insecure_context");
+    assert.deepEqual(r.writes.map(x=>x.key), [STATUS_KEY]);
+  });
+  await test("insecure context without subtle still reports insecure_context", async () => {
+    const r = await execute({
+      suppliedSecureContext: false,
+      suppliedCrypto: {getRandomValues: ()=>{}}
+    });
+    assert.equal(r.status, "insecure_context");
   });
   await test("missing crypto gives nonsecret no_webcrypto", async () => {
     const r = await execute({suppliedCrypto: null});
