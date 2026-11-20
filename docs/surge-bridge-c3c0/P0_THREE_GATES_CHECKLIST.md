@@ -30,6 +30,14 @@ bridge token. It cannot be pasted into public source or GitHub comments.
 
 ## Gate B — actual iPhone / Surge TF WebCrypto evidence
 
+**2026-11-20 device update:** Owner's script editor with Generic + WebView
+reported `isSecureContext=false`, `crypto=yes`, `subtle=no`,
+`digest=missing`, `trigger=editor`. The previously installed probe
+reported `no_webcrypto`. This is a specific insecure-context failure,
+**not** an Ed25519 hardware incompatibility conclusion or production GO.
+Updated probe must report `insecure_context`; this change is CI-only
+until a separately pinned module build is explicitly installed.
+
 **Only run a separate non-secret manual probe after an approved device
 change window.** The script in PR #107 contains no token, API key,
 hostname or network call; it tests the local iOS WebView runtime.
@@ -40,7 +48,7 @@ Proposed test scope, without installing/replacing production Bridge:
    generic script with **`engine=webview`** via the script editor's
    Evaluate control or an explicit Shortcuts intent.
 3. Record only its fixed non-secret enum:
-   `crypto_ready`, `no_webcrypto`, `no_text_encoder`,
+   `crypto_ready`, `insecure_context`, `no_webcrypto`, `no_text_encoder`,
    `base64_unavailable`, `base64_failed`,
    `sha256_failed`, `ed25519_unavailable`,
    `signature_failed`, `random_unavailable`, `probe_error`.

@@ -12,7 +12,7 @@
  * Written status key contains ONLY a fixed non-secret enum:
  *   crypto_ready; no_webcrypto; no_text_encoder; sha256_failed;
  *   ed25519_unavailable; signature_failed; random_unavailable;
- *   base64_unavailable; base64_failed; probe_error
+ *   base64_unavailable; base64_failed; insecure_context; probe_error
  * No secret input; no HTTP/Surge device-control APIs; no console output.
  *
  * Ed25519 RFC 8032 §7.1 test vector #1: public key and signature are
@@ -39,6 +39,14 @@
     if (typeof $trigger !== "string" ||
         ($trigger !== "editor" && $trigger !== "intent")) return;
     permitted = true;
+
+    // Surge iOS real device 2026-11-20: WebView editor reports
+    // isSecureContext=false, crypto exists, but crypto.subtle is absent.
+    // Do NOT conflate this with missing algorithm/hardware support.
+    if (typeof isSecureContext === "boolean" && isSecureContext === false) {
+      status = "insecure_context";
+      return;
+    }
 
     if (typeof crypto === "undefined" || !crypto ||
         !crypto.subtle || typeof crypto.subtle.digest !== "function" ||
