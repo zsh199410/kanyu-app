@@ -13,6 +13,9 @@ import sqlite3
 import ssl
 import tempfile
 import unittest
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -274,6 +277,57 @@ class WitnessHTTPS(unittest.TestCase):
                 lambda: False, revoked_token_id=NEW_ID)
         self.assertTrue(self.gate.status()["frozen"])
         self.assertEqual(self.send()[0], 503)
+
+
+    def test_13_admin_freeze_covers_nonce_registration_before_signing(self):
+        """A request stalled before nonce registration cannot bypass drain."""
+        entered = threading.Event()
+        release = threading.Event()
+        original = self.service._register_nonce
+
+        def delayed_registration(*args, **kwargs):
+            entered.set()
+            if not release.wait(timeout=3):
+                raise RuntimeError("synthetic_registration_delay_timeout")
+            return original(*args, **kwargs)
+
+        self.service._register_nonce = delayed_registration
+        try:
+            with ThreadPoolExecutor(max_workers=2) as ex:
+                first = ex.submit(self.send, self.body())
+                self.assertTrue(entered.wait(timeout=2))
+                admin = ex.submit(
+                    self.service.admin_activate_backup,
+                    BACKUP_ID, NEW_ID, now_ms=NOW)
+                for _ in range(150):
+                    if self.gate.status()["frozen"]:
+                        break
+                    time.sleep(.005)
+                self.assertTrue(self.gate.status()["frozen"])
+                code, data = self.send(self.body())
+                self.assertEqual((code, data),
+                                 (503, {"status": "issuance_frozen"}))
+                self.assertEqual(self.ledger.counts(), (0, 0))
+                release.set()
+                self.assertEqual(first.result(timeout=3),
+                                 (503, {"status": "issuance_frozen"}))
+                self.assertTrue(admin.result(timeout=3))
+                self.assertEqual(self.ledger.counts(), (0, 0))
+                self.assertEqual(self.signer.calls, 0)
+        finally:
+            release.set()
+            self.service._register_nonce = original
+
+    def test_14_http_frozen_gate_rejects_even_before_bad_credentials(self):
+        with self.assertRaises(Exception):
+            # The deliberately failed admin operation freezes the gate.
+            self.service.witnessed_service.admin_transition(
+                lambda: False, lambda: True)
+        self.assertTrue(self.gate.status()["frozen"])
+        self.assertEqual(
+            self.send(pairing=""),
+            (503, {"status": "issuance_frozen"}))
+        self.assertEqual(self.ledger.counts(), (0, 0))
 
 
 if __name__ == "__main__":
