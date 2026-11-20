@@ -1,0 +1,22 @@
+name: Issue73 Surge WebView crypto capability probe (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/surge_webview_crypto_probe.template.js"
+      - "docs/surge-bridge-c3c0/test_surge_webview_crypto_probe.js"
+      - "docs/surge-bridge-c3c0/SURGE_WEBVIEW_CRYPTO_GATE.md"
+      - ".github/workflows/issue73-surge-webcrypto-probe.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: |
+          node --check docs/surge-bridge-c3c0/surge_webview_crypto_probe.template.js
+          node --check docs/surge-bridge-c3c0/test_surge_webview_crypto_probe.js
+      - name: Execute 22 adversarial checks against actual probe source (synthetic)
+        run: node docs/surge-bridge-c3c0/test_surge_webview_crypto_probe.js

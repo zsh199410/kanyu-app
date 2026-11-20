@@ -1,0 +1,26 @@
+name: Issue73 C3-C0 Round 7 nonce snapshot-restore limitation (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/test_nonce_snapshot_restore_limitation.py"
+      - "docs/surge-bridge-c3c0/nonce_ledger_sqlite.py"
+      - "docs/surge-bridge-c3c0/test_nonce_ledger_sqlite.py"
+      - "docs/surge-bridge-c3c0/test_surge_webview_crypto_probe.js"
+      - ".github/workflows/issue73-c3c0-round7.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile isolated server-side reference
+        run: python3 -m py_compile docs/surge-bridge-c3c0/nonce_ledger_sqlite.py docs/surge-bridge-c3c0/test_nonce_ledger_sqlite.py docs/surge-bridge-c3c0/test_nonce_snapshot_restore_limitation.py
+      - name: Run 21 real SQLite adversarial cases
+        working-directory: docs/surge-bridge-c3c0
+        run: python3 -W error::ResourceWarning -m unittest -v test_nonce_ledger_sqlite.py
+      - name: Run 20 WebView probe checks (F1 atob gate)
+        run: node docs/surge-bridge-c3c0/test_surge_webview_crypto_probe.js
+      - name: Run nonce snapshot-restore limitation demo (resurrection is a documented limitation, not a failure)
+        run: python3 docs/surge-bridge-c3c0/test_nonce_snapshot_restore_limitation.py

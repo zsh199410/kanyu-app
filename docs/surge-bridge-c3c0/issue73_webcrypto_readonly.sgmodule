@@ -1,0 +1,13 @@
+#!name=Issue73 WebCrypto Read-only Device Probe
+#!desc=Manual-only, source-free Surge WebCrypto capability check. No rules, proxy nodes, MITM, cron, token writes, server changes or automatic execution. Does NOT authorize cutover.
+# Read-only manual test module. Install only after owner explicitly chooses to test.
+# Source files pinned to immutable reviewed commits; no branch-head script URLs.
+# The probe must be RUN manually from Surge's script editor or iOS Shortcuts.
+# Merely enabling this module does not invoke the probe.
+# The panel shows only a nonsecret status from the probe.
+[Script]
+Issue73_WebCrypto_ManualProbe = type=generic,script-path=https://raw.githubusercontent.com/zsh199410/kanyu-app/6babadf552bdc170b06abd3b9cf6001169dfd469/docs/surge-bridge-c3c0/surge_webview_crypto_probe.template.js,engine=webview,timeout=12
+Issue73_WebCrypto_ReadStatus = type=generic,script-path=https://raw.githubusercontent.com/zsh199410/kanyu-app/6babadf552bdc170b06abd3b9cf6001169dfd469/docs/surge-bridge-c3c0/surge_webview_crypto_status.js,engine=jsc,timeout=5
+
+[Panel]
+Issue73_WebCrypto_ProbeStatus = title="Issue73 WebCrypto",content="Not yet verified on this iPhone",style=info,script-name=Issue73_WebCrypto_ReadStatus

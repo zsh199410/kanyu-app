@@ -1,0 +1,20 @@
+PASS genuine Node Ed25519 signature verifies under browser WebCrypto
+PASS canonical bytes exactly match PR103 Node reference
+PASS missing signature rejected
+PASS corrupted signature rejected
+PASS wrong trust root rejected
+PASS valid signed proof for other candidate rejected
+PASS valid signed proof for wrong nonce rejected
+PASS reject proof for old exposed ID or unknown old-ID policy
+PASS reject signed kind and purpose mismatches
+PASS local key verified only against its own signed digest and domain
+PASS expired, stale, future and overly long-lived signed proof refused
+PASS malformed timestamp and signature rejected
+PASS malformed candidate tokens refused
+PASS WebCrypto absent fails closed
+PASS TextEncoder absent fails closed
+PASS atob absent fails closed
+PASS signature data with valid base64 shape but wrong contents rejected
+PASS does not expose side-effect or secret APIs
+PASS documentation limitation: same signed proof passes twice with reused trusted nonce
+SUMMARY 19 PASS, 0 FAIL, 1 KNOWN LIMITATION

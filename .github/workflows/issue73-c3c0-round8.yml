@@ -1,0 +1,29 @@
+name: Issue73 C3-C0 Round 8 cross-review probes (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/test_r8_cross_review_probes.py"
+      - "docs/surge-bridge-c3c0/signed_proof_issuer.py"
+      - "docs/surge-bridge-c3c0/token_registry_sqlite.py"
+      - "docs/surge-bridge-c3c0/atomic_signed_proof_issuer.py"
+      - "docs/surge-bridge-c3c0/nonce_ledger_sqlite.py"
+      - ".github/workflows/issue73-c3c0-round8.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated test-only Ed25519 dependency
+        run: python -m pip install --disable-pip-version-check cryptography==46.0.4
+      - name: Compile isolated server-side reference
+        run: python -m py_compile docs/surge-bridge-c3c0/signed_proof_issuer.py docs/surge-bridge-c3c0/token_registry_sqlite.py docs/surge-bridge-c3c0/atomic_signed_proof_issuer.py docs/surge-bridge-c3c0/test_r8_cross_review_probes.py
+      - name: Run 4 Round 8 cross-review probes (P1/P2 confirm documented limitations are real; P3/P4 confirm no-plaintext + old-token split)
+        working-directory: docs/surge-bridge-c3c0
+        run: python -W error::ResourceWarning -m unittest -v test_r8_cross_review_probes.py

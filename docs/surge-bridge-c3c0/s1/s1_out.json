@@ -1,0 +1,75 @@
+{
+  "suite": "s1-secret-free-distribution",
+  "revision": "rev1 (GPT review 7010615307)",
+  "pass": 11,
+  "fail": 0,
+  "limitation": 0,
+  "results": [
+    {
+      "id": "S1-T1",
+      "name": "static scan: script reads credentials at runtime only",
+      "status": "PASS",
+      "detail": "0 forbidden patterns; persistent-store key names present; no token/key literal"
+    },
+    {
+      "id": "S1-T2",
+      "name": "fail-closed with no credential",
+      "status": "PASS",
+      "detail": "networkCalls=0 done=1 phases=credential_missing"
+    },
+    {
+      "id": "S1-T3",
+      "name": "normal operation with credential from $persistentStore",
+      "status": "PASS",
+      "detail": "done=1 dispatched=1 posted=1 audit-leak=false"
+    },
+    {
+      "id": "S1-T4",
+      "name": "rotation cutover (parallel window, credential-proof, then revoke)",
+      "status": "PASS",
+      "detail": "round1-old fenced=1 new-polls=3 new-proofs=3 audit old-ok=1 new-ok=6 pending-unchanged=true no-legacy-result=true old-after-revoke=403"
+    },
+    {
+      "id": "S1-T5",
+      "name": "old token rejected after revocation (fail-closed)",
+      "status": "PASS",
+      "detail": "done=1 dispatched=0 phases=credential_present,auth_forbidden"
+    },
+    {
+      "id": "S1-T6",
+      "name": "rollback via pre-issued backup token (old token stays revoked)",
+      "status": "PASS",
+      "detail": "posted=1 done=1 old-token-still-403=true"
+    },
+    {
+      "id": "S1-T9",
+      "name": "rollback with no backup token -> fail-closed (leaked token not re-enabled)",
+      "status": "PASS",
+      "detail": "revoked-token run: done=1 dispatched=0 posted=0 pending-unchanged=true results-posted=0 | empty-store run: networkCalls=0"
+    },
+    {
+      "id": "S1-T7",
+      "name": "anomalous-access audit (unknown IP flagged, no full token logged)",
+      "status": "PASS",
+      "detail": "alerts=2 all-unknown-ip=true full-token-in-log=false"
+    },
+    {
+      "id": "S1-T8",
+      "name": "local key absent -> direct-HTTP fallback skipped",
+      "status": "PASS",
+      "detail": "phases=credential_present,local_key_missing,result_acked dispatched=0 posted=1"
+    },
+    {
+      "id": "S1-T10",
+      "name": "credential read throws -> 0 network calls (fail-closed)",
+      "status": "PASS",
+      "detail": "networkCalls=0 done=1 phases=credential_read_failed server-audit-entries=0"
+    },
+    {
+      "id": "S1-T11",
+      "name": "rotation acceptance never touches the mailbox",
+      "status": "PASS",
+      "detail": "fenced=3 proofs=3 dispatched=0 posted=0 pending-id=1795063030 results-posted=0 proof-calls=3"
+    }
+  ]
+}

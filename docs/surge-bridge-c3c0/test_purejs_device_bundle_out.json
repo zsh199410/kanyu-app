@@ -1,0 +1,6 @@
+{
+ "suite": "test_purejs_device_bundle.js",
+ "stdout": "PASS real bundle verifies public signed proof in isSecureContext=false without subtle\nPASS intent manually triggered script also verifies\nPASS cron trigger rejected without any write\nPASS panel trigger rejected without write\nPASS missing TextEncoder fails closed\nPASS missing base64 decoder fails closed\nPASS persistent store failure does not attempt a second write or action\nPASS panel correctly displays verified-but-not-release status\nPASS panel never leaks arbitrary fake secret input\nPASS module contains only manual generic scripts with SHA-pinned source\nPASS no token or private endpoint in manual probe body\nSUMMARY 11 PASS, 0 FAIL (synthetic only)\n",
+ "stderr": "",
+ "returncode": 0
+}

@@ -1,0 +1,6 @@
+PASS unsigned proof
+PASS wrong signature
+PASS replayed nonce
+PASS mismatched candidate fingerprint
+PASS expired proof
+SUMMARY 5 PASS, 0 FAIL

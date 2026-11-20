@@ -1,0 +1,212 @@
+{
+  "suite": "fixed-v2-regressions",
+  "pass": 28,
+  "fail": 0,
+  "limitation": 1,
+  "results": [
+    {
+      "id": "V1",
+      "name": "same-second +1ms id dispatches (LEGACY_MS+1 vs ms checkpoint)",
+      "gate": "SAME_SECOND_MS_CASE / ORDERING_CANONICAL_MS",
+      "pass": true,
+      "detail": "dispatch=1 storedId=1795055213881 done=1 lastAcked=1795055213881"
+    },
+    {
+      "id": "V2",
+      "name": "same-second -1ms id is deduped (LEGACY_MS-1)",
+      "gate": "SAME_SECOND_MS_CASE / ORDERING_CANONICAL_MS",
+      "pass": true,
+      "detail": "dispatch=0 resultPOST=0 done=1 dedup_phase=true"
+    },
+    {
+      "id": "V3",
+      "name": "second id floor(LEGACY_MS/1000) deduped (second holds a newer ms checkpoint)",
+      "gate": "ORDERING_CANONICAL_MS",
+      "pass": true,
+      "detail": "cmdSec=1795055213 dispatch=0 resultPOST=0 done=1"
+    },
+    {
+      "id": "V4",
+      "name": "mixed s/ms bidirectional: sec cmd dispatches, then ms cmd dispatches; last_acked_id carries the raw id each time",
+      "gate": "ORDERING_CANONICAL_MS / LEGACY_FLOOR_MIXED_UNIT_FIXED",
+      "pass": true,
+      "detail": "sec dispatch=1 ackedAfterSec=1795063031 | ms dispatch=1 ackedAfterMs=1795063031001"
+    },
+    {
+      "id": "V5",
+      "name": "equal-value collision: M+1 and M+2 (same second) both dispatch; an exactly equal id is deduped",
+      "gate": "SAME_SECOND_MS_CASE / ORDERING_CANONICAL_MS",
+      "pass": true,
+      "detail": "M+1 dispatch=1 | M+2 dispatch=1 | M+2 again dispatch=0 resultPOST=0"
+    },
+    {
+      "id": "V6",
+      "name": "old 13-digit ms last + future 10-digit sec cmd dispatches (R0 regression)",
+      "gate": "LEGACY_FLOOR_MIXED_UNIT_FIXED",
+      "pass": true,
+      "detail": "dispatch=1 storedId=1795063031 done=1"
+    },
+    {
+      "id": "V7",
+      "name": "non-safe-integer legacy id fails closed (no action, no poll)",
+      "gate": "ORDERING_CANONICAL_MS",
+      "pass": true,
+      "detail": "legacy=9007199254740992 dispatch=0 resultPOST=0 done=1 phase=true polls=0"
+    },
+    {
+      "id": "V8",
+      "name": "v1 toSec() bug demonstrated: M+1 blocked on v1 (same-second floor collision), dispatched on v2",
+      "gate": "ORDERING_CANONICAL_MS",
+      "pass": true,
+      "detail": "v1 dispatch=0 (blocked) | v2 dispatch=1 storedId=1795055213001 (ms ordering preserves the 1ms distinction)"
+    },
+    {
+      "id": "V9",
+      "name": "fence before bootstrap: 23 rounds old cmd, NO ledger -> fenced, ledger stays null",
+      "gate": "FENCE_INDEPENDENT_OF_LEDGER",
+      "pass": true,
+      "detail": "rounds=23 dispatch=0 resultPOST=0 lastIdW=0 done=23 hung=0 ledgerAbsent=true lastIdUnchanged=true cmdStillPending=true"
+    },
+    {
+      "id": "V10",
+      "name": "empty-mailbox first init, then 23 rounds old cmd -> all fenced, ledger unchanged",
+      "gate": "FENCE_INDEPENDENT_OF_LEDGER",
+      "pass": true,
+      "detail": "rounds=23 dispatch=0 resultPOST=0 lastIdW=0 done=23 hung=0 ledgerUnchanged=true floor=1795055213880"
+    },
+    {
+      "id": "V11",
+      "name": "pre-stored old result_ready + old cmd polled -> never re-sends the cached result",
+      "gate": "FENCE_INDEPENDENT_OF_LEDGER / PR96_DURABLE_ACK",
+      "pass": true,
+      "detail": "dispatch=0 resultPOST=0 done=1 mailboxResultStored=false"
+    },
+    {
+      "id": "V12",
+      "name": "pre-stored old result_ready + empty mailbox -> never re-sends the cached result",
+      "gate": "FENCE_INDEPENDENT_OF_LEDGER / PR96_DURABLE_ACK",
+      "pass": true,
+      "detail": "dispatch=0 resultPOST=0 done=1 mailboxResultStored=false"
+    },
+    {
+      "id": "V13",
+      "name": "first-migration fence: synthetic pending cmd on first run is fenced, floor recorded, not executed",
+      "gate": "FENCE_INDEPENDENT_OF_LEDGER",
+      "pass": true,
+      "detail": "dispatch=0 resultPOST=0 done=1 floor=2000000001 lastAcked=0 fencedPhase=true"
+    },
+    {
+      "id": "V14",
+      "name": "result POST 503 -> cached, last_id NOT advanced; run 2 re-sends cached (no re-execution)",
+      "gate": "PR96_DURABLE_ACK / 503/409/ACK_LOSS",
+      "pass": true,
+      "detail": "503: run1 dispatch=1 resultPOST=1 lastIdW=0 done=1 | run2 dispatch=0 resultPOST=1 lastIdW=1 done=1 | total dispatch=1 total resultPOST=2 stored=true lastId=2000000001 ledgerPending=null"
+    },
+    {
+      "id": "V15",
+      "name": "result POST 409 -> cached, last_id NOT advanced; run 2 re-sends cached (no re-execution)",
+      "gate": "PR96_DURABLE_ACK / 503/409/ACK_LOSS",
+      "pass": true,
+      "detail": "409: run1 dispatch=1 resultPOST=1 lastIdW=0 done=1 | run2 dispatch=0 resultPOST=1 lastIdW=1 done=1 | total dispatch=1 total resultPOST=2 stored=true lastId=2000000001 ledgerPending=null"
+    },
+    {
+      "id": "V16",
+      "name": "ACK loss (server stored, response dropped) -> cached; run 2 re-sends cached, duplicate ACK",
+      "gate": "PR96_DURABLE_ACK / 503/409/ACK_LOSS",
+      "pass": true,
+      "detail": "ACK-LOSS: run1 dispatch=1 resultPOST=1 lastIdW=0 done=1 | run2 dispatch=0 resultPOST=1 lastIdW=1 done=1 | total dispatch=1 total resultPOST=2 stored=true lastId=2000000001 ledgerPending=null"
+    },
+    {
+      "id": "V17",
+      "name": "PR#85 outcome_unknown_no_retry preserved (mutating POST, $httpAPI timeout -> no direct-HTTP retry)",
+      "gate": "PR85_NO_POST_REPLAY",
+      "pass": true,
+      "detail": "done=1 directLocalPOSTs=0 outcome_unknown_no_retry=true"
+    },
+    {
+      "id": "V18",
+      "name": "new synthetic GET-only cmd -> exactly-once dispatch + strict ID ACK",
+      "gate": "PR96_DURABLE_ACK / WIRE_RAW_ID_PRESERVED",
+      "pass": true,
+      "detail": "dispatch=1 resultPOST=1 storedId=2000000001 lastId=2000000001 ledgerPending=null lastAcked=2000000001 done=1"
+    },
+    {
+      "id": "V19a",
+      "name": "store read throws",
+      "gate": "DONE_AT_MOST_ONCE",
+      "pass": true,
+      "detail": "done=1 phase_store_read=true phases=[cron_enter,credential_present,store_read] dispatch=0 resultPOST=0"
+    },
+    {
+      "id": "V19b",
+      "name": "poll invalid JSON",
+      "gate": "DONE_AT_MOST_ONCE",
+      "pass": true,
+      "detail": "done=1 phase_poll_parse=true phases=[cron_enter,credential_present,poll_http_done,poll_parse,cmd_parsed,dedup_decision] dispatch=0 resultPOST=0"
+    },
+    {
+      "id": "V19c",
+      "name": "action throws (local API throws) -> action_error, result still posted",
+      "gate": "DONE_AT_MOST_ONCE",
+      "pass": true,
+      "detail": "done=1 phase_action_error=true phases=[cron_enter,credential_present,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_error,action_complete_or_unknown,checkpoint_attempt,result_delivery,result_acked,done_or_catch] dispatch=1 resultPOST=1"
+    },
+    {
+      "id": "V19d",
+      "name": "checkpoint ledger write throws -> checkpoint_failed, no result",
+      "gate": "DONE_AT_MOST_ONCE",
+      "pass": true,
+      "detail": "done=1 phase_checkpoint_failed=true phases=[cron_enter,credential_present,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_complete_or_unknown,checkpoint_attempt,checkpoint_failed] dispatch=1 resultPOST=0"
+    },
+    {
+      "id": "V19e",
+      "name": "result POST throws ($httpClient post throws) -> outer_catch",
+      "gate": "DONE_AT_MOST_ONCE",
+      "pass": true,
+      "detail": "done=1 phase_outer_catch=true phases=[cron_enter,credential_present,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_complete_or_unknown,checkpoint_attempt,result_delivery,outer_catch,done_or_catch] dispatch=1 resultPOST=1"
+    },
+    {
+      "id": "V20",
+      "name": "late $httpClient poll callback after terminal -> dropped, no side effect",
+      "gate": "LATE_CALLBACK_NO_SIDE_EFFECT",
+      "pass": true,
+      "detail": "done=1 droppedLate=1 postDoneAttempts=0 dispatch=0 resultPOST=0"
+    },
+    {
+      "id": "V21",
+      "name": "phase trace: all 9 required phases in order, {phase,id,cat,tb} only, no secrets",
+      "gate": "PHASE_TRACE_TEST / TRACE_NO_SECRETS",
+      "pass": true,
+      "detail": "phases=[cron_enter,credential_present,poll_http_done,cmd_parsed,dedup_decision,dispatch_enter,action_complete_or_unknown,checkpoint_attempt,result_delivery,result_acked,done_or_catch] missing=[] inOrder=true keysClean=true leak=false done=1"
+    },
+    {
+      "id": "V22",
+      "name": "$httpClient callback never returns, timers NORMAL -> guard releases, $done 1",
+      "gate": "CALLBACK_NEVER_FIRES_TEST",
+      "pass": true,
+      "detail": "hung=false done=1 poll_timeout_phase=true dispatch=0 resultPOST=0"
+    },
+    {
+      "id": "V23",
+      "name": "$httpClient callback never returns, timers THROTTLED -> still hangs",
+      "gate": "JS_TIMER_THROTTLE_TEST / HOST_TIMEOUT_LIMITATION",
+      "pass": null,
+      "limitation": true,
+      "detail": "hung=true done=0. RUNTIME_HARD_TIMEOUT_UNPROVEN: a Promise.race+setTimeout guard is NOT a hard deadline when background timers are frozen. Only the Surge host cron timeout (120s) bounds it. Real device script logs are the final link to verify this later."
+    },
+    {
+      "id": "V24",
+      "name": "raw IDs preserved on the wire: sec and ms cmd ids unchanged in result, ledger, and legacy last_id",
+      "gate": "WIRE_RAW_ID_PRESERVED",
+      "pass": true,
+      "detail": "sec sentId=1795063031 ledgerAcked=1795063031 | ms sentId=1795063031001 ledgerAcked=1795063031001 legacyLastId=1795063031001"
+    },
+    {
+      "id": "V25",
+      "name": "mock state isolation: a dispatching run does not leak into the next fresh run",
+      "gate": "DONE_AT_MOST_ONCE",
+      "pass": true,
+      "detail": "A stored=2000000001 | B stored=false B cmd=false B lastId=undefined B done=1"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+PASS same valid proof passes twice with reused trusted nonce (KNOWN LIMITATION, not a verifier failure)
+PASS same proof rejected with a different expectedNonce (nonce binding works)
+PASS same proof rejected for a different candidate
+PASS no side effects during replay control
+SUMMARY 4 PASS, 0 FAIL, 1 KNOWN LIMITATION (stateless replay)

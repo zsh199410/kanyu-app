@@ -1,0 +1,40 @@
+name: Issue73 C3-C0 Round 4 first-stage launch samples (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/provisioning_demo.js"
+      - "docs/surge-bridge-c3c0/test_provisioning_demo.js"
+      - "docs/surge-bridge-c3c0/promotion_gate.js"
+      - "docs/surge-bridge-c3c0/test_promotion_gate.js"
+      - "docs/surge-bridge-c3c0/dual_token_server.js"
+      - "docs/surge-bridge-c3c0/test_dual_token.js"
+      - "docs/surge-bridge-c3c0/PROMOTION_GATE_DESIGN.md"
+      - "docs/surge-bridge-c3c0/DUAL_TOKEN_DESIGN.md"
+      - ".github/workflows/issue73-c3c0-round4.yml"
+permissions:
+  contents: read
+jobs:
+  round4-isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check docs/surge-bridge-c3c0/provisioning_demo.js
+          node --check docs/surge-bridge-c3c0/test_provisioning_demo.js
+          node --check docs/surge-bridge-c3c0/promotion_gate.js
+          node --check docs/surge-bridge-c3c0/test_promotion_gate.js
+          node --check docs/surge-bridge-c3c0/dual_token_server.js
+          node --check docs/surge-bridge-c3c0/test_dual_token.js
+      # Round 4 items 1-3: desensitized executable samples + isolated
+      # tests for the three first-stage launch blockers (GPT receipt
+      # 7013674858). Synthetic tokens only; no network, no phone.
+      # Any failure exits nonzero (node exits 1 on an uncaught
+      # assertion failure).
+      - name: Round 4 launch-blocker samples (synthetic only)
+        working-directory: docs/surge-bridge-c3c0
+        run: |
+          node test_provisioning_demo.js
+          node test_promotion_gate.js
+          node test_dual_token.js
