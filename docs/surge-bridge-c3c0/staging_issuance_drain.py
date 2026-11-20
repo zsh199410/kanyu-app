@@ -25,9 +25,13 @@ class IssuanceDrainTimeout(IssuanceGateClosed):
 
 
 class IssuanceDrainGate:
-    def __init__(self):
+    def __init__(self, *, start_frozen: bool = False):
+        if type(start_frozen) is not bool:
+            raise ValueError("invalid_initial_gate_state")
         self._cv = threading.Condition()
-        self._frozen = False
+        # New HTTPS staging ingress MUST begin frozen until a trusted
+        # externally authenticated recovery checkpoint has been verified.
+        self._frozen = start_frozen
         self._admin_active = False
         self._active = 0
         self._owner_pid = os.getpid()
@@ -63,6 +67,17 @@ class IssuanceDrainGate:
         """Use instead of issuer.issue directly in *every* staging handler."""
         with self.admission():
             return issuer.issue(**kwargs)
+
+    def freeze_for_reconciliation(self) -> None:
+        """Close future admissions immediately after any unknown DB state.
+
+        Safe to call from within an admitted request: other already active
+        requests must still drain before a trusted operator may resume.
+        """
+        self._same_process()
+        with self._cv:
+            self._frozen = True
+            self._cv.notify_all()
 
     def _freeze_and_drain(self, timeout_s: float) -> None:
         self._same_process()
