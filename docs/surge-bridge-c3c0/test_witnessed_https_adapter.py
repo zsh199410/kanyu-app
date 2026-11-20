@@ -26,7 +26,7 @@ from credential_proof_https import LoopbackTLSServer, serve_in_thread
 from nonce_ledger_sqlite import NonceLedger, new_nonce
 from token_registry_sqlite import TokenRegistry, fingerprint
 from recovery_signed_checkpoint import logical_state_sha256
-from staging_issuance_drain import IssuanceDrainGate
+from staging_issuance_drain import IssuanceDrainGate, IssuanceGateClosed
 from witnessed_credential_proof_https import WitnessedHTTPSProofService
 from witness_fenced_issuer_reference import IndependentWitnessTestDouble, WitnessRejected
 
@@ -266,7 +266,7 @@ class WitnessHTTPS(unittest.TestCase):
 
     def test_12_failed_admin_readback_prevents_reopening_gate(self):
         self.assertEqual(self.send()[0], 200)
-        with self.assertRaisesRegex(WitnessRejected,
+        with self.assertRaisesRegex(IssuanceGateClosed,
                                     "admin_readback_failed_frozen"):
             self.service.witnessed_service.admin_transition(
                 lambda: self.registry.activate_backup(
