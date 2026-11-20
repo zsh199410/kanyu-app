@@ -319,7 +319,7 @@ class WitnessHTTPS(unittest.TestCase):
             self.service._register_nonce = original
 
     def test_14_http_frozen_gate_rejects_even_before_bad_credentials(self):
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(IssuanceGateClosed, "admin_change_not_confirmed_frozen"):
             # The deliberately failed admin operation freezes the gate.
             self.service.witnessed_service.admin_transition(
                 lambda: False, lambda: True)
