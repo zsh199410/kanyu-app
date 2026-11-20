@@ -9,6 +9,7 @@ import base64
 import datetime
 import ipaddress
 import json
+import sqlite3
 import ssl
 import tempfile
 import unittest
@@ -231,7 +232,8 @@ class HTTPSProofTests(unittest.TestCase):
             def sign(self,_):
                 self.count+=1
                 return b"x"*64
-        self.server.proof_service.signer = SpySigner()
+        spy=SpySigner()
+        self.server.proof_service.issuer.signer = spy
         # Inject a write blocker on the same database used by real handler.
         with sqlite3.connect(self.ledger.path) as db:
             db.execute("""CREATE TRIGGER deny_consume BEFORE UPDATE ON challenge
@@ -240,6 +242,7 @@ class HTTPSProofTests(unittest.TestCase):
         self.assertEqual(code,403)
         self.assertEqual(response,{"status":"proof_not_authorized"})
         self.assertEqual(self.ledger.counts(),(1,0))
+        self.assertEqual(spy.count,0)
 
     def test_19_real_https_uses_loopback_tls_socket(self):
         self.assertEqual(self.server.server_address[0], "127.0.0.1")
