@@ -67,3 +67,27 @@ Upstream disclosure: https://github.com/dchest/tweetnacl-js and
 https://github.com/emn178/js-sha256. The libraries are vendored as
 byte-identical source artifacts with their respective license files;
 the original upstream blob identifiers are asserted in CI.
+
+## One-shot device capability candidate (still not installed)
+
+A reproducible **test-only** bundle is included as
+`issue73_purejs_probe_bundled.js`. The build recipe
+`build_purejs_probe.js --check` reconstructs the exact artifact from
+the two licensed vendor sources, reference verifier, and a small
+one-shot public fixture harness. The harness tests a *synthetic* Ed25519
+signed proof, with a deliberately changed fingerprint as the negative
+control. It reads no real credential, uses no network, and only writes
+the allowlisted non-secret `sgbridge_purejs_probe_status` once for
+manual `editor` or `intent` triggers.
+
+The separate SHA-pinned module
+`issue73_purejs_readonly.sgmodule` registers that generic manual
+test and a read-only status panel; it has no Cron/Proxy/Rules/MITM.
+**It is not installed by creating this PR**, and a synthetic green
+result is not a phone green result. Only a new owner-run device test
+with the exact built script SHA can establish compatibility; an
+insecure-context WebView can support the pure-JS path but may still
+be missing `TextEncoder` or `atob`, which must fail closed.
+
+The existing production Bridge and the original WebCrypto module
+remain intact. No implicit promotion/revocation is permitted.
