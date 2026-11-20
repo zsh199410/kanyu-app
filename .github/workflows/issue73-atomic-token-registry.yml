@@ -1,0 +1,38 @@
+name: Issue73 atomic token registry and signed-proof integration (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/token_registry_sqlite.py"
+      - "docs/surge-bridge-c3c0/atomic_signed_proof_issuer.py"
+      - "docs/surge-bridge-c3c0/test_atomic_token_registry.py"
+      - "docs/surge-bridge-c3c0/test_atomic_token_proof_fixture.py"
+      - "docs/surge-bridge-c3c0/test_atomic_token_registry_webview.js"
+      - "docs/surge-bridge-c3c0/ATOMIC_TOKEN_REGISTRY_GATE.md"
+      - ".github/workflows/issue73-atomic-token-registry.yml"
+permissions:
+  contents: read
+jobs:
+  token-atomic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pinned isolated Ed25519 test dependency
+        run: python -m pip install --disable-pip-version-check cryptography==46.0.4
+      - name: Syntax checks
+        run: |
+          python -m py_compile docs/surge-bridge-c3c0/token_registry_sqlite.py
+          python -m py_compile docs/surge-bridge-c3c0/atomic_signed_proof_issuer.py
+          python -m py_compile docs/surge-bridge-c3c0/test_atomic_token_registry.py
+          python -m py_compile docs/surge-bridge-c3c0/test_atomic_token_proof_fixture.py
+          node --check docs/surge-bridge-c3c0/test_atomic_token_registry_webview.js
+      - name: 21 actual SQLite token/nonce atomic tests
+        working-directory: docs/surge-bridge-c3c0
+        run: python -W error::ResourceWarning -m unittest -v test_atomic_token_registry.py
+      - name: Atomic SQLite Python signature validated by WebCrypto
+        working-directory: docs/surge-bridge-c3c0
+        run: node test_atomic_token_registry_webview.js
