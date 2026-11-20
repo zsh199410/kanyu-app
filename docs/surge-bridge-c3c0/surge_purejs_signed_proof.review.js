@@ -100,7 +100,7 @@
       const signature = decodeSignature(proof.signature);
       if (!publicKey || !signature) return false;
       return root.nacl.sign.detached.verify(
-        new TextEncoder().encode(canonicalJson(proof)),
+        new Uint8Array(new TextEncoder().encode(canonicalJson(proof))),
         signature, publicKey
       ) === true;
     } catch (_e) {
