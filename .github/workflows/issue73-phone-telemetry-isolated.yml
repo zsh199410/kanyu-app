@@ -1,0 +1,28 @@
+name: Issue73 phone telemetry isolated tests
+
+on:
+  pull_request:
+    paths:
+      - 'docs/surge-d7-acceptance/phone-telemetry/**'
+      - '.github/workflows/issue73-phone-telemetry-isolated.yml'
+  push:
+    branches:
+      - issue73-phone-telemetry-p0-20261120
+    paths:
+      - 'docs/surge-d7-acceptance/phone-telemetry/**'
+      - '.github/workflows/issue73-phone-telemetry-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  phone-telemetry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: docs/surge-d7-acceptance/phone-telemetry
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Python ingestion and idempotency
+        run: python3 -m unittest -v test_receiver.py
+      - name: Validate iOS 5 and iOS 6 script mocks
+        run: node test_js.js
