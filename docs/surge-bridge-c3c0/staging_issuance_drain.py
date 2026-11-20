@@ -25,9 +25,13 @@ class IssuanceDrainTimeout(IssuanceGateClosed):
 
 
 class IssuanceDrainGate:
-    def __init__(self):
+    def __init__(self, *, start_frozen: bool = False):
+        if type(start_frozen) is not bool:
+            raise ValueError("invalid_initial_gate_state")
         self._cv = threading.Condition()
-        self._frozen = False
+        # New HTTPS staging ingress MUST begin frozen until a trusted
+        # externally authenticated recovery checkpoint has been verified.
+        self._frozen = start_frozen
         self._admin_active = False
         self._active = 0
         self._owner_pid = os.getpid()
