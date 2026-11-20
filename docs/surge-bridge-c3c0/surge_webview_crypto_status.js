@@ -34,6 +34,6 @@
   $done({
     title: "Issue #73 · WebCrypto",
     content: state + " — " + (states[state] || "Not verified"),
-    style: state === "crypto_ready" ? "info" : "warning"
+    style: state === "crypto_ready" ? "info" : "alert"
   });
 })();
