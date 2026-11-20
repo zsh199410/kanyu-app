@@ -44,12 +44,18 @@ test("arbitrary status string never displayed or logged",()=>{
 test("store read failure yields nonsensitive status",()=>{
  const p=evalPanel(null,true);assert.match(p.content,/status_read_error/);
 });
-test("all ten published probe enums render harmlessly",()=>{
+test("all eleven published probe enums render harmlessly",()=>{
  const types=[
- "crypto_ready","no_webcrypto","no_text_encoder","sha256_failed",
+ "crypto_ready","no_webcrypto","insecure_context","no_text_encoder","sha256_failed",
  "base64_unavailable","base64_failed","ed25519_unavailable",
  "signature_failed","random_unavailable","probe_error"];
  for(const v of types){const p=evalPanel(v);assert.ok(p.content.startsWith(v+" — "));}
+});
+test("insecure_context always renders an alert without release approval",()=>{
+ const p=evalPanel("insecure_context");
+ assert.equal(p.style,"alert");
+ assert.match(p.content,/Non-secure WebView context/);
+ assert.ok(!/READY FOR RELEASE/.test(p.content));
 });
 test("module only adds scripts and a panel, not networking policy",()=>{
  assert.ok(!/^\[(?:General|Rule|Proxy|Proxy Group|MITM|URL Rewrite|Host|Map Local|Cron)\]/mi.test(MODULE));
