@@ -13,7 +13,7 @@ import json
 from dataclasses import dataclass
 from typing import Callable
 
-from nonce_ledger_sqlite import NonceLedger, binding
+from nonce_ledger_sqlite import NonceLedger, InvalidChallenge, binding, nonce_hash
 
 PURPOSE = "issue73/credential-promotion/v1"
 DEFAULT_TTL_MS = 60_000
@@ -70,6 +70,13 @@ class SignedProofIssuer:
             now_ms + ttl_ms > 2**53 - 1
         ):
             raise ProofIssuanceError("invalid_ttl")
+        # Input validation occurs before invoking the trusted lookup.
+        # Bad nonce encoding is definitively invalid input, not an unknown
+        # database COMMIT. No token lookup or signer may run for it.
+        try:
+            nonce_hash(nonce)
+        except InvalidChallenge as exc:
+            raise ProofIssuanceError("invalid_challenge") from exc
         try:
             trusted = self.trusted_token_lookup(requested_token_id)
         except Exception as exc:

@@ -10,7 +10,7 @@ import json
 import time
 from collections.abc import Callable
 
-from nonce_ledger_sqlite import binding
+from nonce_ledger_sqlite import InvalidChallenge, binding, nonce_hash
 from signed_proof_issuer import PURPOSE, ProofIssuanceError
 from token_registry_sqlite import TokenRegistry
 
@@ -41,6 +41,9 @@ class AtomicSignedProofIssuer:
         if type(ttl_ms) is not int or not 1 <= ttl_ms <= MAX_PROOF_TTL_MS:
             raise ProofIssuanceError("ttl_rejected")
         try:
+            # F3: reject malformed input before session lookup or any DB
+            # transaction; never mislabel this as an uncertain COMMIT.
+            nonce_hash(nonce)
             kind, candidate_fingerprint, token_id = binding(
                 kind, candidate_fingerprint, token_id)
             now_ms = self.now_ms()
@@ -52,6 +55,8 @@ class AtomicSignedProofIssuer:
                 raise ProofIssuanceError("session_forbidden")
         except ProofIssuanceError:
             raise
+        except InvalidChallenge as exc:
+            raise ProofIssuanceError("invalid_proof_input") from exc
         except Exception as exc:
             raise ProofIssuanceError("preflight_unknown") from exc
         try:
