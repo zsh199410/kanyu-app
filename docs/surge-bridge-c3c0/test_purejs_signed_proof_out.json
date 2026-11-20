@@ -1,0 +1,6 @@
+{
+ "suite": "test_purejs_signed_proof.js",
+ "stdout": "PASS insecure WebView context has NO crypto.subtle but both offline primitives loaded\nPASS real Node Ed25519 signature verified via independent pure JS TweetNaCl\nPASS canonical JSON is byte-compatible with signed proof issuer\nPASS local SHA256 empty-string known vector\nPASS corrupted Ed25519 signature rejected\nPASS signature of wrong key rejected\nPASS changed candidate rejected by fingerprint binding\nPASS changed fingerprint rejected\nPASS wrong trusted nonce rejected\nPASS tampered signed nonce rejected\nPASS old token id cannot be reused\nPASS unauthenticated success boolean cannot substitute signature\nPASS expired signed proof rejected\nPASS future issued proof rejected\nPASS wrong purpose/domain rejected\nPASS different credential kind rejected\nPASS invalid trusted inputs fail closed\nPASS missing TextEncoder refuses to verify\nPASS missing SHA256 refuses to verify\nPASS missing NaCl refuses to verify\nPASS missing atob refuses to verify\nPASS stateless replay limitation EXPLICIT: same valid proof verifies twice\nPASS no network, credential writes, remote CDN, auto-run or device control in wrapper\nSUMMARY 23 PASS, 0 FAIL, 1 KNOWN LIMITATION: stateless replay\n",
+ "stderr": "",
+ "returncode": 0
+}

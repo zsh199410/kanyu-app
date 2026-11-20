@@ -1,0 +1,6 @@
+{
+ "suite": "test_r9_cross_review_probes.py",
+ "stdout": "",
+ "stderr": "test_p1_insecure_context_precedence (test_r9_cross_review_probes.TestR9CrossReview.test_p1_insecure_context_precedence) ... ok\ntest_p2_atomic_issuer_to_purejs_verifier (test_r9_cross_review_probes.TestR9CrossReview.test_p2_atomic_issuer_to_purejs_verifier) ... ok\ntest_p3_https_end_to_end_then_purejs_verify (test_r9_cross_review_probes.TestR9CrossReview.test_p3_https_end_to_end_then_purejs_verify) ... ok\ntest_p4_loopback_binding_and_tls_minimum (test_r9_cross_review_probes.TestR9CrossReview.test_p4_loopback_binding_and_tls_minimum) ... ok\ntest_p5_wrong_bearer_zero_writes (test_r9_cross_review_probes.TestR9CrossReview.test_p5_wrong_bearer_zero_writes) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 1.576s\n\nOK\n",
+ "returncode": 0
+}

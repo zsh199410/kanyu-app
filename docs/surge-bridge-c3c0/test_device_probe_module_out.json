@@ -1,0 +1,6 @@
+{
+ "suite": "test_device_probe_module.js",
+ "stdout": "PASS status panel shows crypto_ready but not production approval\nPASS missing enum returns not_run and never reads token\nPASS arbitrary status string never displayed or logged\nPASS store read failure yields nonsensitive status\nPASS all eleven published probe enums render harmlessly\nPASS insecure_context always renders an alert without release approval\nPASS module only adds scripts and a panel, not networking policy\nPASS module source URLs are pinned immutable SHAs and two only\nPASS script and module contain no token/nonce input or device-control API\nSUMMARY 9 PASS, 0 FAIL\n",
+ "stderr": "",
+ "returncode": 0
+}
