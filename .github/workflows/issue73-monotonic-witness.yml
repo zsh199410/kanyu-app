@@ -1,0 +1,34 @@
+name: Issue73 monotonic external witness signing fence (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/witness_fenced_issuer_reference.py"
+      - "docs/surge-bridge-c3c0/test_witness_fenced_issuer.py"
+      - "docs/surge-bridge-c3c0/MONOTONIC_WITNESS_STAGING_GATE.md"
+      - ".github/workflows/issue73-monotonic-witness.yml"
+permissions:
+  contents: read
+jobs:
+  isolated-witness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pinned synthetic-only Ed25519 library
+        run: python -m pip install --disable-pip-version-check cryptography==46.0.4
+      - name: Source compilation and import check
+        run: |
+          python -m py_compile docs/surge-bridge-c3c0/witness_fenced_issuer_reference.py
+          python -m py_compile docs/surge-bridge-c3c0/test_witness_fenced_issuer.py
+      - name: Real SQLite witness and Ed25519 signer resilience tests
+        working-directory: docs/surge-bridge-c3c0
+        run: python -W error::ResourceWarning -m unittest -v test_witness_fenced_issuer.py
+      - name: Existing issuer, atomic registry and recovery verifier regression
+        working-directory: docs/surge-bridge-c3c0
+        run: |
+          python -W error::ResourceWarning -m unittest -v test_atomic_token_registry.py
+          python -W error::ResourceWarning -m unittest -v test_staging_issuance_drain.py
+          python -W error::ResourceWarning -m unittest -v test_recovery_signed_checkpoint.py
