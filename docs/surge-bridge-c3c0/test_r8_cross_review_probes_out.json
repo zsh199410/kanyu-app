@@ -1,0 +1,6 @@
+{
+ "suite": "test_r8_cross_review_probes.py",
+ "stdout": "",
+ "stderr": "test_p1_pr108_lookup_consume_toctou_gap_is_real (test_r8_cross_review_probes.CrossReviewProbeTests.test_p1_pr108_lookup_consume_toctou_gap_is_real)\nA concurrent revoke after lookup does not stop PR #108 signing. ... ok\ntest_p2_pr109_revocation_linearization_limit_is_real (test_r8_cross_review_probes.CrossReviewProbeTests.test_p2_pr109_revocation_linearization_limit_is_real)\nA revoke after atomic COMMIT but before signing still signs. ... ok\ntest_p3_registry_db_holds_no_plaintext_token (test_r8_cross_review_probes.CrossReviewProbeTests.test_p3_registry_db_holds_no_plaintext_token) ... ok\ntest_p4_exposed_old_authenticates_but_never_authorizes_proof (test_r8_cross_review_probes.CrossReviewProbeTests.test_p4_exposed_old_authenticates_but_never_authorizes_proof) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.026s\n\nOK\n",
+ "returncode": 0
+}

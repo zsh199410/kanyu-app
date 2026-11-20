@@ -1,0 +1,6 @@
+{
+ "suite": "test_atomic_token_registry_webview.js",
+ "stdout": "PASS atomically authorized Python signature verifies in WebCrypto\nPASS new token proof cannot be used with old-token identity\nPASS tampered candidate fingerprint rejected\nPASS wrong trusted nonce rejected\nPASS wrong pinned public key rejected\nPASS expired proof rejected\nPASS issuer fixture contains no credential material in signed output\nSUMMARY 7 PASS, 0 FAIL\n",
+ "stderr": "",
+ "returncode": 0
+}

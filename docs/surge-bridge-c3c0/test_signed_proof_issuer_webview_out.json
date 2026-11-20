@@ -1,0 +1,6 @@
+{
+ "suite": "test_signed_proof_issuer_webview.js",
+ "stdout": "PASS Python issuer signature verifies with actual WebCrypto library\nPASS python-issued proof has strict signed canonical field order\nPASS proof replay against distinct expected nonce is rejected\nPASS proof for another candidate rejected\nPASS tampering signed token identity rejected\nPASS signer key pin is independent of proof; missing key rejected\nPASS cross-language signer exposes no private key or actual token\nSUMMARY 7 PASS, 0 FAIL\n",
+ "stderr": "",
+ "returncode": 0
+}
