@@ -13,6 +13,7 @@ import sqlite3
 import ssl
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -247,6 +248,34 @@ class HTTPSProofTests(unittest.TestCase):
     def test_19_real_https_uses_loopback_tls_socket(self):
         self.assertEqual(self.server.server_address[0], "127.0.0.1")
         self.assertIsInstance(self.server.socket, ssl.SSLSocket)
+
+    def test_20_revocation_and_backup_over_actual_https(self):
+        # First prove the new token can sign, then enact the guarded
+        # emergency backup transition and revoke exposed old.
+        self.assertEqual(self.send()[0], 200)
+        self.assertTrue(self.registry.activate_backup(BACKUP_ID, now_ms=NOW+1))
+        self.assertTrue(self.registry.revoke(OLD_ID, now_ms=NOW+2))
+        self.assertEqual(self.send()[0], 403)
+        self.assertEqual(self.send(self.body(
+            token_id=OLD_ID,candidate_fingerprint=fingerprint(OLD)))[0], 403)
+        self.assertEqual(self.send(self.body(
+            token_id=BACKUP_ID,candidate_fingerprint=fingerprint(BACKUP)))[0], 200)
+        self.assertEqual(self.registry.authorize(OLD,kind="dev",now_ms=NOW+3),
+                         {"status":403,"reason":"token_revoked"})
+
+    def test_21_revocation_survives_new_registry_connection(self):
+        self.assertTrue(self.registry.revoke(OLD_ID,now_ms=NOW+1))
+        fresh = TokenRegistry(NonceLedger(self.ledger.path))
+        self.assertEqual(fresh.authorize(OLD,kind="dev",now_ms=NOW+2),
+                         {"status":403,"reason":"token_revoked"})
+        self.assertEqual(fresh.authorize(NEW,kind="dev",now_ms=NOW+2)["status"],200)
+
+    def test_22_concurrent_https_replay_only_one_receives_proof(self):
+        body = self.body()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _:self.send(body)[0],(1,2)))
+        self.assertEqual(sorted(results),[200,409])
+        self.assertEqual(self.ledger.counts(),(1,1))
 
 
 if __name__ == "__main__":
