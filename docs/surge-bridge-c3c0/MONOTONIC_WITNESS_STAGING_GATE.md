@@ -57,7 +57,11 @@ directory on the same VPS is insufficient.
 
 An additional `WitnessedHTTPSProofService` staging subclass now
 overrides BOTH nonce registration and issuer signing via reviewed
-extension points in PR110's existing loopback HTTPS parser. It refuses
+extension points in PR110's existing loopback HTTPS parser. An outer
+`gate.admission` wraps the ENTIRE `handle()` call before pairing,
+nonce registration and signer invocation, to avoid admission between
+registration and signature while an administrator starts revocation.
+All inner admission checks remain fail-closed. It refuses
 startup if the business database disagrees with the witness. Its
 separate `test_witnessed_https_adapter.py` tests use a REAL loopback
 HTTPS socket, ephemeral TLS and Ed25519 signing key, request pairing
