@@ -1,6 +1,6 @@
-"""Issue73: two-process localhost HTTPS anchor authority and client, staging ONLY.
+"""Issue73: dual-listener localhost HTTPS anchor authority and client, staging ONLY.
 
-This is a protocol demonstration, not a deployed independent failure domain.
+This is a protocol demonstration on the SAME test host, not independent\nprocess isolation, failure domain, or a remote production deployment.
 A production witness MUST run on an independently administered host with
 separately protected storage, backups, credentials and certificate/key custody.
 The business signer MUST NOT have the anchor private signing key.
