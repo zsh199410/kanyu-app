@@ -248,14 +248,14 @@ class RealTLSFenceTests(unittest.TestCase):
         self.assertTrue(self.service.gate.status()["frozen"])
         self.assertEqual(self.request()[0],503)
 
-    def test_11_unknown_signer_failure_fences_future_https(self):
+    def test_11_actual_signer_failure_burns_nonce_and_fences_future_https(self):
         self.open()
-        self.signer.block=True
-        self.signer.entered.set()
-        # A failed signer burns the nonce; even a 403 is followed by
-        # an explicit startup-recovery fence and never automatic retry.
-        self.signer.release.set()
-        self.assertEqual(self.request()[0],200)
+        class ThrowingSigner:
+            def sign(self, _):
+                raise RuntimeError("synthetic_signer_failure")
+        self.service.issuer.signer = ThrowingSigner()
+        # The nonce is already committed as consumed when signer fails.
+        self.assertEqual(self.request()[0],403)
         self.assertEqual(self.request()[0],503)
         self.assertEqual(self.ledger.counts(),(1,1))
 
