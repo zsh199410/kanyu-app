@@ -1,0 +1,38 @@
+name: Issue73 P0 local TLS credential proof integration (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/credential_proof_https.py"
+      - "docs/surge-bridge-c3c0/test_credential_proof_https.py"
+      - "docs/surge-bridge-c3c0/P0_THREE_GATES_CHECKLIST.md"
+      - "docs/surge-bridge-c3c0/surge_webview_crypto_status.js"
+      - "docs/surge-bridge-c3c0/issue73_webcrypto_readonly.sgmodule"
+      - "docs/surge-bridge-c3c0/test_device_probe_module.js"
+      - ".github/workflows/issue73-https-proof-integration.yml"
+permissions:
+  contents: read
+jobs:
+  real-local-tls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned test-only crypto dependency
+        run: python -m pip install --disable-pip-version-check cryptography==46.0.4
+      - name: Python source syntax
+        run: |
+          python -m py_compile docs/surge-bridge-c3c0/credential_proof_https.py
+          python -m py_compile docs/surge-bridge-c3c0/test_credential_proof_https.py
+      - name: Real TLS localhost, auth, SQLite, Ed25519 and rollback safety tests
+        working-directory: docs/surge-bridge-c3c0
+        run: python -W error::ResourceWarning -m unittest -v test_credential_proof_https.py
+      - name: Manual-only Surge probe module and status-panel safety tests
+        working-directory: docs/surge-bridge-c3c0
+        run: |
+          node --check surge_webview_crypto_status.js
+          node --check test_device_probe_module.js
+          node test_device_probe_module.js
