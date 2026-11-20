@@ -1,0 +1,10 @@
+#!name=Issue73 PureJS Offline Verify - Read-only Test
+#!desc=One-shot manual source-free Ed25519 proof verification test for nonsecure WebView; NOT production release authorization.
+# Immutable source SHA. No Proxy, Rule, MITM, Cron, network or credentials.
+# Does not run automatically. Owner should test once ONLY after the release candidate is independently reviewed.
+[Script]
+Issue73_PureJS_ManualProbe = type=generic,script-path=https://raw.githubusercontent.com/zsh199410/kanyu-app/ac1f0a0ff7eed96e0d2df154dba25194ec3eebaa/docs/surge-bridge-c3c0/issue73_purejs_probe_bundled.js,engine=webview,timeout=30
+Issue73_PureJS_ReadStatus = type=generic,script-path=https://raw.githubusercontent.com/zsh199410/kanyu-app/ac1f0a0ff7eed96e0d2df154dba25194ec3eebaa/docs/surge-bridge-c3c0/issue73_purejs_status.js,engine=jsc,timeout=5
+
+[Panel]
+Issue73_PureJS_ProbeStatus = title="Issue73 PureJS Verify",content="Not yet verified on this iPhone",style=info,script-name=Issue73_PureJS_ReadStatus
