@@ -13,9 +13,9 @@ from __future__ import annotations
 from typing import Callable
 from contextlib import closing
 
-from credential_proof_https import HTTPSProofService
+from credential_proof_https import HTTPSProofService, _encode
 from recovery_signed_checkpoint import logical_state_sha256
-from staging_issuance_drain import IssuanceDrainGate
+from staging_issuance_drain import IssuanceDrainGate, IssuanceGateClosed
 from witness_fenced_issuer_reference import (
     IndependentWitnessTestDouble, WitnessedAtomicService
 )
@@ -35,6 +35,7 @@ class WitnessedHTTPSProofService(HTTPSProofService):
             pairing_secret=pairing_secret,
             old_token_id=old_token_id, clock_ms=clock_ms
         )
+        self._request_gate = gate
         self.witnessed_service = WitnessedAtomicService(
             registry, signer,
             lambda session, token_id, kind: session is self,
@@ -46,6 +47,24 @@ class WitnessedHTTPSProofService(HTTPSProofService):
         # Make direct access to the historical unfenced signer impossible
         # through this service. Production must independently audit paths.
         self.issuer = None
+
+    def handle(self, *, body: bytes, authorization: str | None,
+               content_type: str) -> tuple[int, bytes]:
+        """Freeze applies to ENTIRE request, including nonce registration.
+
+        A single outer admission lease covers auth, registration, atomic
+        consume, external witness acknowledgment and signer. Existing
+        inner gate checks intentionally remain fail-closed if a revoke
+        freeze lands between request stages. New frozen requests cannot
+        register their nonce before the admin drain barrier.
+        """
+        try:
+            with self._request_gate.admission():
+                return super().handle(
+                    body=body, authorization=authorization,
+                    content_type=content_type)
+        except IssuanceGateClosed:
+            return 503, _encode({"status": "issuance_frozen"})
 
     def _register_nonce(self, nonce: str, *, kind: str,
                         candidate_fingerprint: str, token_id: str,
