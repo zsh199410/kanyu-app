@@ -1,0 +1,43 @@
+name: Issue73 F3 and single-process issuance-drain (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/signed_proof_issuer.py"
+      - "docs/surge-bridge-c3c0/atomic_signed_proof_issuer.py"
+      - "docs/surge-bridge-c3c0/staging_issuance_drain.py"
+      - "docs/surge-bridge-c3c0/test_f3_proof_error_classification.py"
+      - "docs/surge-bridge-c3c0/test_staging_issuance_drain.py"
+      - "docs/surge-bridge-c3c0/F3_DRAIN_STAGING_GATE.md"
+      - ".github/workflows/issue73-f3-drain-staging.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned test-only Ed25519 signer library
+        run: python -m pip install --disable-pip-version-check cryptography==46.0.4
+      - name: Python syntax
+        run: |
+          python -m py_compile docs/surge-bridge-c3c0/signed_proof_issuer.py
+          python -m py_compile docs/surge-bridge-c3c0/atomic_signed_proof_issuer.py
+          python -m py_compile docs/surge-bridge-c3c0/staging_issuance_drain.py
+          python -m py_compile docs/surge-bridge-c3c0/test_f3_proof_error_classification.py
+          python -m py_compile docs/surge-bridge-c3c0/test_staging_issuance_drain.py
+      - name: F3 precise input errors, real SQLite without secrets
+        working-directory: docs/surge-bridge-c3c0
+        run: python -W error::ResourceWarning -m unittest -v test_f3_proof_error_classification.py
+      - name: Same-process issuance and revocation drain test with real SQLite
+        working-directory: docs/surge-bridge-c3c0
+        run: python -W error::ResourceWarning -m unittest -v test_staging_issuance_drain.py
+      - name: Existing token registration and proof signing regressions
+        working-directory: docs/surge-bridge-c3c0
+        run: |
+          python -W error::ResourceWarning -m unittest -v test_signed_proof_issuer.py
+          python -W error::ResourceWarning -m unittest -v test_atomic_token_registry.py
