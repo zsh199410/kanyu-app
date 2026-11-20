@@ -18,8 +18,14 @@ a new challenge while revocation is frozen. The separate
   Ed25519 key**, and **independently fetched monotonic epoch** are
   checked against actual token/nonce SQLite contents before reopening.
 - A potentially mutating HTTP response (200/403/409/503) immediately
-  freezes further requests until a fresh, externally anchored checkpoint
-  is verified. Even an unknown DB commit cannot silently reopen.
+  freezes further requests. **The actual signed HTTP 200 proof is withheld
+  until an independently committed signed checkpoint with a strictly
+  higher external epoch matches the complete current SQLite state.**
+  A failed, missing, stale or ambiguous external write instead returns
+  503 and leaves the nonce burned and the gate frozen.
+- For denied/unknown requests, no signed proof is released; frozen
+  admission requires explicit trusted recovery. A previously pinned
+  signing root cannot be swapped during reconciliation.
 - Signed-proof failure and stale DB snapshot / stale signed checkpoint
   do not auto-reset the gate or retry a nonce. Admin revoke/activation
   must freeze/drain, verify readback AND verify a fresh external anchor
@@ -42,6 +48,11 @@ synthetic tokens/nonce, and temp SQLite. It exercises:
 10. Admin external checkpoint verification failure leaves frozen.
 11. Real signer failure burns nonce and requires reconciliation.
 12. New instance after restart begins frozen again.
+13. External commit failure **withholds HTTP 200** and freezes.
+14. Reused/non-increasing external epoch withholds HTTP 200.
+15. Replacement pinned root cannot silently re-open the gate.
+16. Tampered signed anchor blocks resume; correct signed fresh
+    anchor allows an explicit operator resume.
 
 Original 14 drain and 17 recovery checkpoint tests also rerun.
 
@@ -78,3 +89,21 @@ topology, singleton admission object, read-only production integrity
 checks, SIGTERM clean stop, forced restart initially frozen, and
 independent anchor failure-domain. Do not reuse the live production
 credentials, public HTTPS port, or active server.
+
+## Signed success must not escape before a durable external anchor
+
+A 200 proof returned to a mobile device can authorize a token change.
+Consequently merely freezing admissions **after** sending HTTP 200
+would be insufficient: the VPS could fail before recording the consumed
+nonce in an independent high-water system. The staged adapter now
+performs an injected **trusted external signed-epoch commit** after the
+local SQLite transaction and **before exposing HTTP 200**. The adapter
+verifies the independently signed state itself; a boolean returned
+by the server callback alone cannot bypass cryptographic verification.
+An unknown remote commit always withholds the proof and requires operator
+reconciliation (no automatic nonce replay).
+
+The integration test's external signer is deliberately ephemeral and
+in-memory. It demonstrates this fail-closed behavior but NOT remote
+durability, independent failure-domain storage, high availability,
+root distribution, or atomic communication with a real control plane.
