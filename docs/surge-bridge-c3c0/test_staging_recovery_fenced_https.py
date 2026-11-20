@@ -87,9 +87,14 @@ class RealTLSFenceTests(unittest.TestCase):
             encoding=serialization.Encoding.Raw,
             format=serialization.PublicFormat.Raw
         )
+        # In-memory external anchor fixture, NOT a production
+        # rollback-resistant epoch authority or remote signer.
+        self.external_epoch = 1
+        self.external_record = self.checkpoint(1)
         self.service=StagingRecoveryFencedHTTPSService(
             self.registry,self.ledger,self.signer,pairing_secret=PAIR,
-            old_token_id=OLD_ID,clock_ms=lambda:NOW
+            old_token_id=OLD_ID,clock_ms=lambda:NOW,
+            commit_and_fetch_anchor=self.external_commit,
         )
         self.server=LoopbackTLSServer(self.service,self.server_ctx)
         self.thread=serve_in_thread(self.server)
@@ -126,6 +131,11 @@ class RealTLSFenceTests(unittest.TestCase):
         signature=self.anchor_signer.sign(_canonical(PURPOSE,epoch,digest))
         return {"purpose":PURPOSE,"epoch":epoch,"state_sha256":digest,
                 "signature":base64.b64encode(signature).decode("ascii")}
+
+    def external_commit(self):
+        self.external_epoch += 1
+        self.external_record = self.checkpoint(self.external_epoch)
+        return self.external_record, self.external_epoch
 
     def open(self, epoch=1, record=None, *, key=None):
         return self.service.open_after_trusted_recovery(
@@ -206,16 +216,10 @@ class RealTLSFenceTests(unittest.TestCase):
             def check():
                 return (self.registry.authorize(NEW,kind="dev",now_ms=NOW)["status"]==403
                         and self.registry.authorize(BACKUP,kind="dev",now_ms=NOW)["status"]==200)
-            def external():
-                signed=self.checkpoint(2)
-                return require_signed_recovery_checkpoint(
-                    self.ledger,signed,independently_pinned_public_key=self.anchor_pub,
-                    trusted_external_epoch=2) is True
             return self.service.guarded_admin_change(
                 authorized_change=lambda:self.registry.activate_backup(
                     BACKUP_ID,now_ms=NOW),
                 authoritative_readback=check,
-                new_external_anchor_verified=external,
                 timeout_s=4)
         with ThreadPoolExecutor(max_workers=2) as pool:
             first=pool.submit(self.request,self.body())
@@ -239,12 +243,13 @@ class RealTLSFenceTests(unittest.TestCase):
 
     def test_10_failed_external_anchor_during_admin_keeps_frozen(self):
         self.open()
-        with self.assertRaisesRegex(IssuanceGateClosed,"admin_readback_failed_frozen"):
+        self.service._anchor_commit = lambda: (_ for _ in ()).throw(
+            OSError("synthetic external authority unavailable"))
+        with self.assertRaises(OSError):
             self.service.guarded_admin_change(
                 authorized_change=lambda:self.registry.activate_backup(
                     BACKUP_ID,now_ms=NOW),
-                authoritative_readback=lambda:True,
-                new_external_anchor_verified=lambda:False)
+                authoritative_readback=lambda:True)
         self.assertTrue(self.service.gate.status()["frozen"])
         self.assertEqual(self.request()[0],503)
 
@@ -265,12 +270,54 @@ class RealTLSFenceTests(unittest.TestCase):
         self.open()
         second=StagingRecoveryFencedHTTPSService(
             self.registry,self.ledger,self.signer,pairing_secret=PAIR,
-            old_token_id=OLD_ID,clock_ms=lambda:NOW)
+            old_token_id=OLD_ID,clock_ms=lambda:NOW,
+            commit_and_fetch_anchor=self.external_commit)
         self.assertTrue(second.gate.status()["frozen"])
         self.assertEqual(second.handle(
             body=json.dumps(self.body()).encode(),authorization="Bearer "+PAIR,
             content_type="application/json")[0],503)
         self.assertEqual(self.ledger.counts(),(0,0))
+
+    def test_13_external_commit_unavailable_withholds_http_200_proof(self):
+        self.open()
+        self.service._anchor_commit = lambda: (_ for _ in ()).throw(
+            OSError("synthetic external authority down"))
+        code, response = self.request()
+        self.assertEqual(code,503)
+        self.assertEqual(response,{"status":"external_anchor_unknown_frozen"})
+        self.assertEqual(self.ledger.counts(),(1,1))
+        self.assertTrue(self.service.gate.status()["frozen"])
+        self.assertEqual(self.request()[0],503)
+
+    def test_14_nonincreasing_epoch_withholds_signed_proof(self):
+        self.open()
+        self.service._anchor_commit = lambda: (self.checkpoint(1),1)
+        self.assertEqual(self.request()[0],503)
+        self.assertEqual(self.ledger.counts(),(1,1))
+        self.assertTrue(self.service.gate.status()["frozen"])
+
+    def test_15_alternate_public_root_cannot_reopen_existing_gate(self):
+        self.open()
+        self.assertEqual(self.request()[0],200)
+        alternative=Ed25519PrivateKey.generate().public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        with self.assertRaisesRegex(IssuanceGateClosed,
+                                    "trusted_root_changed_frozen"):
+            self.open(2,key=alternative)
+        self.assertEqual(self.request()[0],503)
+
+    def test_16_valid_anchor_after_external_commit_is_required_for_resume(self):
+        self.open()
+        self.assertEqual(self.request()[0],200)
+        bad=dict(self.external_record, state_sha256="0"*64)
+        with self.assertRaisesRegex(IssuanceGateClosed,
+                                    "trusted_recovery_failed_frozen"):
+            self.open(epoch=2,record=bad)
+        self.assertTrue(self.service.gate.status()["frozen"])
+        self.assertTrue(self.open(2,record=self.external_record))
+        self.assertFalse(self.service.gate.status()["frozen"])
 
 
 if __name__=="__main__":
