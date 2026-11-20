@@ -10,6 +10,7 @@
   const states = Object.freeze({
     crypto_ready: "WebCrypto available (NOT release approval)",
     no_webcrypto: "WebCrypto API unavailable",
+    insecure_context: "Non-secure WebView context; crypto.subtle unavailable; no credential promotion",
     no_text_encoder: "TextEncoder unavailable or incorrect",
     sha256_failed: "SHA-256 check failed",
     base64_unavailable: "atob unavailable",
