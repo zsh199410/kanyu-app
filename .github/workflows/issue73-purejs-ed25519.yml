@@ -1,0 +1,29 @@
+name: Issue73 Pure-JS offline Ed25519 verification (isolated)
+on:
+  pull_request:
+    paths:
+      - "docs/surge-bridge-c3c0/vendor/**"
+      - "docs/surge-bridge-c3c0/surge_purejs_signed_proof.review.js"
+      - "docs/surge-bridge-c3c0/test_purejs_signed_proof.js"
+      - "docs/surge-bridge-c3c0/PUREJS_ED25519_FALLBACK_GATE.md"
+      - ".github/workflows/issue73-purejs-ed25519.yml"
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact vetted upstream source blobs, not live CDN
+        run: |
+          test "$(git hash-object docs/surge-bridge-c3c0/vendor/tweetnacl-fast-1.0.3.js)" = "7ea5fb5883289b49f8d543f2d48af7132c3c6a6d"
+          test "$(git hash-object docs/surge-bridge-c3c0/vendor/js-sha256-1.0.0.js)" = "edb15da8e79be6cb3878dc2b81c67d2cdbbb302e"
+      - name: Source syntax
+        run: |
+          node --check docs/surge-bridge-c3c0/vendor/tweetnacl-fast-1.0.3.js
+          node --check docs/surge-bridge-c3c0/vendor/js-sha256-1.0.0.js
+          node --check docs/surge-bridge-c3c0/surge_purejs_signed_proof.review.js
+          node --check docs/surge-bridge-c3c0/test_purejs_signed_proof.js
+      - name: Independent Node Ed25519 signatures verified in insecure pure-JS VM
+        run: node docs/surge-bridge-c3c0/test_purejs_signed_proof.js
