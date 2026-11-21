@@ -343,9 +343,47 @@ def main(argv=None):
     try:
         result = run_cycle(mode=mode)
     except (CycleRefused, _db.SourceRefused, _sw.PublishRefused,
-            ValueError, OSError, TypeError, UnicodeError):
-        # Never include exception strings: they might hold node info.
-        print('{"ok":false,"decision":"CUTOVER_BLOCKED_PREFLIGHT","production_changed":false}')
+            ValueError, OSError, TypeError, UnicodeError) as exc:
+        # Only pre-approved, literal non-sensitive codes may reach journald.
+        # Never log arbitrary exception text: it can contain paths, host
+        # identities, proxy URLs, credentials or private configuration.
+        allowed_cycle_codes = frozenset({
+            "invalid_file_or_symlink", "invalid_pool_size",
+            "stop_state_unavailable", "stop_state_malformed",
+            "stop_or_unknown_state", "served_staging_differ",
+            "canonical_pins_missing", "pinned_names_not_in_served",
+            "blocked_pins_reentered", "invalid_current_proxy_line",
+            "duplicate_proxy_key", "pinned_identity_mismatch",
+            "blocked_proxy_reentered", "pin_count_mismatch",
+            "source_attestation_missing", "source_directory_unverified",
+            "source_file_set_invalid", "source_attestation_mismatch",
+            "production_not_enabled", "release_marker_missing",
+            "release_marker_malformed", "vps_additions_not_authorized",
+            "invalid_mode", "generator_refused", "unsafe_candidate_claim",
+            "same_byte_admission_disagree", "writer_receipt_invalid",
+            "post_publish_sha_mismatch",
+        })
+        allowed_db_codes = frozenset({
+            "invalid_or_missing_db", "excessive_db_rows",
+            "invalid_db_key", "duplicate_node_db_key",
+            "missing_required_tables", "invalid_latest_pass_latency",
+            "duplicate_pin", "duplicate_config_key",
+            "db_schema_or_query_mismatch",
+        })
+        if isinstance(exc, CycleRefused):
+            gate = str(exc) if str(exc) in allowed_cycle_codes else "cycle_refused"
+        elif isinstance(exc, _db.SourceRefused):
+            gate = str(exc) if str(exc) in allowed_db_codes else "db_source_refused"
+        elif isinstance(exc, _sw.PublishRefused):
+            gate = "publisher_refused"
+        else:
+            gate = "unclassified_preflight_exception"
+        print(json.dumps({
+            "ok": False,
+            "decision": "CUTOVER_BLOCKED_PREFLIGHT",
+            "gate_code": gate,
+            "production_changed": False
+        }, sort_keys=True, separators=(",", ":")))
         return 78
     print(json.dumps(result, sort_keys=True, ensure_ascii=True))
     return 0 if result.get("ok") else 78
