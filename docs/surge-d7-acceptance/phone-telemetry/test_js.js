@@ -54,3 +54,22 @@ assert.equal(received[0].network_controls.length,2);
 assert(received[0].observations.every(x=>x.results.every(r=>r.state==='timeout')));
 assert(received[0].network_controls.every(x=>x.results.some(r=>r.state==='reachable')));
 console.log('JS mock: rotating transport failures and same-batch reachable controls remain distinct');
+// Two consecutive all-failure batches without a known-good cache must
+// rotate their control identities; otherwise one dead control pair can
+// mask every ordinary member forever.
+data={};calls=[];received=[];DONE=0;
+context.$httpClient.head=(options,cb)=>{calls.push(options);cb('timeout',null,'');};
+vm.runInNewContext(raw,context,{timeout:5000});
+assert.equal(DONE,1);
+assert.equal(received.length,1);
+const firstControls=received[0].network_controls.map(x=>x.name);
+assert.equal(firstControls.length,2);
+assert.equal(received[0].observations.length,4);
+calls=[];received=[];DONE=0;
+vm.runInNewContext(raw,context,{timeout:5000});
+assert.equal(DONE,1);
+const secondControls=received[0].network_controls.map(x=>x.name);
+assert.equal(secondControls.length,2);
+assert.notDeepEqual(firstControls,secondControls);
+assert.equal(data['phone-probe-network-control-v3'],undefined);
+console.log('JS mock: two fully failed batches rotate controls and cannot refresh stale success evidence');
