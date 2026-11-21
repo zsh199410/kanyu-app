@@ -134,6 +134,7 @@ def validate(payload, pool_bytes, now=None, *, descriptor_accepted=False):
         if classify(control.get('results'))=='success' and payload['bearer']!='unknown':
             control_verified=True
     seen=set(); output=[]
+    for obs in observations:
         if not isinstance(obs,dict):
             raise InputRejected('invalid_observation')
         name=obs.get('name')
