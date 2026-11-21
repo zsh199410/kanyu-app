@@ -120,9 +120,21 @@ def validate(payload, pool_bytes, now=None, *, descriptor_accepted=False):
         mode=obs.get('probe_mode')
         if mode not in ('external_policy_id','temporary_policy_descriptor'):
             raise InputRejected('invalid_probe_mode')
-        status=classify(obs.get('results'))
+        results=obs.get('results')
+        status=classify(results)
+        if status=='success':
+            reason='target_reachable'
+        elif status=='failure':
+            reason='dual_transport_failure'
+        elif any(x.get('hint')=='http_status' for x in results):
+            reason='http_status_inconclusive'
+        elif any(x.get('hint')=='other_error' for x in results):
+            reason='unexpected_error'
+        else:
+            reason='target_inconclusive'
         if payload['bearer']=='unknown' and status=='failure':
             status='unknown'
+            reason='unknown_network_bearer'
         # Temporary policy descriptors can diverge from group settings;
         # never admit their failures to permanent deletion without a later
         # explicit device-level capability/identity acceptance.
@@ -130,11 +142,12 @@ def validate(payload, pool_bytes, now=None, *, descriptor_accepted=False):
                    and payload['bearer']!='unknown')
         if status=='failure' and not trusted:
             status='unknown'
+            reason='untrusted_policy_descriptor' if mode=='temporary_policy_descriptor' else 'untrusted_probe'
         protocol,host,port=names[name]
-        output.append((protocol,host,port,status,mode,1 if trusted else 0))
+        output.append((protocol,host,port,status,mode,1 if trusted else 0,reason))
     # A full-batch outage may indicate phone network loss; record uncertainty.
     if len(output)>=3 and all(x[3]=='failure' for x in output):
-        output=[(*x[:3],'unknown',x[4],x[5]) for x in output]
+        output=[(*x[:3],'unknown',x[4],x[5],'possible_network_outage') for x in output]
     return output
 
 
@@ -153,10 +166,14 @@ CREATE TABLE IF NOT EXISTS phone_observations (
   status TEXT NOT NULL CHECK(status IN ('success','failure','unknown')),
   probe_mode TEXT NOT NULL, trusted INTEGER NOT NULL CHECK(trusted IN (0,1)),
   received_at INTEGER NOT NULL,
-  bearer TEXT NOT NULL, pool_sha TEXT NOT NULL
+  bearer TEXT NOT NULL, pool_sha TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT 'legacy_unclassified'
 );
 CREATE INDEX IF NOT EXISTS phone_observations_by_identity ON phone_observations(protocol,host,port,received_at);
 ''')
+        # Additive migration; existing importers select explicit legacy columns.
+        if 'reason' not in {row[1] for row in conn.execute('PRAGMA table_info(phone_observations)')}:
+            conn.execute("ALTER TABLE phone_observations ADD COLUMN reason TEXT NOT NULL DEFAULT 'legacy_unclassified'")
         conn.commit()
     finally:
         conn.close()
@@ -172,10 +189,10 @@ def record_batch(db_path, payload, observations, now=None):
             conn.rollback();return 'duplicate'
         conn.execute('INSERT INTO batches VALUES(?,?,?)',(payload['nonce'],now,payload['pool_sha']))
         conn.executemany('''INSERT INTO phone_observations
-(nonce,protocol,host,port,status,probe_mode,trusted,received_at,bearer,pool_sha)
-VALUES (?,?,?,?,?,?,?,?,?,?)''',[
- (payload['nonce'],proto,host,port,status,mode,trust,now,payload['bearer'],payload['pool_sha'])
- for proto,host,port,status,mode,trust in observations])
+(nonce,protocol,host,port,status,probe_mode,trusted,received_at,bearer,pool_sha,reason)
+VALUES (?,?,?,?,?,?,?,?,?,?,?)''',[
+ (payload['nonce'],proto,host,port,status,mode,trust,now,payload['bearer'],payload['pool_sha'],reason)
+ for proto,host,port,status,mode,trust,reason in observations])
         conn.commit();return 'stored'
     except Exception:
         conn.rollback();raise
