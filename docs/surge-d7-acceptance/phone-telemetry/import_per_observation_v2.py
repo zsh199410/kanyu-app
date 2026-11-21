@@ -135,6 +135,14 @@ def import_once(staging_path, production_db, pool_file, *, now=None,
     c = sqlite3.connect(production_db, timeout=10)
     try:
         c.execute("BEGIN IMMEDIATE")
+        # Fail closed if the independently-served pool or DB pin protections
+        # changed between the dry-run snapshot and this write transaction.
+        if hashlib.sha256(Path(pool_file).read_bytes()).digest() != hashlib.sha256(pool_raw).digest():
+            raise ImportRefused("pool_changed_during_import")
+        live_pins = {tuple(r) for r in c.execute("SELECT protocol,host,port FROM pinned")}
+        live_blocked = {tuple(r) for r in c.execute("SELECT protocol,host,port FROM blocklist")}
+        if live_pins != pins_all or live_blocked != blocked:
+            raise ImportRefused("pin_or_blocklist_changed_during_import")
         check_schema(c, "phone_failures",
                      ("protocol", "host", "port", "reported_at", "source", "detail"))
         c.execute("""CREATE TABLE IF NOT EXISTS phone_import_item_v2 (
