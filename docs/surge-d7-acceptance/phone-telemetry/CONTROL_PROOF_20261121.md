@@ -12,7 +12,7 @@ historical unknown evidence; this fix **does not rewrite or "upgrade" them into 
 
 * Keep the original **4 rotating candidates** per 15-min run and the existing persistent cursor.
 * Probe up to **2 separate current-group members** (prefer recently observed reachable names,
-  otherwise select independent members in the current SHA-bound subscription) using identical
+  otherwise rotate fallback controls through independent members in the SHA-bound subscription; expire success cache without extending it on failures) using identical
   HEAD targets and verified `external_policy_id` identifiers.
 * Controls never appear as ordinary `observations`. They appear as a bounded
   `network_controls` array; their names must be in the same pool SHA, different from all four
@@ -85,8 +85,8 @@ Source commit must match PR #122 HEAD (run GitHub SHA verification on release):
 
 - `receiver.py` — UTF-8 **13626 bytes**, SHA-256
   `eb889401efd870c2faf843b98457081369abaddc9bdda503475e6d0f8ad9cd73`
-- `phone-probe.js` — UTF-8 **12379 bytes**, SHA-256
-  `e2cf9dc123ded21b97357acb91ef49e573132331572d95b89b0f77fb01677df1`
+- `phone-probe.js` — UTF-8 **13316 bytes**, SHA-256
+  `f2fedcfe0f1f9d7c29eee69052aa4df769b49bd4e389553cabd70f1ef5c5289a`
 
 Command from trusted git clone:
 
@@ -95,7 +95,7 @@ git fetch --no-tags origin issue73-phone-control-p0-20261121
 git show FETCH_HEAD:docs/surge-d7-acceptance/phone-telemetry/receiver.py > receiver-v3.py
 git show FETCH_HEAD:docs/surge-d7-acceptance/phone-telemetry/phone-probe.js > phone-probe-v3.js
 printf '%s  %s\n' 'eb889401efd870c2faf843b98457081369abaddc9bdda503475e6d0f8ad9cd73' receiver-v3.py | sha256sum -c -
-printf '%s  %s\n' 'e2cf9dc123ded21b97357acb91ef49e573132331572d95b89b0f77fb01677df1' phone-probe-v3.js | sha256sum -c -
+printf '%s  %s\n' 'f2fedcfe0f1f9d7c29eee69052aa4df769b49bd4e389553cabd70f1ef5c5289a' phone-probe-v3.js | sha256sum -c -
 python3 -m py_compile receiver-v3.py
 node --check phone-probe-v3.js
 ```
