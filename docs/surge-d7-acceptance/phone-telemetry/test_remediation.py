@@ -10,6 +10,7 @@ import unittest
 from unittest import mock
 
 import import_per_observation_v2 as importer
+import audit_overnight as audit
 import receiver
 
 HERE = Path(__file__).resolve().parent
@@ -115,6 +116,19 @@ class TestPerObservationImport(unittest.TestCase):
         self.assertEqual(result["skipped"]["pinned"],1)
         self.assertEqual(result["skipped"]["untrusted"],1)
         self.assertEqual(self.failures(),[])
+
+    def test_audit_reconciles_each_failure_in_same_batch(self):
+        self.put("n1",self.first)
+        self.put("n2",self.second)
+        before = audit.report(str(self.stage),str(self.prod),str(self.pool))
+        self.assertEqual(before["eligible_missing_count"],2)
+        self.assertEqual(before["statuses"]["failure"],2)
+        self.assertEqual(before["failure_count_by_breakdown"],2)
+        self.execute()
+        after = audit.report(str(self.stage),str(self.prod),str(self.pool))
+        self.assertEqual(after["eligible_missing_count"],0)
+        self.assertEqual(after["pool_count"],46)
+        self.assertEqual(after["protected_pin_count"],21)
 
     def test_old_pool_generation_skipped(self):
         self.put("n1",self.first,sha="0"*64)
