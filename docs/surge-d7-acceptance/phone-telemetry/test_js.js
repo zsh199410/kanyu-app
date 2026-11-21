@@ -17,17 +17,40 @@ const context={
 };
 vm.runInNewContext(raw,context,{timeout:5000});
 assert.equal(DONE,1);
-assert.equal(calls.length,8);
+assert.equal(calls.length,12);
 assert.equal(received[0].observations.length,4);
+assert.equal(received[0].network_controls.length,2);
+assert(received[0].network_controls.every(x=>x.probe_mode==='external_policy_id'));
+assert(received[0].network_controls.every(x=>!received[0].observations.some(y=>y.name===x.name)));
 assert.equal(received[0].pool_sha,sha);
 assert.equal(received[0].bearer,'cellular');
 assert.equal(received[0].observations[0].probe_mode,'external_policy_id');
 assert.equal(data['phone-probe-pending-batch-v1'],null);
-console.log('JS mock: iOS6 4 nodes x 2 test targets, SHA verified');
+console.log('JS mock: iOS6 4 rotating nodes + 2 network controls, all policy IDs and SHA verified');
 // iOS5 fallback cannot pretend failures are trusted.
 context.$httpAPI=(m,p,b,cb)=>cb({'proxies':[]});
 calls=[];received=[];DONE=0;
 vm.runInNewContext(raw,context,{timeout:5000});
 assert.equal(DONE,1);assert.equal(received[0].observations[0].probe_mode,'temporary_policy_descriptor');
+assert.equal(calls.length,8);
+assert.equal(received[0].network_controls,undefined);
 assert(calls.every(x=>typeof x['policy-descriptor']==='string'));
-console.log('JS mock: iOS5 temporary policy probes are untrusted until device validation');
+console.log('JS mock: iOS5 temporary policy probes remain untrusted with no false network controls');
+// Fresh iOS6 batch: 4 rotating members fail, two independent known-good
+// controls reach their targets in the same execution. Keep them separate.
+context.$httpAPI=(m,p,b,cb)=>cb({'external-policies':Array.from({length:25},(_,i)=>({name:`美国${i}`,group:'免费节点池',identifier:`POLICY::${i}`}))});
+context.$httpClient.head=(options,cb)=>{
+  calls.push(options);
+  const n=parseInt(options.policy.slice('POLICY::'.length),10);
+  if(n>=8 && n<=11) cb('timeout',null,'');
+  else cb(null,{status:204},'');
+};
+calls=[];received=[];DONE=0;
+vm.runInNewContext(raw,context,{timeout:5000});
+assert.equal(DONE,1);
+assert.equal(calls.length,12);
+assert.equal(received[0].observations.length,4);
+assert.equal(received[0].network_controls.length,2);
+assert(received[0].observations.every(x=>x.results.every(r=>r.state==='timeout')));
+assert(received[0].network_controls.every(x=>x.results.some(r=>r.state==='reachable')));
+console.log('JS mock: rotating transport failures and same-batch reachable controls remain distinct');
