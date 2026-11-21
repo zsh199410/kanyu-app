@@ -144,7 +144,10 @@
               if(!err && status>=200 && status<400)state='reachable';
               else if(err && /(timeout|timed\s*out)/i.test(String(err)))state='timeout';
               else if(err && /(?:connect|network|unreachable|refused|handshake)/i.test(String(err)))state='transport_error';
-              observations[task.index].results.push({id:task.target.id,state:state});
+              // Strictly categorical diagnostics. Never send raw errors, URLs, IPs, or node credentials.
+              var hint=state==='unknown' ? (!err && typeof status==='number' ? 'http_status' :
+                             err ? 'other_error' : 'unclassified') : 'none';
+              observations[task.index].results.push({id:task.target.id,state:state,hint:hint});
               active--;ended++;
               if(ended===pending.length)send();else testNext();
             });
