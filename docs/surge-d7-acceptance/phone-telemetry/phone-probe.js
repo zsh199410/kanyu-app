@@ -12,6 +12,7 @@
   var BATCH = 4;
   var STORE_INDEX = 'phone-probe-next-index-v1';
   var STORE_QUEUE = 'phone-probe-pending-batch-v1';
+  var STORE_GOOD = 'phone-probe-network-control-v3';
   var token = String(typeof $argument === 'string' ? $argument : '').trim();
   var finished = false;
   function done() { if (!finished) { finished = true; $done(); } }
@@ -128,13 +129,40 @@
       if(!batch.length){log('no matched pool identities');return done();}
       var targets=[{id:'a',url:'http://captive.apple.com/generate_204'},
                    {id:'b',url:'https://www.gstatic.com/generate_204'}];
-      var pending=[],n=0,active=0,ended=0;
-      for(var x=0;x<batch.length;x++)for(var y=0;y<2;y++)pending.push({index:x,target:targets[y]});
+      // An all-failure rotating batch cannot itself establish a phone-wide
+      // outage. Probe up to TWO independent current group members alongside
+      // the rotating sample. A reachable control rules out general network
+      // loss without ever weakening the previous batch fail-closed behavior.
+      var controlBatch=[], selected={};
+      batch.forEach(function(p){selected[p.name]=true;});
+      if(mode==='external_policy_id' && b!=='unknown'){
+        var preferred=[],remembered=stored(STORE_GOOD);
+        try {
+          var cache=JSON.parse(remembered||'null');
+          if(cache && cache.sha===sha && cache.bearer===b &&
+             Math.abs(Date.now()-cache.at)<12*3600*1000 && Array.isArray(cache.names)){
+            preferred=cache.names;
+          }
+        } catch(e){}
+        var candidates=preferred.concat(members.map(function(p){return p.name;}));
+        for(var k=0;k<candidates.length && controlBatch.length<2;k++){
+          var nm=candidates[k];if(selected[nm] || !index[nm])continue;
+          var cm=members.filter(function(p){return p.name===nm;})[0];
+          if(!cm)continue;
+          controlBatch.push({name:cm.name,descriptor:cm.descriptor,
+                             identifier:index[cm.name]});
+          selected[nm]=true;
+        }
+      }
       var observations=batch.map(function(item){return {name:item.name,probe_mode:mode,results:[]};});
+      var controls=controlBatch.map(function(item){return {name:item.name,probe_mode:mode,results:[]};});
+      var allItems=batch.concat(controlBatch),allResults=observations.concat(controls);
+      var pending=[],n=0,active=0,ended=0;
+      for(var x=0;x<allItems.length;x++)for(var y=0;y<2;y++)pending.push({index:x,target:targets[y]});
       function testNext() {
         while(active<2 && n<pending.length){
           (function(task){
-            var p=batch[task.index];
+            var p=allItems[task.index];
             var options={url:task.target.url,timeout:6,'auto-redirect':false};
             if(mode==='external_policy_id')options.policy=p.identifier;
             else options['policy-descriptor']=p.descriptor;
@@ -147,7 +175,7 @@
               // Strictly categorical diagnostics. Never send raw errors, URLs, IPs, or node credentials.
               var hint=state==='unknown' ? (!err && typeof status==='number' ? 'http_status' :
                              err ? 'other_error' : 'unclassified') : 'none';
-              observations[task.index].results.push({id:task.target.id,state:state,hint:hint});
+              allResults[task.index].results.push({id:task.target.id,state:state,hint:hint});
               active--;ended++;
               if(ended===pending.length)send();else testNext();
             });
@@ -163,6 +191,25 @@
         var ver='unknown';try{ver=String($environment['surge-version']||'unknown');}catch(e){}
         var payload={schema:1,group:GROUP,timestamp:ts,nonce:nonce,
             pool_sha:sha,bearer:b,surge_version:ver,observations:observations};
+        if(controls.length)payload.network_controls=controls;
+        // Store only node NAMES from successful same-device observations,
+        // never policy descriptors, raw errors, credentials or proxy URLs.
+        var previous=[],snapshot=stored(STORE_GOOD);
+        try{
+          var old=JSON.parse(snapshot||'null');
+          if(old && old.sha===sha && old.bearer===b &&
+             Math.abs(Date.now()-old.at)<12*3600*1000 && Array.isArray(old.names))previous=old.names;
+        }catch(e){}
+        var positive=allResults.filter(function(x){
+          return x.results.some(function(r){return r.state==='reachable';});
+        }).map(function(x){return x.name;});
+        var saved=[],seenGood={};
+        positive.concat(previous).forEach(function(nm){
+          if(index[nm] && !seenGood[nm] && saved.length<10){
+            seenGood[nm]=true;saved.push(nm);
+          }
+        });
+        if(saved.length)persist(STORE_GOOD,JSON.stringify({sha:sha,bearer:b,at:Date.now(),names:saved}));
         persist(STORE_QUEUE,JSON.stringify(payload));
         upload(payload,function(ok,status){
           if(ok){persist(STORE_QUEUE,null);log('batch received: '+observations.length);}
