@@ -109,8 +109,31 @@ def validate(payload, pool_bytes, now=None, *, descriptor_accepted=False):
     if not isinstance(observations,list) or not 1<=len(observations)<=MAX_OBSERVATIONS:
         raise InputRejected('invalid_observations')
     names=parse_pool(pool_bytes)
+    # A same-batch control is independently probed through another group
+    # member on this iPhone. Two unreachable controls cannot prove a phone
+    # outage; one reachable control disproves the "all proxies down = phone
+    # offline" assumption. Legacy v2 batches without controls remain safe.
+    controls=payload.get('network_controls',[])
+    if not isinstance(controls,list) or len(controls)>2:
+        raise InputRejected('invalid_network_controls')
+    sample_names={x.get('name') for x in observations if isinstance(x,dict)}
+    controls_seen=set()
+    control_verified=False
+    for control in controls:
+        if not isinstance(control,dict):
+            raise InputRejected('invalid_network_control')
+        control_name=control.get('name')
+        if (not isinstance(control_name,str) or control_name not in names
+                or control_name in sample_names or control_name in controls_seen):
+            raise InputRejected('unsafe_network_control_identity')
+        controls_seen.add(control_name)
+        # Descriptor traffic is not an authoritative connectivity control
+        # without a proven identical group-policy binding.
+        if control.get('probe_mode')!='external_policy_id':
+            raise InputRejected('untrusted_network_control_mode')
+        if classify(control.get('results'))=='success' and payload['bearer']!='unknown':
+            control_verified=True
     seen=set(); output=[]
-    for obs in observations:
         if not isinstance(obs,dict):
             raise InputRejected('invalid_observation')
         name=obs.get('name')
@@ -144,10 +167,18 @@ def validate(payload, pool_bytes, now=None, *, descriptor_accepted=False):
             status='unknown'
             reason='untrusted_policy_descriptor' if mode=='temporary_policy_descriptor' else 'untrusted_probe'
         protocol,host,port=names[name]
-        output.append((protocol,host,port,status,mode,1 if trusted else 0,reason))
-    # A full-batch outage may indicate phone network loss; record uncertainty.
-    if len(output)>=3 and all(x[3]=='failure' for x in output):
-        output=[(*x[:3],'unknown',x[4],x[5],'possible_network_outage') for x in output]
+        # Preserve the original per-node inference independent of any batch
+        # safety downgrade, without retaining raw URLs, errors or credentials.
+        output.append((protocol,host,port,status,mode,1 if trusted else 0,
+                       reason,status,reason,1 if control_verified else 0))
+    # All-nodes-failed is NOT evidence that the iPhone has lost connectivity.
+    # Admit an all-failure batch only when a distinct policy identifier has
+    # independently reached one of the two network control endpoints in
+    # the SAME batch. Otherwise hold the normalized evidence as unknown but
+    # preserve the observed transport failure in raw_status/raw_reason.
+    if len(output)>=3 and all(x[3]=='failure' for x in output) and not control_verified:
+        output=[(*x[:3],'unknown',x[4],x[5],'batch_unverified_network',
+                 x[7],x[8],0) for x in output]
     return output
 
 
@@ -167,13 +198,23 @@ CREATE TABLE IF NOT EXISTS phone_observations (
   probe_mode TEXT NOT NULL, trusted INTEGER NOT NULL CHECK(trusted IN (0,1)),
   received_at INTEGER NOT NULL,
   bearer TEXT NOT NULL, pool_sha TEXT NOT NULL,
-  reason TEXT NOT NULL DEFAULT 'legacy_unclassified'
+  reason TEXT NOT NULL DEFAULT 'legacy_unclassified',
+  raw_status TEXT NOT NULL DEFAULT 'legacy_unknown',
+  raw_reason TEXT NOT NULL DEFAULT 'legacy_unclassified',
+  control_verified INTEGER NOT NULL DEFAULT 0 CHECK(control_verified IN (0,1))
 );
 CREATE INDEX IF NOT EXISTS phone_observations_by_identity ON phone_observations(protocol,host,port,received_at);
 ''')
         # Additive migration; existing importers select explicit legacy columns.
-        if 'reason' not in {row[1] for row in conn.execute('PRAGMA table_info(phone_observations)')}:
-            conn.execute("ALTER TABLE phone_observations ADD COLUMN reason TEXT NOT NULL DEFAULT 'legacy_unclassified'")
+        columns={row[1] for row in conn.execute('PRAGMA table_info(phone_observations)')}
+        for column,definition in (
+            ('reason',"TEXT NOT NULL DEFAULT 'legacy_unclassified'"),
+            ('raw_status',"TEXT NOT NULL DEFAULT 'legacy_unknown'"),
+            ('raw_reason',"TEXT NOT NULL DEFAULT 'legacy_unclassified'"),
+            ('control_verified',"INTEGER NOT NULL DEFAULT 0"),
+        ):
+            if column not in columns:
+                conn.execute("ALTER TABLE phone_observations ADD COLUMN "+column+" "+definition)
         conn.commit()
     finally:
         conn.close()
@@ -189,10 +230,10 @@ def record_batch(db_path, payload, observations, now=None):
             conn.rollback();return 'duplicate'
         conn.execute('INSERT INTO batches VALUES(?,?,?)',(payload['nonce'],now,payload['pool_sha']))
         conn.executemany('''INSERT INTO phone_observations
-(nonce,protocol,host,port,status,probe_mode,trusted,received_at,bearer,pool_sha,reason)
-VALUES (?,?,?,?,?,?,?,?,?,?,?)''',[
- (payload['nonce'],proto,host,port,status,mode,trust,now,payload['bearer'],payload['pool_sha'],reason)
- for proto,host,port,status,mode,trust,reason in observations])
+(nonce,protocol,host,port,status,probe_mode,trusted,received_at,bearer,pool_sha,reason,raw_status,raw_reason,control_verified)
+VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',[
+ (payload['nonce'],proto,host,port,status,mode,trust,now,payload['bearer'],payload['pool_sha'],reason,raw_status,raw_reason,control_ok)
+ for proto,host,port,status,mode,trust,reason,raw_status,raw_reason,control_ok in observations])
         conn.commit();return 'stored'
     except Exception:
         conn.rollback();raise
