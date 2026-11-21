@@ -4,12 +4,15 @@ on:
   pull_request:
     paths:
       - 'docs/surge-d7-acceptance/phone-telemetry/**'
+      - 'docs/surge-d7-acceptance/single-writer/production_cycle.py'
       - '.github/workflows/issue73-phone-telemetry-isolated.yml'
   push:
     branches:
       - issue73-phone-telemetry-p0-20261120
+      - issue73-preflight-import-unknown-p0-20261121
     paths:
       - 'docs/surge-d7-acceptance/phone-telemetry/**'
+      - 'docs/surge-d7-acceptance/single-writer/production_cycle.py'
       - '.github/workflows/issue73-phone-telemetry-isolated.yml'
 permissions:
   contents: read
@@ -24,5 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Python ingestion and idempotency
         run: python3 -m unittest -v test_receiver.py
+      - name: Validate per-observation importer, unknown taxonomy, and sanitized preflight codes
+        run: python3 -m unittest -v test_remediation.py
       - name: Validate iOS 5 and iOS 6 script mocks
         run: node test_js.js
