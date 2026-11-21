@@ -144,7 +144,8 @@ def validate(payload, pool_bytes, now=None, *, descriptor_accepted=False):
         if mode not in ('external_policy_id','temporary_policy_descriptor'):
             raise InputRejected('invalid_probe_mode')
         results=obs.get('results')
-        status=classify(results)
+        raw_status=classify(results)
+        status=raw_status
         if status=='success':
             reason='target_reachable'
         elif status=='failure':
@@ -155,6 +156,7 @@ def validate(payload, pool_bytes, now=None, *, descriptor_accepted=False):
             reason='unexpected_error'
         else:
             reason='target_inconclusive'
+        raw_reason=reason
         if payload['bearer']=='unknown' and status=='failure':
             status='unknown'
             reason='unknown_network_bearer'
@@ -170,7 +172,7 @@ def validate(payload, pool_bytes, now=None, *, descriptor_accepted=False):
         # Preserve the original per-node inference independent of any batch
         # safety downgrade, without retaining raw URLs, errors or credentials.
         output.append((protocol,host,port,status,mode,1 if trusted else 0,
-                       reason,status,reason,1 if control_verified else 0))
+                       reason,raw_status,raw_reason,1 if control_verified else 0))
     # All-nodes-failed is NOT evidence that the iPhone has lost connectivity.
     # Admit an all-failure batch only when a distinct policy identifier has
     # independently reached one of the two network control endpoints in
