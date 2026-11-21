@@ -13,6 +13,7 @@
   var STORE_INDEX = 'phone-probe-next-index-v1';
   var STORE_QUEUE = 'phone-probe-pending-batch-v1';
   var STORE_GOOD = 'phone-probe-network-control-v3';
+  var STORE_CONTROL_INDEX = 'phone-probe-network-control-index-v3';
   var token = String(typeof $argument === 'string' ? $argument : '').trim();
   var finished = false;
   function done() { if (!finished) { finished = true; $done(); } }
@@ -144,7 +145,14 @@
             preferred=cache.names;
           }
         } catch(e){}
-        var candidates=preferred.concat(members.map(function(p){return p.name;}));
+        // Rotate fallback controls so two previously unavailable controls
+        // cannot mask a reachable control forever.
+        var controlOffset=parseInt(stored(STORE_CONTROL_INDEX)||'0',10)||0;
+        var rotatingControls=[];
+        for(var z=0;z<members.length;z++){
+          rotatingControls.push(members[(controlOffset+z)%members.length].name);
+        }
+        var candidates=preferred.concat(rotatingControls);
         for(var k=0;k<candidates.length && controlBatch.length<2;k++){
           var nm=candidates[k];if(selected[nm] || !index[nm])continue;
           var cm=members.filter(function(p){return p.name===nm;})[0];
@@ -153,6 +161,7 @@
                              identifier:index[cm.name]});
           selected[nm]=true;
         }
+        persist(STORE_CONTROL_INDEX,String((controlOffset+2)%members.length));
       }
       var observations=batch.map(function(item){return {name:item.name,probe_mode:mode,results:[]};});
       var controls=controlBatch.map(function(item){return {name:item.name,probe_mode:mode,results:[]};});
@@ -194,22 +203,31 @@
         if(controls.length)payload.network_controls=controls;
         // Store only node NAMES from successful same-device observations,
         // never policy descriptors, raw errors, credentials or proxy URLs.
-        var previous=[],snapshot=stored(STORE_GOOD);
+        var previous=[],previousAt=0,snapshot=stored(STORE_GOOD);
         try{
           var old=JSON.parse(snapshot||'null');
           if(old && old.sha===sha && old.bearer===b &&
-             Math.abs(Date.now()-old.at)<12*3600*1000 && Array.isArray(old.names))previous=old.names;
+             Math.abs(Date.now()-old.at)<12*3600*1000 && Array.isArray(old.names)){
+            previous=old.names;previousAt=old.at;
+          }
         }catch(e){}
         var positive=allResults.filter(function(x){
           return x.results.some(function(r){return r.state==='reachable';});
         }).map(function(x){return x.name;});
+        var failedControls=controls.filter(function(x){
+          return !x.results.some(function(r){return r.state==='reachable';});
+        }).map(function(x){return x.name;});
+        previous=previous.filter(function(nm){return failedControls.indexOf(nm)<0;});
         var saved=[],seenGood={};
         positive.concat(previous).forEach(function(nm){
           if(index[nm] && !seenGood[nm] && saved.length<10){
             seenGood[nm]=true;saved.push(nm);
           }
         });
-        if(saved.length)persist(STORE_GOOD,JSON.stringify({sha:sha,bearer:b,at:Date.now(),names:saved}));
+        // Do not refresh old evidence unless we actually saw new success.
+        if(saved.length)persist(STORE_GOOD,JSON.stringify({
+          sha:sha,bearer:b,at:positive.length?Date.now():previousAt,names:saved
+        }));
         persist(STORE_QUEUE,JSON.stringify(payload));
         upload(payload,function(ok,status){
           if(ok){persist(STORE_QUEUE,null);log('batch received: '+observations.length);}
