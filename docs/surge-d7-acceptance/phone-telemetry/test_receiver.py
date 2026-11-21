@@ -32,6 +32,93 @@ class TestReceiver(unittest.TestCase):
  def test_outage_batch_downgrades(self):
   x=payload(); x['observations']=[{'name':f'NONPIN{i}','probe_mode':'external_policy_id','results':[{'id':'a','state':'timeout'},{'id':'b','state':'transport_error'}]} for i in (1,2,3)]
   self.assertTrue(all(r[3]=='unknown' for r in receiver.validate(x,RAW,1763640000)))
+ def test_same_batch_reachable_control_admits_four_independent_fails(self):
+  x=payload()
+  x['observations']=[
+   {'name':f'NONPIN{i}','probe_mode':'external_policy_id',
+    'results':[{'id':'a','state':'timeout'},{'id':'b','state':'transport_error'}]}
+   for i in (1,2,3,4)]
+  x['network_controls']=[
+   {'name':'PIN1','probe_mode':'external_policy_id',
+    'results':[{'id':'a','state':'reachable'},{'id':'b','state':'unknown'}]},
+   {'name':'PIN2','probe_mode':'external_policy_id',
+    'results':[{'id':'a','state':'timeout'},{'id':'b','state':'transport_error'}]}]
+  rows=receiver.validate(x,RAW,1763640000)
+  self.assertEqual([r[3] for r in rows],['failure']*4)
+  self.assertEqual([r[6] for r in rows],['dual_transport_failure']*4)
+  self.assertTrue(all(r[7:]==('failure','dual_transport_failure',1) for r in rows))
+ def test_four_all_failed_control_unreachable_stays_unknown(self):
+  x=payload()
+  x['observations']=[
+   {'name':f'NONPIN{i}','probe_mode':'external_policy_id',
+    'results':[{'id':'a','state':'timeout'},{'id':'b','state':'transport_error'}]}
+   for i in (1,2,3,4)]
+  x['network_controls']=[
+   {'name':'PIN1','probe_mode':'external_policy_id',
+    'results':[{'id':'a','state':'timeout'},{'id':'b','state':'transport_error'}]}]
+  rows=receiver.validate(x,RAW,1763640000)
+  self.assertEqual([r[3] for r in rows],['unknown']*4)
+  self.assertEqual([r[6] for r in rows],['batch_unverified_network']*4)
+  self.assertEqual([r[7] for r in rows],['failure']*4)
+  self.assertEqual([r[8] for r in rows],['dual_transport_failure']*4)
+ def test_legacy_four_failed_without_controls_stays_unknown_and_raw_kept(self):
+  x=payload()
+  x['observations']=[
+   {'name':f'NONPIN{i}','probe_mode':'external_policy_id',
+    'results':[{'id':'a','state':'timeout'},{'id':'b','state':'transport_error'}]}
+   for i in (1,2,3,4)]
+  rows=receiver.validate(x,RAW,1763640000)
+  self.assertEqual([r[3] for r in rows],['unknown']*4)
+  self.assertTrue(all(r[7]=='failure' and r[9]==0 for r in rows))
+ def test_network_control_cannot_overlap_or_be_forged(self):
+  x=payload()
+  a={'name':'NONPIN1','probe_mode':'external_policy_id','results':[
+    {'id':'a','state':'reachable'},{'id':'b','state':'unknown'}]}
+  x['network_controls']=[a]
+  with self.assertRaisesRegex(receiver.InputRejected,'unsafe_network_control_identity'):
+   receiver.validate(x,RAW,1763640000)
+  x['network_controls']=[dict(a,name='PIN1'),dict(a,name='PIN1')]
+  with self.assertRaisesRegex(receiver.InputRejected,'unsafe_network_control_identity'):
+   receiver.validate(x,RAW,1763640000)
+  x['network_controls']=[dict(a,name='OUTSIDER')]
+  with self.assertRaisesRegex(receiver.InputRejected,'unsafe_network_control_identity'):
+   receiver.validate(x,RAW,1763640000)
+  x['network_controls']=[dict(a,name='PIN1',probe_mode='temporary_policy_descriptor')]
+  with self.assertRaisesRegex(receiver.InputRejected,'untrusted_network_control_mode'):
+   receiver.validate(x,RAW,1763640000)
+  x['network_controls']=[dict(a,name='PIN1'),dict(a,name='PIN2'),dict(a,name='PIN3')]
+  with self.assertRaisesRegex(receiver.InputRejected,'invalid_network_controls'):
+   receiver.validate(x,RAW,1763640000)
+ def test_controls_not_counted_as_candidate_and_db_raw_evidence_persisted(self):
+  x=payload()
+  x['observations']=[
+   {'name':f'NONPIN{i}','probe_mode':'external_policy_id',
+    'results':[{'id':'a','state':'timeout'},{'id':'b','state':'transport_error'}]}
+   for i in (1,2,3,4)]
+  x['network_controls']=[
+   {'name':'PIN1','probe_mode':'external_policy_id',
+    'results':[{'id':'a','state':'reachable'},{'id':'b','state':'unknown'}]}]
+  with tempfile.TemporaryDirectory() as t:
+   db=os.path.join(t,'staging.sqlite')
+   receiver.initialize_db(db)
+   rows=receiver.validate(x,RAW,1763640000)
+   self.assertEqual(receiver.record_batch(db,x,rows,1763640000),'stored')
+   self.assertEqual(receiver.record_batch(db,x,rows,1763640001),'duplicate')
+   with sqlite3.connect(db) as c:
+    saved=c.execute('SELECT status,reason,raw_status,raw_reason,control_verified FROM phone_observations').fetchall()
+    self.assertEqual(saved,[('failure','dual_transport_failure','failure','dual_transport_failure',1)]*4)
+    self.assertEqual(c.execute('SELECT count(*) FROM phone_observations').fetchone()[0],4)
+ def test_mixed_batch_without_control_preserves_failed_and_successful(self):
+  x=payload()
+  x['observations']=[
+   {'name':f'NONPIN{i}','probe_mode':'external_policy_id',
+    'results':[{'id':'a','state':'reachable' if i==1 else 'timeout'},
+               {'id':'b','state':'transport_error'}]} for i in (1,2,3,4)]
+  rows=receiver.validate(x,RAW,1763640000)
+  self.assertEqual([r[3] for r in rows],['success','failure','failure','failure'])
+ def test_untrusted_descriptor_records_raw_failure_without_admission(self):
+  r=receiver.validate(payload(mode='temporary_policy_descriptor'),RAW,1763640000)[0]
+  self.assertEqual((r[3],r[6],r[7],r[8]),('unknown','untrusted_policy_descriptor','failure','dual_transport_failure'))
  def test_stale_pool_rejected(self):
   x=payload();x['pool_sha']='0'*64
   with self.assertRaisesRegex(receiver.InputRejected,'stale_pool_sha'): receiver.validate(x,RAW,1763640000)
