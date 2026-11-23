@@ -1,5 +1,7 @@
 import SwiftUI
 import UIKit
+import ImageIO
+import UniformTypeIdentifiers
 
 /// Private-family export: never uses concept JPGs or placeholder example text.
 /// Export is deliberately gated by the immutable owner and source snapshot.
@@ -33,14 +35,25 @@ enum PosterFamilyExport {
         NSLog("[PosterFamilyExport] rasterized: kind=%@ points=%.0fx%.0f pixels=%.0fx%.0f sections=%d",
               snapshot.kind.rawValue, image.size.width, image.size.height,
               image.size.width * image.scale, image.size.height * image.scale, snapshot.sections.count)
-        guard let bytes = image.pngData() else {
-            NSLog("[PosterFamilyExport] PNG encoding failed: kind=%@ pixels=%.0fx%.0f",
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kanyu-\(snapshot.kind.rawValue)-\(UUID().uuidString).png")
+        // ImageIO writes directly to disk, avoiding UIImage.pngData's large
+        // intermediate Data allocation for tall, full-resolution reports.
+        // Never downscale or omit sections: export remains a lossless PNG.
+        guard let cgImage = image.cgImage,
+              let destination = CGImageDestinationCreateWithURL(
+                  url as CFURL, UTType.png.identifier as CFString, 1, nil
+              ) else {
+            NSLog("[PosterFamilyExport] PNG destination unavailable: kind=%@", snapshot.kind.rawValue)
+            throw Failure.renderingFailed
+        }
+        CGImageDestinationAddImage(destination, cgImage, nil)
+        guard CGImageDestinationFinalize(destination) else {
+            try? FileManager.default.removeItem(at: url)
+            NSLog("[PosterFamilyExport] ImageIO PNG encoding failed: kind=%@ pixels=%.0fx%.0f",
                   snapshot.kind.rawValue, image.size.width * image.scale, image.size.height * image.scale)
             throw Failure.renderingFailed
         }
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("kanyu-\(snapshot.kind.rawValue)-\(UUID().uuidString).png")
-        try bytes.write(to: url, options: .atomic)
         return url
     }
 }
