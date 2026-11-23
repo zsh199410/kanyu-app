@@ -24,8 +24,20 @@ enum PosterFamilyExport {
             .frame(minHeight: 1081, alignment: .top)
         let renderer = ImageRenderer(content: content)
         renderer.scale = 1
-        guard let image = renderer.uiImage,
-              let bytes = image.pngData() else { throw Failure.renderingFailed }
+        // Record the stage and dimensions before attempting PNG compression.
+        // Keep all source fields intact: do not truncate report content to hide a render failure.
+        guard let image = renderer.uiImage else {
+            NSLog("[PosterFamilyExport] ImageRenderer returned nil: kind=%@ sections=%d", snapshot.kind.rawValue, snapshot.sections.count)
+            throw Failure.renderingFailed
+        }
+        NSLog("[PosterFamilyExport] rasterized: kind=%@ points=%.0fx%.0f pixels=%.0fx%.0f sections=%d",
+              snapshot.kind.rawValue, image.size.width, image.size.height,
+              image.size.width * image.scale, image.size.height * image.scale, snapshot.sections.count)
+        guard let bytes = image.pngData() else {
+            NSLog("[PosterFamilyExport] PNG encoding failed: kind=%@ pixels=%.0fx%.0f",
+                  snapshot.kind.rawValue, image.size.width * image.scale, image.size.height * image.scale)
+            throw Failure.renderingFailed
+        }
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("kanyu-\(snapshot.kind.rawValue)-\(UUID().uuidString).png")
         try bytes.write(to: url, options: .atomic)
