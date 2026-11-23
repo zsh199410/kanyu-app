@@ -50,6 +50,40 @@ for mask in (0o022, 0o027, 0o077):
         os.umask(old)
 report["umask_log_mode_0600"] = modes
 
+# --- 1b. 已存在文件/符号链接必须拒绝，不能截断目标 ---
+with tempfile.TemporaryDirectory(prefix="surge-log-exclusive-") as tmpdir:
+    preexisting = os.path.join(tmpdir, "existing.log")
+    with open(preexisting, "w") as original:
+        original.write("PRESERVE-EXISTING-LOG")
+    rejected_existing = False
+    try:
+        _create_log_file(preexisting)
+    except FileExistsError:
+        rejected_existing = True
+    assert rejected_existing, "existing log path must be rejected"
+    with open(preexisting) as original:
+        assert original.read() == "PRESERVE-EXISTING-LOG"
+
+    protected = os.path.join(tmpdir, "protected.txt")
+    with open(protected, "w") as original:
+        original.write("PRESERVE-SYMLINK-TARGET")
+    trap = os.path.join(tmpdir, "symlink.log")
+    os.symlink(protected, trap)
+    rejected_symlink = False
+    try:
+        _create_log_file(trap)
+    except (FileExistsError, OSError):
+        rejected_symlink = True
+    assert rejected_symlink, "symlink log path must be rejected"
+    with open(protected) as original:
+        assert original.read() == "PRESERVE-SYMLINK-TARGET"
+    assert os.path.islink(trap), "symlink must not have been replaced"
+report["exclusive_log_creation"] = {
+    "existing_file_rejected": True,
+    "symlink_rejected": True,
+    "contents_preserved": True,
+}
+
 # --- 2. 恶意日志注入：分类结果与 DB diag 不含敏感值 ---
 SECRETS = {
     "token": "FAKE-TOKEN-DO-NOT-USE-12345",
