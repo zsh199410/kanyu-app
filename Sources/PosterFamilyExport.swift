@@ -21,6 +21,7 @@ enum PosterFamilyExport {
         let content = PosterFamilyExportCanvas(snapshot: snapshot)
             .frame(width: width, alignment: .topLeading)
             .fixedSize(horizontal: true, vertical: true)
+            .frame(minHeight: 1081, alignment: .top)
         let renderer = ImageRenderer(content: content)
         renderer.scale = 1
         guard let image = renderer.uiImage,
