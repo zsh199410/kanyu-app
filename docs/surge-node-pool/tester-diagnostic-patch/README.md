@@ -1,4 +1,4 @@
-# Tester 最小诊断增量（Draft PR 材料 · v2）
+# Tester 最小诊断增量（Draft PR 材料 · v3）
 
 > 状态：Draft，仅供评审。生产 tester.py 与 node_tests 均未动。
 > 本目录含脱敏补丁（tester.patch / db.patch / cli.patch）、可执行迁移脚本
@@ -10,6 +10,34 @@
 > 2026-11-23T22:23:47Z，基于 commit 1af4ed2）提出的 3 项阻塞做了最小修正，
 > 见“v2 修复了哪 3 项”。v1 的隔离测试结论（测试器本身没坏、2400 次失败
 > 主因是节点真死 + 中继 403）不受影响。
+
+## v3 · GPT-6 直接修复（PR #124 第二轮复审的两项 P0）
+
+本版由 GPT-6 直接写入本 Draft 分支；**仅修改评审材料，没有部署或修改 VPS 的生产 tester.py / SQLite / timer**。
+
+1. **拒绝危险的临时日志路径**：`tester.patch::_create_log_file` 改用
+   `O_CREAT | O_EXCL | O_WRONLY | O_NOFOLLOW（支持时）`，保留 `0600`；
+   已存在文件、预置 symlink 一律报错并保持目标原样，不用 `O_TRUNC`。
+   `test_security.py` 增加真实文件与 symlink 的阴性用例。
+2. **WAL 安全回滚**：`migrate_diag_columns.py::rollback` 不再使用
+   `shutil.copyfile` 直接覆盖数据库主文件；使用 SQLite backup API
+   恢复一致快照，检测当前写锁，复开连接后逐表计算内容摘要、
+   检查 schema / 行数 / integrity，任何不一致返回 `ok=false`。
+   原始迁移的完整性、行数、判活 SQL 门禁也改为失败即抛错。
+3. **独立回归**：`python3 test_rollback_wal.py` 无需生产环境；用保持
+   未 checkpoint WAL 的数据库实际验证：恢复后旧列与记录不会复活、
+   保持打开的旧连接关闭后仍一致；活动写事务、损坏快照、同文件恢复
+   均拒绝。日志 0600 / symlink / 现有文件防覆盖也已在本地隔离演练。
+
+**生产回滚仍要求先停止所有测试器 service/timer 及其他 SQLite 写入者，
+并由操作者核实；代码的 `BEGIN IMMEDIATE` 只检测当前写锁，
+不能代替业务停机或跨进程维护锁。** 绝不能在仍有写进程运行时使用
+`--rollback`。恢复期间保留原始备份，不能用滚动写入的生产库覆盖快照。
+
+本次PR只是隔离补丁文件：进入阶段3前必须确认补丁能应用到**当前** VPS
+原文件（context/hash 检查），在离线备份上实际运行全套测试，
+并避开 03:30 全量和每小时 :42 增量；部署后连续2个正常调度周期验收。
+未获得运行证据前不得标记 `DEPLOYED`。
 
 ## 背景
 
@@ -193,7 +221,7 @@ integrity ok。
 
 ## 进入生产部署（阶段 3）之前还缺什么
 
-- GPT 对本 v2 HEAD 的重新审查通过。
+- GPT 对本 v3 HEAD 的复审及全部回归测试通过。
 - 非冲突时间窗口（避开 03:30 全量与每小时 :42 增量测试）。
 - 部署后至少观察两次正常调度周期，统计 exit/stage/HTTP/latency 分布。
 - 异常、锁冲突、数据库破坏或判定变化则停止并按备份回滚，保留审计。
