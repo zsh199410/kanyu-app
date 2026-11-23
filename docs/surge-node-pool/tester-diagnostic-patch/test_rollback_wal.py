@@ -7,8 +7,11 @@ Proves:
 - A corrupt snapshot is rejected without changing the target DB.
 - The original snapshot's entire schema and content match after restore.
 """
+import json
 import os
 import sqlite3
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -87,12 +90,31 @@ def run():
         assert rejected["ok"] is False, rejected
         assert inspect(db) == before, "same-file rollback altered DB"
 
+        # CLI contract: JSON ok=false MUST have nonzero exit status so deploy
+        # automation cannot mistake failed recovery for a successful rollback.
+        cli = os.path.join(os.path.dirname(__file__), "migrate_diag_columns.py")
+        fail = subprocess.run(
+            [sys.executable, cli, str(db), "--rollback", str(corrupt)],
+            capture_output=True, text=True)
+        fail_data = json.loads(fail.stdout)
+        assert fail.returncode != 0, fail
+        assert fail_data["ok"] is False, fail_data
+        success = subprocess.run(
+            [sys.executable, cli, str(db), "--rollback", str(snapshot)],
+            capture_output=True, text=True)
+        success_data = json.loads(success.stdout)
+        assert success.returncode == 0, success
+        assert success_data["ok"] is True, success_data
+        assert inspect(db) == before
+
         print({
             "wal_replay_prevented": True,
             "full_content_matches_snapshot": True,
             "busy_writer_rejected": True,
             "corrupt_snapshot_rejected": True,
             "same_file_rejected": True,
+            "rollback_cli_fail_exits_nonzero": True,
+            "rollback_cli_success_exits_zero": True,
         })
 
 
