@@ -22,7 +22,7 @@
 import argparse
 import json
 import os
-import shutil
+import hashlib
 import sqlite3
 import sys
 import time
@@ -107,7 +107,11 @@ def migrate(db_path, backup_dir=None):
     report["liveness_unchanged"] = report["liveness_before"] == report["liveness_after"]
     report["integrity_ok"] = (report["integrity_before"] == "ok"
                               and report["integrity_after"] == "ok")
+    valid = (report["integrity_ok"] and report["rows_unchanged"]
+             and report["liveness_unchanged"] and report["new_columns_nullable"])
     con.close()
+    if not valid:
+        raise RuntimeError("schema migration validation failed; stop and restore snapshot")
     return report
 
 
@@ -150,27 +154,87 @@ def compat_check(db_path):
     return outcome
 
 
-def rollback(db_path, snapshot):
-    """用迁移前快照恢复 DB。先校验快照完整性，再覆盖。返回报告。"""
-    if not os.path.exists(snapshot):
-        return {"ok": False, "error": f"snapshot not found: {snapshot}"}
-    chk = sqlite3.connect(f"file:{snapshot}?mode=ro", uri=True)
-    integ = _integrity(chk)
-    rows = chk.execute("SELECT COUNT(*) FROM node_tests").fetchone()[0]
-    chk.close()
-    if integ != "ok":
-        return {"ok": False, "error": f"snapshot integrity not ok: {integ}"}
-    shutil.copyfile(snapshot, db_path)
-    con = sqlite3.connect(db_path)
-    after_integ = _integrity(con)
-    after_rows = con.execute("SELECT COUNT(*) FROM node_tests").fetchone()[0]
-    ncols = len(con.execute("PRAGMA table_info(node_tests)").fetchall())
-    con.close()
-    return {"ok": after_integ == "ok" and after_rows == rows,
-            "snapshot": snapshot, "snapshot_rows": rows,
-            "restored_rows": after_rows, "restored_columns": ncols,
-            "integrity_after": after_integ}
+def _data_signature(con):
+    """按稳定顺序读取所有SQLite表与schema，逐行计算内容摘要（常量内存）。
+    与integrity_check配合，防止旧WAL回放造成“恢复成功”的假阳性。
+    """
+    digest = hashlib.sha256()
+    for obj in con.execute(
+            "SELECT type, name, tbl_name, sql FROM sqlite_master "
+            "ORDER BY type, name, tbl_name").fetchall():
+        digest.update(repr(tuple(obj)).encode("utf-8", errors="backslashreplace"))
+        digest.update(b"\n")
+    tables = [r[0] for r in con.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+    for table in tables:
+        quoted = '"' + table.replace('"', '""') + '"'
+        digest.update(table.encode("utf-8", errors="backslashreplace"))
+        digest.update(b"\0")
+        try:
+            rows = con.execute(f"SELECT rowid, * FROM {quoted} ORDER BY rowid")
+        except sqlite3.OperationalError:
+            ncols = len(con.execute(f"PRAGMA table_info({quoted})").fetchall())
+            if not ncols:
+                raise
+            order = ",".join(str(i) for i in range(1, ncols + 1))
+            rows = con.execute(f"SELECT * FROM {quoted} ORDER BY {order}")
+        for row in rows:
+            digest.update(repr(tuple(row)).encode("utf-8", errors="backslashreplace"))
+            digest.update(b"\n")
+    return digest.hexdigest()
 
+
+def rollback(db_path, snapshot):
+    """用SQLite backup API恢复快照，绝不raw-copy主数据库文件。
+
+    生产前置条件：所有测试器timer/service和其他DB写入方均已停止。
+    BEGIN IMMEDIATE仅用于检测当前写锁，不能代替外部停机门禁。
+    backup API正确处理WAL；恢复后比较全库schema/数据摘要。
+    """
+    report = {"ok": False, "snapshot": snapshot}
+    if not os.path.isfile(snapshot) or not os.path.isfile(db_path):
+        return {**report, "error": "snapshot or target DB not found"}
+    if os.path.samefile(snapshot, db_path):
+        return {**report, "error": "snapshot and target are the same file"}
+    src = target = verify = None
+    try:
+        src = sqlite3.connect(
+            f"file:{os.path.abspath(snapshot)}?mode=ro", uri=True, timeout=2)
+        snap_integrity = _integrity(src)
+        if snap_integrity != "ok":
+            return {**report, "error": f"snapshot integrity not ok: {snap_integrity}"}
+        snap_rows = src.execute("SELECT COUNT(*) FROM node_tests").fetchone()[0]
+        snap_cols = len(src.execute("PRAGMA table_info(node_tests)").fetchall())
+        snap_sig = _data_signature(src)
+        target = sqlite3.connect(db_path, timeout=0.25)
+        target.execute("PRAGMA busy_timeout=250")
+        # 有写者时立即拒绝，避免长时间等待或覆盖运行中的写操作。
+        target.execute("BEGIN IMMEDIATE")
+        target.rollback()
+        # 正确处理WAL中的已提交页，而不是shutil.copyfile(db_path)。
+        src.backup(target)
+        target.close()
+        target = None
+        verify = sqlite3.connect(db_path, timeout=2)
+        after_integrity = _integrity(verify)
+        after_rows = verify.execute("SELECT COUNT(*) FROM node_tests").fetchone()[0]
+        after_cols = len(verify.execute("PRAGMA table_info(node_tests)").fetchall())
+        after_sig = _data_signature(verify)
+        ok = (after_integrity == "ok" and after_rows == snap_rows
+              and after_cols == snap_cols and after_sig == snap_sig)
+        return {
+            **report, "ok": ok, "snapshot_rows": snap_rows,
+            "restored_rows": after_rows, "snapshot_columns": snap_cols,
+            "restored_columns": after_cols, "integrity_after": after_integrity,
+            "content_match": after_sig == snap_sig,
+            **({} if ok else {"error": "restored DB differs from snapshot"}),
+        }
+    except (sqlite3.Error, OSError, ValueError) as exc:
+        return {**report, "error": f"restore aborted: {type(exc).__name__}: {exc}"}
+    finally:
+        for con in (verify, target, src):
+            if con is not None:
+                con.close()
 
 def main():
     ap = argparse.ArgumentParser(description="node_tests 诊断列迁移（幂等）")
