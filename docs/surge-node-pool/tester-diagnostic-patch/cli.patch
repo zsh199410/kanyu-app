@@ -1,5 +1,5 @@
---- cli.py.prod	2026-11-23 22:03:18.636321601 +0000
-+++ cli.py.patched	2026-11-23 22:05:58.208991841 +0000
+--- cli.py.prod
++++ cli.py.patched
 @@ -234,33 +234,33 @@
      log.info("test mode=%s set=%s filtered=%s", args.mode, len(test_set), filtered)
      t0 = time.time()
