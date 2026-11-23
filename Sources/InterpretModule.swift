@@ -63,6 +63,39 @@ enum VerifyStore {
     static func legacyMarkCount(defaults: UserDefaults = .standard) -> Int {
         (defaults.dictionary(forKey: legacyKey) as? [String: Bool])?.count ?? 0
     }
+
+    /// P0-4 级联删除：清掉某一命主（ownerID "person:<uuid>"）的全部回验标记。
+    /// 只删该 owner 的 v2 键（"person:<uuid>|<itemID>"）；不归属任何人的 v1 旧标记不动。
+    /// 空 ownerID 不做任何事（避免误清全局键）。
+    static func clearAll(ownerID: String?, defaults: UserDefaults = .standard) {
+        guard let ownerID, !ownerID.isEmpty else { return }
+        var marks = (defaults.dictionary(forKey: key) as? [String: Bool]) ?? [:]
+        let prefix = ownerID + "|"
+        marks = marks.filter { !$0.key.hasPrefix(prefix) }
+        defaults.set(marks, forKey: key)
+    }
+}
+
+// MARK: - Batch 2 P0：尊享幸运数字/颜色（单一权威值对象）
+// 权威来源：InterpretEngine.interpret() 30 条内的“幸运颜色与数字”结论。
+// 模板深读段与原生预测单都调 InterpretEngine.luckyNumbersColors，不再各用各的映射。
+struct PosterLucky {
+    /// 完整结论正文（interpret “幸运颜色与数字”条）。
+    let text: String
+    /// 结构化数字（如“木数 3、8；火数 2、7”）；解析失败时为空。
+    let numbers: String
+    /// 结构化颜色（如“木主青、绿；火主红、紫”）；解析失败时为空。
+    let colors: String
+    /// 结构化数字列表（如 [3, 8, 2, 7]）；解析失败时为空。供原生楼层推导（本数＋10）。
+    let numbersList: [Int]
+    /// 来源种类（固定值，便于快照与导出收据核对）。
+    let sourceKind: String
+    /// 来源记录 ID：盘面指纹（四柱＋出生钟表时间）。
+    let sourceRecordID: String
+    /// 来源版本：interpret 条目数＋口径标记。
+    let sourceVersion: String
+    /// 解析是否成功；失败时调用方省略该模块并提示“来源待核对”。
+    let isVerified: Bool
 }
 
 enum InterpretEngine {
@@ -140,43 +173,49 @@ enum InterpretEngine {
         return ""
     }
 
+    // MARK: - Batch 2 P0：尊享幸运数字/颜色的单一权威来源
+    /// 模板深读段与原生预测单共用的幸运数字/颜色值。权威来源是 interpret() 30 条内的
+    /// “幸运颜色与数字”结论（可追溯：InterpretItem 带 links/mechanism/confidence）。
+    /// 不复用 posterXiJi 的 xi/ji 集合：dimensions() 用扶抑＋调候的层级选择（偏弱取生我＋日主、
+    /// 偏强取食伤财官），posterXiJi 用调候并集减冲突，集合可能不同；且 dimensions 的颜色表含
+    /// “紫/棕”，原生静态 colorMap 只有“红/黄”，数值与颜色都可能对不上。两条链路都调本函数。
+    static func luckyNumbersColors(chart ch: BaziChart) -> PosterLucky {
+        luckyNumbersColors(items: interpret(chart: ch), chart: ch)
+    }
+    /// 已算过 interpret() 的调用方传 items，避免重复计算 30 条。
+    static func luckyNumbersColors(items: [InterpretItem], chart ch: BaziChart) -> PosterLucky {
+        let recordID = "BaziChart:\(ch.pillars.joined())-\(Int(ch.birthDate.timeIntervalSince1970))"
+        let kind = "InterpretEngine.interpret/幸运颜色与数字"
+        let version = "interpret-30/posterXiJi-fuyi-tiaohou"
+        let empty = PosterLucky(text: "", numbers: "", colors: "", numbersList: [],
+                                sourceKind: kind, sourceRecordID: recordID, sourceVersion: version, isVerified: false)
+        guard let text = items.first(where: { $0.title == "幸运颜色与数字" })?.conclusion, !text.isEmpty else { return empty }
+        // 结论格式固定（dimensions() 生成）：
+        // “日常多用这几色最合你：<颜色>。…数字上 <数字> 与你相合，…”
+        // 颜色段取“日常多用这几色最合你：”与首个“。”之间；数字段取“数字上 ”与“ 与你相合”之间。
+        // 任一段解析不到即视为未对齐，调用方省略模块并提示“来源待核对”。
+        guard let colorStart = text.range(of: "日常多用这几色最合你：")?.upperBound,
+              let colorEnd = text[colorStart...].firstIndex(of: "。"),
+              let numStart = text.range(of: "数字上 ")?.upperBound,
+              let numEnd = text.range(of: " 与你相合")?.lowerBound else { return empty }
+        let colors = String(text[colorStart..<colorEnd])
+        let numbers = String(text[numStart..<numEnd])
+        guard !colors.isEmpty, !numbers.isEmpty else { return empty }
+        let digits = numbers.components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .compactMap { Int($0) }
+        return PosterLucky(text: text, numbers: numbers, colors: colors, numbersList: digits,
+                           sourceKind: kind, sourceRecordID: recordID, sourceVersion: version, isVerified: true)
+    }
+
     // MARK: - G5 可信度标签（Insight 第 1 批）
-    /// 每条解盘的可信程度，封闭集合：验真状态（已验真／待回验／未打标）＋依据层级。
-    /// 只用已有数据，不编造：
-    ///   验真状态取 VerifyStore 打标（已应验＝true、待回验＝false、未打标＝nil）；
-    ///   依据层级取 mechanism 文本（即 links 首个「根据」／「法则」，G2 已收拢），
-    ///   按文本自身措辞判定，优先级如下——
-    ///     含「纪律」／「回测」→ 本系统回测纪律（如“学历三查（工作室纪律 27…）”）；
-    ///     含《》书名号 → 五典原文（如《子平真诠》《滴天髓》《三命通会》）；
-    ///     含「通说」／「取象」／「类象」／「演绎」→ 流派应用；
-    ///     含「象征」／「民间」／「民俗」→ 民间象征；
-    ///     其余无引文的方法陈述（如“应期看引动…”）只作流派应用，绝不升格为五典原文；
-    ///     mechanism 为空（命局风景／十神看点只有「盘面」＋「口径」链）→ 盘面事实。
-    /// 标签是展示层收口：未打标绝不写成已验证；30 条逐条有值，无留空。
+    /// User reports are not independent accuracy checks. A book title does not prove
+    /// an original quotation; unverified classical references are always downgraded.
+    /// Keep the legacy VerifyStore v2 person/entry keys unchanged.
     static func confidenceLabel(title: String, mechanism: String?, ownerID: String? = nil) -> String {
-        let state: String
-        switch VerifyStore.mark(for: title, ownerID: ownerID) {
-        case true: state = "已验真"
-        case false: state = "待回验"
-        case nil: state = "未打标"
-        }
-        let level: String
-        if let m = mechanism, !m.isEmpty {
-            if m.contains("纪律") || m.contains("回测") {
-                level = "本系统回测纪律"
-            } else if m.contains("《") {
-                level = "五典原文"
-            } else if m.contains("通说") || m.contains("取象") || m.contains("类象") || m.contains("演绎") {
-                level = "流派应用"
-            } else if m.contains("象征") || m.contains("民间") || m.contains("民俗") {
-                level = "民间象征"
-            } else {
-                level = "流派应用"
-            }
-        } else {
-            level = "盘面事实"
-        }
-        return state + " · " + level
+        InterpretSourceLabelPolicy.label(
+            userMark: VerifyStore.mark(for: title, ownerID: ownerID),
+            mechanism: mechanism
+        )
     }
 
     // MARK: - G4 反向定位：结论 → 干支／十神所在柱（Insight 第 1 批）
@@ -753,6 +792,7 @@ struct InterpretView: View {
     @SceneStorage("interpret.searchQuery") private var searchQuery = ""
     @State private var showGlossary = false
     @State private var verifyTick = 0
+    @State private var showNaturalVoiceOptions = false
     // G4 反向定位：写共享 SceneStorage 选柱键（与 BaziResultView 同键同场景共享）＋滚动请求键
     @SceneStorage("bazi.selectedPillar") private var locatePillarStored: Int = -1
     @SceneStorage("bazi.scrollToPlateRequest") private var scrollRequestStored: Int = 0
@@ -841,7 +881,7 @@ struct InterpretView: View {
                             .clipShape(Capsule())
                         }.buttonStyle(.plain)
                         Button {
-                            let textToRead = filteredIndices.map { "\(allItems[$0].title)。\(allItems[$0].conclusion)" }.joined(separator: "。")
+                            let textToRead = filteredIndices.map { InterpretReadability.narration(title: allItems[$0].title, conclusion: allItems[$0].conclusion) }.joined(separator: "。")
                             speaker.read(textToRead)
                         } label: {
                             HStack(spacing: 5) {
@@ -855,6 +895,12 @@ struct InterpretView: View {
                             .clipShape(Capsule())
                         }.buttonStyle(.plain)
                     }
+                    DisclosureGroup("自然语音设置", isExpanded: $showNaturalVoiceOptions) {
+                        InterpretNarrationControls(speaker: speaker)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(Ky.ink)
+                    .accessibilityIdentifier("interpret.voice.settings")
                     if VerifyStore.legacyMarkCount() > 0 {
                         Label("检测到 \(VerifyStore.legacyMarkCount()) 条旧版全局标记：已保留为待归属，不会自动套用到任何人物。".scriptConverted,
                               systemImage: "exclamationmark.shield")
@@ -920,6 +966,7 @@ struct InterpretView: View {
                                 if !isCore {
                                     Text("【原局底牌】".scriptConverted).font(.caption2).fontWeight(.bold).foregroundStyle(Ky.qingdai)
                                 }
+                                InterpretPlainIntro(item: allItems[i])
                                 EvidenceChainView(conclusion: allItems[i].conclusion, links: allItems[i].links, mechanism: allItems[i].mechanism, confidence: allItems[i].confidence, timeRange: allItems[i].timeRange, advice: allItems[i].advice)
                                 ReadingHelpView(text: allItems[i].conclusion + " " + allItems[i].links.map { $0.text }.joined(separator: " "))
                                 Button {
@@ -958,7 +1005,7 @@ struct InterpretView: View {
                                     KyBadge(text: tag.0, color: tag.1)
                                     Spacer()
                                     Button {
-                                        speaker.read("\(allItems[i].title)。\(allItems[i].conclusion)")
+                                        speaker.read(InterpretReadability.narration(title: allItems[i].title, conclusion: allItems[i].conclusion))
                                     } label: {
                                         Image(systemName: "speaker.wave.2")
                                             .font(.caption)
@@ -1094,26 +1141,76 @@ struct InterpretView: View {
 // MARK: - 朗读（对标问真「听书」：解盘可听，系统语音离线合成）
 final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     private let synth = AVSpeechSynthesizer()
+    private static let voiceKey = "interpret.voice.identifier.v1"
+    private static let rateKey = "interpret.voice.rate.v1"
     @Published var speaking = false
+    @Published var selectedVoiceID = "" {
+        didSet { UserDefaults.standard.set(selectedVoiceID, forKey: Self.voiceKey) }
+    }
+    @Published var narrationRate: Double = 0.48 {
+        didSet { UserDefaults.standard.set(narrationRate, forKey: Self.rateKey) }
+    }
+    // Only expose Mandarin voices installed on this device. Premium/enhanced
+    // voices require system installation; do not claim that they always exist.
+    var mandarinVoices: [AVSpeechSynthesisVoice] {
+        AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language == "zh-CN" }
+            .sorted {
+                if $0.quality.rawValue != $1.quality.rawValue {
+                    return $0.quality.rawValue > $1.quality.rawValue
+                }
+                return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
+    }
+    var activeVoiceDescription: String {
+        let voice = selectedVoice()
+        guard let voice else { return "系统普通话（设备默认）" }
+        let quality: String
+        switch voice.quality {
+        case .premium: quality = "高级"
+        case .enhanced: quality = "增强"
+        default: quality = "标准"
+        }
+        return "\(voice.name) · \(quality)"
+    }
     override init() {
         super.init()
         synth.delegate = self
+        selectedVoiceID = UserDefaults.standard.string(forKey: Self.voiceKey) ?? ""
+        let saved = UserDefaults.standard.double(forKey: Self.rateKey)
+        narrationRate = saved == 0 ? 0.48 : min(0.58, max(0.42, saved))
     }
-    func read(_ text: String) {
-        if synth.isSpeaking { synth.stopSpeaking(at: .immediate); speaking = false; return }
+    private func selectedVoice() -> AVSpeechSynthesisVoice? {
+        let available = mandarinVoices
+        if let selected = available.first(where: { $0.identifier == selectedVoiceID }) {
+            return selected
+        }
+        return available.first ?? AVSpeechSynthesisVoice(language: "zh-CN")
+    }
+    private func speak(_ text: String) {
         let u = AVSpeechUtterance(string: text)
-        u.voice = AVSpeechSynthesisVoice(language: "zh-CN")
-        u.rate = 0.48
+        u.voice = selectedVoice()
+        u.rate = Float(narrationRate)
+        u.pitchMultiplier = 1.0
+        u.preUtteranceDelay = 0.08
+        u.postUtteranceDelay = 0.12
         speaking = true
         synth.speak(u)
     }
+    func read(_ text: String) {
+        if synth.isSpeaking { stop(); return }
+        speak(text)
+    }
+    func preview() {
+        if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
+        speak("欢迎收听三术合参。这里先说结论，再解释依据和传统术语。")
+    }
     func stop() { synth.stopSpeaking(at: .immediate); speaking = false }
-    // 朗读自然结束／被取消时复位 speaking（此前只在手动 stop 里复位，播完按钮会一直卡在「停止朗读」）
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        DispatchQueue.main.async { self.speaking = false }
+        DispatchQueue.main.async { self.speaking = synthesizer.isSpeaking }
     }
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        DispatchQueue.main.async { self.speaking = false }
+        DispatchQueue.main.async { self.speaking = synthesizer.isSpeaking }
     }
 }
 
