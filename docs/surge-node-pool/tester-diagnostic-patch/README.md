@@ -4,12 +4,24 @@
 > 本目录含脱敏补丁（tester.patch / db.patch / cli.patch）、可执行迁移脚本
 > （migrate_diag_columns.py）与回归测试（test_migration.py / test_security.py /
 > test_compat.py / test_functional.py / test_negative.py）。
-> 不含任何节点凭据、URI、token、热修配置。
+> 不含节点密码、完整代理URI、token、热修配置。
+> 用于现网功能对照的若干 `test_*.py` 脚本保留了 **公开节点IP字面量** 与 VPS 目录路径，
+> 这些是 Muse 报告的公开源测试定位信息，不是脱敏假数据；不可对整个 PR 宣称“零IP”。
+> 真实数据对照仅在可信VPS隔离环境运行，不要公开包含凭据/节点URI的测试日志。
 >
 > v2 说明：针对 GPT 在 PR #124 上的审查（review 6030476985，
 > 2026-11-23T22:23:47Z，基于 commit 1af4ed2）提出的 3 项阻塞做了最小修正，
 > 见“v2 修复了哪 3 项”。v1 的隔离测试结论（测试器本身没坏、2400 次失败
 > 主因是节点真死 + 中继 403）不受影响。
+
+## v3.1 · VPS 9/9 回归后收尾
+
+Muse在 Issue #73 回执 #7117250147 报告：VPS 真实库副本回归 **9/9 通过**（含无fuzz补丁适配、WAL、迁移、安全、兼容、功能与阴性对照），正式服务未修改。
+
+针对其发现的CLI缺口，GPT-6 直接修复：
+- `migrate_diag_columns.py` 执行 `--rollback` 时，JSON `ok=false` 将 **退出状态码1**，`ok=true` 为0。生产编排依然必须同时校验退出码和JSON；任何异常都拒绝继续部署。
+- `test_rollback_wal.py` 增加坏快照/好快照的**实际子进程CLI退出码与JSON一致性测试**。这两处改动需要Muse在**最新HEAD**的VPS隔离环境再次运行该测试，完成后方可阶段3切换。
+- 公开节点IP仅为旧的功能/阴性测试定位；保留诊断价值但不表示凭据可公开，若出现非公开地址须移到受限环境参数，勿写入仓库。
 
 ## v3 · GPT-6 直接修复（PR #124 第二轮复审的两项 P0）
 
