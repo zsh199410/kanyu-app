@@ -1,0 +1,46 @@
+--- db.py.prod	2026-11-23 22:03:21.228321691 +0000
++++ db.py.patched	2026-11-23 22:05:49.923818284 +0000
+@@ -47,7 +47,16 @@
+   tested_at INTEGER,
+   result TEXT,
+   reason TEXT,
+-  ms REAL
++  ms REAL,
++  curl_exit INTEGER,
++  http_code TEXT,
++  stage TEXT,
++  stage_detail TEXT,
++  t_lookup_ms REAL,
++  t_connect_ms REAL,
++  t_appconnect_ms REAL,
++  t_total_ms REAL,
++  sb_err TEXT
+ );
+ CREATE TABLE IF NOT EXISTS pinned (
+   protocol TEXT NOT NULL,
+@@ -121,11 +130,22 @@
+     )
+ 
+ 
+-def record_test(db, protocol, host, port, result, reason, ms):
++def record_test(db, protocol, host, port, result, reason, ms, diag=None):
++    """写入一次测试结果。diag 为可选诊断字典（见 tester._diag）；
++    未提供时新诊断列写 NULL，旧行为不变。"""
+     now = int(time.time())
++    d = diag or {}
+     db.execute(
+-        "INSERT INTO node_tests VALUES (?, ?, ?, ?, ?, ?, ?)",
+-        (protocol, host, port, now, result, reason or "", ms),
++        """INSERT INTO node_tests
++           (protocol, host, port, tested_at, result, reason, ms,
++            curl_exit, http_code, stage, stage_detail,
++            t_lookup_ms, t_connect_ms, t_appconnect_ms, t_total_ms, sb_err)
++           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
++        (protocol, host, port, now, result, reason or "", ms,
++         d.get("curl_exit"), d.get("http_code") or None,
++         d.get("stage") or None, d.get("detail") or None,
++         d.get("lookup_ms"), d.get("connect_ms"), d.get("appconnect_ms"),
++         d.get("total_ms"), d.get("sb_err") or None),
+     )
+     row = db.execute(
+         "SELECT pass_count, test_count FROM nodes WHERE protocol=? AND host=? AND port=?",

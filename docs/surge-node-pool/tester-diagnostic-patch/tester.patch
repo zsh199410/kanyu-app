@@ -1,0 +1,237 @@
+--- tester.py.prod	2026-11-23 22:02:48.237320535 +0000
++++ tester.py.patched	2026-11-23 22:05:06.977325398 +0000
+@@ -1,10 +1,17 @@
+ """sing-box 真握手测试：每节点独立 SOCKS 入口，经节点拉 generate_204。
+ 
+ 绝不把配置、URI、密码写进日志；sing-box stderr 默认丢弃（调试时可用环境变量开启）。
++
++诊断增量（最小补丁，P0）：
++- curl -w 改为命名字段，记录退出码、http_code 与分阶段耗时；
++- sing-box stderr 捕获到临时文件，仅提取 ERROR 行并脱敏（抹掉节点 host 与 IP 字面量、截断 200 字符），用完即删，不落盘；
++- 失败按阶段分类（dns/tcp/tls/http/timeout/socks/infra/other），分类结果写入新诊断列，
++  不改变原有 result/ms/reason 语义，不改并发、超时、发布规则与健康判定。
+ """
+ 
+ import json
+ import os
++import re
+ import socket
+ import subprocess
+ import tempfile
+@@ -18,6 +25,16 @@
+ TEST_URL = "https://captive.apple.com/generate_204"
+ DEBUG = os.environ.get("POOL_TEST_DEBUG") == "1"
+ 
++# curl -w 命名字段：http_code / 退出码 / 分阶段耗时（秒）。
++CURL_FMT = ("http=%{http_code} exit=%{exitcode} total=%{time_total} "
++            "lookup=%{time_namelookup} connect=%{time_connect} "
++            "appconnect=%{time_appconnect} starttransfer=%{time_starttransfer}")
++
++# 诊断字段缺省值（新列可空时对应的内存表示）。
++EMPTY_DIAG = {"curl_exit": None, "http_code": "", "stage": "", "detail": "",
++              "lookup_ms": 0.0, "connect_ms": 0.0, "appconnect_ms": 0.0,
++              "total_ms": 0.0, "sb_err": ""}
++
+ 
+ def _filter_reason(rec):
+     proto = rec["protocol"]
+@@ -99,49 +116,135 @@
+     return False
+ 
+ 
++def _sanitize_sb_err(line, host):
++    """脱敏 sing-box 错误行：去 ANSI、抹节点 host 与 IP 字面量、截断 200 字符。"""
++    s = re.sub(r"\x1b\[[0-9;]*m", "", line or "").strip()
++    if host:
++        s = s.replace(host, "[host]")
++    s = re.sub(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "[ip]", s)
++    s = re.sub(r"\b[0-9a-fA-F]{0,4}(?::[0-9a-fA-F]{0,4}){2,}\b", "[ip]", s)
++    return s[:200]
++
++
++def classify_stage(curl_exit, http_code, sb_log):
++    """失败按阶段分类。返回 (stage, detail)。
++    stage ∈ dns/tcp/tls/http/timeout/socks/infra/other。
++    注意顺序：TLS 必须在 DNS 之前判定（TLS 证书失败的日志里可能含 DNS 字样）。"""
++    if http_code not in ("000", "") and http_code.isdigit() and int(http_code) != 0:
++        return ("pass", "http-" + http_code)
++    log = sb_log or ""
++    ll = log.lower()
++    if "unexpected http response status: 403" in ll or "http response status: 403" in ll:
++        return ("http", "relay-403")
++    if "http response status:" in ll:
++        m = re.search(r"http response status:\s*(\d+)", ll)
++        return ("http", "relay-http-" + (m.group(1) if m else "?"))
++    if "connection refused" in ll:
++        return ("tcp", "connection-refused")
++    if "tls" in ll and ("handshake" in ll or "alert" in ll or "certificate" in ll
++                        or "failed to verify" in ll):
++        return ("tls", "tls-verify")
++    if "no such host" in ll or "server misbehaving" in ll or "dns query failed" in ll:
++        return ("dns", "dns-fail")
++    if "timeout" in ll or "timed out" in ll or "i/o timeout" in ll:
++        return ("timeout", "singbox-timeout")
++    if curl_exit == 28:
++        return ("timeout", "curl-timeout-28")
++    if curl_exit == 7:
++        return ("tcp", "curl-connect-7")
++    if curl_exit == 6:
++        return ("dns", "curl-dns-6")
++    if curl_exit == 97:
++        return ("socks", "curl-socks-97")
++    if curl_exit not in (0, None):
++        return ("other", "curl-exit-" + str(curl_exit))
++    return ("other", "unknown")
++
++
++def _diag(curl_exit=None, http_code="", stage="", detail="", timings=None, sb_err=""):
++    t = timings or {}
++    return {"curl_exit": curl_exit, "http_code": http_code, "stage": stage,
++            "detail": detail, "lookup_ms": round(float(t.get("lookup", 0)) * 1000, 1),
++            "connect_ms": round(float(t.get("connect", 0)) * 1000, 1),
++            "appconnect_ms": round(float(t.get("appconnect", 0)) * 1000, 1),
++            "total_ms": round(float(t.get("total", 0)) * 1000, 1),
++            "sb_err": sb_err or ""}
++
++
+ def test_one(rec, port, timeout=8):
+-    """返回 (result, ms, reason)：pass / fail / infra / filtered。"""
++    """返回 (result, ms, reason, diag)：result ∈ pass / fail / infra / filtered。
++    result/ms/reason 与原版完全一致；diag 为新增诊断字典，不改变判定语义。"""
+     reason = _filter_reason(rec)
+     if reason:
+-        return ("filtered", 0.0, reason)
++        d = dict(EMPTY_DIAG)
++        d["stage"] = "filtered"
++        d["detail"] = reason
++        return ("filtered", 0.0, reason, d)
+     cfg = build_config(rec)
+     cfg["inbounds"][0]["listen_port"] = port
++    # 诊断需要 sing-box 的 ERROR 行：捕获 stderr 到临时文件（用完即删）。
++    # 日志级别沿用隔离验证过的 debug（仅影响临时文件内容，不落盘）。
++    cfg["log"] = {"level": "debug"}
+     tmp = None
+     proc = None
++    errf = None
+     try:
+         fd, tmp = tempfile.mkstemp(prefix="sb-test-", suffix=".json")
+         with os.fdopen(fd, "w") as f:
+             json.dump(cfg, f)
+         os.chmod(tmp, 0o600)
+-        err = None
+-        if DEBUG:
+-            err = open(tmp + ".log", "w")
++        errf = open(tmp + ".log", "w")
+         proc = subprocess.Popen(
+             [SB, "run", "-c", tmp],
+             stdout=subprocess.DEVNULL,
+-            stderr=err if err else subprocess.DEVNULL)
++            stderr=errf)
+         if not _wait_port(port, 3.0):
+-            return ("infra", 0.0, "singbox-start")
++            return ("infra", 0.0, "singbox-start",
++                    _diag(stage="infra", detail="singbox-start"))
+         try:
+             r = subprocess.run(
+-                ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code} %{time_total}",
++                ["curl", "-s", "-o", "/dev/null", "-w", CURL_FMT,
+                  "--socks5-hostname", f"127.0.0.1:{port}",
+                  "--max-time", str(timeout), TEST_URL],
+                 capture_output=True, timeout=timeout + 4)
+-            out = r.stdout.decode("utf-8", errors="ignore").strip().split()
+-            if len(out) >= 2 and out[0].isdigit() and out[0] != "000":
++            txt = r.stdout.decode("utf-8", errors="ignore").strip()
++            m = dict(re.findall(r"(\w+)=([0-9.]+)", txt))
++            http_code = m.get("http", "000")
++            timings = {k: float(m.get(k, 0)) for k in
++                       ("total", "lookup", "connect", "appconnect", "starttransfer")}
++            try:
++                errf.close()
++                errf = None
++                sb_log = open(tmp + ".log").read()
++            except OSError:
++                sb_log = ""
++            sb_err = ""
++            for ln in sb_log.splitlines():
++                if "ERROR" in ln:
++                    sb_err = _sanitize_sb_err(ln, rec.get("host", ""))
++            if http_code.isdigit() and http_code != "000":
+                 try:
+-                    ms = float(out[1]) * 1000.0
++                    ms = timings["total"] * 1000.0
+                 except ValueError:
+                     ms = 0.0
+-                return ("pass", ms, "")
+-            return ("fail", 0.0, "curl-failed")
++                return ("pass", ms, "",
++                        _diag(curl_exit=r.returncode, http_code=http_code,
++                              stage="pass", detail="http-" + http_code,
++                              timings=timings, sb_err=sb_err))
++            stage, detail = classify_stage(r.returncode, http_code, sb_log)
++            return ("fail", 0.0, "curl-failed",
++                    _diag(curl_exit=r.returncode, http_code=http_code,
++                          stage=stage, detail=detail, timings=timings,
++                          sb_err=sb_err))
+         except subprocess.TimeoutExpired:
+-            return ("fail", 0.0, "curl-timeout")
++            return ("fail", 0.0, "curl-timeout",
++                    _diag(stage="timeout", detail="curl-timeout-expired"))
+         except Exception:
+-            return ("fail", 0.0, "curl-error")
++            return ("fail", 0.0, "curl-error",
++                    _diag(stage="other", detail="curl-error"))
+     except Exception:
+-        return ("infra", 0.0, "test-error")
++        return ("infra", 0.0, "test-error",
++                _diag(stage="infra", detail="test-error"))
+     finally:
+         if proc is not None:
+             try:
+@@ -152,20 +255,24 @@
+                     proc.kill()
+                 except Exception:
+                     pass
++        if errf is not None:
++            try:
++                errf.close()
++            except Exception:
++                pass
+         if tmp:
+             try:
+                 os.unlink(tmp)
+             except OSError:
+                 pass
+-            if DEBUG:
+-                try:
+-                    os.unlink(tmp + ".log")
+-                except OSError:
+-                    pass
++            try:
++                os.unlink(tmp + ".log")
++            except OSError:
++                pass
+ 
+ 
+ def test_many(records, concurrency=8, port_base=40000, port_count=100):
+-    """并发测试；sing-box 启动失败时换一个端口重试一次。返回 [(rec, result, ms, reason)]。"""
++    """并发测试；sing-box 启动失败时换一个端口重试一次。返回 [(rec, result, ms, reason, diag)]。"""
+     counter = {"n": 0}
+     lock = threading.Lock()
+ 
+@@ -173,13 +280,13 @@
+         with lock:
+             counter["n"] += 1
+             port = port_base + (counter["n"] % port_count)
+-        result, ms, reason = test_one(rec, port)
++        result, ms, reason, diag = test_one(rec, port)
+         if result == "infra" and reason == "singbox-start":
+             with lock:
+                 counter["n"] += 1
+                 port2 = port_base + (counter["n"] % port_count)
+-            result, ms, reason = test_one(rec, port2)
+-        return (rec, result, ms, reason)
++            result, ms, reason, diag = test_one(rec, port2)
++        return (rec, result, ms, reason, diag)
+ 
+     with ThreadPoolExecutor(max_workers=concurrency) as ex:
+         return list(ex.map(run, records))
