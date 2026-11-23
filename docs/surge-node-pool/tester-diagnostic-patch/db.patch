@@ -1,0 +1,47 @@
+--- db.py.prod
++++ db.py.patched
+@@ -47,7 +47,15 @@
+   tested_at INTEGER,
+   result TEXT,
+   reason TEXT,
+-  ms REAL
++  ms REAL,
++  curl_exit INTEGER,
++  http_code TEXT,
++  stage TEXT,
++  stage_detail TEXT,
++  t_lookup_ms REAL,
++  t_connect_ms REAL,
++  t_appconnect_ms REAL,
++  t_total_ms REAL
+ );
+ CREATE TABLE IF NOT EXISTS pinned (
+   protocol TEXT NOT NULL,
+@@ -121,11 +129,24 @@
+     )
+ 
+ 
+-def record_test(db, protocol, host, port, result, reason, ms):
++def record_test(db, protocol, host, port, result, reason, ms, diag=None):
++    """写入一次测试结果。diag 为可选诊断字典（见 tester._diag）；
++    未提供时新诊断列写 NULL，旧行为不变。
++    注意：diag 只含枚举化 stage/detail 与数值字段，不含原始错误原文；
++    即使调用方传入 sb_err 之类自由文本，也不写入。"""
+     now = int(time.time())
++    d = diag or {}
+     db.execute(
+-        "INSERT INTO node_tests VALUES (?, ?, ?, ?, ?, ?, ?)",
+-        (protocol, host, port, now, result, reason or "", ms),
++        """INSERT INTO node_tests
++           (protocol, host, port, tested_at, result, reason, ms,
++            curl_exit, http_code, stage, stage_detail,
++            t_lookup_ms, t_connect_ms, t_appconnect_ms, t_total_ms)
++           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
++        (protocol, host, port, now, result, reason or "", ms,
++         d.get("curl_exit"), d.get("http_code") or None,
++         d.get("stage") or None, d.get("detail") or None,
++         d.get("lookup_ms"), d.get("connect_ms"), d.get("appconnect_ms"),
++         d.get("total_ms")),
+     )
+     row = db.execute(
+         "SELECT pass_count, test_count FROM nodes WHERE protocol=? AND host=? AND port=?",

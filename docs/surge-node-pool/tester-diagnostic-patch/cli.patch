@@ -1,0 +1,62 @@
+--- cli.py.prod
++++ cli.py.patched
+@@ -234,33 +234,33 @@
+     log.info("test mode=%s set=%s filtered=%s", args.mode, len(test_set), filtered)
+     t0 = time.time()
+     r1 = test_many(test_set, concurrency=cfg.get("concurrency", 8))
+-    for rec, result, ms, reason in r1:
++    for rec, result, ms, reason, diag in r1:
+         dbmod.record_test(conn, rec["protocol"], rec["host"], rec["port"],
+-                          result, reason, ms)
++                          result, reason, ms, diag)
+     conn.commit()
+-    passes = [rec for rec, result, _ms, _r in r1 if result == "pass"]
++    passes = [rec for rec, result, _ms, _r, _d in r1 if result == "pass"]
+     r1_counts = {}
+-    for _rec, result, _ms, _r in r1:
++    for _rec, result, _ms, _r, _d in r1:
+         r1_counts[result] = r1_counts.get(result, 0) + 1
+     r2_counts = {}
+     if passes and args.mode != "full":
+         time.sleep(45)
+         r2 = test_many(passes, concurrency=cfg.get("concurrency", 8))
+-        for rec, result, ms, reason in r2:
++        for rec, result, ms, reason, diag in r2:
+             dbmod.record_test(conn, rec["protocol"], rec["host"], rec["port"],
+-                              result, reason, ms)
++                              result, reason, ms, diag)
+         conn.commit()
+-        for _rec, result, _ms, _r in r2:
++        for _rec, result, _ms, _r, _d in r2:
+             r2_counts[result] = r2_counts.get(result, 0) + 1
+     elif passes and args.mode == "full":
+         # 全量也做两轮复测（仅复测通过者），与增量一致。
+         time.sleep(45)
+         r2 = test_many(passes, concurrency=cfg.get("concurrency", 8))
+-        for rec, result, ms, reason in r2:
++        for rec, result, ms, reason, diag in r2:
+             dbmod.record_test(conn, rec["protocol"], rec["host"], rec["port"],
+-                              result, reason, ms)
++                              result, reason, ms, diag)
+         conn.commit()
+-        for _rec, result, _ms, _r in r2:
++        for _rec, result, _ms, _r, _d in r2:
+             r2_counts[result] = r2_counts.get(result, 0) + 1
+     dbmod.prune_old(conn)
+     counts = {"mode": args.mode, "set": len(test_set), "filtered": filtered,
+@@ -633,10 +633,12 @@
+     if rec is None:
+         print(json.dumps({"ok": False, "error": "uri-missing"}, ensure_ascii=False))
+         return 1
+-    result, ms, reason = test_one(rec, 40000 + (hash(key) % 90))
+-    dbmod.record_test(conn, rec["protocol"], rec["host"], rec["port"], result, reason, ms)
++    result, ms, reason, diag = test_one(rec, 40000 + (hash(key) % 90))
++    dbmod.record_test(conn, rec["protocol"], rec["host"], rec["port"], result, reason, ms, diag)
+     conn.commit()
+-    print(json.dumps({"ok": True, "result": result, "ms": round(ms, 1), "reason": reason},
++    print(json.dumps({"ok": True, "result": result, "ms": round(ms, 1), "reason": reason,
++                      "stage": (diag or {}).get("stage", ""),
++                      "detail": (diag or {}).get("detail", "")},
+                      ensure_ascii=False))
+     return 0
+ 
