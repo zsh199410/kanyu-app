@@ -249,7 +249,12 @@ def main():
     elif args.compat_check:
         print(json.dumps(compat_check(args.db), ensure_ascii=False, indent=2))
     elif args.rollback:
-        print(json.dumps(rollback(args.db, args.rollback), ensure_ascii=False, indent=2))
+        outcome = rollback(args.db, args.rollback)
+        print(json.dumps(outcome, ensure_ascii=False, indent=2))
+        # CI/systemd/shell must never see success for a failed restore.
+        # Keep JSON for human diagnosis, and return a nonzero exit status.
+        if not outcome.get("ok", False):
+            raise SystemExit(1)
     else:
         print(json.dumps(migrate(args.db, args.backup_dir), ensure_ascii=False, indent=2))
 
