@@ -1,14 +1,27 @@
 #!/usr/bin/env python3
-"""Source lineage v3 tests (isolated, runs on COPIES of the pool snapshot).
+"""Source lineage v4 tests (isolated, runs on COPIES of the pool snapshot).
 Synthetic nodes use TEST-NET addresses (203.0.113.0/24) and synthetic
 config fingerprints, so no real node identities or credentials appear.
 Run: python3 test_source_lineage.py
 Exit 0 = all pass, 1 = any failure.
 
-Covers GPT Review 6031702642 negative cases: config variants, mirror
-same-group, paused+valid sources coexisting, unknown/duplicate rejection,
-scrape order changes / replay / time disorder, legacy unverified,
-migration-failure transaction rollback.
+Covers GPT Review 6032131494 v4 contracts, on top of the v3 cases:
+- HMAC-SHA256 fingerprint with a required local key: auth variants
+  differ, key required, display-only differences do not matter.
+- Qualification age 0 <= age <= TTL (future timestamps rejected),
+  last_evidence bound to the newest observation.
+- batch_diversity passes only with zero rejected; rebuilt batches
+  must be re-run; the original list is never publishable.
+- Rollback is lossless: whole-DB restore only in a zero-write
+  migration window; any post-backup write (appended event on an
+  existing key, status change, new test record) refuses the restore
+  and retains everything; --allow-data-loss no longer exists;
+  do_check and the already-migrated branch fail closed with non-zero
+  exits matching their actual conclusions.
+
+The HMAC key below is a SYNTHETIC TEST KEY ONLY. It must never be
+used as a production key; the production key comes from the scraper's
+secure config / environment and is never stored in the DB or the repo.
 """
 import hashlib
 import json
@@ -34,9 +47,15 @@ SYN = [
     ("vmess", "203.0.113.14", 443),
     ("trojan", "203.0.113.15", 443),
     ("vmess", "203.0.113.16", 443),
+    ("vmess", "203.0.113.17", 443),
+    ("trojan", "203.0.113.18", 443),
 ]
 T0 = 1795400000          # fixed "now" for freshness checks
 FRESH = 86400            # 24h freshness window
+
+# Synthetic test-only HMAC key. NOT a production key.
+KEY = b"pr125-v4-test-only-key"
+KEY2 = b"pr125-v4-test-only-key-2"
 
 # Synthetic configs for fingerprint tests (passwords are fake test values).
 CFG_A = {"protocol": "trojan", "host": "203.0.113.11", "port": 443,
@@ -44,6 +63,8 @@ CFG_A = {"protocol": "trojan", "host": "203.0.113.11", "port": 443,
          "tls": True, "password": "secret-A"}
 CFG_A_PW2 = dict(CFG_A, password="secret-B")            # only password differs
 CFG_A_UUID = dict(CFG_A, uuid="11111111-2222-3333-4444-555555555555")
+CFG_A_NAME = dict(CFG_A, name="display-name", remark="display remark")
+CFG_A_FLOW = dict(CFG_A, flow="xtls-rprx-vision")       # unknown field
 CFG_B_SNI = dict(CFG_A, sni="b.example.com")            # SNI variant
 CFG_C_TCP = dict(CFG_A, transport="tcp", path=None)     # transport variant
 CFG_D_PATH = dict(CFG_A, path="/y")                     # path variant
@@ -87,6 +108,16 @@ def fresh_db():
             os.remove(TEST_DB + suffix)
 
 
+def copy_db(src_path, dst_path):
+    s = sqlite3.connect(src_path)
+    d = sqlite3.connect(dst_path)
+    try:
+        s.backup(d)
+    finally:
+        s.close()
+        d.close()
+
+
 def counts(conn):
     return {
         "nodes": conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0],
@@ -117,32 +148,64 @@ def main():
         (passed if cond else failed).append(name)
         print(("PASS " if cond else "FAIL ") + name + ((" | " + str(detail)) if detail else ""))
 
-    # ------------------------------------------------ A. fingerprint
-    fp_a = sl.config_fingerprint(CFG_A)
+    # ------------------------------------------------ A. fingerprint (v4 HMAC)
+    fp_a = sl.config_fingerprint(CFG_A, KEY)
     check("fingerprint is 64-hex", len(fp_a) == 64 and all(c in "0123456789abcdef" for c in fp_a))
-    check("fingerprint deterministic", sl.config_fingerprint(CFG_A) == fp_a)
-    check("password-only difference keeps fingerprint",
-          sl.config_fingerprint(CFG_A_PW2) == fp_a)
-    check("uuid-only difference keeps fingerprint",
-          sl.config_fingerprint(CFG_A_UUID) == fp_a)
+    check("fingerprint deterministic", sl.config_fingerprint(CFG_A, KEY) == fp_a)
+    check("password-only difference CHANGES fingerprint (auth variants differ)",
+          sl.config_fingerprint(CFG_A_PW2, KEY) != fp_a)
+    check("uuid-only difference CHANGES fingerprint (auth variants differ)",
+          sl.config_fingerprint(CFG_A_UUID, KEY) != fp_a)
+    check("display-only difference keeps fingerprint",
+          sl.config_fingerprint(CFG_A_NAME, KEY) == fp_a)
+    check("unknown field changes fingerprint (conservative inclusion)",
+          sl.config_fingerprint(CFG_A_FLOW, KEY) != fp_a)
+    check("different HMAC keys give different fingerprints",
+          sl.config_fingerprint(CFG_A, KEY2) != fp_a)
     check("SNI variant changes fingerprint",
-          sl.config_fingerprint(CFG_B_SNI) != fp_a)
+          sl.config_fingerprint(CFG_B_SNI, KEY) != fp_a)
     check("transport variant changes fingerprint",
-          sl.config_fingerprint(CFG_C_TCP) != fp_a)
+          sl.config_fingerprint(CFG_C_TCP, KEY) != fp_a)
     check("path variant changes fingerprint",
-          sl.config_fingerprint(CFG_D_PATH) != fp_a)
-    check("no credential string in fingerprint input/output",
-          "secret-A" not in fp_a and "secret-B" not in sl.config_fingerprint(CFG_A_PW2))
+          sl.config_fingerprint(CFG_D_PATH, KEY) != fp_a)
+    check("no credential string in fingerprint output",
+          "secret-A" not in fp_a and "secret-B" not in sl.config_fingerprint(CFG_A_PW2, KEY))
+    check("HMAC output differs from unkeyed SHA-256 (no silent v3 upgrade)",
+          fp_a != hashlib.sha256(
+              json.dumps({k: v for k, v in CFG_A.items()
+                          if k not in ("password", "uuid")},
+                         sort_keys=True, separators=(",", ":"),
+                         ensure_ascii=True).encode()).hexdigest())
     try:
-        sl.config_fingerprint({"password": "only-a-password"})
-        check("credential-only config raises", False)
+        sl.config_fingerprint(CFG_A)
+        check("missing key raises", False)
+    except TypeError:
+        check("missing key raises", True)
+    try:
+        sl.config_fingerprint(CFG_A, None)
+        check("None key raises", False)
     except ValueError:
-        check("credential-only config raises", True)
+        check("None key raises", True)
     try:
-        sl.config_fingerprint("trojan://user:pass@host:443")
+        sl.config_fingerprint(CFG_A, b"")
+        check("empty key raises", False)
+    except ValueError:
+        check("empty key raises", True)
+    try:
+        sl.config_fingerprint({"name": "only-a-display-name"}, KEY)
+        check("display-only config raises", False)
+    except ValueError:
+        check("display-only config raises", True)
+    try:
+        sl.config_fingerprint("trojan://user:pass@host:443", KEY)
         check("raw URI string raises", False)
     except ValueError:
         check("raw URI string raises", True)
+    try:
+        sl.config_fingerprint(dict(CFG_A, blob=b"\x00\x01"), KEY)
+        check("non-JSON-serializable value raises", False)
+    except ValueError:
+        check("non-JSON-serializable value raises", True)
 
     # ------------------------------------------------ B. record_sighting
     fresh_db()
@@ -150,23 +213,25 @@ def main():
     sl.ensure_schema(conn)
     conn.commit()
     base = counts(conn)
-    fp_b = sl.config_fingerprint(CFG_B_SNI)
+    fp_b = sl.config_fingerprint(CFG_B_SNI, KEY)
     r = sl.record_sighting(conn, *SYN[0], fp_a, "matin-vmess", T0, "run-1", "ev-1")
     check("first sighting accepted", r["accepted"] is True, r)
     conn.commit()
     lin = sl.lineage(conn, *SYN[0], fp_a)
     check("one lineage row after first sighting", len(lin) == 1, lin)
-    check("first sighting count=1 first=last=T0",
-          lin[0]["sighting_count"] == 1 and lin[0]["first_seen"] == T0 and lin[0]["last_seen"] == T0)
+    check("first sighting count=1 first=last=T0 evidence=run-1",
+          lin[0]["sighting_count"] == 1 and lin[0]["first_seen"] == T0
+          and lin[0]["last_seen"] == T0 and lin[0]["last_evidence"] == "run-1")
     check("variant row verified", sl.variants(conn, *SYN[0])[0]["verified"] is True)
     r = sl.record_sighting(conn, *SYN[0], fp_a, "matin-vmess", T0 + 100, "run-2", "ev-2")
     check("later sighting accepted", r["accepted"] is True)
     conn.commit()
     lin = sl.lineage(conn, *SYN[0], fp_a)
-    check("later sighting count=2 last=T0+100",
+    check("later sighting count=2 last=T0+100 evidence=run-2",
           lin[0]["sighting_count"] == 2 and lin[0]["last_seen"] == T0 + 100
-          and lin[0]["first_seen"] == T0)
-    # Out-of-order: a sighting between first and last must not move last_seen back.
+          and lin[0]["first_seen"] == T0 and lin[0]["last_evidence"] == "run-2")
+    # Out-of-order: a sighting between first and last must not move last_seen
+    # back, and must NOT overwrite last_evidence with older evidence.
     r = sl.record_sighting(conn, *SYN[0], fp_a, "matin-vmess", T0 + 50, "run-3", "ev-3")
     check("out-of-order sighting accepted as new evidence", r["accepted"] is True)
     conn.commit()
@@ -174,7 +239,9 @@ def main():
     check("out-of-order keeps last_seen at max",
           lin[0]["sighting_count"] == 3 and lin[0]["last_seen"] == T0 + 100
           and lin[0]["first_seen"] == T0, lin)
-    # Older than first_seen: first_seen moves down, last_seen stays.
+    check("out-of-order keeps last_evidence of the NEWEST observation",
+          lin[0]["last_evidence"] == "run-2", lin)
+    # Older than first_seen: first_seen moves down, last_seen and evidence stay.
     r = sl.record_sighting(conn, *SYN[0], fp_a, "matin-vmess", T0 - 500, "run-0", "ev-0")
     check("older sighting accepted", r["accepted"] is True)
     conn.commit()
@@ -182,12 +249,23 @@ def main():
     check("older sighting moves first_seen down only",
           lin[0]["sighting_count"] == 4 and lin[0]["first_seen"] == T0 - 500
           and lin[0]["last_seen"] == T0 + 100, lin)
+    check("older sighting keeps newest evidence",
+          lin[0]["last_evidence"] == "run-2", lin)
+    # A newer sighting moves last_evidence forward again.
+    r = sl.record_sighting(conn, *SYN[0], fp_a, "matin-vmess", T0 + 200, "run-4", "ev-4")
+    check("newer sighting accepted", r["accepted"] is True)
+    conn.commit()
+    lin = sl.lineage(conn, *SYN[0], fp_a)
+    check("newer sighting updates last_evidence to run-4",
+          lin[0]["sighting_count"] == 5 and lin[0]["last_seen"] == T0 + 200
+          and lin[0]["last_evidence"] == "run-4", lin)
     # Exact replay: same variant/source/ts -> no-op.
     r = sl.record_sighting(conn, *SYN[0], fp_a, "matin-vmess", T0 + 100, "run-2b", "ev-2x")
     check("exact replay is no-op", r["accepted"] is False, r)
     conn.commit()
     lin = sl.lineage(conn, *SYN[0], fp_a)
-    check("replay does not bump count", lin[0]["sighting_count"] == 4, lin)
+    check("replay does not bump count", lin[0]["sighting_count"] == 5, lin)
+    check("replay does not change evidence", lin[0]["last_evidence"] == "run-4", lin)
     # Same event_id twice -> no-op.
     r = sl.record_sighting(conn, *SYN[0], fp_a, "alirewa-config", T0 + 200, "run-4", "ev-1")
     check("same event_id is no-op", r["accepted"] is False, r)
@@ -244,6 +322,13 @@ def main():
     # Mirror group: SYN[5] in mirror-a and mirror-b (same group).
     sl.record_sighting(conn, *SYN[5], fp_a, "mirror-a", T0 - 50, "run-1", "ev-m5a")
     sl.record_sighting(conn, *SYN[5], fp_a, "mirror-b", T0, "run-2", "ev-m5b")
+    # Future-dated only: SYN[6] seen only at T0+10000 (after "now" T0).
+    sl.record_sighting(conn, *SYN[6], fp_a, "matin-vmess", T0 + 10000, "run-f", "ev-f6")
+    # Future + valid: SYN[7] has a future sighting AND a valid past one.
+    sl.record_sighting(conn, *SYN[7], fp_a, "matin-vmess", T0 + 10000, "run-f", "ev-f7")
+    sl.record_sighting(conn, *SYN[7], fp_a, "alirewa-config", T0, "run-1", "ev-v7")
+    # Exact freshness boundary: SYN[3] variant B at exactly age == FRESH.
+    sl.record_sighting(conn, *SYN[3], fp_b, "matin-vmess", T0 - FRESH, "run-b", "ev-b3")
     conn.commit()
     check("paused-only variant has no qualified group",
           sl.qualified_source_group(conn, REGISTRY, *SYN[1], fp_a, T0, FRESH) is None)
@@ -255,6 +340,14 @@ def main():
           sl.qualified_source_group(conn, REGISTRY, *SYN[4], fp_a, T0, FRESH) is None)
     check("mirror sources share one qualified group",
           sl.qualified_source_group(conn, REGISTRY, *SYN[5], fp_a, T0, FRESH) == "g-mirror")
+    check("future-dated-only variant has no qualified group (age < 0 rejected)",
+          sl.qualified_source_group(conn, REGISTRY, *SYN[6], fp_a, T0, FRESH) is None)
+    check("future sighting skipped, older valid sighting still qualifies",
+          sl.qualified_source_group(conn, REGISTRY, *SYN[7], fp_a, T0, FRESH) == "g-alirewa")
+    check("age exactly == TTL still qualifies (0 <= age <= TTL)",
+          sl.qualified_source_group(conn, REGISTRY, *SYN[3], fp_b, T0, FRESH) == "g-matin-vmess")
+    check("age == TTL+1 does not qualify",
+          sl.qualified_source_group(conn, REGISTRY, *SYN[3], fp_b, T0 + 1, FRESH) is None)
     ps = sl.primary_source(conn, *SYN[1], fp_a)
     check("primary_source display still shows paused source (display only)",
           ps is not None and ps["source"] == "chenzhihan-base64" and ps["verified"] is True, ps)
@@ -270,6 +363,10 @@ def main():
     conn.close()
 
     # ------------------------------------------------ E. batch_diversity
+    # v4: batch evaluation time must be AFTER all legitimate sightings
+    # (T0..T0+300); otherwise they are future-dated evidence and are
+    # correctly rejected by the 0 <= age <= TTL rule.
+    NOW_E = T0 + 1000
     conn = sqlite3.connect(TEST_DB)
     # Second variant under g-matin-trojan (for the GPT example's "A,A"):
     # SYN[1] already has fp_a from paused chenzhihan; add fp_b from active
@@ -281,7 +378,7 @@ def main():
     d = sl.batch_diversity(conn, REGISTRY,
                            [(*SYN[2], fp_a), (*SYN[1], fp_b), (*SYN[5], fp_a),
                             (*SYN[0], fp_b), (*SYN[4], fp_a), (*SYN[3], fp_a)],
-                           T0, FRESH)
+                           NOW_E, FRESH)
     check("GPT example A,A,B,C,unknown,unknown FAILS",
           d["passes"] is False and d["total"] == 4 and len(d["rejected"]) == 2
           and abs(d["max_share"] - 0.5) < 1e-9, d)
@@ -289,34 +386,66 @@ def main():
           all(r["reason"] == "no_qualified_source_group" for r in d["rejected"]), d)
     check("GPT example counts A=2 B=1 C=1 over accepted only",
           d["counts"] == {"g-matin-trojan": 2, "g-mirror": 1, "g-alirewa": 1}, d)
-    # 3 variants / 3 qualified groups passes.
+    check("GPT example publishable is False (rejected entries present)",
+          d["publishable"] is False, d)
+    # 3 variants / 3 qualified groups passes, publishable True.
     d3 = sl.batch_diversity(conn, REGISTRY,
                             [(*SYN[2], fp_a), (*SYN[5], fp_a), (*SYN[0], fp_b)],
-                            T0, FRESH)
+                            NOW_E, FRESH)
     check("3 variants / 3 qualified groups passes",
           d3["passes"] is True and d3["distinct"] == 3 and d3["total"] == 3, d3)
+    check("passing batch is publishable",
+          d3["publishable"] is True and len(d3["rejected"]) == 0, d3)
+    # v4: 3 qualified groups PLUS 1 unknown -> does NOT pass anymore.
+    d31 = sl.batch_diversity(conn, REGISTRY,
+                             [(*SYN[2], fp_a), (*SYN[5], fp_a), (*SYN[0], fp_b),
+                              (*SYN[4], fp_a)],
+                             NOW_E, FRESH)
+    check("3 qualified + 1 unknown does NOT pass (passes requires zero rejected)",
+          d31["passes"] is False and d31["publishable"] is False
+          and len(d31["rejected"]) == 1 and d31["total"] == 3, d31)
+    # v4: 3 qualified groups PLUS 1 duplicate -> does NOT pass anymore.
+    d31d = sl.batch_diversity(conn, REGISTRY,
+                              [(*SYN[2], fp_a), (*SYN[5], fp_a), (*SYN[0], fp_b),
+                               (*SYN[2], fp_a)],
+                              NOW_E, FRESH)
+    check("3 qualified + 1 duplicate does NOT pass",
+          d31d["passes"] is False and d31d["publishable"] is False
+          and len(d31d["rejected"]) == 1
+          and d31d["rejected"][0]["reason"] == "duplicate_variant", d31d)
+    # Rebuilt batch from accepted_variants passes on re-run.
+    new_batch = sl.rebuild_batch(d31)
+    check("rebuild_batch returns only the accepted exact identities",
+          new_batch == [(*SYN[2], fp_a), (*SYN[5], fp_a), (*SYN[0], fp_b)], new_batch)
+    d_re = sl.batch_diversity(conn, REGISTRY, new_batch, NOW_E, FRESH)
+    check("rebuilt batch passes on re-run",
+          d_re["passes"] is True and d_re["publishable"] is True
+          and len(d_re["rejected"]) == 0, d_re)
+    check("rebuilt batch is a new list, not the original",
+          new_batch is not [(*SYN[2], fp_a), (*SYN[5], fp_a), (*SYN[0], fp_b),
+                            (*SYN[4], fp_a)])
     # Duplicate variant in the batch is rejected, rest counted.
     ddup = sl.batch_diversity(conn, REGISTRY,
                               [(*SYN[2], fp_a), (*SYN[2], fp_a), (*SYN[5], fp_a),
                                (*SYN[0], fp_b)],
-                              T0, FRESH)
+                              NOW_E, FRESH)
     check("duplicate variant rejected, rest counted",
           ddup["total"] == 3 and len(ddup["rejected"]) == 1
           and ddup["rejected"][0]["reason"] == "duplicate_variant", ddup)
     # All unknown -> nothing accepted, fails.
     dall = sl.batch_diversity(conn, REGISTRY,
                               [(*SYN[4], fp_a), (*SYN[3], fp_a), (*SYN[1], fp_a)],
-                              T0, FRESH)
+                              NOW_E, FRESH)
     check("all unqualified -> total 0, fails",
           dall["passes"] is False and dall["total"] == 0 and len(dall["rejected"]) == 3, dall)
     # Mirror group counts once: two variants both in g-mirror + one other.
-    # SYN[0]/fp_a's most recent qualified sighting is matin-vmess at T0+100,
-    # so record a FRESHER mirror-a sighting (T0+200) to move it to g-mirror.
-    sl.record_sighting(conn, *SYN[0], fp_a, "mirror-a", T0 + 200, "run-9", "ev-m0")
+    # SYN[0]/fp_a's most recent qualified sighting is matin-vmess at T0+200,
+    # so record a FRESHER mirror-a sighting (T0+300) to move it to g-mirror.
+    sl.record_sighting(conn, *SYN[0], fp_a, "mirror-a", T0 + 300, "run-9", "ev-m0")
     conn.commit()
     dmir = sl.batch_diversity(conn, REGISTRY,
                               [(*SYN[0], fp_a), (*SYN[5], fp_a), (*SYN[2], fp_a)],
-                              T0, FRESH)
+                              NOW_E, FRESH)
     check("two mirror-group variants count as one group",
           dmir["distinct"] == 2 and dmir["counts"].get("g-mirror") == 2, dmir)
     # Share exactly 1/3 passes; above 1/3 fails.
@@ -414,32 +543,55 @@ def main():
           conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='node_variants'").fetchone() is None)
     conn.close()
 
+    # v4: do_check with problems must exit 1 (v3 returned 0 -- the bug).
+    rc4b, out4b, _ = run_migrate("--check")
+    rep4b = json.loads(out4b)
+    check("check with problems returns 1 (fail-closed)",
+          rc4b == 1 and rep4b.get("ok") is False and len(rep4b.get("problems", [])) > 0, rep4b)
+
+    # v4: already-migrated branch with failed integrity must exit 1.
+    fresh_db()
+    rc_m, out_m, _ = run_migrate("--backup-dir", os.path.join(HERE, "test-backups"))
+    check("migrate for integrity-failure test ok", rc_m == 0)
+    real_snap = mig.snapshot_state
+
+    def bad_snap(conn):
+        s = real_snap(conn)
+        s["integrity_ok"] = False
+        return s
+
+    mig.snapshot_state = bad_snap
+    try:
+        conn = sqlite3.connect(TEST_DB)
+        rc_bad, rep_bad = mig.do_migrate(conn, TEST_DB, os.path.join(HERE, "test-backups"))
+        conn.close()
+    finally:
+        mig.snapshot_state = real_snap
+    check("already-migrated with integrity failure returns 1",
+          rc_bad == 1 and rep_bad.get("ok") is False, rep_bad)
+
     # Rollback: no --backup -> exit 2, untouched.
     fresh_db()
     rc5, out5, _ = run_migrate("--rollback")
     rep5 = json.loads(out5)
     check("rollback without --backup refused (exit 2)", rc5 == 2 and rep5.get("ok") is False, rep5)
-    # Migrate, add verified sightings, rollback without --allow-data-loss refuses.
+
+    # v4: --allow-data-loss no longer exists (usage error, exit 2).
+    rc5b, out5b, err5b = run_migrate("--rollback", "--backup", "/nonexistent/x.db",
+                                     "--allow-data-loss")
+    check("removed --allow-data-loss is a usage error (exit 2)",
+          rc5b == 2, (out5b, err5b))
+
+    # v4 migration-window restore: migrate, then roll back immediately with
+    # zero post-backup writes -> whole-DB restore, lineage tables gone.
     rc6, out6, _ = run_migrate("--backup-dir", os.path.join(HERE, "test-backups"))
     rep6 = json.loads(out6)
     backup6 = rep6.get("backup_path")
-    check("migrate for rollback test ok", rc6 == 0 and rep6.get("ok") is True)
-    conn = sqlite3.connect(TEST_DB)
-    sl.record_sighting(conn, *SYN[0], fp_a, "matin-vmess", T0, "run-9", "ev-r9")
-    conn.commit()
-    conn.close()
+    check("migrate for window-restore test ok", rc6 == 0 and rep6.get("ok") is True)
     rc7, out7, _ = run_migrate("--rollback", "--backup", backup6)
     rep7 = json.loads(out7)
-    check("rollback refuses when it would destroy verified rows",
-          rc7 == 1 and rep7.get("ok") is False, rep7)
-    conn = sqlite3.connect(TEST_DB)
-    check("refused rollback leaves lineage intact",
-          conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='node_sources'").fetchone() is not None)
-    conn.close()
-    rc8, out8, _ = run_migrate("--rollback", "--backup", backup6, "--allow-data-loss")
-    rep8 = json.loads(out8)
-    check("rollback with --allow-data-loss restores",
-          rc8 == 0 and rep8.get("ok") is True, rep8)
+    check("window restore succeeds with zero post-backup writes",
+          rc7 == 0 and rep7.get("ok") is True and rep7.get("mode") == "restored", rep7)
     conn = sqlite3.connect(TEST_DB)
     check("restored DB has no lineage tables",
           conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='node_sources'").fetchone() is None)
@@ -448,9 +600,103 @@ def main():
           conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok")
     conn.close()
 
+    # v4 retain case 1: appended events after the backup (same key, second
+    # event). A key-set-only check cannot see the second event at all; the
+    # v4 digest check detects it and retains everything.
+    fresh_db()
+    rc8, out8, _ = run_migrate("--backup-dir", os.path.join(HERE, "test-backups"))
+    rep8 = json.loads(out8)
+    backup8 = rep8.get("backup_path")
+    check("migrate for retain-event test ok", rc8 == 0 and rep8.get("ok") is True)
+    conn = sqlite3.connect(TEST_DB)
+    sl.record_sighting(conn, *SYN[0], fp_a, "matin-vmess", T0, "run-1", "ev-k1")
+    sl.record_sighting(conn, *SYN[0], fp_a, "matin-vmess", T0 + 100, "run-2", "ev-k2")
+    conn.commit()
+    lin_before = sl.lineage(conn, *SYN[0], fp_a)
+    check("same-key second event recorded (count=2)",
+          len(lin_before) == 1 and lin_before[0]["sighting_count"] == 2, lin_before)
+    conn.close()
+    rc9, out9, _ = run_migrate("--rollback", "--backup", backup8)
+    rep9 = json.loads(out9)
+    check("retain: appended events refuse whole-DB restore",
+          rc9 == 0 and rep9.get("ok") is True and rep9.get("mode") == "retained"
+          and rep9.get("whole_db_restore") == "refused", rep9)
+    check("retain: sighting events listed",
+          any("sighting events" in c for c in rep9.get("post_backup_changes", [])), rep9)
+    conn = sqlite3.connect(TEST_DB)
+    lin_after = sl.lineage(conn, *SYN[0], fp_a)
+    check("retain: appended events survive (lossless)",
+          len(lin_after) == 1 and lin_after[0]["sighting_count"] == 2
+          and lin_after[0]["last_evidence"] == "run-2", lin_after)
+    check("retain: lineage tables kept", mig.table_exists(conn, "node_sources"))
+    conn.close()
+    # A backup taken AFTER migration already contains lineage tables, so it
+    # is not a valid pre-migration rollback target and is refused outright.
+    later_backup = os.path.join(HERE, "test-backups", "later-backup-event.db")
+    copy_db(TEST_DB, later_backup)
+    rc9b, out9b, _ = run_migrate("--rollback", "--backup", later_backup)
+    rep9b = json.loads(out9b)
+    check("rollback to a post-migration backup is refused (exit 1)",
+          rc9b == 1 and rep9b.get("ok") is False
+          and any("not a pre-migration backup" in p for p in rep9b.get("problems", [])), rep9b)
+    conn = sqlite3.connect(TEST_DB)
+    check("refused rollback leaves data intact",
+          len(sl.lineage(conn, *SYN[0], fp_a)) == 1
+          and sl.lineage(conn, *SYN[0], fp_a)[0]["sighting_count"] == 2)
+    conn.close()
+
+    # v4 retain case 2: status-log change after the backup.
+    fresh_db()
+    rc10, out10, _ = run_migrate("--backup-dir", os.path.join(HERE, "test-backups"))
+    rep10 = json.loads(out10)
+    backup10 = rep10.get("backup_path")
+    check("migrate for retain-status test ok", rc10 == 0 and rep10.get("ok") is True)
+    conn = sqlite3.connect(TEST_DB)
+    sl.set_source_status(conn, "matin-ss", "paused", T0, "retain test")
+    conn.commit()
+    conn.close()
+    rc11, out11, _ = run_migrate("--rollback", "--backup", backup10)
+    rep11 = json.loads(out11)
+    check("retain: status change refuses whole-DB restore",
+          rc11 == 0 and rep11.get("ok") is True and rep11.get("mode") == "retained"
+          and rep11.get("whole_db_restore") == "refused", rep11)
+    check("retain: status change listed",
+          any("status log" in c for c in rep11.get("post_backup_changes", [])), rep11)
+    conn = sqlite3.connect(TEST_DB)
+    check("retain: status log entry survives (lossless)",
+          sl.current_source_status(conn, "matin-ss") == "paused")
+    conn.close()
+
+    # v4 retain case 3: a new node_tests row after the backup.
+    fresh_db()
+    rc12, out12, _ = run_migrate("--backup-dir", os.path.join(HERE, "test-backups"))
+    rep12 = json.loads(out12)
+    backup12 = rep12.get("backup_path")
+    check("migrate for retain-testrow test ok", rc12 == 0 and rep12.get("ok") is True)
+    conn = sqlite3.connect(TEST_DB)
+    conn.execute(
+        "INSERT INTO node_tests (protocol, host, port, tested_at, result, reason, ms)"
+        " VALUES ('vmess', '203.0.113.99', 443, ?, 'pass', 'retain-test-row', 100)",
+        (T0,))
+    conn.commit()
+    conn.close()
+    rc13, out13, _ = run_migrate("--rollback", "--backup", backup12)
+    rep13 = json.loads(out13)
+    check("retain: new node_tests row refuses whole-DB restore",
+          rc13 == 0 and rep13.get("ok") is True and rep13.get("mode") == "retained"
+          and rep13.get("whole_db_restore") == "refused", rep13)
+    check("retain: node_tests change listed",
+          any("node_tests" in c for c in rep13.get("post_backup_changes", [])), rep13)
+    conn = sqlite3.connect(TEST_DB)
+    check("retain: new node_tests row survives (lossless)",
+          conn.execute("SELECT COUNT(*) FROM node_tests WHERE reason='retain-test-row'").fetchone()[0] == 1)
+    check("retain: counts show the new row kept",
+          counts(conn)["node_tests"] == base["node_tests"] + 1)
+    conn.close()
+
     # ------------------------------------------------ G. source status log
     fresh_db()
-    rc9, out9, _ = run_migrate("--backup-dir", os.path.join(HERE, "test-backups"))
+    rc14, out14, _ = run_migrate("--backup-dir", os.path.join(HERE, "test-backups"))
     conn = sqlite3.connect(TEST_DB)
     sl.set_source_status(conn, "matin-ss", "paused", T0, "two 0% batches")
     sl.set_source_status(conn, "matin-ss", "active", T0 + 100, "recovered")
@@ -469,7 +715,7 @@ def main():
         check("bad status raises", True)
     conn.close()
 
-    print(f"source lineage v3: {len(passed)}/{len(passed) + len(failed)} PASS")
+    print(f"source lineage v4: {len(passed)}/{len(passed) + len(failed)} PASS")
     if failed:
         print("FAILED:", failed)
         return 1

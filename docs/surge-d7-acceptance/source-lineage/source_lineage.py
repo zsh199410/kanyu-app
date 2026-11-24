@@ -1,46 +1,72 @@
-"""Source lineage module v3 (GPT decision 3, revised per Review 6031702642).
+"""Source lineage module v4 (GPT decision 3, revised per Reviews
+6031702642 and 6032131494).
 
-Fixes all 5 gaps GPT found in the v2 design:
- (1) Identity key: NOT just (protocol, host, port). A config variant is
-     (protocol, host, port, config_fingerprint) where the fingerprint is a
-     SHA-256 of the canonical non-credential config (SNI / transport / path /
-     TLS / ALPN / flow ...). Credentials are stripped BEFORE hashing and are
-     never stored, never logged, never committed to the repo. The fingerprint
-     can only be computed by the scraper at parse time from the parsed
-     subscription config; the DB stores no SNI/transport/auth columns
-     (verified against the live pool.db snapshot: nodes/node_tests/
-     phone_failures have no such columns), so historical triplets CANNOT be
-     retroactively fingerprinted. They are backfilled as the single
-     'legacy' variant (fingerprint='legacy', verified=0, NO observation
-     times) -- never fabricated into proof of any variant.
- (2) Primary source is DISPLAY ONLY. Qualification for diversity is a
-     separate determination: a variant qualifies under a source GROUP only
-     when a healthy independent source (status 'active', in a confirmed
-     group) currently provides that exact variant with valid, fresh
-     evidence. Mirrors share one group; paused/disabled/unregistered
-     sources never qualify; a variant with no qualified group is rejected
-     from diversity counting, not counted under None.
- (3) batch_diversity REJECTS duplicate variants and unknown/unverified/
-     untrusted variants. Diversity is computed over ACCEPTED variants only,
-     grouped by confirmed independent source group. Unknown sources never
-     enter the denominator, so they cannot dilute a dominant source into
-     passing. Backfilling sources never clears a node's failure history:
-     this module never touches node_tests / phone_failures.
- (4) record_sighting is event-level idempotent with monotone time:
-     - every sighting is an event (variant, source, ts, evidence,
-       optional event_id); an exact replay (same variant/source/ts, or
-       same event_id) is a no-op -- no count bump, no time change;
-     - first_seen = min(...), last_seen = max(...): out-of-order or
-       replayed evidence can never move last_seen backwards;
-     - evidence (scrape run / batch id) is REQUIRED, non-empty;
-     - historical nodes.source is backfilled as legacy/unverified ONLY,
-       with NULL observation times -- a node's global first_seen /
-       last_seen is never presented as a source's valid observation time.
- (5) Migration is transactional with a verified backup (see
-     migrate_node_sources.py): verify BEFORE commit, --check uses a
-     read-only connection, backups are never overwritten, --rollback
-     restores from a verified backup and refuses when it would destroy
-     verified lineage recorded after the backup (unless --allow-data-loss).
+v4 closes the three contract gaps GPT found in v3 (Review 6032131494,
+COMMENTED, 2026-11-24 09:13). It does NOT redesign the parts that
+already passed; module 1 (trial-small-pool) is frozen and untouched.
+
+ (1) Config fingerprint: v3 stripped password/uuid etc. BEFORE hashing
+     and its tests asserted that configs differing ONLY in credentials
+     share one fingerprint. That violates "auth variants must be
+     distinguished": a dead node could borrow another node's valid
+     records. v4 fingerprints the NORMALIZED COMPLETE valid config with
+     a local stable key: HMAC-SHA256(key, canonical_json(config)).
+     - The key is REQUIRED (bytes or str, non-empty). There is NO
+       unkeyed fallback: calling without a key raises ValueError.
+       A simple unkeyed hash is never used.
+     - The key lives in the scraper's secure config / environment and is
+       passed in by the caller. It is NEVER stored in the DB, NEVER
+       committed to the repo, NEVER logged. Tests use a synthetic test
+       key that must never be used as a production key.
+     - Credentials are inputs to the HMAC only: they stay inside the
+       parse process. Only the 64-hex fingerprint is persisted or
+       published, and an HMAC output does not reveal its inputs.
+     - Display-only fields (name / remark / url / raw / ...) are
+       stripped before hashing; a display-only difference does not
+       change the fingerprint.
+     - Unknown parse fields are INCLUDED in the hash (conservative: any
+       difference -> a different fingerprint). The real scraper's exact
+       parser field set and value-type normalization are UNVERIFIED
+       (the live scraper config was not readable in this round); the
+       caller must normalize types before calling (port int, tls bool,
+       ...) and the integration must verify the field set. Do not guess.
+     - Old fingerprints do NOT auto-upgrade. v3 fingerprints (unkeyed
+       SHA-256 of the credential-stripped config) are different values
+       from v4 HMAC fingerprints for the same config. v3 never ran in
+       production, so no live data carries v3 fingerprints; a DB that
+       does is simply holding different fingerprint values, and this
+       module never rewrites them. Existing failure history stays keyed
+       by the old triplet conservatively: changing fingerprints never
+       clears node_tests / phone_failures.
+ (2) Qualification / batch evidence boundaries (Review 6032131494):
+     - qualified_source_group: age must satisfy 0 <= age <= TTL. A
+       sighting whose last_seen is in the FUTURE (age < 0) is rejected
+       as evidence, exactly like a stale one (age > TTL). It is skipped
+       and an older valid sighting from another qualified source may
+       still qualify the variant.
+     - record_sighting: last_evidence is bound to the NEWEST
+       observation. An out-of-order older sighting still counts as a
+       new event (sighting_count grows, first/last_seen stay monotone)
+       but must NOT overwrite last_evidence with older evidence.
+     - batch_diversity: passes now REQUIRES zero rejected entries.
+       A batch with 3 qualified groups plus 1 unknown/duplicate does
+       NOT pass. The result carries accepted_variants (the accepted
+       exact identities) and publishable. To publish, the caller MUST
+       build a NEW batch from accepted_variants (see rebuild_batch),
+       re-run batch_diversity on it, and require passes. Publishing
+       the ORIGINAL list is forbidden: it still contains the rejected
+       entries. active + 24h freshness of a SOURCE is only a pre-screen
+       of the source; it does not prove that the latest successful
+       scrape still contains this node, nor that VPS/phone passed it.
+       Integration must bind to the latest valid scrape batch and the
+       real health status (see DESIGN.md).
+ (3) Rollback must not lose data: see migrate_node_sources.py v4.
+     Normal rollback only disables the new module / scraper calls and
+     keeps the extra tables and history (backward compatible, no
+     whole-DB overwrite). Whole-DB restore applies ONLY to a migration
+     window with zero post-backup writes, verified by full digests;
+     any unexpected change is refused, and there is no --allow-data-loss
+     switch anymore.
 
 Source status / grouping are CALLER-SUPPLIED (SourceRegistry), built from
 the scraper's own config. The live DB has no enabled/paused column
@@ -55,6 +81,7 @@ Pure SQLite helpers; no network, no publisher, no production writes here --
 the caller owns the connection and the transaction.
 """
 import hashlib
+import hmac
 import json
 import re
 import sqlite3
@@ -62,40 +89,63 @@ import sqlite3
 LEGACY_FINGERPRINT = "legacy"
 _HEX64 = re.compile(r"^[a-f0-9]{64}$")
 
-# Credential / display fields stripped before fingerprinting. A raw URI or
-# password must never reach this module: callers parse the subscription
+# Display-only fields stripped before fingerprinting. Credential fields
+# are deliberately NOT in this set: they are HMAC inputs, so auth
+# variants get different fingerprints. A raw URI or password must never
+# reach this module as a bare string: callers parse the subscription
 # line first and pass only the parsed config dict.
-CREDENTIAL_FIELDS = frozenset({
-    "password", "passwd", "pass", "pswd", "uuid", "id", "user", "username",
-    "token", "secret", "key", "ps", "name", "remark", "url", "raw", "uri",
-    "raw_uri", "link",
+DISPLAY_FIELDS = frozenset({
+    "ps", "name", "remark", "url", "raw", "uri", "raw_uri", "link",
 })
 
+
 # ---------------------------------------------------------------------------
-# Fingerprint
+# Fingerprint (v4: HMAC-SHA256 with a local stable key)
 # ---------------------------------------------------------------------------
 
-def config_fingerprint(config):
-    """SHA-256 hex of the canonical non-credential config.
+def _normalize_key(key):
+    """Return the HMAC key as bytes, or raise. No unkeyed fallback."""
+    if isinstance(key, str):
+        key = key.encode("utf-8")
+    if not isinstance(key, bytes) or len(key) == 0:
+        raise ValueError("HMAC key is required and must be non-empty bytes/str")
+    return key
+
+
+def config_fingerprint(config, key):
+    """HMAC-SHA256 hex of the canonical complete valid config.
 
     config is the PARSED subscription config (dict), e.g.
     {"protocol": "trojan", "host": "...", "port": 443, "sni": "...",
-     "transport": "ws", "path": "/", "tls": True, "alpn": "h2"}.
-    Credential fields (password/uuid/id/user/token/...) and display names
-    are removed before hashing, so two configs differing ONLY in
-    credentials share one fingerprint, and no credential can leak into the
-    fingerprint or the DB. Raises ValueError on non-dict / empty config /
-    config that is empty after stripping.
+     "transport": "ws", "path": "/", "tls": True, "alpn": "h2",
+     "password": "...", "uuid": "..."}.
+    key is the caller's local stable HMAC key (bytes or str, non-empty),
+    passed in from the scraper's secure config / environment. It is never
+    stored, logged or committed by this module.
+
+    Only display fields are stripped before hashing. Credential fields
+    stay in the canonical input, so two configs differing ONLY in
+    credentials get DIFFERENT fingerprints (auth variants are distinct),
+    while the HMAC output itself reveals nothing about them.
+    Unknown fields are included (conservative). Values must be
+    JSON-serializable; the caller must normalize types first (port int,
+    tls bool, ...). Raises ValueError on non-dict / empty config /
+    config empty after stripping / missing or empty key.
     """
     if not isinstance(config, dict):
         raise ValueError("config must be a dict")
+    key = _normalize_key(key)
     clean = {k: v for k, v in config.items()
-             if k not in CREDENTIAL_FIELDS and v is not None}
+             if k not in DISPLAY_FIELDS and v is not None}
     if not clean:
-        raise ValueError("config empty after stripping credentials")
-    canonical = json.dumps(clean, sort_keys=True, separators=(",", ":"),
-                           ensure_ascii=True)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        raise ValueError("config empty after stripping display fields")
+    try:
+        canonical = json.dumps(clean, sort_keys=True, separators=(",", ":"),
+                               ensure_ascii=True)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"config values must be JSON-serializable: {e}")
+    return hmac.new(key, canonical.encode("utf-8"),
+                    hashlib.sha256).hexdigest()
 
 
 def is_verified_fingerprint(fp):
@@ -120,7 +170,7 @@ def _validate_ts(ts):
 
 
 # ---------------------------------------------------------------------------
-# Schema (v3)
+# Schema (v4: unchanged from v3 -- fingerprints are opaque 64-hex values)
 # ---------------------------------------------------------------------------
 
 SCHEMA_STATEMENTS = [
@@ -200,7 +250,7 @@ V2_COLUMNS = ["protocol", "host", "port", "source",
 
 
 def ensure_schema(conn):
-    """Create v3 lineage tables + indexes if missing. No data changes."""
+    """Create v4 lineage tables + indexes if missing. No data changes."""
     for stmt in SCHEMA_STATEMENTS:
         conn.execute(stmt)
 
@@ -210,7 +260,9 @@ def table_columns(conn, table):
 
 
 def schema_matches_v3(conn):
-    """True iff all four v3 tables exist with exactly the expected columns."""
+    """True iff all four lineage tables exist with exactly the expected
+    columns. (v4 keeps the v3 table layout; only the fingerprint
+    computation and the evidence/rollback contracts changed.)"""
     for table, cols in EXPECTED_TABLES.items():
         row = conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
@@ -328,7 +380,9 @@ def record_sighting(conn, protocol, host, port, fingerprint, source, ts,
 
     Time is monotone: first_seen = min(...), last_seen = max(...), so
     out-of-order or replayed evidence can never move last_seen backwards.
-    sighting_count grows only on genuinely new events.
+    last_evidence is bound to the NEWEST observation: an out-of-order
+    older sighting still counts as a new event (sighting_count grows)
+    but must NOT overwrite last_evidence with older evidence.
 
     Returns {"accepted": bool, "reason": str}. Never commits; the caller
     owns the transaction. Never touches nodes / node_tests / phone_failures.
@@ -377,6 +431,9 @@ def record_sighting(conn, protocol, host, port, fingerprint, source, ts,
         " last_seen = MAX(COALESCE(node_variants.last_seen, excluded.last_seen), excluded.last_seen),"
         " verified = 1",
         (protocol, host, port, fingerprint, ts, ts))
+    # last_evidence follows the NEWEST observation only: an out-of-order
+    # older sighting (excluded.last_seen < stored last_seen) keeps the
+    # evidence that belongs to the newer time.
     conn.execute(
         "INSERT INTO node_sources (protocol, host, port, fingerprint, source,"
         " first_seen, last_seen, sighting_count, verified, last_evidence)"
@@ -385,7 +442,9 @@ def record_sighting(conn, protocol, host, port, fingerprint, source, ts,
         " first_seen = MIN(COALESCE(node_sources.first_seen, excluded.first_seen), excluded.first_seen),"
         " last_seen = MAX(COALESCE(node_sources.last_seen, excluded.last_seen), excluded.last_seen),"
         " sighting_count = node_sources.sighting_count + 1,"
-        " verified = 1, last_evidence = excluded.last_evidence",
+        " verified = 1,"
+        " last_evidence = CASE WHEN excluded.last_seen >= node_sources.last_seen"
+        " THEN excluded.last_evidence ELSE node_sources.last_evidence END",
         (protocol, host, port, fingerprint, source, ts, ts, evidence))
     return {"accepted": True, "reason": "recorded"}
 
@@ -464,9 +523,19 @@ def qualified_source_group(conn, registry, protocol, host, port, fingerprint,
     None. Qualification requires a sighting of THIS exact variant from a
     source that is (a) verified (real fingerprint, real evidence), (b)
     status 'active' in the registry, (c) in a confirmed group, and
-    (d) fresh: last_seen within fresh_within_seconds of `now`.
-    Returns the group name of the most recent such sighting, else None.
-    A legacy variant (fingerprint 'legacy') never qualifies."""
+    (d) fresh: the sighting's age satisfies 0 <= age <=
+    fresh_within_seconds relative to `now`. A sighting dated in the
+    FUTURE (age < 0) is rejected as evidence, exactly like a stale one;
+    an older valid sighting from another qualified source may still
+    qualify the variant. Returns the group name of the most recent such
+    sighting, else None. A legacy variant (fingerprint 'legacy') never
+    qualifies.
+
+    NOTE: source 'active' + freshness is only a PRE-SCREEN of the
+    source. It does not prove that the latest successful scrape still
+    contains this node, nor that VPS/phone passed it. Integration must
+    bind qualification to the latest valid scrape batch and the real
+    health status (see DESIGN.md)."""
     if fingerprint == LEGACY_FINGERPRINT or not is_verified_fingerprint(fingerprint):
         return None
     _validate_ts(now)
@@ -479,7 +548,8 @@ def qualified_source_group(conn, registry, protocol, host, port, fingerprint,
         " ORDER BY last_seen DESC, source ASC",
         (protocol, host, port, fingerprint)).fetchall()
     for source, last_seen in rows:
-        if now - last_seen > fresh_within_seconds:
+        age = now - last_seen
+        if age < 0 or age > fresh_within_seconds:
             continue
         if not registry.is_qualified(source):
             continue
@@ -491,6 +561,15 @@ def qualified_source_group(conn, registry, protocol, host, port, fingerprint,
 # Batch diversity (reject-first, computed over accepted variants only)
 # ---------------------------------------------------------------------------
 
+def rebuild_batch(diversity_result):
+    """Build a NEW batch from a diversity result: the accepted exact
+    identities only, in first-seen order. Publishing MUST use a rebuilt
+    batch (re-run through batch_diversity, requiring passes); the
+    ORIGINAL candidate list -- which still contains the rejected entries
+    -- must never be published."""
+    return [tuple(v) for v in diversity_result.get("accepted_variants", [])]
+
+
 def batch_diversity(conn, registry, candidates, now,
                     fresh_within_seconds=86400):
     """Diversity of a candidate batch, counted per config variant under its
@@ -500,20 +579,27 @@ def batch_diversity(conn, registry, candidates, now,
     Reject-first: a candidate is REJECTED (excluded from every count) when
       - it is a duplicate variant already in this batch, or
       - it has no qualified source group (unknown / unverified / paused /
-        disabled / legacy / stale evidence).
+        disabled / legacy / stale evidence / future-dated evidence).
     Unknown sources never enter the denominator, so they cannot dilute a
     dominant source into passing.
 
     Each ACCEPTED variant contributes exactly 1, under its qualified group.
-    passes = distinct qualified groups >= 3 AND max group share <= 1/3
-    (over accepted total). Returns {"counts", "distinct", "total",
-    "accepted", "rejected": [{"variant", "reason"}], "max_share", "passes"}.
+    passes = NO rejected entries AND distinct qualified groups >= 3 AND
+    max group share <= 1/3 (over accepted total). A batch with any
+    rejected entry does NOT pass, even if the accepted remainder would
+    pass on its own: the caller must rebuild a new batch from
+    accepted_variants and re-run this function on it.
+    publishable is True exactly when passes is True (this exact batch may
+    be published). Returns {"counts", "distinct", "total", "accepted",
+    "accepted_variants", "rejected": [{"variant", "reason"}], "max_share",
+    "passes", "publishable"}.
     Never modifies node_tests / phone_failures (failure history is never
     cleared by source bookkeeping)."""
     _validate_ts(now)
     counts = {}
     rejected = []
     seen_variants = set()
+    accepted_variants = []
     accepted = 0
     for cand in candidates:
         if len(cand) != 4:
@@ -532,14 +618,19 @@ def batch_diversity(conn, registry, candidates, now,
             continue
         counts[group] = counts.get(group, 0) + 1
         accepted += 1
+        accepted_variants.append(key)
     distinct = len(counts)
     max_share = (max(counts.values()) / accepted) if accepted else 0.0
+    passes = (len(rejected) == 0 and distinct >= 3
+              and max_share <= 1.0 / 3.0)
     return {
         "counts": counts,
         "distinct": distinct,
         "total": accepted,
         "accepted": accepted,
+        "accepted_variants": accepted_variants,
         "rejected": rejected,
         "max_share": max_share,
-        "passes": distinct >= 3 and max_share <= 1.0 / 3.0,
+        "passes": passes,
+        "publishable": passes,
     }
