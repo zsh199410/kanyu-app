@@ -1,0 +1,109 @@
+--- a/single-writer/pool_db_source.py
++++ b/single-writer/pool_db_source.py
+@@ -9,7 +9,10 @@
+ """
+ from __future__ import annotations
+ 
++import hashlib
++import json
+ import math
++import os
+ from pathlib import Path
+ import sqlite3
+ from urllib.parse import quote
+@@ -49,6 +52,66 @@
+     return protocol, host, port
+ 
+ 
++# N2 unified banlist (integration-03 v2, Review 6033772552 item 3):
++# the live publish chain's single source of blocked keys must be the SAME
++# trusted banlist version the screening/cli path uses: blocklist table
++# UNION rejected_nodes.json (GPT-rejected). The rejected file is the one
++# this PR delivers to /opt/free-node-program/pool/rejected_nodes.json;
++# reading that same file here (not a second copy) keeps one canonical
++# version. Missing/corrupt/empty/duplicate entries fail CLOSED
++# (SourceRefused): a missing or damaged rejected file must never
++# silently become "no rejects".
++REJECTED_NODES_DEFAULT = "/opt/free-node-program/pool/rejected_nodes.json"
++_REJECTED_PROTOCOLS = ("ss", "trojan", "vmess")
++
++
++def _load_rejected_keys(path):
++    """Strictly load rejected_nodes.json; return (keys, file_version).
++
++    Mirrors pool.blocklist_common.load_rejected_strict: file must exist,
++    be valid JSON with a non-empty entries list, each entry a well-formed
++    (protocol, host, port) triple with a non-empty decision_ref, no
++    duplicates. Any violation raises SourceRefused (fail-closed).
++    """
++    if not path or not os.path.exists(path):
++        raise SourceRefused("rejected_file_missing")
++    try:
++        with open(path, "r", encoding="utf-8") as f:
++            data = json.load(f)
++    except (OSError, ValueError) as exc:
++        raise SourceRefused("rejected_file_unreadable") from exc
++    if not isinstance(data, dict):
++        raise SourceRefused("rejected_file_not_object")
++    entries = data.get("entries")
++    if not isinstance(entries, list) or not entries:
++        raise SourceRefused("rejected_file_entries_empty")
++    version = data.get("version")
++    if not isinstance(version, int) or isinstance(version, bool) or version < 1:
++        raise SourceRefused("rejected_file_version_invalid")
++    keys = set()
++    for e in entries:
++        if not isinstance(e, dict):
++            raise SourceRefused("rejected_entry_not_object")
++        for field in ("protocol", "host", "port", "decision_ref"):
++            if field not in e:
++                raise SourceRefused("rejected_entry_missing_field")
++        if e["protocol"] not in _REJECTED_PROTOCOLS:
++            raise SourceRefused("rejected_entry_bad_protocol")
++        if not isinstance(e["host"], str) or not e["host"]:
++            raise SourceRefused("rejected_entry_bad_host")
++        if (not isinstance(e["port"], int) or isinstance(e["port"], bool)
++                or not 1 <= e["port"] <= 65535):
++            raise SourceRefused("rejected_entry_bad_port")
++        if (not isinstance(e["decision_ref"], str)
++                or not e["decision_ref"].strip()):
++            raise SourceRefused("rejected_entry_bad_decision_ref")
++        key = _key(e["protocol"], e["host"], e["port"])
++        if key in keys:
++            raise SourceRefused("rejected_entry_duplicate")
++        keys.add(key)
++    return keys, version
++
++
+ def read_db_snapshot(path):
+     """Return normalized rows, candidate metadata and DB config text.
+ 
+@@ -99,6 +162,19 @@
+         blocked = set()
+         for row in _rows(conn, "SELECT protocol,host,port FROM blocklist"):
+             blocked.add(_key(*row))
++        table_blocked = set(blocked)
++        rejected, rejected_version = _load_rejected_keys(
++            os.environ.get("P2P3_REJECTED_NODES", REJECTED_NODES_DEFAULT))
++        blocked |= rejected
++        # Same canonical version as pool.screening.load_banlist, so the
++        # publish chain and the screening/cli path can prove they used
++        # the same trusted banlist version.
++        canon = json.dumps({
++            "blocked": sorted(table_blocked),
++            "rejected": sorted(rejected),
++            "rejected_version": rejected_version,
++        }, ensure_ascii=False, sort_keys=True)
++        banlist_version = hashlib.sha256(canon.encode("utf-8")).hexdigest()
+         config = {}
+         if "config" in names:
+             for key, val in _rows(conn, "SELECT key,value FROM config"):
+@@ -120,6 +196,8 @@
+             "latest_pass_ms": tests,
+             "db_pins": pins,
+             "blocked_keys": blocked,
++            "rejected_keys": rejected,
++            "banlist_version": banlist_version,
+             "config_raw": config,
+             "first_published": first_published,
+             "winner_reports": winner_reports,

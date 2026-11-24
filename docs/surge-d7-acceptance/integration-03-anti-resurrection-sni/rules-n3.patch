@@ -1,0 +1,119 @@
+--- a/pool/rules.py
++++ b/pool/rules.py
+@@ -2,6 +2,7 @@
+ 
+ import ipaddress
+ 
++from .blocklist_common import is_valid_cert_identity, is_valid_dns_hostname
+ from .crawler import AEAD_METHODS, parse_surge_line
+ from .geo import IpApi, code_to_flag, display_name, hint_to_code, is_cf_or_reserved
+ 
+@@ -37,6 +38,31 @@
+     return False
+ 
+ 
++def _vmess_no_sni(rec):
++    """vmess + TLS + 无有效证书身份 → 不可准入（v2 严格版）。
++
++    有效证书身份指严格校验通过的 SNI（合法 DNS hostname 或合法 IP
++    SAN；占位符、空白、非法 hostname、异常 IP 形式一律无效）。
++    SNI 无效时：拨号 host 为 IP → 拒绝（IP 拨号无 SNI 无法校验）；
++    拨号 host 为严格合法 DNS hostname → 不拒绝（hostname 本身就是
++    有效证书身份）；拨号 host 既非 IP 也非合法 DNS → 拒绝（不能只因
++    ipaddress 抛错就认定是合法 DNS）。
++    绝不补猜 SNI、绝不跳过证书验证；被拒的记录保留库存，只是不进
++    测试/发布候选。
++    """
++    if rec["protocol"] != "vmess" or not rec.get("tls", True):
++        return False
++    if is_valid_cert_identity(rec.get("sni")):
++        return False
++    host = rec.get("host")
++    try:
++        ipaddress.ip_address(host)
++        return True
++    except (ValueError, TypeError):
++        pass
++    return not is_valid_dns_hostname(host)
++
++
+ def pre_filter(rec, private_hosts):
+     """返回 (保留?, 原因)：原因仅计数，不含任何敏感内容。"""
+     if is_private(rec["host"], private_hosts):
+@@ -49,6 +75,8 @@
+             return (False, "unsupported-transport")
+         if not rec.get("uuid"):
+             return (False, "missing-uuid")
++        if _vmess_no_sni(rec):
++            return (False, "vmess-no-sni")
+     elif proto == "trojan":
+         if rec.get("t_type", "tcp") not in ("tcp", "ws", ""):
+             return (False, "unsupported-transport")
+@@ -89,6 +117,10 @@
+                 line += f", ws-headers=Host:{rec['ws_host']}"
+         return line
+     if proto == "vmess":
++        # 防御纵深：未走 pre_filter 的路径误入时直接抛错、计 build_failed。
++        # 若 GPT 只要严格的 pre_filter/_filter_reason 范围，可删此两行。
++        if _vmess_no_sni(rec):
++            raise ValueError("vmess-no-sni")
+         line = (f"{display} = vmess, {host}, {port}, username={rec['uuid']}, "
+                 f"vmess-aead=true")
+         if rec.get("tls", True):
+--- a/pool/tester.py
++++ b/pool/tester.py
+@@ -3,6 +3,7 @@
+ 绝不把配置、URI、密码写进日志；sing-box stderr 默认丢弃（调试时可用环境变量开启）。
+ """
+ 
++import ipaddress
+ import json
+ import os
+ import socket
+@@ -12,6 +13,7 @@
+ import time
+ from concurrent.futures import ThreadPoolExecutor
+ 
++from .blocklist_common import is_valid_cert_identity, is_valid_dns_hostname
+ from .crawler import AEAD_METHODS
+ 
+ SB = "/usr/local/bin/sing-box"
+@@ -19,6 +21,29 @@
+ DEBUG = os.environ.get("POOL_TEST_DEBUG") == "1"
+ 
+ 
++def _vmess_no_sni(rec):
++    """vmess + TLS + 无有效证书身份 → 不可准入（v2 严格版）。
++
++    与 rules.py 的同名函数同款同序：有效证书身份指严格校验通过的
++    SNI（合法 DNS hostname 或合法 IP SAN；占位符、空白、非法
++    hostname、异常 IP 形式一律无效）。SNI 无效时：拨号 host 为 IP
++    → 拒绝；拨号 host 为严格合法 DNS hostname → 不拒绝（hostname
++    本身就是有效证书身份）；既非 IP 也非合法 DNS → 拒绝。
++    绝不补猜 SNI、绝不跳过证书验证。
++    """
++    if rec["protocol"] != "vmess" or not rec.get("tls", True):
++        return False
++    if is_valid_cert_identity(rec.get("sni")):
++        return False
++    host = rec.get("host")
++    try:
++        ipaddress.ip_address(host)
++        return True
++    except (ValueError, TypeError):
++        pass
++    return not is_valid_dns_hostname(host)
++
++
+ def _filter_reason(rec):
+     proto = rec["protocol"]
+     if proto == "vmess":
+@@ -28,6 +53,8 @@
+             return "unsupported-transport"
+         if not rec.get("uuid"):
+             return "missing-uuid"
++        if _vmess_no_sni(rec):
++            return "vmess-no-sni"
+     elif proto == "trojan":
+         if rec.get("t_type", "tcp") not in ("tcp", "ws", ""):
+             return "unsupported-transport"
