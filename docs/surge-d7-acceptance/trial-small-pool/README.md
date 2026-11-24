@@ -17,5 +17,11 @@ This independent module is NOT a drop-in patch for either live script.
 
 ## Tests
 node test_small_trial.js
+node test_trial_adapter.js
 
-14 deterministic cases use only synthetic identity fingerprints. The same functions and cases were executed in the isolated JavaScript authoring runtime, 14/14 passed. Node runtime test in the actual trial environment is still pending. Actual adapter, manifest/replay checks, dual-target controls and device end-to-end tests require the exact live trial source; no claim of integrated repair.
+14 deterministic cases use only synthetic identity fingerprints. The same functions and cases were executed in the isolated JavaScript authoring runtime, 14/14 passed. **Re-verified with real Node v24.22.1 in VPS isolation: 14/14 passed.**
+
+## v2: adapter integration (trial_adapter.js, ADAPTER.md)
+- `adaptTrialBatch(snapshot, cursor)` connects this reference to the real trial receiver contract: it takes an already-authenticated verified snapshot (manifest SHA, generation, nodes, observations) and returns the batch plan + diagnostic-only classifications. It never permits promotion or pruning.
+- 12 adapter tests (test_trial_adapter.js) cover: 1-node diagnostic-only, 2-node missing observation, 3-node delegation, empty trial, rejection of unknown-identity observations / bad manifest SHA / negative generation / duplicate node id / 7 nodes / invalid raw status, cursor rotation, and success never permitting promotion. **12/12 passed with real Node v24.22.1 in VPS isolation.**
+- The adapter is a pure-function reference. Full integration verification (manifest/replay checks, dual-target controls, device end-to-end) still requires the exact live trial source; no claim of integrated repair.
