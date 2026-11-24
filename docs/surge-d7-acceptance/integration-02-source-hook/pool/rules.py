@@ -1,6 +1,7 @@
 """优选规则引擎：纯规则、可审计；排序按稳定性，VPS 延迟绝不作手机排名。"""
 
 import ipaddress
+import re
 
 from .crawler import AEAD_METHODS, parse_surge_line
 from .geo import IpApi, code_to_flag, display_name, hint_to_code, is_cf_or_reserved
@@ -37,6 +38,24 @@ def is_private(host, private_hosts):
     return False
 
 
+# B10-EXTENSION v2 (GPT 7121245603, confirmed): a vmess uuid must be a
+# legal UUID in the standard 8-4-4-4-12 hex shape. Only the SHAPE is
+# checked (version/variant nibbles are not policed); case is free.
+# A comma-containing uuid is reported as "comma-uuid" first (v1
+# behaviour preserved: the comma is the more specific defect); a
+# comma-free but malformed uuid is "invalid-uuid". Neither check
+# truncates, replaces or rewrites the credential, and no credential
+# is ever recorded by this module.
+UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
+def is_valid_uuid(u):
+    """True iff u is a string in 8-4-4-4-12 hex UUID shape."""
+    return isinstance(u, str) and bool(UUID_RE.match(u))
+
+
 def pre_filter(rec, private_hosts):
     """返回 (保留?, 原因)：原因仅计数，不含任何敏感内容。"""
     if is_private(rec["host"], private_hosts):
@@ -49,12 +68,17 @@ def pre_filter(rec, private_hosts):
             return (False, "unsupported-transport")
         if not rec.get("uuid"):
             return (False, "missing-uuid")
-        # B10-EXTENSION (same defect class as B10, flagged for GPT
-        # confirmation): username= is a comma-split Surge param too, so
-        # a comma in the uuid corrupts the line the same way a comma in
-        # a password does. Live prevalence re-measured in the probe.
+        # B10-EXTENSION (GPT 7121245603, confirmed): username= is a
+        # comma-split Surge param too, so a comma in the uuid corrupts
+        # the line the same way a comma in a password does. Live
+        # prevalence re-measured in the probe.
         if "," in rec.get("uuid", ""):
             return (False, "comma-uuid")
+        # B10-EXTENSION v2 (GPT 7121245603): the uuid must also be a
+        # legal 8-4-4-4-12 hex UUID; a malformed uuid is refused from
+        # publish the same way (never truncated or rewritten).
+        if not is_valid_uuid(rec.get("uuid", "")):
+            return (False, "invalid-uuid")
     elif proto == "trojan":
         if rec.get("t_type", "tcp") not in ("tcp", "ws", ""):
             return (False, "unsupported-transport")
@@ -106,7 +130,10 @@ def build_surge_line(rec, display):
         return line
     if proto == "vmess":
         # B10-EXTENSION: comma in the uuid corrupts username= the same way.
+        # B10-EXTENSION v2 (GPT 7121245603): malformed uuids are refused too.
         if "," in rec.get("uuid", ""):
+            raise ValueError("bad uuid")
+        if not is_valid_uuid(rec.get("uuid", "")):
             raise ValueError("bad uuid")
         line = (f"{display} = vmess, {host}, {port}, username={rec['uuid']}, "
                 f"vmess-aead=true")

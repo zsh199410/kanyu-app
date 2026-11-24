@@ -30,26 +30,41 @@ GPT rulings applied (Issue #73 comment 7120382777, 2026-11-24 10:40):
       still records such nodes: the password is valid config and the
       node is real; only the Surge-line expression is broken. B10 gates
       PUBLISH, not lineage.
-      B10-EXTENSION (same defect class, flagged for GPT confirmation):
-      a vmess uuid containing "," breaks the Surge line the same way
+      B10-EXTENSION (GPT 7121245603, CONFIRMED -- retained): a vmess
+      uuid containing "," breaks the Surge line the same way
       (username= is a comma-split param), so it is rejected the same
       way (pre_filter reason "comma-uuid", build_surge_line raises).
-      Live prevalence this round: re-measured in the probe (expect 0).
-  O1  vmess `net` whitelist (scrape-layer admission): only explicitly
-      supported transports are admitted to lineage -- {"tcp", "ws", ""}.
-      An unknown net (grpc/raw/http/xhttp/h2/none, or a malformed value
-      such as "tcp,udp") is NOT fingerprinted and NOT recorded; it is
-      counted in the isolation audit (counts by net value) and its
-      history (nodes / node_tests) is NEVER touched -- the hook only
-      gates lineage, never the crawl, never history. The gate is scoped
-      to vmess net ONLY (O1's scope): trojan t_type and ss method are
-      NOT gated here -- pre_filter already rejects them from publish,
-      and their lineage is real source evidence; gating them would hide
-      300+ real records' attribution per round without a ruling behind
-      it. If GPT wants the broader gate, it is a one-line extension of
-      admission_gate(). Canonicalization itself keeps the RAW net value
-      (R3): the gate is a policy layer in the recorder, not a silent
-      fold.
+      v2 adds a UUID FORMAT check (rules.is_valid_uuid): a uuid must
+      be a legal 8-4-4-4-12 hex UUID; a malformed uuid is refused
+      from publish as "invalid-uuid". Nothing is ever truncated,
+      replaced or rewritten, and no credential is ever recorded.
+      Live prevalence this round: re-measured in the probe.
+  O1 v2 (GPT 7121245603): the vmess-net-only whitelist is EXPANDED to
+      a protocol / transport / encryption SUPPORT MATRIX (see
+      SUPPORT_MATRIX below). A record is admitted to lineage ONLY if
+      its combination is SUPPORTED, i.e. the parser extracts it AND
+      the tester verifies it losslessly AND the Surge line expresses
+      it losslessly. Trojan gRPC and ss non-AEAD are NOT judged dead
+      by name: each is analysed leg by leg (see the matrix rows), and
+      rejected only because a leg of the chain actually breaks
+      (tester refuses; Surge drops the transport / plugin). A
+      combination failing ANY leg is rejected from lineage admission;
+      it is counted in the isolation audit (by reason/detail) with
+      the ORIGINAL source counts, and its history (nodes /
+      node_tests) is NEVER touched -- the hook only gates lineage,
+      never the crawl, never history. The filtered denominator is
+      never presented as the full population. Unknown combinations
+      fail closed ("unknown-protocol" / the gate's default reject).
+      The gate is a policy layer in the recorder, not a silent fold:
+      canonicalization itself keeps the RAW values (R3).
+      D2 note: vmess security values the tester passes through
+      losslessly (auto / aes-128-gcm / chacha20-poly1305 / none) are
+      admitted; the Surge line carries no security field, so a
+      non-auto security yields a SECOND variant with security="auto"
+      on the Surge entry -- that D2-accepted divergence is
+      documented in the matrix, not hidden. Unknown security values
+      are NOT covered by D2: the tester folds them to "auto", so the
+      actual config is unverifiable as-is and the gate rejects them.
 
 Canonicalization rules (R1-R8; proven by the 17 dual-entry cases):
   R1 strip metadata/display: drop `source`, `name_hint` (and any key in
@@ -107,14 +122,127 @@ import os
 
 try:
     from . import source_lineage as sl
+    from .crawler import AEAD_METHODS
 except ImportError:  # imported as a top-level module in tests
     import source_lineage as sl
+    from crawler import AEAD_METHODS
 
 KEY_ENV_VAR = "POOL_LINEAGE_HMAC_KEY"
 REGISTRY_FILENAME = "source_groups.json"
 
-# O1: explicitly supported vmess transports (scrape-layer admission).
+# O1 v2: protocol / transport / encryption support matrix (GPT 7121245603).
+# A combination is SUPPORTED only if the parser extracts it AND the
+# tester verifies it losslessly AND the Surge line expresses it
+# losslessly. The gate (admission_gate) implements this matrix; the
+# SUPPORT_MATRIX table below is the human-readable record of the same
+# decisions, and the v2 test suite asserts the two agree row by row.
+# Only combinations the current implementation actually supports are
+# listed as admitted -- nothing unverified is guessed in.
 SUPPORTED_VMESS_NET = frozenset({"tcp", "ws", ""})
+# The exact set tester.build_config() passes through without folding
+# (any other security value is silently folded to "auto" = lossy, so
+# the actual config is unverifiable as-is). The comparison is
+# case-sensitive on purpose: it mirrors build_config() exactly.
+SUPPORTED_VMESS_SECURITY = frozenset({"auto", "aes-128-gcm",
+                                       "chacha20-poly1305", "none"})
+SUPPORTED_TROJAN_TTYPE = frozenset({"tcp", "ws", ""})
+
+# Support matrix rows. Columns: protocol / transport / encryption are
+# the combination being judged; parser / tester / surge state what
+# each leg does with it; admitted is the gate verdict; reason is the
+# gate's rejection reason ("" when admitted). "surge~" marks the
+# D2-accepted divergence (see the O1 v2 paragraph in the docstring).
+SUPPORT_MATRIX = [
+    # -- vmess: net x security x tls ------------------------------------
+    {"protocol": "vmess", "transport": "tcp", "encryption": "auto, tls",
+     "parser": "extracts", "tester": "verifies", "surge": "expresses",
+     "admitted": True, "reason": ""},
+    {"protocol": "vmess", "transport": "ws", "encryption": "auto, tls",
+     "parser": "extracts", "tester": "verifies", "surge": "expresses",
+     "admitted": True, "reason": ""},
+    {"protocol": "vmess", "transport": "(empty net -> tcp)",
+     "encryption": "auto, tls",
+     "parser": "extracts", "tester": "verifies", "surge": "expresses",
+     "admitted": True, "reason": ""},
+    {"protocol": "vmess", "transport": "tcp / ws / empty",
+     "encryption": "aes-128-gcm / chacha20-poly1305 / none, tls",
+     "parser": "extracts", "tester": "verifies (passes through)",
+     "surge": "D2 divergence: line carries no security; Surge entry "
+              "yields auto as a SECOND variant (documented, not hidden)",
+     "admitted": True, "reason": ""},
+    {"protocol": "vmess",
+     "transport": "grpc / raw / http / xhttp / h2 / none / 'tcp,udp' / malformed",
+     "encryption": "any",
+     "parser": "extracts", "tester": "rejects (unsupported-transport)",
+     "surge": "drops the transport; round-trip returns tcp (lossy)",
+     "admitted": False, "reason": "unsupported-transport"},
+    {"protocol": "vmess", "transport": "tcp / ws / empty",
+     "encryption": "no TLS",
+     "parser": "extracts", "tester": "refuses (vmess-non-tls)",
+     "surge": "expresses (omits tls=true) -- but not verifiable",
+     "admitted": False, "reason": "vmess-non-tls"},
+    {"protocol": "vmess", "transport": "tcp / ws / empty",
+     "encryption": "security other than auto / aes-128-gcm / "
+                   "chacha20-poly1305 / none, tls",
+     "parser": "extracts", "tester": "folds to auto (lossy, unverifiable as-is)",
+     "surge": "line carries no security",
+     "admitted": False, "reason": "unsupported-security"},
+    {"protocol": "vmess", "transport": "any", "encryption": "uuid missing",
+     "parser": "extracts (empty)", "tester": "refuses (missing-uuid)",
+     "surge": "username= empty",
+     "admitted": False, "reason": "missing-uuid"},
+    # -- trojan -----------------------------------------------------------
+    {"protocol": "trojan", "transport": "tcp / ws / empty",
+     "encryption": "password present",
+     "parser": "extracts", "tester": "verifies", "surge": "expresses",
+     "admitted": True, "reason": ""},
+    {"protocol": "trojan", "transport": "grpc / other",
+     "encryption": "password present",
+     "parser": "extracts", "tester": "rejects (unsupported-transport)",
+     "surge": "drops t_type silently; round-trip returns tcp (lossy) -- "
+              "would publish as plain trojan",
+     "admitted": False, "reason": "unsupported-transport"},
+    {"protocol": "trojan", "transport": "any",
+     "encryption": "password missing",
+     "parser": "extracts (empty)", "tester": "refuses (missing-password)",
+     "surge": "password= empty",
+     "admitted": False, "reason": "missing-password"},
+    # -- ss ---------------------------------------------------------------
+    {"protocol": "ss", "transport": "AEAD method, no plugin",
+     "encryption": "password present",
+     "parser": "extracts", "tester": "verifies", "surge": "expresses",
+     "admitted": True, "reason": ""},
+    {"protocol": "ss", "transport": "non-AEAD method",
+     "encryption": "password present",
+     "parser": "extracts",
+     "tester": "rejects (ss-method) -- NOT verifiable; judged by the "
+               "chain, not by the name",
+     "surge": "line CAN carry encrypt-method losslessly in text "
+              "(round-trip matches) -- but pre_filter bars publish",
+     "admitted": False, "reason": "ss-method"},
+    {"protocol": "ss", "transport": "any method, plugin present",
+     "encryption": "password present",
+     "parser": "extracts", "tester": "rejects (ss-plugin)",
+     "surge": "line carries no plugin (lossy); no supported plugin today",
+     "admitted": False, "reason": "ss-plugin"},
+    {"protocol": "ss", "transport": "any", "encryption": "password missing",
+     "parser": "extracts (empty)", "tester": "refuses (missing-password)",
+     "surge": "password= empty",
+     "admitted": False, "reason": "missing-password"},
+    # -- unknown ----------------------------------------------------------
+    {"protocol": "(other)", "transport": "any", "encryption": "any",
+     "parser": "n/a", "tester": "n/a", "surge": "n/a",
+     "admitted": False, "reason": "unknown-protocol"},
+]
+
+# All rejection reasons the gate can return (the matrix above is the
+# authority; the test asserts every row's reason is in this set and
+# every set member appears in the matrix).
+GATE_REASONS = frozenset({
+    "vmess-non-tls", "unsupported-security",
+    "missing-uuid", "unsupported-transport", "missing-password",
+    "ss-method", "ss-plugin", "unknown-protocol",
+})
 
 
 class LineageUnavailable(Exception):
@@ -183,17 +311,47 @@ def fingerprint_for_record(rec, key):
 def admission_gate(rec):
     """(admissible, reason, detail) for LINEAGE admission.
 
-    O1 scope: vmess `net` only. An inadmissible record is NOT
-    fingerprinted and NOT recorded; the caller counts it in the
-    isolation audit keyed by (reason, detail) and leaves history
-    untouched. Trojan t_type and ss method are deliberately NOT gated
-    here (see the O1 paragraph in the module docstring).
+    O1 v2 (GPT 7121245603): implements SUPPORT_MATRIX above. Check
+    order follows pre_filter() where the checks overlap, so the first
+    failing leg is reported the same way by both gates. B10 (comma /
+    malformed credentials) is deliberately NOT checked here: B10 gates
+    PUBLISH only (rules.py); a comma-password / comma-uuid /
+    invalid-uuid node still gets lineage. Unknown protocols fail
+    closed ("unknown-protocol") -- the hook only fires for whitelisted
+    protocols, so this is unreachable in the crawl path, but the gate
+    itself must not default-admit anything it does not know.
     """
     proto = rec.get("protocol")
     if proto == "vmess":
+        if not rec.get("tls"):
+            return (False, "vmess-non-tls", "")
         net = (rec.get("net") or "tcp").lower()
         if net not in SUPPORTED_VMESS_NET:
-            return (False, "unsupported-net", net)
+            return (False, "unsupported-transport", net)
+        if not rec.get("uuid"):
+            return (False, "missing-uuid", "")
+        sec = rec.get("security") or "auto"
+        if sec not in SUPPORTED_VMESS_SECURITY:
+            return (False, "unsupported-security", sec)
+    elif proto == "trojan":
+        t = (rec.get("t_type") or "tcp").lower()
+        if t not in SUPPORTED_TROJAN_TTYPE:
+            return (False, "unsupported-transport", t)
+        if not rec.get("password"):
+            return (False, "missing-password", "")
+    elif proto == "ss":
+        method = (rec.get("method") or "").lower()
+        if method not in AEAD_METHODS:
+            return (False, "ss-method", method)
+        if rec.get("plugin"):
+            # Detail is a fixed marker, not the plugin string: plugin
+            # parameters are caller-controlled text and must never be
+            # echoed into audit counts.
+            return (False, "ss-plugin", "present")
+        if not rec.get("password"):
+            return (False, "missing-password", "")
+    else:
+        return (False, "unknown-protocol", str(proto))
     return (True, "", "")
 
 
