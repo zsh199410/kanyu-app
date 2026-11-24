@@ -1,0 +1,24 @@
+[Unit]
+Description=Formal-pool manifest generator (Issue #73, integration-01)
+Documentation=https://github.com/zsh199410/kanyu-app/issues/73
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/phone-telemetry
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /opt/phone-telemetry/formal_manifest.py --pool /opt/free-node-program/publish/pool-new.txt --db /opt/phone-telemetry/phone-observations.sqlite3 --registry /opt/phone-telemetry/formal-source-groups.json --out /opt/phone-telemetry/formal-manifest.json --trial-pool /opt/surge-bridge/modules/probation-new.txt
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/phone-telemetry
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
