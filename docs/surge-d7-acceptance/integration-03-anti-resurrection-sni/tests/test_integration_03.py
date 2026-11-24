@@ -88,11 +88,24 @@ def part_a_backfill():
           "rc=%d" % r.returncode)
 
     backup = os.path.join(tmp, "pool.db.bak")
+    dlog = os.path.join(tmp, "decisions.jsonl")
     r = run([sys.executable, BACKFILL, "--db", db, "--audit", AUDIT_JSON,
-             "--apply", "--backup", backup, "--by", "i03-test"])
+             "--apply", "--backup", backup, "--by", "i03-test",
+             "--decision-log", dlog])
     check("A3 --apply exit 0", r.returncode == 0, r.stdout[-300:] + r.stderr[-300:])
-    check("A3 备份 SHA 与源库一致",
-          sha256_file(db) == sha256_file(backup))
+    check("A3 备份为有效库（Backup API）：integrity ok 且 blocklist 仍为回填前 11 行",
+          os.path.exists(backup) and
+          sqlite3.connect("file:%s?mode=ro" % backup, uri=True).execute(
+              "PRAGMA integrity_check").fetchone()[0] == "ok" and
+          sqlite3.connect("file:%s?mode=ro" % backup, uri=True).execute(
+              "SELECT COUNT(*) FROM blocklist").fetchone()[0] == 11)
+    check("A3 备份文件 0600 且不与源库同文件",
+          (os.stat(backup).st_mode & 0o777) == 0o600 and
+          not os.path.samefile(backup, db))
+    check("A3 决策日志追加 1 条运行记录（只追加，含逐条 reason 分布）",
+          os.path.exists(dlog) and len(open(dlog).readlines()) == 1 and
+          json.loads(open(dlog).readline())["reasons"] ==
+          {"phone-fail-20261121": 17, "over-target-20261121": 8})
     conn = sqlite3.connect("file:%s?mode=ro" % db, uri=True)
     check("A3 blocklist 11 -> 36",
           conn.execute("SELECT COUNT(*) FROM blocklist").fetchone()[0] == 36)
@@ -107,22 +120,31 @@ def part_a_backfill():
         row = conn.execute(
             "SELECT reason, by FROM blocklist WHERE protocol=? AND host=? AND port=?",
             (e["protocol"], e["host"], e["port"])).fetchone()
-        if row is None or row[0] != "phone-fail-20261121" or row[1] != "i03-test":
+        if row is None or row[0] != e["reason"] or row[1] != "i03-test":
             check("A3 逐条 reason/by: %s" % e["name"], False, str(row))
             break
     else:
-        check("A3 逐条 reason=phone-fail-20261121 by=i03-test", True)
+        check("A3 逐条 reason 与 verdict 映射一致（17 phone-fail + 8 over-target），by=i03-test", True)
+    # 8 条 DELETE_OVER_TARGET 不得被记为 phone-fail
+    over = [e for e in audit["entries"] if e["verdict"] == "DELETE_OVER_TARGET"]
+    check("A3 8 条 DELETE_OVER_TARGET 的 reason 均为 over-target-20261121",
+          len(over) == 8 and all(
+              conn.execute("SELECT reason FROM blocklist WHERE protocol=? AND host=? AND port=?",
+                           (e["protocol"], e["host"], e["port"])).fetchone()[0]
+              == "over-target-20261121" for e in over))
     conn.close()
 
     r = run([sys.executable, BACKFILL, "--db", db, "--audit", AUDIT_JSON,
              "--apply", "--backup", os.path.join(tmp, "pool.db.bak2"),
-             "--by", "i03-test"])
+             "--by", "i03-test", "--decision-log", dlog])
     check("A4 幂等：重跑 exit 0 且 inserted=0",
           r.returncode == 0 and "inserted=0" in r.stdout, r.stdout[-200:])
     conn = sqlite3.connect("file:%s?mode=ro" % db, uri=True)
     check("A4 幂等：audit 不重复写",
           conn.execute("SELECT COUNT(*) FROM audit WHERE action='blocklist-backfill'").fetchone()[0] == 25)
     conn.close()
+    check("A4 幂等：决策日志只追加不截断（2 条运行记录）",
+          len(open(dlog).readlines()) == 2)
 
     r = run([sys.executable, BACKFILL, "--db", db, "--audit", AUDIT_JSON,
              "--check"])
@@ -350,13 +372,14 @@ def part_c_screening():
 
 # ---------------------------------------------------------------- Part D: 解禁
 def part_d_unblock():
-    print("== Part D: 解禁流程负例（快照副本） ==")
+    print("== Part D: 解禁流程负例（快照副本；v2：生产解禁写入路径已禁用） ==")
     tmp = tempfile.mkdtemp(prefix="i03-d-")
     db = os.path.join(tmp, "pool.db")
     shutil.copy2(SNAPSHOT, db)
     # 先回填，使库里有 25 条可解禁
     run([sys.executable, BACKFILL, "--db", db, "--audit", AUDIT_JSON,
-         "--apply", "--backup", os.path.join(tmp, "b.bak"), "--by", "i03-test"])
+         "--apply", "--backup", os.path.join(tmp, "b.bak"), "--by", "i03-test",
+         "--decision-log", os.path.join(tmp, "d.jsonl")])
     target = ["--db", db, "--protocol", "ss", "--host", "156.146.38.168",
               "--port", "443"]
     r = run([sys.executable, UNBLOCK] + target + ["--dry-run"])
@@ -366,8 +389,8 @@ def part_d_unblock():
               "SELECT COUNT(*) FROM blocklist").fetchone()[0] == 36)
     r = run([sys.executable, UNBLOCK] + target + ["--apply",
              "--backup", os.path.join(tmp, "u.bak")])
-    check("D2 --apply 缺 --approved-by/--decision-ref/--evidence 拒绝",
-          r.returncode == 2, "rc=%d" % r.returncode)
+    check("D2 v2：--apply 缺参数仍拒绝（生产路径禁用优先，exit 2）",
+          r.returncode == 2 and "DISABLED" in r.stdout, "rc=%d" % r.returncode)
     r = run([sys.executable, UNBLOCK, "--db", db, "--protocol", "ss",
              "--host", "8.8.8.8", "--port", "443", "--dry-run"])
     check("D3 不在 blocklist 的三元组拒绝解禁", r.returncode == 1,
@@ -376,18 +399,45 @@ def part_d_unblock():
              "--host", "188.114.99.137", "--port", "443", "--dry-run"])
     check("D4 rejected 清单内三元组拒绝只解 blocklist", r.returncode == 1,
           "rc=%d" % r.returncode)
+    # D5：完整参数 --apply 也拒绝（v2 生产路径禁用），不备份、不写库
     r = run([sys.executable, UNBLOCK] + target + ["--apply",
              "--backup", os.path.join(tmp, "u.bak"),
              "--approved-by", "i03-test", "--decision-ref", "test-ref",
              "--evidence", "test-evidence"])
-    check("D5 完整参数 --apply exit 0", r.returncode == 0,
+    check("D5 v2：完整参数 --apply 仍拒绝（DISABLED，exit 2）",
+          r.returncode == 2 and "DISABLED" in r.stdout,
           r.stdout[-200:] + r.stderr[-200:])
+    check("D5 拒绝后不产生备份文件",
+          not os.path.exists(os.path.join(tmp, "u.bak")))
     conn = sqlite3.connect("file:%s?mode=ro" % db, uri=True)
-    check("D5 解禁后 blocklist 36 -> 35",
+    check("D5 拒绝后 blocklist 仍 36 条、audit 无 blocklist-unblock 行",
+          conn.execute("SELECT COUNT(*) FROM blocklist").fetchone()[0] == 36
+          and conn.execute("SELECT COUNT(*) FROM audit WHERE action='blocklist-unblock'").fetchone()[0] == 0)
+    conn.close()
+    # D6：门控后路径（仅进程内翻转常量，模拟未来独立审查启用）仍受
+    # 事务内快照比对约束：预读后外部改行 → 拒绝并回滚
+    sys.path.insert(0, os.path.join(ROOT, "pool"))
+    import unblock_node as ub_mod
+    ub_mod.PRODUCTION_UNBLOCK_ENABLED = True
+    try:
+        rc = ub_mod.main(["--db", db, "--protocol", "ss",
+                          "--host", "156.146.38.168", "--port", "443",
+                          "--apply", "--backup", os.path.join(tmp, "u2.bak"),
+                          "--approved-by", "i03-test",
+                          "--decision-ref", "test-ref",
+                          "--evidence", "test-evidence",
+                          "--decision-log", os.path.join(tmp, "du.jsonl")])
+    finally:
+        ub_mod.PRODUCTION_UNBLOCK_ENABLED = False
+    conn = sqlite3.connect("file:%s?mode=ro" % db, uri=True)
+    check("D6 门控后路径：完整参数 --apply exit 0，blocklist 36 -> 35",
+          rc == 0 and
           conn.execute("SELECT COUNT(*) FROM blocklist").fetchone()[0] == 35)
-    check("D5 audit 写 1 行 blocklist-unblock",
-          conn.execute("SELECT COUNT(*) FROM audit WHERE action='blocklist-unblock'").fetchone()[0] == 1)
-    check("D5 nodes/node_tests 未动",
+    check("D6 audit 写 1 行 blocklist-unblock，决策日志 1 条",
+          conn.execute("SELECT COUNT(*) FROM audit WHERE action='blocklist-unblock'").fetchone()[0] == 1
+          and os.path.exists(os.path.join(tmp, "du.jsonl"))
+          and len(open(os.path.join(tmp, "du.jsonl")).readlines()) == 1)
+    check("D6 nodes/node_tests 未动",
           conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0] == 7798 and
           conn.execute("SELECT COUNT(*) FROM node_tests").fetchone()[0] > 0)
     conn.close()
