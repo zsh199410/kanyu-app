@@ -40,24 +40,34 @@ function adaptTrialBatch(snapshot, cursor = 0) {
   if (!Array.isArray(observations)) throw new Error('invalid_observation');
   const ids = [];
   const seen = new Set();
+  const names = new Set();
   for (const n of nodes) {
     if (!n || typeof n !== 'object' || !isHex64(n.id) || typeof n.name !== 'string' || !n.name) {
       throw new Error('invalid_trial_snapshot');
     }
     if (seen.has(n.id)) throw new Error('invalid_trial_snapshot');
+    // Policy display names must not ambiguously identify two different nodes.
+    if (!n.name.trim() || names.has(n.name)) throw new Error('invalid_trial_snapshot');
+    names.add(n.name);
     seen.add(n.id);
     ids.push(n.id);
   }
-  // Every observation must reference a node in the verified manifest.
+  const plan = planTrialBatch(ids, cursor);
+  const selected = new Set(plan.ids);
+  const observed = new Set();
+  // Reject duplicate and out-of-batch observations rather than silently
+  // overwriting or discarding evidence. Missing observations remain unknown.
+  if (observations.length > plan.ids.length) throw new Error('invalid_observation');
   for (const o of observations) {
-    if (!o || typeof o !== 'object' || !isHex64(o.id) || !seen.has(o.id)) {
+    if (!o || typeof o !== 'object' || !isHex64(o.id) ||
+        !selected.has(o.id) || observed.has(o.id)) {
       throw new Error('invalid_observation');
     }
     if (!['success', 'failure', 'unknown'].includes(o.rawStatus)) {
       throw new Error('invalid_observation');
     }
+    observed.add(o.id);
   }
-  const plan = planTrialBatch(ids, cursor);
   const byId = new Map(observations.map(o => [o.id, o.rawStatus]));
   const diagnostics = plan.ids.map(id => {
     const raw = byId.has(id) ? byId.get(id) : 'unknown';
