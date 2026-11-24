@@ -20,7 +20,8 @@
    "phone_fail_count": 3,
    "port": 19999,
    "protocol": "ss",
-   "verdict": "DELETE_CANDIDATE_PHONE"
+   "verdict": "DELETE_CANDIDATE_PHONE",
+   "reason": "phone-fail-20261121"
   },
   {
    "decision_ref": null,
@@ -40,7 +41,8 @@
    "phone_fail_count": 4,
    "port": 443,
    "protocol": "ss",
-   "verdict": "DELETE_CANDIDATE_PHONE"
+   "verdict": "DELETE_CANDIDATE_PHONE",
+   "reason": "phone-fail-20261121"
   },
   {
    "decision_ref": null,
@@ -58,7 +60,8 @@
    "phone_fail_count": 2,
    "port": 443,
    "protocol": "trojan",
-   "verdict": "DELETE_OVER_TARGET"
+   "verdict": "DELETE_OVER_TARGET",
+   "reason": "over-target-20261121"
   },
   {
    "decision_ref": null,
@@ -76,7 +79,8 @@
    "phone_fail_count": 2,
    "port": 443,
    "protocol": "ss",
-   "verdict": "DELETE_OVER_TARGET"
+   "verdict": "DELETE_OVER_TARGET",
+   "reason": "over-target-20261121"
   },
   {
    "decision_ref": null,
@@ -94,7 +98,8 @@
    "phone_fail_count": 2,
    "port": 443,
    "protocol": "ss",
-   "verdict": "DELETE_OVER_TARGET"
+   "verdict": "DELETE_OVER_TARGET",
+   "reason": "over-target-20261121"
   },
   {
    "decision_ref": null,
@@ -114,7 +119,8 @@
    "phone_fail_count": 4,
    "port": 443,
    "protocol": "ss",
-   "verdict": "DELETE_OVER_TARGET"
+   "verdict": "DELETE_OVER_TARGET",
+   "reason": "over-target-20261121"
   },
   {
    "decision_ref": null,
@@ -132,7 +138,8 @@
    "phone_fail_count": 2,
    "port": 19999,
    "protocol": "ss",
-   "verdict": "DELETE_OVER_TARGET"
+   "verdict": "DELETE_OVER_TARGET",
+   "reason": "over-target-20261121"
   },
   {
    "decision_ref": null,
@@ -150,7 +157,8 @@
    "phone_fail_count": 2,
    "port": 19999,
    "protocol": "ss",
-   "verdict": "DELETE_OVER_TARGET"
+   "verdict": "DELETE_OVER_TARGET",
+   "reason": "over-target-20261121"
   },
   {
    "decision_ref": null,
@@ -168,7 +176,8 @@
    "phone_fail_count": 2,
    "port": 19999,
    "protocol": "ss",
-   "verdict": "DELETE_OVER_TARGET"
+   "verdict": "DELETE_OVER_TARGET",
+   "reason": "over-target-20261121"
   },
   {
    "decision_ref": null,
@@ -186,7 +195,8 @@
    "phone_fail_count": 2,
    "port": 443,
    "protocol": "trojan",
-   "verdict": "DELETE_OVER_TARGET"
+   "verdict": "DELETE_OVER_TARGET",
+   "reason": "over-target-20261121"
   },
   {
    "allowlist_file": "allowlist-r1.json",
@@ -210,7 +220,8 @@
    "port": 19999,
    "protocol": "ss",
    "retest_ts": 1795255235,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r1.json",
@@ -234,7 +245,8 @@
    "port": 19999,
    "protocol": "ss",
    "retest_ts": 1795255235,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r1.json",
@@ -258,7 +270,8 @@
    "port": 19999,
    "protocol": "ss",
    "retest_ts": 1795255235,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r1.json",
@@ -282,7 +295,8 @@
    "port": 19999,
    "protocol": "ss",
    "retest_ts": 1795256131,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r2.json",
@@ -306,7 +320,8 @@
    "port": 19999,
    "protocol": "ss",
    "retest_ts": 1795256131,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r2.json",
@@ -330,7 +345,8 @@
    "port": 443,
    "protocol": "trojan",
    "retest_ts": 1795256131,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r2.json",
@@ -354,7 +370,8 @@
    "port": 443,
    "protocol": "trojan",
    "retest_ts": 1795256131,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r2.json",
@@ -378,7 +395,8 @@
    "port": 443,
    "protocol": "ss",
    "retest_ts": 1795257033,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r3.json",
@@ -402,7 +420,8 @@
    "port": 443,
    "protocol": "ss",
    "retest_ts": 1795257033,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r3.json",
@@ -426,7 +445,8 @@
    "port": 19999,
    "protocol": "ss",
    "retest_ts": 1795257033,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r3.json",
@@ -450,7 +470,8 @@
    "port": 19999,
    "protocol": "ss",
    "retest_ts": 1795257033,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r3.json",
@@ -474,7 +495,8 @@
    "port": 443,
    "protocol": "ss",
    "retest_ts": 1795257932,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r4.json",
@@ -498,7 +520,8 @@
    "port": 443,
    "protocol": "ss",
    "retest_ts": 1795257932,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-r4.json",
@@ -522,7 +545,8 @@
    "port": 443,
    "protocol": "ss",
    "retest_ts": 1795257932,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   },
   {
    "allowlist_file": "allowlist-us20.json",
@@ -548,10 +572,14 @@
    "port": 443,
    "protocol": "ss",
    "retest_ts": 1795267825,
-   "verdict": "ALLOWLIST_DELETE"
+   "verdict": "ALLOWLIST_DELETE",
+   "reason": "phone-fail-20261121"
   }
  ],
- "note": "2026-11-21 历史清退全集 25 条的逐条审计记录。每一行的 deleted_at / verdict / phone_fail_count / buckets 均取自 /opt/p2p3-single-writer/prune-ledger.jsonl 原文；15 条 allowlist 另与 allowlist-r1/r2/r3/r4/us20.json 逐条交叉核对（decision_ref、received_at == ledger retest_ts、nonce 一致）。10 条自动清退的 ledger 事件 decision 为 null（无 #73 评论引用），此处如实记 decision_ref=null，不捏造。reason 统一为 phone-fail-20261121（与 11-06 前例 phone-fail-20261106 同制）；逐条原始裁决见 verdict / decision_ref / mechanism 字段。",
- "reason": "phone-fail-20261121",
- "version": 1
+ "note": "Per-entry reason (v2, GPT Review 6033772552): 17 entries phone-fail-20261121, 8 entries over-target-20261121 (DELETE_OVER_TARGET = capacity trimming, not phone death). All 25 stay banned (conservative triple-level ban); the ban is not health evidence for any new config variant. Original mechanism/verdict/decision_ref preserved; decision_ref null is honest (no #73 reference in ledger), never fabricated.",
+ "version": 1,
+ "reasons": {
+  "phone-fail-20261121": "DELETE_CANDIDATE_PHONE / ALLOWLIST_DELETE (17 entries): phone-failure evidence",
+  "over-target-20261121": "DELETE_OVER_TARGET (8 entries): capacity trimming, NOT phone-death evidence; all 8 stay banned (conservative) but must never be cited as phone-failure evidence"
+ }
 }

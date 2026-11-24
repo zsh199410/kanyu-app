@@ -2,6 +2,7 @@
 
 import ipaddress
 
+from .blocklist_common import is_valid_cert_identity, is_valid_dns_hostname
 from .crawler import AEAD_METHODS, parse_surge_line
 from .geo import IpApi, code_to_flag, display_name, hint_to_code, is_cf_or_reserved
 
@@ -38,23 +39,28 @@ def is_private(host, private_hosts):
 
 
 def _vmess_no_sni(rec):
-    """vmess + TLS + 拨号 host 为 IP 且无有效 SNI → 不可准入。
+    """vmess + TLS + 无有效证书身份 → 不可准入（v2 严格版）。
 
-    有效 SNI 指 strip 后非空且非字面 "<nil>" 的字符串。拨号 host 为合法
-    DNS hostname 时不拒绝（hostname 本身就是有效证书身份）。
+    有效证书身份指严格校验通过的 SNI（合法 DNS hostname 或合法 IP
+    SAN；占位符、空白、非法 hostname、异常 IP 形式一律无效）。
+    SNI 无效时：拨号 host 为 IP → 拒绝（IP 拨号无 SNI 无法校验）；
+    拨号 host 为严格合法 DNS hostname → 不拒绝（hostname 本身就是
+    有效证书身份）；拨号 host 既非 IP 也非合法 DNS → 拒绝（不能只因
+    ipaddress 抛错就认定是合法 DNS）。
     绝不补猜 SNI、绝不跳过证书验证；被拒的记录保留库存，只是不进
     测试/发布候选。
     """
     if rec["protocol"] != "vmess" or not rec.get("tls", True):
         return False
-    sni = rec.get("sni")
-    if isinstance(sni, str) and sni.strip() and sni.strip() != "<nil>":
+    if is_valid_cert_identity(rec.get("sni")):
         return False
+    host = rec.get("host")
     try:
-        ipaddress.ip_address(rec["host"])
-    except ValueError:
-        return False
-    return True
+        ipaddress.ip_address(host)
+        return True
+    except (ValueError, TypeError):
+        pass
+    return not is_valid_dns_hostname(host)
 
 
 def pre_filter(rec, private_hosts):
