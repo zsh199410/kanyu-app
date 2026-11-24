@@ -73,6 +73,26 @@ const cases = [
     assert.deepEqual(out.ids, [B, A]);
     assert.equal(out.nextCursor, 1);
   }],
+  ['reject duplicate observations, even if statuses differ', () => {
+    assert.throws(() => adaptTrialBatch(snap([nA], [
+      {id: A, rawStatus: 'failure'}, {id: A, rawStatus: 'success'},
+    ])), /invalid_observation/);
+    assert.throws(() => adaptTrialBatch(snap([nA, nB], [
+      {id: A, rawStatus: 'success'}, {id: A, rawStatus: 'success'},
+    ])), /invalid_observation/);
+  }],
+  ['reject observations outside selected rotating batch', () => {
+    const nD = {id: 'd'.repeat(64), name: 'trial-d'};
+    const nE = {id: 'e'.repeat(64), name: 'trial-e'};
+    assert.throws(() => adaptTrialBatch(snap([nA, nB, nC, nD, nE],
+      [{id: nE.id, rawStatus: 'success'}]), 0), /invalid_observation/);
+  }],
+  ['reject ambiguous policy names', () => {
+    assert.throws(() => adaptTrialBatch(snap([nA, {id: B, name: nA.name}], [])),
+      /invalid_trial_snapshot/);
+    assert.throws(() => adaptTrialBatch(snap([{id: A, name: '   '}], [])),
+      /invalid_trial_snapshot/);
+  }],
   ['success never permits promotion even in small pool', () => {
     const out = adaptTrialBatch(snap([nA], [{id: A, rawStatus: 'success'}]), 0);
     assert.equal(out.diagnostics[0].promotion_allowed, false);
