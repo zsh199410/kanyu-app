@@ -1,0 +1,34 @@
+{
+ "basis": "GPT Issue #73 comment 7120382777 (2026-11-24 10:40): B4 (pause stays, screening layer only), D5/G7 (au1rxx independence unproven, conservative same-group). P1-1 overlap measurements (2026-11-24): chenzhihan two subscriptions identical sets 375/375; alirewa sub1/sub2 fully contained in alirewa-config; au1rxx overlaps chenzhihan 174/269 = 0.65, not a subset.",
+ "groups": {
+  "G-alirewa": [
+   "alirewa-config",
+   "alirewa-sub1",
+   "alirewa-sub2",
+   "alirewa-sub3"
+  ],
+  "G-chenzhihan": [
+   "chenzhihan-base64",
+   "chenzhihan-v2ray",
+   "au1rxx-v2ray"
+  ],
+  "G-matin": [
+   "matin-ss",
+   "matin-trojan",
+   "matin-vmess"
+  ]
+ },
+ "notes": {
+  "alirewa-sub3": "Verified this round (2026-11-24 live probe): all 13/13 triplets contained in alirewa-config. Grouping by operator identity confirmed by overlap.",
+  "au1rxx-v2ray": "D5: independence from chenzhihan UNPROVEN (overlap 65%, not containment). Folded into G-chenzhihan conservatively for diversity counting until real upstream independence evidence splits it out. It is NOT counted as an independent group.",
+  "barry-far": "NOT a group: it is an aggregator, not an operator. It never counts as a new independent group (GPT D5/G7). New sources must be grouped by operator identity + measured overlap before entering screening.",
+  "chenzhihan-base64": "B4: candidate-admission pause, SCREENING LAYER ONLY (GPT 7120382777). Crawling continues (live disabled_sources = [] re-verified 2026-11-24); variants are recorded with full lineage but never qualify for a diversity batch until an explicit recovery ruling lifts the pause.",
+  "matin-ss": "B4: candidate-admission pause, SCREENING LAYER ONLY (GPT 7120382777). Same as chenzhihan-base64."
+ },
+ "paused": [
+  "chenzhihan-base64",
+  "matin-ss"
+ ],
+ "updated": "2026-11-24",
+ "version": 1
+}

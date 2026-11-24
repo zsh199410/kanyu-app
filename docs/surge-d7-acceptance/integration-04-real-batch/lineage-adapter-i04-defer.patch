@@ -1,0 +1,244 @@
+--- a/pool/lineage_adapter.py
++++ b/pool/lineage_adapter.py
+@@ -116,6 +116,12 @@
+ that, if a lineage write ever did fail, only its own statements roll
+ back -- never the crawl's upserts. Callback exceptions are counted by
+ crawl_records (observation_errors) and never abort the crawl.
++Integration-04 (Review 6034205305 point 3): the SAVEPOINT path is kept
++only for the #127 v2 test suite and direct diagnostic use. Production
++cmd_crawl builds the recorder with defer=True and uses collect() +
++flush() inside one explicit transaction (see LineageRecorder): no write
++lock is held during network I/O, and a failed crawl produces no
++consumable completion evidence.
+ """
+ import json
+ import os
+@@ -123,9 +129,11 @@
+ try:
+     from . import source_lineage as sl
+     from .crawler import AEAD_METHODS
++    from .normalize import norm_method, norm_transport
+ except ImportError:  # imported as a top-level module in tests
+     import source_lineage as sl
+     from crawler import AEAD_METHODS
++    from normalize import norm_method, norm_transport
+ 
+ KEY_ENV_VAR = "POOL_LINEAGE_HMAC_KEY"
+ REGISTRY_FILENAME = "source_groups.json"
+@@ -268,9 +276,10 @@
+     out = {"protocol": proto, "host": rec["host"], "port": int(rec["port"])}
+     if proto == "trojan":
+         ws = bool(rec.get("ws"))
++        t_type, _t_status = norm_transport(rec.get("t_type"))
+         out.update({
+             "password": rec.get("password", ""),
+-            "t_type": (rec.get("t_type") or "tcp").lower(),
++            "t_type": t_type,
+             "sni": rec.get("sni"),
+             "ws": ws,
+             "ws_path": rec.get("ws_path") if ws else "/",
+@@ -278,7 +287,7 @@
+             "skip_verify": bool(rec.get("skip_verify")),
+         })
+     elif proto == "vmess":
+-        net = (rec.get("net") or "tcp").lower()
++        net, _n_status = norm_transport(rec.get("net"))
+         use_ws = net == "ws"
+         out.update({
+             "uuid": rec.get("uuid", ""),
+@@ -291,8 +300,9 @@
+             "skip_verify": bool(rec.get("skip_verify")),
+         })
+     elif proto == "ss":
++        method, _m_status = norm_method(rec.get("method"), AEAD_METHODS)
+         out.update({
+-            "method": (rec.get("method") or "").lower(),
++            "method": method if method is not None else "",
+             "password": rec.get("password", ""),
+             "plugin": rec.get("plugin"),
+         })
+@@ -325,7 +335,15 @@
+     if proto == "vmess":
+         if not rec.get("tls"):
+             return (False, "vmess-non-tls", "")
+-        net = (rec.get("net") or "tcp").lower()
++        # Unified contract (integration-04): transport is normalized
++        # (strip + lowercase) exactly like pre_filter / the tester;
++        # "unknown" and "invalid" are both refused as
++        # unsupported-transport (the lowered token is echoed so the
++        # audit can tell grpc from a malformed value; an invalid value
++        # echoes "" because there is no token to echo).
++        net, net_status = norm_transport(rec.get("net"))
++        if net_status in ("unknown", "invalid"):
++            return (False, "unsupported-transport", net or "")
+         if net not in SUPPORTED_VMESS_NET:
+             return (False, "unsupported-transport", net)
+         if not rec.get("uuid"):
+@@ -334,15 +352,17 @@
+         if sec not in SUPPORTED_VMESS_SECURITY:
+             return (False, "unsupported-security", sec)
+     elif proto == "trojan":
+-        t = (rec.get("t_type") or "tcp").lower()
++        t, t_status = norm_transport(rec.get("t_type"))
++        if t_status in ("unknown", "invalid"):
++            return (False, "unsupported-transport", t or "")
+         if t not in SUPPORTED_TROJAN_TTYPE:
+             return (False, "unsupported-transport", t)
+         if not rec.get("password"):
+             return (False, "missing-password", "")
+     elif proto == "ss":
+-        method = (rec.get("method") or "").lower()
+-        if method not in AEAD_METHODS:
+-            return (False, "ss-method", method)
++        method, m_status = norm_method(rec.get("method"), AEAD_METHODS)
++        if m_status != "ok":
++            return (False, "ss-method", method or "")
+         if rec.get("plugin"):
+             # Detail is a fixed marker, not the plugin string: plugin
+             # parameters are caller-controlled text and must never be
+@@ -419,13 +439,26 @@
+     by cmd_crawl; `observe` is passed as crawl_records' on_observation
+     callback (Test B position: per parsed line, before dedup).
+ 
+-    Owns no transaction: record_sighting calls share the crawl
+-    connection/transaction (per-batch commit in cmd_crawl). Each
+-    sighting is wrapped in a SAVEPOINT so a lineage write failure
+-    rolls back only its own statements, never the crawl's upserts.
++    Two modes (integration-04, Review 6034205305 point 3):
++      * defer=False (default, v1/v2 behaviour, kept for the #127 v2
++        test suite and direct diagnostic use): observe() writes one
++        sighting immediately via SAVEPOINT. NOTE: with no outer
++        transaction (db.connect commits at connect time) the SAVEPOINT
++        RELEASE can commit that sighting on its own, so a later crawl
++        failure cannot un-write it. Production cmd_crawl MUST NOT use
++        this mode.
++      * defer=True (production path): observe() / collect() only stage
++        the sighting in memory (gate + canonicalize + fingerprint, no
++        DB access). flush(conn) writes all staged sightings inside the
++        caller's explicit transaction (BEGIN IMMEDIATE ... COMMIT in
++        cmd_crawl); any error raises and the caller rolls the whole
++        crawl back, so a failed crawl produces no consumable evidence.
++    `last_fingerprint` holds the fingerprint of the most recently
++    staged/observed record (the BatchCollector reads it to build the
++    batch member set without re-hashing).
+     """
+ 
+-    def __init__(self, conn, key, registry, evidence, started):
++    def __init__(self, conn, key, registry, evidence, started, defer=False):
+         if not key or (isinstance(key, (bytes, str)) and len(key) == 0):
+             raise ValueError("HMAC key is required and must be non-empty")
+         self.conn = conn
+@@ -433,6 +466,10 @@
+         self.registry = registry
+         self.evidence = evidence
+         self.started = started
++        self.defer = bool(defer)
++        self.pending = []  # (protocol, host, port, fingerprint, source, event_id)
++        self.last_fingerprint = None
++        self.flushed = 0
+         self.recorded = 0
+         self.skipped = {}   # reason -> {detail: count}
+         self.variants = set()
+@@ -442,18 +479,71 @@
+         bucket = self.skipped.setdefault(reason, {})
+         bucket[detail] = bucket.get(detail, 0) + 1
+ 
++    def collect(self, rec):
++        """Stage one parsed line's lineage in memory (defer mode).
++        Gate + canonicalize + fingerprint; NO DB access. Returns the
++        same result shape as observe(): {"recorded": bool, ...}.
++        Sets last_fingerprint on success (None on gate rejection)."""
++        ok, reason, detail = admission_gate(rec)
++        if not ok:
++            self.last_fingerprint = None
++            self._skip(reason, detail)
++            return {"recorded": False, "reason": reason}
++        cfg = canonical_config(rec)
++        fp = sl.config_fingerprint(cfg, self.key)
++        event_id = event_id_for(self.started, rec["protocol"], rec["host"],
++                                rec["port"], fp, rec["source"])
++        self.pending.append((rec["protocol"], rec["host"], int(rec["port"]),
++                             fp, rec["source"], event_id))
++        self.last_fingerprint = fp
++        self.recorded += 1
++        self.variants.add((rec["protocol"], rec["host"],
++                           int(rec["port"]), fp))
++        return {"recorded": True, "accepted": True, "reason": "staged"}
++
++    def flush(self, conn):
++        """Write all staged sightings inside the CALLER's explicit
++        transaction. This method never begins or commits: the caller
++        (cmd_crawl) holds BEGIN IMMEDIATE and commits once at the end,
++        so a failure anywhere rolls the whole crawl back. Returns the
++        number of accepted sightings. Raises on any DB error (the
++        caller rolls back; self.errors counts it). Idempotent w.r.t.
++        re-runs: record_sighting dedups on event_id, so a second flush
++        of the same staged list is a no-op for already-written rows;
++        flush() clears the pending list after a successful write."""
++        n = 0
++        for (proto, host, port, fp, source, event_id) in self.pending:
++            try:
++                r = sl.record_sighting(
++                    conn, proto, host, port, fp, source, self.started,
++                    evidence=self.evidence, event_id=event_id)
++            except Exception:
++                self.errors += 1
++                raise
++            if r.get("accepted"):
++                n += 1
++            else:
++                self._skip(r.get("reason", "not_accepted"), "")
++        self.flushed += n
++        self.pending = []
++        return n
++
+     def observe(self, rec):
+         """Record one parsed line's lineage. Returns the v4
+         record_sighting result, or {"recorded": False, "reason": ...}
+         for gated-out records. Raises only on unexpected DB errors
+         (counted by crawl_records as observation_errors; the SAVEPOINT
+         keeps the crawl transaction intact)."""
++        if self.defer:
++            return self.collect(rec)
+         ok, reason, detail = admission_gate(rec)
+         if not ok:
++            self.last_fingerprint = None
+             self._skip(reason, detail)
+             return {"recorded": False, "reason": reason}
+         cfg = canonical_config(rec)
+         fp = sl.config_fingerprint(cfg, self.key)
++        self.last_fingerprint = fp
+         event_id = event_id_for(self.started, rec["protocol"], rec["host"],
+                                 rec["port"], fp, rec["source"])
+         self.conn.execute("SAVEPOINT lineage_obs")
+@@ -481,15 +571,22 @@
+         Safe to store in runs.counts and print to stdout."""
+         return {"enabled": True, "evidence": self.evidence,
+                 "recorded": self.recorded, "variants": len(self.variants),
+-                "skipped": self.skipped, "errors": self.errors}
++                "skipped": self.skipped, "errors": self.errors,
++                "deferred": self.defer, "flushed": self.flushed,
++                "pending": len(self.pending)}
+ 
+ 
+-def build_lineage_recorder(conn, base, started, key=None):
++def build_lineage_recorder(conn, base, started, key=None, defer=False):
+     """Build the recorder for one crawl run, or raise LineageUnavailable.
+ 
+     Order: key -> registry -> schema. Any failure disables LINEAGE ONLY
+     (the caller logs + counts it and runs the crawl without a hook).
+     key defaults to the POOL_LINEAGE_HMAC_KEY environment variable.
++    defer=True builds the production recorder: observe()/collect()
++    stage sightings in memory and flush(conn) writes them inside the
++    caller's explicit transaction (integration-04, Review 6034205305
++    point 3). defer=False keeps the v1/v2 per-line SAVEPOINT behaviour
++    for the #127 v2 test suite and direct diagnostic use.
+     """
+     if key is None:
+         key = os.environ.get(KEY_ENV_VAR, "")
+@@ -505,4 +602,4 @@
+     if not lineage_schema_ready(conn):
+         raise LineageUnavailable("schema_not_migrated")
+     return LineageRecorder(conn, key, registry,
+-                           run_evidence(started), started)
++                           run_evidence(started), started, defer=defer)

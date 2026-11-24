@@ -1,0 +1,124 @@
+--- a/verify_promotion.py
++++ b/verify_promotion.py
+@@ -1,7 +1,9 @@
+ """Probation promotion checker (read-only). Reports, per probation key, the
+ trusted phone 5G evidence under the CURRENT probation pool SHA and the
+ CURRENT manifest generation.
+-READY (v2, Review 6033276893 fix 4) is a strict gate, not one success:
++PHONE_EVIDENCE_READY (v2, Review 6033276893 fix 4; label renamed in
++integration-04 per Review 6034204978 point 1) is a strict gate, not one
++success:
+   * the diagnostic chain passes (G10/Q2, see derive_diagnostic_pass), AND
+   * >=1 trusted cellular success in that chain is control_verified=1, AND
+   * no trusted cellular failure after the first success of the chain, AND
+@@ -10,25 +12,33 @@
+     to it (trial_generation == current generation), AND
+   * the manifest entry carries a known source_group.
+ Otherwise NOT_READY (with a reason). The OLD one-success rule is reported
+-only as a legacy/partial line (LEGACY_PARTIAL), never as READY, so no
+-downstream reader can mistake old evidence for a promotion.
++only as a legacy/partial line (LEGACY_PARTIAL), never as
++PHONE_EVIDENCE_READY, so no downstream reader can mistake old evidence
++for a promotion.
+ External gates this script CANNOT verify (fresh VPS <=300ms, Surge native
+-<300ms, publish gates) are printed as NOT_CHECKED_BY_THIS_SCRIPT; a READY
+-here is phone-evidence READY, not a promotion authorisation. Promotion
+-itself is a separate explicit step; this script never writes.
++<300ms, publish gates) are printed as NOT_CHECKED_BY_THIS_SCRIPT; a
++PHONE_EVIDENCE_READY here is phone evidence only, not a promotion
++authorisation. Promotion itself is a separate explicit step; this script
++never writes. The bare token READY must NOT appear as a verdict anywhere
++in this script's output: old parsers that read "-> READY" as a global
++promotion READY would misread it. GLOBAL_READY is a separate line below
++and is NOT_EVALUATED here; a global READY requires real identity,
++Surge native <300ms, current VPS <=300ms, source diversity, TTL,
++blocklist clearance and publish authorisation, ALL passing.
+ 
+ DIAGNOSTIC_PASS (integration-01, Issue #73 G10/Q2) is a DERIVED diagnostic
+-state, separate from READY: 3 consecutive qualifying successes for the same
+-candidate identity under the current manifest SHA/generation, trusted
+-external_policy_id, cellular, BOTH targets reachable (dual_target_ok=1),
+-intervals >=15 min, first-to-last <=24h, last success fresh (<=24h old),
+-TTL not expired. The chain is evaluated on the LATEST consecutive run: a
+-later failure/unknown resets it, and the pass is only valid while the run
+-is still the latest (no early return at the third success). A trusted
+-failure resets the chain; unknown rows, non-cellular successes (network
+-switch), missing evidence, future-dated rows or a generation change never
+-carry the chain across. cv=0 successes count as diagnostic successes;
+-formal READY still needs a control_verified success in the chain.
++state, separate from PHONE_EVIDENCE_READY: 3 consecutive qualifying
++successes for the same candidate identity under the current manifest
++SHA/generation, trusted external_policy_id, cellular, BOTH targets
++reachable (dual_target_ok=1), intervals >=15 min, first-to-last <=24h,
++last success fresh (<=24h old), TTL not expired. The chain is evaluated
++on the LATEST consecutive run: a later failure/unknown resets it, and the
++pass is only valid while the run is still the latest (no early return at
++the third success). A trusted failure resets the chain; unknown rows,
++non-cellular successes (network switch), missing evidence, future-dated
++rows or a generation change never carry the chain across. cv=0 successes
++count as diagnostic successes; formal PHONE_EVIDENCE_READY still needs a
++control_verified success in the chain.
+ MANUAL_DIAGNOSTIC_PASS is the same chain over manual_report rows
+ (trusted=0) and is NOT equivalent to automatic DIAGNOSTIC_PASS; it is
+ also TTL- and generation-bound. Both are recorded as derived lines only;
+@@ -225,7 +235,7 @@
+                         and r[5] > fs):
+                     fail_after += 1
+         # Legacy verdict (old one-success rule, any generation, SHA-bound):
+-        # reported only as LEGACY_PARTIAL, never as READY.
++        # reported only as LEGACY_PARTIAL, never as PHONE_EVIDENCE_READY.
+         legacy_succ = 0
+         legacy_fail_after = 0
+         legacy_fs = None
+@@ -243,7 +253,7 @@
+                     legacy_fail_after += 1
+         legacy_label = ("LEGACY_PARTIAL" if (legacy_succ >= 1 and legacy_fail_after == 0)
+                         else "LEGACY_NONE")
+-        # v2 READY: all checkable gates must pass. Source group comes from
++        # v2 PHONE_EVIDENCE_READY: all checkable gates must pass. Source group comes from
+         # the manifest entry (server-side); unknown/absent -> NOT_READY.
+         group = e.get("source_group")
+         group_ok = group not in (None, "", "unknown")
+@@ -263,8 +273,8 @@
+             reason = "TRUSTED_FAILURE_AFTER_SUCCESS"
+         else:
+             reason = "OK"
+-        verdict = "READY" if reason == "OK" else "NOT_READY"
+-        if verdict == "READY":
++        verdict = "PHONE_EVIDENCE_READY" if reason == "OK" else "NOT_READY"
++        if verdict == "PHONE_EVIDENCE_READY":
+             ready.append(e["name"])
+         print("  %s %s success=%d failure=%d unknown=%d fail_after_first_success=%d"
+               " legacy_rows=%d stale_gen_rows=%d -> %s reason=%s legacy=%s" % (
+@@ -296,12 +306,28 @@
+                   legacy_rows, stale_gen_rows))
+         print("  %s %s manual=%s obs_ids=%s" % (
+             e["name"], e["key"], man_label, man_ids))
+-    print("READY count:", len(ready), ready)
++    print("PHONE_EVIDENCE_READY count:", len(ready), ready)
+     print("DIAGNOSTIC_PASS count:", len(diag_pass), diag_pass)
+     print("MANUAL_DIAGNOSTIC_PASS count:", len(manual_pass), manual_pass)
++    # GLOBAL_READY (integration-04, Review 6034204978 point 1): this
++    # script evaluates PHONE evidence only. A global READY requires ALL
++    # of: real identity, Surge native <300ms, current VPS <=300ms,
++    # source diversity, TTL, blocklist clearance, publish authorisation.
++    # TTL is the only one of those this script checks; the rest are
++    # NOT_CHECKED_BY_THIS_SCRIPT and GLOBAL_READY is therefore
++    # NOT_EVALUATED here -- never infer a global READY from the
++    # PHONE_EVIDENCE_READY line above.
++    print("GLOBAL_READY: NOT_EVALUATED "
++          "(real_identity=NOT_CHECKED_BY_THIS_SCRIPT "
++          "surge_native_lt_300ms=NOT_CHECKED_BY_THIS_SCRIPT "
++          "current_vps_le_300ms=NOT_CHECKED_BY_THIS_SCRIPT "
++          "source_diversity=NOT_CHECKED_BY_THIS_SCRIPT "
++          "ttl=CHECKED_BY_THIS_SCRIPT "
++          "blocklist=NOT_CHECKED_BY_THIS_SCRIPT "
++          "publish_authorisation=NOT_CHECKED_BY_THIS_SCRIPT)")
+     print("External gates NOT_CHECKED_BY_THIS_SCRIPT: fresh VPS <=300ms,"
+-          " Surge native <300ms, publish gates (a READY here is"
+-          " phone-evidence READY, not a promotion authorisation)")
++          " Surge native <300ms, publish gates (a PHONE_EVIDENCE_READY"
++          " here is phone evidence only, not a promotion authorisation)")
+     print("PROMOTION_CHECK_DONE")
+     return 0
+ 

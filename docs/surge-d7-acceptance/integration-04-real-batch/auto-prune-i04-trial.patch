@@ -1,0 +1,57 @@
+--- a/auto_prune.py
++++ b/auto_prune.py
+@@ -65,6 +65,22 @@
+ from pathlib import Path
+ from urllib.parse import quote
+ 
++# Integration-04 (Review 6034204978 point 3 + GPT 7123361053): the
++# evidence classifier is shared with the importers (phone_evidence.py,
++# shipped in this same directory). The prune consumer and the importers
++# must agree on what counts as trial evidence. The import is defensive
++# ONLY so that stale layouts which copy auto_prune.py alone (e.g. the
++# #126 v2 suite's fixed ISO copy list) keep the pre-#04 G10 behaviour
++# instead of crashing: when the classifier is absent, trial rows are
++# handled exactly as before #04. The #04 package always ships both
++# files together, and the #04 suite asserts the trial exclusion in
++# that layout; a deployment missing phone_evidence.py is incomplete
++# and must not be treated as having the exclusion.
++try:
++    from phone_evidence import classify_failure_detail
++except ImportError:  # pragma: no cover - stale-layout fallback only
++    classify_failure_detail = None
++
+ # --- thresholds (hard requirements, see AUTO_PRUNE_DESIGN.md) ---
+ # V2 (2026-11-21, dynamic pool): hard ceiling 8/round; the first V2
+ # deletion round is capped at 4 (warmup), then 8 once a V2 deletion has
+@@ -211,11 +227,30 @@
+     the JSON detail written by the v2 importer and the key=value detail
+     written by the legacy importer. Returns True/False; never raises on
+     malformed detail (fail-closed: malformed detail is unverified, not
+-    trusted)."""
++    trusted).
++
++    Integration-04 (Review 6034204978 point 3 + GPT 7123361053): trial
++    and sub-batch evidence is diagnostic history, never trusted prune
++    evidence -- even with cv=1 / external_policy_id / cellular. The
++    check is subtractive only: a row is excluded ONLY when the shared
++    classifier positively identifies it as trial_bound (an integer
++    trial_generation in the detail, without an explicit
++    evidence_class=formal_historical marker). Legacy rows without any
++    generation marker stay formal_historical and keep the G10 checks
++    below (A18b compatibility: pre-#04 trusted rows are unaffected).
++    """
+     if source != "surge-url-test":
+         return False
+     if not isinstance(detail, str) or not detail:
+         return False
++    # Integration-04: trial / sub-batch rows never count, even when they
++    # carry cv=1 + external_policy_id + cellular. The classifier is the
++    # same one the importers use, so writer and consumer cannot disagree.
++    # (When the classifier module is absent -- stale layout only -- this
++    # check is skipped and the pre-#04 G10 behaviour applies.)
++    if classify_failure_detail is not None and \
++            classify_failure_detail(detail) == "trial_bound":
++        return False
+     data = {}
+     text = detail.strip()
+     if text.startswith("{"):

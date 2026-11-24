@@ -1,0 +1,93 @@
+--- a/pool/tester.py
++++ b/pool/tester.py
+@@ -15,6 +15,7 @@
+ 
+ from .blocklist_common import is_valid_cert_identity, is_valid_dns_hostname
+ from .crawler import AEAD_METHODS
++from .normalize import check_password, check_uuid, norm_method, norm_transport
+ 
+ SB = "/usr/local/bin/sing-box"
+ TEST_URL = "https://captive.apple.com/generate_204"
+@@ -45,31 +46,51 @@
+ 
+ 
+ def _filter_reason(rec):
++    """与 rules.pre_filter 同款同序的拒绝原因（integration-04：字段
++    契约与 gate / pre_filter / build 完全一致，见 normalize.py）。
++    返回 None 表示可测。密码 "," 现与 pre_filter 一致判
++    comma-password（旧版 ", " 判 bad-password 是分歧，已统一）；
++    uuid 补 comma-uuid / invalid-uuid（与 pre_filter 同序）。
++    """
+     proto = rec["protocol"]
+     if proto == "vmess":
+         if not rec.get("tls"):
+             return "vmess-non-tls"
+-        if rec.get("net", "tcp") not in ("tcp", "ws", ""):
++        net, net_status = norm_transport(rec.get("net"))
++        if net_status in ("unknown", "invalid") or net not in ("tcp", "ws", ""):
+             return "unsupported-transport"
+-        if not rec.get("uuid"):
++        uuid_check = check_uuid(rec.get("uuid"))
++        if uuid_check == "missing":
+             return "missing-uuid"
++        if uuid_check == "comma":
++            return "comma-uuid"
++        if uuid_check == "invalid":
++            return "invalid-uuid"
+         if _vmess_no_sni(rec):
+             return "vmess-no-sni"
+     elif proto == "trojan":
+-        if rec.get("t_type", "tcp") not in ("tcp", "ws", ""):
++        t_type, t_status = norm_transport(rec.get("t_type"))
++        if t_status in ("unknown", "invalid") or t_type not in ("tcp", "ws", ""):
+             return "unsupported-transport"
+-        if not rec.get("password"):
++        pw_check = check_password(rec.get("password"))
++        if pw_check == "missing":
+             return "missing-password"
+-        if ", " in rec["password"] or rec["password"] != rec["password"].strip():
++        if pw_check == "comma":
++            return "comma-password"
++        if pw_check == "whitespace":
+             return "bad-password"
+     elif proto == "ss":
+-        if rec.get("method", "") not in AEAD_METHODS:
++        method, m_status = norm_method(rec.get("method"), AEAD_METHODS)
++        if m_status != "ok":
+             return "ss-method"
+         if rec.get("plugin"):
+             return "ss-plugin"
+-        if not rec.get("password"):
++        pw_check = check_password(rec.get("password"))
++        if pw_check == "missing":
+             return "missing-password"
+-        if ", " in rec["password"] or rec["password"] != rec["password"].strip():
++        if pw_check == "comma":
++            return "comma-password"
++        if pw_check == "whitespace":
+             return "bad-password"
+     return None
+ 
+@@ -98,13 +119,20 @@
+             out["security"] = "auto"
+         if tls_on and rec.get("sni"):
+             out["tls"]["server_name"] = rec["sni"]
+-        if rec.get("net") == "ws":
++        # Defensive normalization (integration-04): _filter_reason has
++        # already admitted only normalized tcp/ws; under that input the
++        # result is identical to the old raw comparison.
++        if norm_transport(rec.get("net"))[0] == "ws":
+             out["transport"] = {"type": "ws", "path": rec.get("ws_path") or "/"}
+             if rec.get("ws_host"):
+                 out["transport"]["headers"] = {"Host": rec["ws_host"]}
+     elif proto == "ss":
++        # Defensive normalization (integration-04): _filter_reason has
++        # already admitted only an AEAD method; under that input the
++        # result is identical to the old raw value.
+         out.update({"type": "shadowsocks", "server": rec["host"], "server_port": rec["port"],
+-                    "method": rec["method"], "password": rec["password"]})
++                    "method": norm_method(rec.get("method"), AEAD_METHODS)[0],
++                    "password": rec["password"]})
+     cfg = {
+         "log": {"level": "error"},
+         "dns": {"servers": [{"tag": "local", "type": "local"}], "final": "local"},

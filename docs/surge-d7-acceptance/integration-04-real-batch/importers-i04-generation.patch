@@ -1,0 +1,129 @@
+--- a/import_phone_observations.py
++++ b/import_phone_observations.py
+@@ -27,6 +27,17 @@
+ G10 gate is unchanged; no generation gate is added here, because
+ formal-pool evidence has no trial generation to compare against, and
+ pre-v2 trusted rows carry no generation.
++
++Integration-04 (Review 6034204978, point 3): the importer now actually
++CLASSIFIES on trial_generation (phone_evidence.classify_row, shared with
++the v2 importer). An integer generation means the row is trial evidence
++and is NEVER imported here (skipped as trial_generation_bound) -- a
++trial row must never become formal prune evidence, even if it carries
++cv=1 / external_policy_id / cellular. A null generation means formal
++historical evidence and continues through the G10 gate; imported rows
++carry an explicit evidence_class=formal_historical marker in the
++detail so the prune consumer can tell the classes apart without
++re-reading the staging DB.
+ """
+ from __future__ import annotations
+ 
+@@ -38,6 +49,8 @@
+ import time
+ from pathlib import Path
+ 
++from phone_evidence import classify_row
++
+ VALID_PROTOCOLS = {"trojan", "vmess", "ss"}
+ PHONE_FAILURE_SOURCE = "surge-url-test"
+ MAX_BODY_POOL_BYTES = 2 * 1024 * 1024
+@@ -174,6 +187,16 @@
+                 skipped.setdefault("not_failure_" + str(status), 0)
+                 skipped["not_failure_" + str(status)] += 1
+                 continue
++            # Integration-04 (Review 6034204978, point 3): classify on
++            # trial_generation FIRST, before the G10 gate. An integer
++            # generation is trial evidence and is NEVER imported by this
++            # formal importer (skipped as trial_generation_bound), even
++            # with cv=1 / external_policy_id / cellular. A null
++            # generation is formal historical evidence and continues.
++            ev_class = classify_row(gen)
++            if ev_class == "trial_bound":
++                skipped["trial_generation_bound"] = skipped.get("trial_generation_bound", 0) + 1
++                continue
+             # G10 trusted-failure gate (integration-01): only
+             # control_verified=1 + external_policy_id + cellular failures
+             # are consumable evidence; the rest is diagnostic history.
+@@ -216,8 +239,11 @@
+                     continue
+                 # v2 audit metadata (fix 5): generation and dual-target
+                 # evidence ride in the detail; audit-only, never a gate.
++                # Integration-04: the evidence class is explicit so the
++                # prune consumer can tell formal historical rows from
++                # trial rows without re-reading the staging DB.
+                 detail = ("probe_mode=%s bearer=%s control_verified=1 nonce_prefix=%s pool_sha_prefix=%s"
+-                          " trial_generation=%s dual_target_ok=%s"
++                          " trial_generation=%s dual_target_ok=%s evidence_class=formal_historical"
+                           % (mode, bearer, str(nonce)[:8], str(pool_sha)[:8], gen, dual))
+                 conn.execute(
+                     "INSERT INTO phone_failures "
+--- a/import_per_observation_v2.py
++++ b/import_per_observation_v2.py
+@@ -17,6 +17,17 @@
+ The G10 gate is unchanged; no generation gate is added here, because
+ formal-pool evidence has no trial generation to compare against, and
+ pre-v2 trusted rows (11-06/11-20/21) carry no generation.
++
++Integration-04 (Review 6034204978, point 3): the importer now actually
++CLASSIFIES on trial_generation (phone_evidence.classify_row, shared with
++the legacy importer). An integer generation means the row is trial
++evidence and is NEVER imported here (skipped as trial_generation_bound)
++-- a trial row must never become formal prune evidence, even if it
++carries cv=1 / external_policy_id / cellular. A null generation means
++formal historical evidence and continues through the G10 gate; imported
++rows carry an explicit "evidence_class": "formal_historical" in the
++detail JSON so the prune consumer can tell the classes apart without
++re-reading the staging DB.
+ """
+ from __future__ import annotations
+ 
+@@ -30,6 +41,7 @@
+ import time
+ from urllib.parse import quote
+ 
++from phone_evidence import classify_row
+ from receiver import parse_pool
+ 
+ MAX_ROWS = 100000
+@@ -84,7 +96,8 @@
+         c.close()
+     candidates = []
+     skipped = {"pinned": 0, "stale": 0, "untrusted": 0,
+-               "outside_pool": 0, "old": 0, "blocked": 0}
++               "outside_pool": 0, "old": 0, "blocked": 0,
++               "trial_generation_bound": 0}
+     seen = set()
+     for row in rows:
+         nonce, proto, host, port, status, mode, trusted, ts, bearer, sha, cv = row[:11]
+@@ -104,6 +117,15 @@
+             continue
+         if mode not in ("external_policy_id", "temporary_policy_descriptor"):
+             raise ImportRefused("unknown_probe_method")
++        # Integration-04 (Review 6034204978, point 3): classify on
++        # trial_generation FIRST, before the G10 gate. An integer
++        # generation is trial evidence and is NEVER imported by this
++        # formal importer (skipped as trial_generation_bound), even with
++        # cv=1 / external_policy_id / cellular. A null generation is
++        # formal historical evidence and continues.
++        if classify_row(gen) == "trial_bound":
++            skipped["trial_generation_bound"] += 1
++            continue
+         # G10 trusted-failure gate (integration-01): a failure is consumable
+         # evidence only when status='failure' AND control_verified=1 AND
+         # probe_mode='external_policy_id' AND bearer='cellular'. Anything
+@@ -192,10 +214,14 @@
+                 # v2 audit metadata (fix 5): generation and dual-target
+                 # evidence ride in the detail JSON; they are audit-only and
+                 # never change the G10 admission decision.
++                # Integration-04: the evidence class is explicit so the
++                # prune consumer can tell formal historical rows from
++                # trial rows without re-reading the staging DB.
+                 detail = json.dumps({"method": mode, "bearer": bearer,
+                                      "control_verified": 1,
+                                      "trial_generation": gen,
+-                                     "dual_target_ok": dual},
++                                     "dual_target_ok": dual,
++                                     "evidence_class": "formal_historical"},
+                                     sort_keys=True, separators=(",", ":"))
+                 c.execute("""INSERT INTO phone_failures
+                       (protocol,host,port,reported_at,source,detail)
