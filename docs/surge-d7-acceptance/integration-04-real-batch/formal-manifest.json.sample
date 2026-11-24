@@ -1,0 +1,13 @@
+{
+  "eligible_controls": [],
+  "entries": 22,
+  "generation": 0,
+  "lines": 22,
+  "pool_sha": "9e44841b177bb40463afb15f27fe2c801c9657257f463289dcea5f8051a1ebd4",
+  "status": "FORMAL",
+  "updated_at": "2026-11-24T10:00:00Z",
+  "qualification_snapshot": {
+    "snapshot_id": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "generated_at": "2026-11-24T10:00:00Z"
+  }
+}

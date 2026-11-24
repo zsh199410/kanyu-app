@@ -1,0 +1,210 @@
+--- a/pool/cli.py
++++ b/pool/cli.py
+@@ -29,6 +29,17 @@
+     lineage_mod = None
+     _LINEAGE_IMPORT_ERROR = str(_e)
+ 
++# Integration-04 (Review 6034205305 points 2 and 3): batch state is
++# optional at import time, same pattern as lineage. If the module is
++# absent, no batch evidence is produced and consumers BLOCK; the crawl
++# itself still runs.
++try:
++    from . import batch_state as batch_mod
++    _BATCH_IMPORT_ERROR = None
++except ImportError as _e:  # noqa: F841
++    batch_mod = None
++    _BATCH_IMPORT_ERROR = str(_e)
++
+ PUBLISH_FILENAME = "pool-new.txt"
+ TEST_URL_NOTE = "generate_204"
+ 
+@@ -151,8 +162,12 @@
+         return 0
+     conn = dbmod.connect(os.path.join(base, "data", "pool.db"))
+     disabled = set(dbmod.get_config(conn, "disabled_sources", []) or [])
+-    # Integration-02 (D1): wire the per-line lineage hook (Test B
+-    # position). Lineage is ADDITIVE: any failure here disables LINEAGE
++    # Integration-02 (D1) + Integration-04 (Review 6034205305 point 3):
++    # the lineage recorder is built in DEFER mode: observe()/collect()
++    # only stage sightings in memory. Nothing is written while the
++    # network fetch runs (no write lock held during long I/O); the
++    # staged sightings are flushed inside the explicit transaction
++    # below. Lineage is ADDITIVE: any failure here disables LINEAGE
+     # ONLY (loudly logged + counted in runs.counts["lineage"]); the
+     # crawl itself always proceeds. A missing key / registry / schema
+     # never produces lineage rows and never falls back to an unkeyed
+@@ -160,48 +175,150 @@
+     # operator escape hatch (e.g. maintenance windows).
+     lineage = None
+     lineage_status = {"enabled": False}
++    lineage_reason = ""
+     if getattr(args, "no_lineage", False):
+         lineage_status = {"enabled": False, "reason": "disabled_by_flag"}
++        lineage_reason = "disabled_by_flag"
+         log.info("lineage disabled by --no-lineage")
+     elif lineage_mod is None:
+         lineage_status = {"enabled": False, "reason": "no_module",
+                           "detail": _LINEAGE_IMPORT_ERROR}
++        lineage_reason = "no_module"
+         log.warning("lineage disabled: adapter module not importable: %s",
+                     _LINEAGE_IMPORT_ERROR)
+     else:
+         try:
+-            lineage = lineage_mod.build_lineage_recorder(conn, base, started)
++            lineage = lineage_mod.build_lineage_recorder(
++                conn, base, started, defer=True)
+             lineage_status = {"enabled": True}
+         except lineage_mod.LineageUnavailable as e:
+             lineage_status = {"enabled": False, "reason": e.reason}
++            lineage_reason = e.reason
+             log.warning("lineage disabled: %s", e.reason)
++    # Integration-04 (Review 6034205305 point 2): the batch collector
++    # owns the per-source member sets for THIS crawl. It is in-memory
++    # only; commit_batch() writes it after the crawl, in the same
++    # explicit transaction as the lineage flush. Without lineage there
++    # is no per-line evidence, so no batch from this crawl can be
++    # "complete" (consumers BLOCK); the crawl itself still runs.
++    batch = None
++    batch_status = {"enabled": False}
++    if batch_mod is None:
++        batch_status = {"enabled": False, "reason": "no_module",
++                        "detail": _BATCH_IMPORT_ERROR}
++        log.warning("batch disabled: batch_state module not importable: %s",
++                    _BATCH_IMPORT_ERROR)
++    else:
++        batch = batch_mod.BatchCollector(
++            started, lineage=lineage, lineage_reason=lineage_reason)
++        batch_status = {"enabled": True}
++    # Registry status at crawl time (audit only; the consumer re-checks
++    # current status). Best effort: a missing registry never blocks the
++    # crawl, it only marks the batch rows "unknown".
++    registry_status = {}
++    if lineage is not None:
++        registry_status = dict(lineage.registry.status)
++    elif lineage_mod is not None:
++        try:
++            _reg, _meta = lineage_mod.load_registry(
++                os.path.join(base, lineage_mod.REGISTRY_FILENAME))
++            registry_status = dict(_reg.status)
++        except Exception:
++            registry_status = {}
+     # 禁用源在抓取前排除：不发请求、不计入 sources_ok/total、不进库存。
++    # Network I/O runs here with NO DB writes: the lineage recorder and
++    # the batch collector only stage evidence in memory.
+     records, counts = crawl_records(os.path.join(base, "sources.yaml"), skip=disabled,
+-                                    on_observation=(lineage.observe if lineage else None))
+-    for rec in records:
+-        dbmod.upsert_node(conn, rec["protocol"], rec["host"], rec["port"],
+-                          rec["source"], rec.get("name_hint") or "")
+-    for s in counts.get("by_source", {}):
+-        sc = counts["by_source"][s]
+-        ok_inc = 1 if sc["status"] == "ok" else 0
+-        fail_inc = 0 if sc["status"] == "ok" else 1
+-        conn.execute(
+-            """INSERT INTO sources (name, last_success, last_count, ok_count, fail_count)
+-               VALUES (?, ?, ?, ?, ?)
+-               ON CONFLICT (name) DO UPDATE SET
+-                 last_success=excluded.last_success, last_count=excluded.last_count,
+-                 ok_count=ok_count+?, fail_count=fail_count+?""",
+-            (s, started if sc["status"] == "ok" else None, sc.get("total", 0),
+-             ok_inc, fail_inc, ok_inc, fail_inc))
+-    # Lineage summary (counts only -- no fingerprints, no credentials)
+-    # joins the run record. record_sighting shares this transaction:
+-    # lineage + nodes + sources + log_run commit together (per-batch).
++                                    on_observation=(batch.observe if batch else None))
++    batch_summary = batch.finish(counts, disabled=disabled,
++                                 registry_status=registry_status) if batch else {}
+     counts["lineage"] = lineage.summary() if lineage else lineage_status
+-    dbmod.log_run(conn, "crawl", started, counts)
+-    conn.commit()
+-    log.info("crawl done sources_ok=%s total=%s unique=%s lineage=%s",
++    counts["batch"] = batch.summary() if batch else batch_status
++    # --- Explicit transaction (Review 6034205305 point 3) ---
++    # Everything below commits together, once: nodes upserts, sources
++    # updates, lineage flush, batch commit, run row. No network I/O
++    # happens while the write lock is held. dbmod.log_run() must NOT be
++    # called here: it commits internally, which would commit this
++    # transaction early. The run row is written inline instead.
++    # A batch-schema problem is detected BEFORE the transaction
++    # (fail-closed for the batch only): the crawl still commits its
++    # nodes/lineage, the batch is recorded as unavailable, and
++    # consumers BLOCK. Any error DURING the transaction rolls the whole
++    # crawl back, so a failed crawl produces no consumable evidence.
++    batch_ok = True
++    batch_reason = ""
++    if batch is not None:
++        try:
++            if not batch_mod.batch_schema_ready(conn):
++                raise batch_mod.BatchUnavailable("schema_not_migrated")
++        except batch_mod.BatchUnavailable as e:
++            batch_ok = False
++            batch_reason = e.reason
++            counts["batch"] = {"enabled": False, "reason": e.reason}
++            log.warning("batch disabled for this crawl: %s", e.reason)
++    if conn.in_transaction:
++        # A transaction must never already be open here: connect()
++        # committed the schema, and the crawl path performed no writes.
++        raise RuntimeError("unexpected open transaction before crawl commit")
++    try:
++        conn.execute("BEGIN IMMEDIATE")
++        for rec in records:
++            dbmod.upsert_node(conn, rec["protocol"], rec["host"], rec["port"],
++                              rec["source"], rec.get("name_hint") or "")
++        for s in counts.get("by_source", {}):
++            sc = counts["by_source"][s]
++            ok_inc = 1 if sc["status"] == "ok" else 0
++            fail_inc = 0 if sc["status"] == "ok" else 1
++            conn.execute(
++                """INSERT INTO sources (name, last_success, last_count, ok_count, fail_count)
++                   VALUES (?, ?, ?, ?, ?)
++                   ON CONFLICT (name) DO UPDATE SET
++                     last_success=excluded.last_success, last_count=excluded.last_count,
++                     ok_count=ok_count+?, fail_count=fail_count+?""",
++                (s, started if sc["status"] == "ok" else None, sc.get("total", 0),
++                 ok_inc, fail_inc, ok_inc, fail_inc))
++        if lineage is not None:
++            lineage.flush(conn)
++        if batch is not None and batch_ok:
++            batch_mod.commit_batch(conn, batch)
++        conn.execute(
++            "INSERT INTO runs (kind, started, finished, counts, ok, error)"
++            " VALUES (?, ?, ?, ?, ?, ?)",
++            ("crawl", started, int(time.time()),
++             json.dumps(counts, ensure_ascii=False), 1, ""))
++        conn.commit()
++    except Exception:
++        conn.rollback()
++        # The failure run row is written in its own short transaction
++        # (observability only -- it carries no batch evidence).
++        try:
++            conn.execute(
++                "INSERT INTO runs (kind, started, finished, counts, ok, error)"
++                " VALUES (?, ?, ?, ?, ?, ?)",
++                ("crawl", started, int(time.time()),
++                 json.dumps(counts, ensure_ascii=False), 0, "crawl_commit_failed"))
++            conn.commit()
++        except Exception:
++            log.exception("could not record failed crawl run")
++        log.exception("crawl commit failed; whole crawl rolled back")
++        print(json.dumps({"ok": False, "error": "crawl_commit_failed",
++                          **counts}, ensure_ascii=False))
++        return 1
++    if batch is not None and batch_ok:
++        try:
++            pruned = batch_mod.prune_batches(conn)
++            conn.commit()
++            if pruned:
++                log.info("pruned %d old batch rows", pruned)
++        except Exception:
++            log.exception("batch prune failed (non-fatal)")
++            try:
++                conn.rollback()
++            except Exception:
++                pass
++    log.info("crawl done sources_ok=%s total=%s unique=%s lineage=%s batch=%s",
+              counts["sources_ok"], counts["total"], counts["unique"],
+-             counts["lineage"])
++             counts["lineage"], counts["batch"])
+     print(json.dumps(counts, ensure_ascii=False, indent=2))
+     return 0
+ 

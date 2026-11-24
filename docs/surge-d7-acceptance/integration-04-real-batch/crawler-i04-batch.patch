@@ -1,0 +1,33 @@
+--- a/pool/crawler.py
++++ b/pool/crawler.py
+@@ -370,7 +370,13 @@
+     for s in sources:
+         name = s["name"]
+         allowed = set(s.get("protocols") or ALLOWED)
+-        sc = {"total": 0, "by_protocol": {}, "status": "ok", "error": ""}
++        sc = {"total": 0, "by_protocol": {}, "status": "ok", "error": "",
++              # Integration-04 (Review 6034205305 point 2): per-source
++              # parse stats, so the batch layer can tell a complete
++              # crawl from a partially parsed one. The global counters
++              # (counts["unparsed"] / counts["observation_errors"]) are
++              # kept unchanged for backward compatibility.
++              "unparsed": 0, "observation_errors": 0}
+         try:
+             lines = decode_body(fetch(s["url"]))
+         except HTTPError as e:
+@@ -396,6 +402,7 @@
+             rec = parse_record(line, name)
+             if rec is None:
+                 counts["unparsed"] += 1
++                sc["unparsed"] += 1
+                 continue
+             if isinstance(rec, tuple):
+                 counts["other_protocol"][rec[1]] = counts["other_protocol"].get(rec[1], 0) + 1
+@@ -410,6 +417,7 @@
+                     on_observation(rec)
+                 except Exception:
+                     counts["observation_errors"] = counts.get("observation_errors", 0) + 1
++                    sc["observation_errors"] += 1
+             sc["total"] += 1
+             sc["by_protocol"][rec["protocol"]] = sc["by_protocol"].get(rec["protocol"], 0) + 1
+             counts["total"] += 1
