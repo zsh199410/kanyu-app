@@ -41,7 +41,7 @@ sys.path.insert(0, POOL)
 sys.path.insert(0, os.path.dirname(os.path.abspath(POOL)))
 
 from pool.crawler import crawl_records, parse_record  # noqa: E402
-from pool.rules import build_surge_line, pre_filter  # noqa: E402
+from pool.rules import build_surge_line, is_valid_uuid, pre_filter  # noqa: E402
 from pool.cli import surge_line_to_record  # noqa: E402  (real cli.py function)
 from pool import source_lineage as sl  # noqa: E402
 from pool import lineage_adapter as la  # noqa: E402
@@ -208,7 +208,7 @@ check("P1-V4-prefilter-refuses",
       pre_filter(rec_v4_h, PRIVATE) == (False, "unsupported-transport"),
       f"{pre_filter(rec_v4_h, PRIVATE)}")
 check("P1-V4-O1-gate-refuses",
-      la.admission_gate(rec_v4) == (False, "unsupported-net", "grpc"))
+      la.admission_gate(rec_v4) == (False, "unsupported-transport", "grpc"))
 # S2: canonical mismatch (plugin vs None) + pre_filter refuses (ss-plugin).
 st = results["S2 ss with plugin"]
 rec_s2 = parse_record([u for l, u in CASES if l.startswith("S2")][0], SRC)
@@ -522,39 +522,96 @@ for net in ("grpc", "raw", "http", "xhttp", "h2", "none", "tcp,udp",
             "tcp#frag@junk"):
     r = rec4.observe(vmess_rec("203.0.113.140", net))
     check(f"P4-net-{net}-audited-not-recorded",
-          r.get("recorded") is False and r.get("reason") == "unsupported-net",
+          r.get("recorded") is False and r.get("reason") == "unsupported-transport",
           f"{r}")
 conn4.commit()
 audit = rec4.summary()["skipped"]
 check("P4-audit-counts-by-net",
-      audit.get("unsupported-net", {}).get("grpc") == 1
-      and audit.get("unsupported-net", {}).get("tcp,udp") == 1
-      and audit.get("unsupported-net", {}).get("tcp#frag@junk") == 1,
+      audit.get("unsupported-transport", {}).get("grpc") == 1
+      and audit.get("unsupported-transport", {}).get("tcp,udp") == 1
+      and audit.get("unsupported-transport", {}).get("tcp#frag@junk") == 1,
       f"{audit}")
 check("P4-no-lineage-for-unknown-nets",
       conn4.execute("SELECT COUNT(*) FROM node_variants").fetchone()[0] == 3,
       "only ws/tcp/'' admitted")
-# Scoping decision (documented, not gated): trojan grpc + ss non-AEAD
-# keep their lineage -- pre_filter already bars them from publish, and
-# their source attribution is real. O1's scope is vmess net only.
+# O1 v2 (GPT 7121245603): the gate is now the full support matrix, not
+# vmess-net-only. Trojan grpc + ss non-AEAD are judged leg by leg and
+# rejected because a leg of the chain actually breaks -- NOT by name:
+# the tester refuses both, and the Surge line drops trojan grpc
+# silently (round-trip loss). The ss line CAN carry a non-AEAD method
+# in text (round-trip matches; see the v2 test Part 12), but the
+# tester will not verify it, so it still cannot be admitted.
 trojan_grpc = {"protocol": "trojan", "host": "203.0.113.141", "port": 443,
                "source": "syn-a", "name_hint": "", "password": "syn-pw-g",
                "t_type": "grpc", "sni": None, "ws": False, "ws_path": "/",
                "ws_host": None, "skip_verify": False}
 r = rec4.observe(trojan_grpc)
-check("P4-trojan-grpc-not-gated-by-O1", r.get("accepted") is True,
-      "O1 scope is vmess net only; trojan transport stays pre_filter's job")
+check("P4-trojan-grpc-gated-by-O1-v2",
+      r.get("recorded") is False
+      and r.get("reason") == "unsupported-transport",
+      f"{r}")
 ss_rc4 = {"protocol": "ss", "host": "203.0.113.142", "port": 8388,
           "source": "syn-a", "name_hint": "", "method": "rc4-md5",
           "password": "syn-pw-rc4", "plugin": None}
 r = rec4.observe(ss_rc4)
-check("P4-ss-nonaead-not-gated-by-O1", r.get("accepted") is True,
-      "O1 scope is vmess net only; ss method stays pre_filter's job")
+check("P4-ss-nonaead-gated-by-O1-v2",
+      r.get("recorded") is False and r.get("reason") == "ss-method",
+      f"{r}")
 check("P4-prefilter-still-bars-those",
       pre_filter(dict(trojan_grpc, host="grpc.example.invalid"), PRIVATE)
       == (False, "unsupported-transport")
       and pre_filter(dict(ss_rc4, host="rc4.example.invalid"), PRIVATE)
       == (False, "ss-method"))
+# v2 matrix rows (direct gate assertions; the full per-combination
+# table lives in the v2 test script Part 11).
+check("P4-vmess-nontls-gated",
+      la.admission_gate(dict(vmess_rec("203.0.113.143", "tcp"), tls=False))
+      == (False, "vmess-non-tls", ""))
+for sec in ("aes-128-gcm", "chacha20-poly1305", "none"):
+    check(f"P4-vmess-security-{sec}-admitted",
+          la.admission_gate(dict(vmess_rec("203.0.113.144", "ws"),
+                                 security=sec)) == (True, "", ""))
+check("P4-vmess-security-unknown-gated",
+      la.admission_gate(dict(vmess_rec("203.0.113.145", "ws"),
+                             security="aes-256-gcm"))
+      == (False, "unsupported-security", "aes-256-gcm"))
+check("P4-vmess-security-uppercase-gated",
+      la.admission_gate(dict(vmess_rec("203.0.113.146", "ws"),
+                             security="AES-128-GCM"))
+      == (False, "unsupported-security", "AES-128-GCM"))
+check("P4-ss-plugin-gated",
+      la.admission_gate({"protocol": "ss", "host": "203.0.113.147",
+                         "port": 8388, "source": "syn-a", "name_hint": "",
+                         "method": "aes-256-gcm", "password": "syn-pw-p",
+                         "plugin": "v2ray-plugin;tls"})
+      == (False, "ss-plugin", "present"))
+check("P4-vmess-missing-uuid-gated",
+      la.admission_gate(dict(vmess_rec("203.0.113.148", "ws"), uuid=""))
+      == (False, "missing-uuid", ""))
+check("P4-trojan-missing-password-gated",
+      la.admission_gate({"protocol": "trojan", "host": "203.0.113.149",
+                         "port": 443, "source": "syn-a", "name_hint": "",
+                         "password": "", "t_type": "tcp", "sni": None,
+                         "ws": False, "ws_path": "/", "ws_host": None,
+                         "skip_verify": False})
+      == (False, "missing-password", ""))
+check("P4-unknown-protocol-fail-closed",
+      la.admission_gate({"protocol": "vless", "host": "203.0.113.150",
+                         "port": 443})
+      == (False, "unknown-protocol", "vless"))
+# B10 does NOT gate lineage (v2 re-asserted): comma / malformed
+# credentials are still recorded; only publish refuses them.
+check("P4-comma-password-still-gets-lineage-v2",
+      la.admission_gate({"protocol": "trojan", "host": "203.0.113.151",
+                         "port": 443, "source": "syn-a", "name_hint": "",
+                         "password": "syn-pw,001", "t_type": "tcp",
+                         "sni": None, "ws": False, "ws_path": "/",
+                         "ws_host": None, "skip_verify": False})
+      == (True, "", ""))
+check("P4-invalid-uuid-still-gets-lineage-v2",
+      la.admission_gate(dict(vmess_rec("203.0.113.152", "ws"),
+                             uuid="not-a-uuid"))
+      == (True, "", ""))
 conn4.close()
 
 # ===========================================================================
@@ -611,6 +668,53 @@ vu_ok = vmess_rec("203.0.113.153", "ws")
 vu_ok = dict(vu_ok, host="u.example.invalid")
 check("P5-uuid-clean-passes",
       pre_filter(vu_ok, PRIVATE) == (True, ""))
+# B10-EXTENSION v2 (GPT 7121245603): UUID format check -- standard
+# 8-4-4-4-12 hex shape only; version/variant nibbles are NOT policed.
+for good_uuid in ("11111111-2222-3333-4444-555555555555",
+                  "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+                  "aAbB1234-5678-90aB-cDeF-0123456789ab"):
+    vu = dict(vmess_rec("203.0.113.154", "ws"), uuid=good_uuid,
+              host="u.example.invalid")
+    check(f"P5-uuid-format-valid-{good_uuid[:8]}",
+          is_valid_uuid(good_uuid) is True
+          and pre_filter(vu, PRIVATE) == (True, ""))
+    try:
+        build_surge_line(vu, "X")
+        check(f"P5-uuid-format-build-ok-{good_uuid[:8]}", True)
+    except ValueError:
+        check(f"P5-uuid-format-build-ok-{good_uuid[:8]}", False,
+              "valid uuid refused by build")
+for bad_uuid, why in (
+        ("not-a-uuid", "not-uuid"),
+        ("11111111-2222-3333-4444-55555555555", "short-last-group"),
+        ("11111111-2222-3333-4444555555555555", "missing-dash"),
+        ("11111111-2222-3333-4444-55555555555g", "non-hex"),
+        ("11111111-2222-3333-4444", "too-short"),
+        ("11111111-2222-3333-4444-555555555555-extra", "extra-group"),
+        (" 11111111-2222-3333-4444-555555555555", "leading-space"),
+        ("11111111-2222-3333-4444-555555555555 ", "trailing-space")):
+    vu = dict(vmess_rec("203.0.113.155", "ws"), uuid=bad_uuid,
+              host="u.example.invalid")
+    check(f"P5-uuid-format-invalid-{why}",
+          is_valid_uuid(bad_uuid) is False
+          and pre_filter(vu, PRIVATE) == (False, "invalid-uuid"),
+          f"{pre_filter(vu, PRIVATE)}")
+    try:
+        build_surge_line(vu, "X")
+        check(f"P5-uuid-format-build-refuses-{why}", False, "no error raised")
+    except ValueError:
+        check(f"P5-uuid-format-build-refuses-{why}", True)
+# Comma takes precedence over format (v1 behaviour preserved): a
+# comma uuid is "comma-uuid", not "invalid-uuid".
+vu_comma = dict(vmess_rec("203.0.113.156", "ws"),
+                uuid="aaaaaaaa-1111,2222-3333", host="u.example.invalid")
+check("P5-uuid-comma-beats-format",
+      pre_filter(vu_comma, PRIVATE) == (False, "comma-uuid"))
+# Missing uuid is still "missing-uuid" (checked before format).
+vu_missing = dict(vmess_rec("203.0.113.157", "ws"), uuid="",
+                  host="u.example.invalid")
+check("P5-uuid-missing-beats-format",
+      pre_filter(vu_missing, PRIVATE) == (False, "missing-uuid"))
 # B10 gates PUBLISH, not lineage: a comma-password node still gets lineage.
 conn5 = fresh_conn()
 rec5 = la.LineageRecorder(conn5, KEY, reg_syn, "i02-b10", NOW - 60)
