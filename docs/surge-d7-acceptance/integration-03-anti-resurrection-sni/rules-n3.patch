@@ -1,33 +1,46 @@
 --- a/pool/rules.py
 +++ b/pool/rules.py
-@@ -37,6 +37,26 @@
+@@ -2,6 +2,7 @@
+ 
+ import ipaddress
+ 
++from .blocklist_common import is_valid_cert_identity, is_valid_dns_hostname
+ from .crawler import AEAD_METHODS, parse_surge_line
+ from .geo import IpApi, code_to_flag, display_name, hint_to_code, is_cf_or_reserved
+ 
+@@ -37,6 +38,31 @@
      return False
  
  
 +def _vmess_no_sni(rec):
-+    """vmess + TLS + 拨号 host 为 IP 且无有效 SNI → 不可准入。
++    """vmess + TLS + 无有效证书身份 → 不可准入（v2 严格版）。
 +
-+    有效 SNI 指 strip 后非空且非字面 "<nil>" 的字符串。拨号 host 为合法
-+    DNS hostname 时不拒绝（hostname 本身就是有效证书身份）。
++    有效证书身份指严格校验通过的 SNI（合法 DNS hostname 或合法 IP
++    SAN；占位符、空白、非法 hostname、异常 IP 形式一律无效）。
++    SNI 无效时：拨号 host 为 IP → 拒绝（IP 拨号无 SNI 无法校验）；
++    拨号 host 为严格合法 DNS hostname → 不拒绝（hostname 本身就是
++    有效证书身份）；拨号 host 既非 IP 也非合法 DNS → 拒绝（不能只因
++    ipaddress 抛错就认定是合法 DNS）。
 +    绝不补猜 SNI、绝不跳过证书验证；被拒的记录保留库存，只是不进
 +    测试/发布候选。
 +    """
 +    if rec["protocol"] != "vmess" or not rec.get("tls", True):
 +        return False
-+    sni = rec.get("sni")
-+    if isinstance(sni, str) and sni.strip() and sni.strip() != "<nil>":
++    if is_valid_cert_identity(rec.get("sni")):
 +        return False
++    host = rec.get("host")
 +    try:
-+        ipaddress.ip_address(rec["host"])
-+    except ValueError:
-+        return False
-+    return True
++        ipaddress.ip_address(host)
++        return True
++    except (ValueError, TypeError):
++        pass
++    return not is_valid_dns_hostname(host)
 +
 +
  def pre_filter(rec, private_hosts):
      """返回 (保留?, 原因)：原因仅计数，不含任何敏感内容。"""
      if is_private(rec["host"], private_hosts):
-@@ -49,6 +69,8 @@
+@@ -49,6 +75,8 @@
              return (False, "unsupported-transport")
          if not rec.get("uuid"):
              return (False, "missing-uuid")
@@ -36,7 +49,7 @@
      elif proto == "trojan":
          if rec.get("t_type", "tcp") not in ("tcp", "ws", ""):
              return (False, "unsupported-transport")
-@@ -89,6 +111,10 @@
+@@ -89,6 +117,10 @@
                  line += f", ws-headers=Host:{rec['ws_host']}"
          return line
      if proto == "vmess":
@@ -57,33 +70,45 @@
  import json
  import os
  import socket
-@@ -19,6 +20,25 @@
+@@ -12,6 +13,7 @@
+ import time
+ from concurrent.futures import ThreadPoolExecutor
+ 
++from .blocklist_common import is_valid_cert_identity, is_valid_dns_hostname
+ from .crawler import AEAD_METHODS
+ 
+ SB = "/usr/local/bin/sing-box"
+@@ -19,6 +21,29 @@
  DEBUG = os.environ.get("POOL_TEST_DEBUG") == "1"
  
  
 +def _vmess_no_sni(rec):
-+    """vmess + TLS + 拨号 host 为 IP 且无有效 SNI → 不可准入。
++    """vmess + TLS + 无有效证书身份 → 不可准入（v2 严格版）。
 +
-+    与 rules.py 的同名函数同款同序：有效 SNI 指 strip 后非空且非字面
-+    "<nil>" 的字符串；拨号 host 为合法 DNS hostname 时不拒绝。
++    与 rules.py 的同名函数同款同序：有效证书身份指严格校验通过的
++    SNI（合法 DNS hostname 或合法 IP SAN；占位符、空白、非法
++    hostname、异常 IP 形式一律无效）。SNI 无效时：拨号 host 为 IP
++    → 拒绝；拨号 host 为严格合法 DNS hostname → 不拒绝（hostname
++    本身就是有效证书身份）；既非 IP 也非合法 DNS → 拒绝。
 +    绝不补猜 SNI、绝不跳过证书验证。
 +    """
 +    if rec["protocol"] != "vmess" or not rec.get("tls", True):
 +        return False
-+    sni = rec.get("sni")
-+    if isinstance(sni, str) and sni.strip() and sni.strip() != "<nil>":
++    if is_valid_cert_identity(rec.get("sni")):
 +        return False
++    host = rec.get("host")
 +    try:
-+        ipaddress.ip_address(rec["host"])
-+    except ValueError:
-+        return False
-+    return True
++        ipaddress.ip_address(host)
++        return True
++    except (ValueError, TypeError):
++        pass
++    return not is_valid_dns_hostname(host)
 +
 +
  def _filter_reason(rec):
      proto = rec["protocol"]
      if proto == "vmess":
-@@ -28,6 +48,8 @@
+@@ -28,6 +53,8 @@
              return "unsupported-transport"
          if not rec.get("uuid"):
              return "missing-uuid"

@@ -8,23 +8,35 @@
 - 建议目录：`docs/surge-d7-acceptance/integration-03-anti-resurrection-sni/`
   （与 #126/#127 布局一致）
 - 基线：live `pool/`（2026-11-24 11:52 取回核对，rules.py / tester.py /
-  crawler.py / db.py / cli.py / build_candidate.py / auto_prune.py /
+  crawler.py / db.py / cli.py / auto_prune.py /
   production_cycle.py / import_per_observation_v2.py /
-  import_phone_observations.py 原文在 `work/live/`）
+  import_phone_observations.py 原文在 `work/live/`；另见
+  `work/prod-chain/`：live 单写手链 production_cycle.py /
+  legacy_source_adapter.py / pool_db_source.py /
+  candidate_contract.py / safe_additions.py / single_writer.py，
+  md5 已核对一致）
+- **v2（Review 6033772552 收口，2026-11-24 13:xx）**：见 §9。
+  本包不再含自写的 `build_candidate.py`——真实组批模块是
+  staging 的 `build_candidate.py`（single-writer 目录），v2
+  通过 `make_preview` 真实入口测试它，不再用未接线的复刻。
 
 ## 1. 改动一览
 
 | 文件 | 性质 | 规模 |
 |---|---|---|
-| `pool/backfill_blocklist.py` | 新增：N2 回填脚本 | 256 行 |
+| `pool/backfill_blocklist.py` | 新增：N2 回填脚本（v2：Backup API + 事务内重核对 + 逐条 reason + 决策日志） | 384 行 |
 | `pool/blocklist_backfill_20261121.json` | 新增：25 条逐条审计记录 | 556 行 |
-| `pool/screening.py` | 新增：统一筛查（blocklist + rejected + pre_filter + 严格漏斗） | 108 行 |
+| `pool/blocklist_common.py` | 新增：严格 rejected 加载、不可变决策日志、SQLite Backup API、严格证书身份校验 | 约 280 行 |
+| `pool/screening.py` | 新增：统一筛查（blocklist + rejected + pre_filter + 严格漏斗） | 约 170 行 |
 | `pool/rejected_nodes.json` | 新增：GPT 已裁决拒绝清单（1 条） | 1 行 |
-| `pool/unblock_node.py` | 新增：解禁脚本 | 166 行 |
-| `pool/rules.py` | 修改：N3（live 186 → 212 行，+26） | 见 `rules-n3.patch` |
-| `pool/tester.py` | 修改：N3（live 185 → 207 行，+22） | 见 `rules-n3.patch` |
-| `rules-n3.patch` | N3 两文件统一 diff（+48 / −0，纯加法） | 94 行 |
-| `tests/test_integration_03.py` | 新增：隔离测试（75 项） | 446 行 |
+| `pool/unblock_node.py` | 新增：解禁脚本（v2：生产路径禁用，仅 dry-run；门控后路径仅隔离演练） | 240 行 |
+| `pool/rules.py` | 修改：N3（live 186 → 218 行，v2 严格版） | 见 `rules-n3.patch` |
+| `pool/tester.py` | 修改：N3（live 185 → 212 行，v2 严格版） | 见 `rules-n3.patch` |
+| `rules-n3.patch` | N3 两文件统一 diff（+48 / −0，纯加法；v2 重新生成，119 行） | 119 行 |
+| `cli-v2.patch` | cmd_test / cmd_publish 接入统一阻止清单 + 发布 guard 版本复核（a/pool/cli.py） | 157 行 |
+| `pool-db-source.patch` | **v2 新增**：live 发布链 `pool_db_source.read_db_snapshot` 并入 rejected 清单（a/single-writer/pool_db_source.py） | 109 行 |
+| `tests/test_integration_03.py` | 隔离测试（v1 75 项，v2 更新为 81 项） | 496 行 |
+| `tests/test_integration_03_v2.py` | **v2 新增**：Review 收口针对性测试（Parts F–L，155 项） | 1191 行 |
 | `pool/__init__.py`、`pool/crawler.py`、`pool/db.py`、`pool/geo.py` | 未改：live 原文逐字节复制，仅供本包独立导入与测试；合并时若 live 已变，以 live 为准 | — |
 
 ## 2. N2 持久禁入
@@ -52,52 +64,74 @@ nonce 一致）。核对结果：
   在库内且 last_result='pass'，仅靠端口规则挡在严格集外——这正是
   本机制要堵的同类漏洞。
 
-reason 统一为 `phone-fail-20261121`（与 11-06 前例
-`phone-fail-20261106` 同制）；逐条原始裁决见审计文件的 verdict /
-decision_ref / mechanism 字段。
+reason 按 verdict 区分（v2 更正，见 §5）：17 条
+`phone-fail-20261121`（DELETE_CANDIDATE_PHONE 与 allowlist 清退），
+8 条 `over-target-20261121`（DELETE_OVER_TARGET 容量裁剪）。
+8 条 DELETE_OVER_TARGET 不得被记为 phone-fail；逐条原始裁决见
+审计文件的 verdict / decision_ref / mechanism 字段。
 
-### 2.2 回填脚本（`backfill_blocklist.py`，仅标准库）
+### 2.2 回填脚本（`backfill_blocklist.py`，仅标准库；v2 已加固）
 
 - 默认 `--dry-run`（只读逐条审计）；`--check`（只读完整性验证）；
   `--apply`（写操作）。
 - `--apply` 顺序：只读预检（冲突即拒绝，不备份、不写库）→ 备份
-  （SHA-256 校验）→ 单事务写 blocklist + audit 行 → 写后验证。
+  （SQLite Backup API，0600、独占新文件、不覆盖、校验 integrity
+  与完整逻辑内容；copy2 只拷主库文件会丢 WAL 已提交数据，v2 已
+  弃用）→ BEGIN IMMEDIATE 单事务写 blocklist + audit 行 → 事务内
+  重新核对、commit 前验证 blocklist 与对应 audit，失败回滚。
   幂等（重跑 inserted=0）；任一步失败回滚。
+- 每次运行向不可变决策日志追加 1 条记录（只追加，0600，拒绝符号
+  链接；长期审计不只依赖 30 天清理的 audit 表）。
 - live 路径（`/opt/free-node-program/data/pool.db`）须显式
   `--allow-live` 才接受 `--apply`，且仍须 `--backup` 与 `--by`。
   生产写入须用户明确授权——本差异不执行。
-- 不删 nodes / node_tests；只增 blocklist + audit 行。
+- 不删 nodes / node_tests；只增 blocklist + audit 行；无整库恢复
+  路径（不提供 `--restore` / 覆盖写回命令）。
 - audit 行沿用 `db.log_audit` 的行格式，但不用 `log_audit()` 本身
   （它每次调用即 commit，会破坏单事务原子性）。
 - 注意：audit 表受既有 30 天保留策略（`db.prune_old`）约束；长期
-  审计依据以本 JSON 文件 + prune-ledger.jsonl 为准。
+  审计依据以本 JSON 文件 + prune-ledger.jsonl + 决策日志为准。
 
 ### 2.3 统一筛查（`screening.py`）
 
 - 阻止清单 = blocklist 表 + `rejected_nodes.json`，语义分开：
   blocklist 是“曾清退、禁复活”；rejected 是“GPT 拒绝准入”。
+  `load_banlist` 一次加载同一受信版本（version = blocklist 三元组
+  + rejected 三元组 + rejected 文件 version 的规范序列化 SHA-256）。
 - `screen_records`：阻止清单优先于 pre_filter；被禁入的记录不进
   测试集，也不产生“通过 pre_filter”的假象。
 - `strict_candidates`：P1-2 严格漏斗口径（样本 ≥20、通过率 ≥0.5、
   端口 ≠19999、last_result='pass'、24h 内、最近一次通过 ≤300ms）
   + blocklist / rejected 排除，返回（行、被排除行及原因）。
+- `load_rejected` 严格加载：文件缺失、JSON 损坏、entries 缺失/
+  为空、重复、畸形、decision_ref 为空一律抛错，不悄悄变空。
+- `verify_publish_guard`：发布前最后一道 guard，逐行解析核对，
+  任一被禁三元组或无法解析的行即拒绝整批。
 - 抓取仍可存审计记录（cmd_crawl 不改）；测试可隔离诊断
-  （cmd_test 不改）；正式发布已查 blocklist（cmd_publish /
-  build_candidate.py 现状已确认，不重复改）。
+  （cmd_test 不改测试本身，但常规测试集须排除阻止清单内三元组，
+  见 `cli-v2.patch`）；正式发布路径见 §9（live 链 + cli-v2.patch）。
 - 漏斗是三元组级视图，不能区分同一三元组的不同配置变体
   （例如有 SNI 与无 SNI 的 vmess 变体）；变体级准入以
   screen_records / pre_filter 为准（见 §3.3）。
+- 三元组级禁入只是保守禁入：它只说明“该三元组曾清退、不得复活”，
+  不作任何新配置变体的健康证明；新变体的健康须凭新鲜 VPS / 手机 /
+  控制证据重新判定，不得用旧三元组历史冒充新变体证据。
 
-### 2.4 解禁（`unblock_node.py`）
+### 2.4 解禁（`unblock_node.py`；v2：生产路径已禁用）
 
 - 只接受显式人工调用，不设自动触发；不因重抓、改名、历史 pass
   自动解禁。
-- `--apply` 须 `--approved-by` + `--decision-ref` + `--evidence`
-  三者齐全；先备份（SHA-256 校验），单事务删 blocklist 行 +
-  写 1 行 audit（action=blocklist-unblock）；绝不删 nodes /
-  node_tests / 既有 audit 历史；不设 `--allow-data-loss`。
+- **生产 `--apply` 已禁用**（`PRODUCTION_UNBLOCK_ENABLED=False`）：
+  完整参数也拒绝（exit 2，DISABLED），不备份、不写库；仅保留隔离
+  dry-run / 演练。未来启用须绑定真实批准记录、精确配置变体的新鲜
+  VPS / 手机 / 控制证据及独立审核，保留同入口其他变体禁入，禁止
+  用自填字符串充当凭证。
+- 门控后路径（仅进程内翻转常量，模拟未来独立审查启用）仍受事务内
+  快照比对约束：预读后外部改行 → 拒绝并回滚；决策日志 1 条。
 - 三元组在 `rejected_nodes.json` 里时拒绝（须先由 GPT 另行裁决
   移出拒绝清单）；不在 blocklist 里时拒绝（无可解禁之物）。
+- 解禁只删 blocklist 行 + 写 1 行 audit（action=blocklist-unblock）；
+  绝不删 nodes / node_tests / 既有 audit 历史；不设 `--allow-data-loss`。
 
 ### 2.5 rejected 清单（`rejected_nodes.json`）
 
@@ -106,15 +140,21 @@ decision_ref / mechanism 字段。
   06:00 裁决不合格；单次复测通过 76.0ms 不自动恢复）。
 - 同一 host 不同端口是不同三元组，不自动同拒（该 host 的 :8443 /
   :2083 / :80 行不在清单内）。
+- **注意**：该条不在 live blocklist 表内（表内 11 行全是 11-06 的），
+  live 链此前从未读过它；v2 用 `pool-db-source.patch` 把它并入
+  live 链的 blocked_keys（见 §9）。
 
 ## 3. N3 SNI 准入
 
-### 3.1 规则（`_vmess_no_sni`，rules.py 与 tester.py 同款同序）
+### 3.1 规则（`_vmess_no_sni`，rules.py 与 tester.py 同款同序；v2 严格版）
 
-vmess + TLS + 拨号 host 能解析为 IP 地址 + SNI 缺失/空/空白/
-字面 `"<nil>"` → 拒绝准入，原因 `vmess-no-sni`，保留库存。
-拨号 host 为合法 DNS hostname 时不拒绝（hostname 本身就是有效
-证书身份）。绝不补猜 SNI、绝不跳过证书验证。
+vmess + TLS + 无有效证书身份 → 拒绝准入，原因 `vmess-no-sni`，
+保留库存。有效证书身份指严格校验通过的 SNI（合法 DNS hostname
+或合法 IP SAN；占位符、空白、非法 hostname、异常 IP 形式一律无效）。
+SNI 无效时：拨号 host 为 IP → 拒绝（IP 拨号无 SNI 无法校验）；
+拨号 host 为严格合法 DNS hostname → 不拒绝（hostname 本身就是
+有效证书身份）；拨号 host 既非 IP 也非合法 DNS → 拒绝（不能只因
+ipaddress 抛错就认定是合法 DNS）。绝不补猜 SNI、绝不跳过证书验证。
 
 - 落点：`pre_filter` vmess 分支末尾（tls → net → uuid 之后），
   不扰动已有原因计数；`_filter_reason` 同款同序同原因串。
@@ -129,6 +169,8 @@ vmess + TLS + 拨号 host 能解析为 IP 地址 + SNI 缺失/空/空白/
   行位不重叠（B10 在 trojan/ss 密码分支与 vmess uuid 检查；
   N3 在 vmess 分支 missing-uuid 之后）；若 #127 先合并，N3 调用
   行改插在 comma-uuid 检查之后即可，helper 本身与上下文无关。
+  组合回归见 v2 测试 Part K（B10 / B10-EXTENSION / O1 / N3
+  同时生效）。
 
 ### 3.2 影响面（2026-11-24 11:55 新鲜抓取实测，4023 条，10/10 来源）
 
@@ -142,6 +184,9 @@ vmess + TLS + 拨号 host 能解析为 IP 地址 + SNI 缺失/空/空白/
   chenzhihan-base64 8。
 - sni 取值分布：缺失（None）618、字面 `"<nil>"` 1；空字符串在
   抓取解析层已归一为 None（crawler.py:275）。
+- v2 严格校验不改变上述计数：v2 无效证书身份 619 条与 v1 无 SNI
+  619 条一致，157 条 DNS 拨号 host 全部通过严格 DNS 校验，
+  292 个非空 SNI 0 个新判无效。
 
 ### 3.3 口径说明（诚实口径）
 
@@ -157,32 +202,35 @@ vmess + TLS + 拨号 host 能解析为 IP 地址 + SNI 缺失/空/空白/
 - 4 条 :1270 的 6/6 对照是该样本证据（P1-3），不是全集结论；
   其他端口须验证（本轮只验证了 :1270 的 16 条与全量分布）。
 
-## 4. 隔离测试（75/75 通过）
+## 4. 隔离测试
 
-运行：`python3 tests/test_integration_03.py`（快照副本
-`work/pool-snapshot.db` 2026-11-24 11:52 UTC；脱敏夹具
-`work/crawl-20261124-desensitized.json` 4023 条，uuid/password
-已替换为占位符；live 库 0 写入——复核时 live blocklist 仍 11、
-nodes 7798、0 行新 audit）。
+运行环境：VPS /tmp 隔离（本轮因 /tmp tmpfs 余量不足，改用磁盘
+隔离目录 `/root/i03-run/`，TMPDIR 指向其下；live 0 写入）。
+快照副本 `work/pool-snapshot.db`（2026-11-24 11:52 UTC；与 v1
+快照 md5 一致）；脱敏夹具 `work/crawl-20261124-desensitized.json`
+4023 条，uuid/password 已替换为占位符。
 
-- Part A 回填（17 项）：dry-run 25 absent 0 conflict 且未写库；
-  --check 回填前 exit 1、回填后 exit 0；--apply 备份 SHA 一致、
-  blocklist 11→36、audit +25、nodes/node_tests 一字节未变、
-  逐条 reason/by 正确；幂等重跑 inserted=0 且 audit 不重复；
-  冲突（同三元组不同 reason）fail-closed exit 1 且不备份不写库；
-  live 路径无 --allow-live 拒绝（exit 2）。
-- Part B N3（31 项）：6/6 对照复现（4 条失败变体 sni None/""/空白/
-  "<nil>" 双入口同拒 + build_surge_line 抛错；3 条对照 sni=
-  xmfhlpy.com 双入口同放）；DNS hostname 不误拒；IPv6 拨号同拒；
-  非 TLS 仍走 vmess-non-tls；trojan 不受影响；夹具实测 1015/619/
-  462/157 全部复现；:1270 16 条全拒。
-- Part C 筛查（10 项）：严格集 21→9，排除 12 条全在 25 条集内，
-  5 条复活候选全排除；9 条中 3 条 :1270 无 SNI 变体被 N3 记录级
-  排除；合成被拒三元组（strict 资格）被 rejected-gpt 排除。
-- Part D 解禁（9 项）：dry-run 不写库；缺三要素拒绝；不在
-  blocklist 拒绝；rejected 清单内拒绝；完整参数 --apply 成功，
-  blocklist 36→35、audit +1、nodes/node_tests 未动。
-- Part E 口径复核（5 项）：见 §5。
+- `tests/test_integration_03.py`（v2 更新版）：**81/81 通过**
+  （v1 75 项 + v2 新增 6 项：A3 备份 integrity/0600/决策日志/
+  逐条 reason、A4 决策日志追加、D5 生产解禁禁用、D6 门控后路径）。
+- `tests/test_integration_03_v2.py`（v2 新增）：**155/155 通过**，
+  Parts F–L：
+  - F WAL 安全备份（Backup API 含 WAL 未 checkpoint 数据；copy2
+    对照丢数据；已存在/符号链接/同文件/源缺失拒绝；并发写入下
+    备份一致）。
+  - G 事务内重核对（同键异 reason 不被 INSERT OR IGNORE 吞掉、
+    commit 前验证失败回滚；同 reason 幂等跳过）。
+  - H 解禁禁用 + 严格 rejected 加载 + 决策日志 + 无整库恢复路径。
+  - I 端到端防复活（真实打补丁 cli：cmd_test 0 行新测被禁三元组；
+    cmd_publish 输出 24 行，21 钉选 + 加拿大 + 2 干净轮换，0 被禁；
+    guard 版本中途变化即拒发且文件一字节未变）。
+  - J N3 严格证书身份负例（占位符/空白/非法 hostname/异常 IP /
+    非字符串 SNI / 非法 host；合法 DNS 与 IP SAN 放行；夹具回归
+    456 / 157 与 v1 口径一致）。
+  - K B10 / B10-EXTENSION / O1 / N3 组合回归（#127 rules 与本包
+    rules 组合，12 项全过）。
+  - L live 发布链统一阻止清单（pool-db-source.patch + make_preview
+    + _preflight，19 项；见 §9）。
 
 ## 5. 口径更正（重要）：15→10 是误数，实为 15→4
 
@@ -232,10 +280,88 @@ R1–R4 allowlist 的 15 条删除，漏了 10:55/12:55/13:55 的 10 条
   补偿回滚并报 BLOCKED。
 - 25 条回填与正式池变更均须独立 PR、隔离测试及用户明确生产授权。
 - 试用池 TTL 2026-11-28；试用探针因池内仅 1 节点已暂停上报。
+- verify_promotion.py（试用转正 READY 判定，只读报告）本身不查
+  阻止清单：READY ≠ 入池；正式入池的唯一入口是 production_cycle
+  的 build_candidate（查 blocked_keys），见 §9。是否在 READY 侧
+  也排除被禁三元组，属集成-01/05 的判定口径，不在本差异内改。
 
 ## 8. 生产状态（本差异未动）
 
 正式池 22 行（21 钉选＋加拿大），SHA
 9e44841b177bb40463afb15f27fe2c801c9657257f463289dcea5f8051a1ebd4；
-AUTO_PRUNE=OFF；#124 PAUSED；#125 v4 冻结；#126/#127 待 GPT
-源码审查；live blocklist 仍 11 行（全是 11-06 的）。
+AUTO_PRUNE=OFF；#124 PAUSED；#125 v4 冻结；#126/#127 v2 待 GPT
+复审；live blocklist 仍 11 行（全是 11-06 的）；live 发布链
+（production_cycle 每小时 :55）正常运行，12:55 周期
+SAME_BYTES_PUBLISHED。
+
+## 9. v2：Review 6033772552 收口（四项，全部最小差异）
+
+### 9.1 P0 写入安全
+
+- backfill 与 unblock 的备份改用 SQLite Backup API（`blocklist_common.sqlite_backup`）：
+  独占新备份文件、0600、拒同文件及别名、不覆盖、校验完整逻辑内容
+  与 integrity；主库 SHA 相同不证明已提交 WAL 数据包含在备份
+  （F1/F2 对照实测：小库未 checkpoint 时 copy2 得空库）。
+- 回填冲突预检在 BEGIN IMMEDIATE 之前、写后验证在 commit 后；
+  事务内重新核对，commit 前验证 blocklist 与对应 audit，失败回滚；
+  同键异 reason 不被 INSERT OR IGNORE 吞掉（Part G）。
+- 禁止整库恢复覆盖现有历史：两脚本均无 `--restore` / 覆盖写回
+  命令（Part H6 静态 + 行为双重核对）。
+
+### 9.2 P0 解禁安全
+
+- 生产 `--apply` 禁用（`PRODUCTION_UNBLOCK_ENABLED=False`），仅保留
+  隔离 dry-run / 演练；未来启用须绑定真实批准记录、精确配置变体
+  的新鲜 VPS / 手机 / 控制证据及独立审核，保留同入口其他变体禁入，
+  禁止用自填字符串充当凭证。
+- `load_rejected` 缺文件时抛错，不返回空集（fail-closed）。
+- 事务内比较原 blocklist 记录 / 决策版本后再操作并记录精确 identity；
+  决策日志不可变追加（0600，拒绝符号链接），长期审计不只依赖
+  30 天清理的 audit 表。
+
+### 9.3 P0 禁止复活覆盖真实消费路径
+
+**live 链核实结果**（只读核对，非推测）：
+
+- live 每小时发布链是 `production_cycle.py --publish`（:55，
+  release-ready 已存在，12:55 周期 SAME_BYTES_PUBLISHED），不是
+  `pool/cli.py cmd_publish`（后者所属 pool-publish.service 已
+  masked，属 legacy 路径；本差异仍用 `cli-v2.patch` 加固它，见下）。
+- live 链：`_preflight` → `build_preview` → `make_preview` →
+  staging `build_candidate(blocked_keys)` → `safe_overlay` →
+  `assess_candidate(blocklisted_names)` → `single_writer.publish`
+  （flock + legacy-ban proof + post-write SHA 复核）。
+  `blocked_keys` 的唯一来源是 `pool_db_source.read_db_snapshot`
+  读 blocklist 表；回填后（11→36）25 条自动被 live 链拒绝，无须
+  改调用点。
+- **缺口**：`rejected_nodes.json` 在 live 链里从未被读，且被拒三元组
+  不在 blocklist 表内——live 链此前不会拒绝它。v2 用
+  `pool-db-source.patch`（109 行，单文件单函数最小补丁）把它并入
+  `read_db_snapshot` 的 `blocked_keys`，与 `screening.load_banlist`
+  共用同一规范版本（banlist_version SHA-256，Part L1 两侧逐字节
+  一致）；缺失/损坏即 `SourceRefused`，不悄悄变空。
+- 覆盖的真实调用点（隔离实测，Part I + Part L）：
+  筛查 `screen_records` / `strict_candidates`（I1/I2）→ legacy
+  `cmd_test` / `cmd_publish` + 发布 guard（I5/I6/I7）→ live
+  `make_preview` / `build_candidate` 组批与补位（L4：25 条被禁 +
+  1 条已拒不得进入，2 条干净候选进入，21 钉选 + 加拿大共 24 行）
+  → live `_preflight` 发布前守卫（L5：干净池放行，含被禁钉选名
+  的池拒 `blocked_pins_reentered`）。
+- **部署顺序**：`rejected_nodes.json` 须先于（或原子随同）
+  `pool-db-source.patch` 部署到 `/opt/free-node-program/pool/`；
+  否则打补丁后的发布链会因默认 rejected 路径缺失而 fail-closed
+  拒绝每个周期（Part L2 实测）。
+
+### 9.4 P1 N3 准入与组合回归
+
+- `_vmess_no_sni` 改为严格版（`is_valid_cert_identity` /
+  `is_valid_dns_hostname`）：占位符（大小写不限）、空白、非法
+  hostname、异常 IP 形式一律无效；合法 DNS 作证书校验身份（不能
+  只因 ipaddress 抛错认定是合法 DNS）；合法 IP SAN 按已明确支持
+  契约处理，不推测上游。
+- 保留 pre_filter / _filter_reason / build_surge_line 防御纵深，
+  不补猜 SNI、不放松 TLS。
+- #127 rules.py 与本 PR 重叠、#124 tester.py 仍暂停：只审最小 patch
+  （`rules-n3.patch` 重新生成，119 行），禁止用整份旧文件覆盖
+  其它差异；组合回归 Part K 验证 B10 / B10-EXTENSION / O1 / N3
+  同时生效（12 项全过）。

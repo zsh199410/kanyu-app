@@ -1,0 +1,157 @@
+--- a/pool/cli.py
++++ b/pool/cli.py
+@@ -16,6 +16,7 @@
+ from .publish import atomic_publish, read_publish_lines, rollback, self_check
+ from .rules import (build_surge_line, is_private, load_private_hosts,
+                     pre_filter, select_publish)
++from .screening import load_banlist, verify_publish_guard
+ from .tester import test_many, test_one
+ 
+ PUBLISH_FILENAME = "pool-new.txt"
+@@ -176,6 +177,12 @@
+     private = load_private_hosts(os.path.join(base, "private-hosts.txt"))
+     conn = dbmod.connect(os.path.join(base, "data", "pool.db"))
+     disabled = set(dbmod.get_config(conn, "disabled_sources", []) or [])
++    try:
++        banlist = load_banlist(conn)
++    except (OSError, ValueError) as exc:
++        log.error("test refused: cannot load trusted banlist: %r", exc)
++        return 2
++    banned = banlist["blocked"] | set(banlist["rejected"])
+     vmess_tls_only = dbmod.get_config(conn, "vmess_tls_only", True)
+     if vmess_tls_only is None:
+         vmess_tls_only = True
+@@ -187,6 +194,12 @@
+         if rec["source"] in disabled:
+             filtered["source-disabled"] = filtered.get("source-disabled", 0) + 1
+             continue
++        key = (rec["protocol"], rec["host"], rec["port"])
++        if key in banned:
++            reason = ("blocklisted" if key in banlist["blocked"]
++                      else "rejected-gpt")
++            filtered[reason] = filtered.get(reason, 0) + 1
++            continue
+         ok, reason = pre_filter(rec, private)
+         if rec["protocol"] == "vmess" and not rec.get("tls") and not vmess_tls_only:
+             ok, reason = True, ""
+@@ -283,7 +296,16 @@
+     per_cap = int(per_cap) if per_cap is not None else int(cfg.get("per_country_cap", 40))
+     max_lines = int(max_lines) if max_lines is not None else int(cfg.get("publish_max_lines", 150))
+     private = load_private_hosts(os.path.join(base, "private-hosts.txt"))
+-    blocked = dbmod.get_blocked(conn)
++    try:
++        banlist = load_banlist(conn)
++    except (OSError, ValueError) as exc:
++        log.error("publish refused: cannot load trusted banlist: %r", exc)
++        dbmod.log_run(conn, "publish", started, {}, ok=False,
++                      error="banlist load failed")
++        conn.commit()
++        print(json.dumps({"ok": False, "error": "banlist load failed"}))
++        return 1
++    banned = banlist["blocked"] | set(banlist["rejected"])
+     pinned_db = {(r[0], r[1], r[2]): r[3] for r in dbmod.get_pinned(conn)}
+     pinned_lines = read_pinned_lines(base)
+     # 若 DB 钉选为空但文件有钉选（首次导入前），以文件为准补入 DB（仅身份）。
+@@ -297,7 +319,7 @@
+     pinned_keys = {(p, h, po) for _n, p, h, po, _t in pinned_lines}
+     # 仅 DB 钉选（UI 钉选、尚未进钉选文件）：发布时同样视为钉选，
+     # 不得被轮换逻辑覆盖或丢弃；无旧行又无新鲜记录的只记数、不编造。
+-    db_only_keys = [k for k in pinned_db if k not in pinned_keys and k not in blocked]
++    db_only_keys = [k for k in pinned_db if k not in pinned_keys and k not in banned]
+     db_only_set = set(db_only_keys)
+     old_lines = read_publish_lines(os.path.join(base, "publish"), PUBLISH_FILENAME)
+     old_rotation = []  # (name, proto, host, port, line)
+@@ -351,7 +373,7 @@
+     country_count = {}
+     for name, proto, host, port, line in old_rotation:
+         key = (proto, host, port)
+-        if key in blocked or key in db_only_set or key not in db_pass:
++        if key in banned or key in db_only_set or key not in db_pass:
+             continue
+         kept_old.append((name, proto, host, port, line))
+         kept_old_names.add(name)
+@@ -360,7 +382,7 @@
+     # 新轮换：DB 通过、新鲜、未在旧轮换、未钉选、未拉黑、有新鲜记录的。
+     new_items = []
+     for key, (rate, first_seen) in db_pass.items():
+-        if key in blocked or key in pinned_keys or key in db_only_set or key in old_rotation_keys:
++        if key in banned or key in pinned_keys or key in db_only_set or key in old_rotation_keys:
+             continue
+         rec = by_key.get(key)
+         if rec is None:
+@@ -434,7 +456,7 @@
+             except ValueError:
+                 build_failed += 1
+     lines = [t for _n, _p, _h, _po, t in pinned_lines
+-             if (_p, _h, _po) not in blocked]
++             if (_p, _h, _po) not in banned]
+     lines += db_pinned_lines
+     lines += [t for _n, _p, _h, _po, t in kept_old]
+     lines += new_lines
+@@ -509,7 +531,7 @@
+                 new_kept.append(t)
+         new_lines = new_kept
+         lines = ([t for _n, _p, _h, _po, t in pinned_lines
+-                  if (_p, _h, _po) not in blocked]
++                  if (_p, _h, _po) not in banned]
+                  + db_pinned_lines
+                  + [t for _n, _p, _h, _po, t in kept_old]
+                  + new_lines)
+@@ -518,7 +540,7 @@
+     # 超上限时，优先 drop 最不稳的旧轮换（按通过率升序）。
+     if len(lines) > max_lines:
+         keep_pinned = [t for _n, _p, _h, _po, t in pinned_lines
+-                       if (_p, _h, _po) not in blocked] + db_pinned_lines
++                       if (_p, _h, _po) not in banned] + db_pinned_lines
+         over = len(lines) - max_lines
+         kept_sorted = sorted(kept_old,
+                              key=lambda x: db_pass.get((x[1], x[2], x[3]), (0, 0))[0])
+@@ -528,7 +550,7 @@
+         lines = lines[:max_lines]
+     ok, err = self_check(lines, private, max_lines)
+     counts = {"pinned": len([1 for _n, _p, _h, _po, _t in pinned_lines
+-                             if (_p, _h, _po) not in blocked]) + len(db_pinned_lines),
++                             if (_p, _h, _po) not in banned]) + len(db_pinned_lines),
+               "pinned_db_only": len(db_pinned_lines),
+               "pinned_uri_missing": pinned_uri_missing,
+               "kept_old": len(kept_old), "new": len(new_lines),
+@@ -542,6 +564,39 @@
+         log.error("publish self-check failed: %s", err)
+         print(json.dumps({"ok": False, "error": err, **counts}, ensure_ascii=False))
+         return 1
++    # 最后一道发布 guard：重新加载阻止清单并复核版本，逐行解析核对；
++    # 版本不符、加载失败或任一行被禁即拒绝整批发布（不写 publish 文件）。
++    try:
++        banlist_fresh = load_banlist(conn)
++    except (OSError, ValueError) as exc:
++        dbmod.log_run(conn, "publish", started, counts, ok=False,
++                      error="publish guard: banlist reload failed")
++        conn.commit()
++        log.error("publish guard refused: banlist reload failed: %r", exc)
++        print(json.dumps({"ok": False,
++                          "error": "publish guard: banlist reload failed",
++                          **counts}, ensure_ascii=False))
++        return 1
++    if banlist_fresh["version"] != banlist["version"]:
++        dbmod.log_run(conn, "publish", started, counts, ok=False,
++                      error="publish guard: banlist version changed")
++        conn.commit()
++        log.error("publish guard refused: banlist version changed")
++        print(json.dumps({"ok": False,
++                          "error": "publish guard: banlist version changed",
++                          **counts}, ensure_ascii=False))
++        return 1
++    try:
++        guard_checked = verify_publish_guard(lines, banlist_fresh)
++    except ValueError as exc:
++        dbmod.log_run(conn, "publish", started, counts, ok=False,
++                      error="publish guard: %s" % exc)
++        conn.commit()
++        log.error("publish guard refused: %s", exc)
++        print(json.dumps({"ok": False, "error": "publish guard refused",
++                          **counts}, ensure_ascii=False))
++        return 1
++    counts["publish_guard_checked"] = guard_checked
+     atomic_publish(os.path.join(base, "publish"), PUBLISH_FILENAME, lines)
+     # 同步 published_first：离开池子的轮换行清掉首次发布记录，重进重算宽限期。
+     final_rot = set()
