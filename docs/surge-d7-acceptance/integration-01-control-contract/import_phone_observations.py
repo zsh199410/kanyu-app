@@ -19,6 +19,14 @@ Admission (must ALL hold for a staging row to be imported):
 
 The receiver is NOT a deletion authorizer; this importer + the prune
 admission rules (auto_prune_phone_first.py) are the gate.
+
+Integration-01 v2 (Review 6033276893, fix 5): the v2 receiver records
+trial_generation and dual_target_ok per observation. This importer reads
+them when present (PRAGMA detection; a pre-v2 staging DB yields null/0)
+and writes them into the phone_failures detail as audit metadata. The
+G10 gate is unchanged; no generation gate is added here, because
+formal-pool evidence has no trial generation to compare against, and
+pre-v2 trusted rows carry no generation.
 """
 from __future__ import annotations
 
@@ -129,10 +137,13 @@ def main() -> int:
             if not {"batches", "phone_observations"} <= tables:
                 print("FAIL-CLOSED: staging DB missing required tables", file=sys.stderr)
                 return 2
+            staging_cols = {r[1] for r in scon.execute("PRAGMA table_info(phone_observations)")}
+            extra = [n for n in ("trial_generation", "dual_target_ok") if n in staging_cols]
             rows = scon.execute(
                 "SELECT nonce,protocol,host,port,status,probe_mode,trusted,"
-                "received_at,bearer,pool_sha,control_verified FROM phone_observations"
-                " ORDER BY received_at").fetchall()
+                "received_at,bearer,pool_sha,control_verified"
+                + ("," + ",".join(extra) if extra else "")
+                + " FROM phone_observations ORDER BY received_at").fetchall()
         finally:
             scon.close()
 
@@ -140,18 +151,24 @@ def main() -> int:
         # Any trusted==0 failure row is an integrity anomaly: the receiver
         # converts untrusted failures to 'unknown', so such a row must never
         # exist. Fail the whole import.
-        for (nonce, proto, host, port, status, mode, trusted,
-             received_at, bearer, pool_sha, cv) in rows:
+        for row in rows:
+            (nonce, proto, host, port, status, mode, trusted,
+             received_at, bearer, pool_sha, cv) = row[:11]
             if status == "failure" and trusted != 1:
                 print("FAIL-CLOSED: untrusted failure row in staging DB "
                       "(nonce prefix %s); import aborted" % str(nonce)[:8],
                       file=sys.stderr)
                 return 2
 
-        to_import = []  # (nonce, proto, host, port, received_at, mode, bearer, pool_sha)
+        to_import = []  # (nonce, proto, host, port, received_at, mode, bearer, pool_sha, gen, dual)
         skipped = {}
-        for (nonce, proto, host, port, status, mode, trusted,
-             received_at, bearer, pool_sha, cv) in rows:
+        for row in rows:
+            (nonce, proto, host, port, status, mode, trusted,
+             received_at, bearer, pool_sha, cv) = row[:11]
+            # v2 audit columns (fix 5): position 11/12 only when the
+            # staging DB has them; otherwise null/0 (legacy rows).
+            gen = row[11 + extra.index("trial_generation")] if "trial_generation" in extra else None
+            dual = row[11 + extra.index("dual_target_ok")] if "dual_target_ok" in extra else 0
             key = (proto, host, port)
             if status != "failure":
                 skipped.setdefault("not_failure_" + str(status), 0)
@@ -172,7 +189,7 @@ def main() -> int:
             if key in blocked:
                 skipped["blocklisted"] = skipped.get("blocklisted", 0) + 1
                 continue
-            to_import.append((nonce, proto, host, port, received_at, mode, bearer, pool_sha))
+            to_import.append((nonce, proto, host, port, received_at, mode, bearer, pool_sha, gen, dual))
 
         # --- Write vetted rows (dedupe via phone_import_log) ---
         conn = sqlite3.connect(args.pool_db, timeout=10.0)
@@ -191,14 +208,17 @@ def main() -> int:
                 "ON phone_failures(protocol,host,port,reported_at)")
             imported = 0
             already = 0
-            for (nonce, proto, host, port, received_at, mode, bearer, pool_sha) in to_import:
+            for (nonce, proto, host, port, received_at, mode, bearer, pool_sha, gen, dual) in to_import:
                 if conn.execute(
                         "SELECT 1 FROM phone_import_log WHERE nonce=?",
                         (nonce,)).fetchone():
                     already += 1
                     continue
+                # v2 audit metadata (fix 5): generation and dual-target
+                # evidence ride in the detail; audit-only, never a gate.
                 detail = ("probe_mode=%s bearer=%s control_verified=1 nonce_prefix=%s pool_sha_prefix=%s"
-                          % (mode, bearer, str(nonce)[:8], str(pool_sha)[:8]))
+                          " trial_generation=%s dual_target_ok=%s"
+                          % (mode, bearer, str(nonce)[:8], str(pool_sha)[:8], gen, dual))
                 conn.execute(
                     "INSERT INTO phone_failures "
                     "(protocol,host,port,reported_at,source,detail) "

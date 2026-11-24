@@ -15,6 +15,17 @@ Eligible controls (C6/C7 + known source group):
   * not a member of the trial pool (C2, enforced here for usability;
     the receiver's V4 check remains the authoritative backstop).
 
+Integration-01 v2 (Review 6033276893, fix 3): the historical success /
+failure evidence is bound to the CURRENT formal pool SHA (the pool SHA is
+the config-variant identity: same bytes = same config) and to the
+health window, and future-dated rows are rejected. When the trial pool
+snapshot cannot be read, generation refuses (exit 2, fail-closed) instead
+of silently skipping the C2 exclusion -- an unreadable trial snapshot
+must never leave a stale exclusion in place. The manifest carries a
+qualification_snapshot (SHA-256 of the canonical eligible-controls
+list, generated_at == updated_at) so the receiver can detect a list
+that was edited without regenerating, and refuse an expired list.
+
 Generation starts at 0 and increments only when the pool SHA changes
 (member-set change implies a SHA change). Health-timestamp-only changes
 never bump the generation (A17).
@@ -33,7 +44,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from receiver import parse_pool
+from receiver import parse_pool, qualification_snapshot_id
 
 HEALTH_WINDOW_S = 86400  # 24h (G4)
 
@@ -112,28 +123,40 @@ def main(argv=None):
         trial_raw = Path(args.trial_pool).read_bytes()
         trial_by_name = parse_pool(trial_raw, min_pool=1)
         trial_identities = set(trial_by_name.values())
-    except (OSError, ValueError):
-        print("WARN: trial pool unreadable; C2 exclusion skipped this run",
+    except (OSError, ValueError) as e:
+        # v2 (fix 3): an unreadable trial snapshot is fail-closed. The old
+        # behaviour (WARN + skip the C2 exclusion) could leave a trial
+        # member in the qualified list; a missing snapshot must refuse
+        # generation, never silently weaken the exclusion.
+        print("FAIL-CLOSED: trial pool unreadable; refusing generation: %s" % e,
               file=sys.stderr)
+        return 2
 
     try:
         conn = sqlite3.connect("file:%s?mode=ro" % args.db, uri=True, timeout=8)
         conn.execute("PRAGMA query_only=ON")
         try:
+            # v2 (fix 3): evidence is bound to the CURRENT formal pool SHA
+            # (the SHA is the config-variant identity) and to the health
+            # window; future-dated rows are rejected, never trusted.
             success_24h = {tuple(r[:3]): r[3] for r in conn.execute(
                 "SELECT protocol,host,port,MAX(received_at) FROM phone_observations"
                 " WHERE status='success' AND trusted=1 AND bearer='cellular'"
-                " AND probe_mode='external_policy_id' AND received_at>? GROUP BY protocol,host,port",
-                (window_from,)).fetchall()}
+                " AND probe_mode='external_policy_id' AND pool_sha=?"
+                " AND received_at>? AND received_at<=? GROUP BY protocol,host,port",
+                (pool_sha, window_from, now)).fetchall()}
             failure_24h = {tuple(r[:3]) for r in conn.execute(
                 "SELECT protocol,host,port FROM phone_observations"
                 " WHERE status='failure' AND trusted=1 AND bearer='cellular'"
-                " AND probe_mode='external_policy_id' AND received_at>? GROUP BY protocol,host,port",
-                (window_from,)).fetchall()}
+                " AND probe_mode='external_policy_id' AND pool_sha=?"
+                " AND received_at>? AND received_at<=? GROUP BY protocol,host,port",
+                (pool_sha, window_from, now)).fetchall()}
             last_failure = {tuple(r[:3]): r[3] for r in conn.execute(
                 "SELECT protocol,host,port,MAX(received_at) FROM phone_observations"
                 " WHERE status='failure' AND trusted=1 AND bearer='cellular'"
-                " AND probe_mode='external_policy_id' GROUP BY protocol,host,port").fetchall()}
+                " AND probe_mode='external_policy_id' AND pool_sha=?"
+                " AND received_at<=? GROUP BY protocol,host,port",
+                (pool_sha, now)).fetchall()}
         finally:
             conn.close()
     except sqlite3.Error as e:
@@ -173,14 +196,23 @@ def main(argv=None):
     else:
         generation = prior_gen
 
+    updated_at = datetime.fromtimestamp(now, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     manifest = {
         "pool_sha": pool_sha,
         "generation": generation,
-        "updated_at": datetime.fromtimestamp(now, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated_at": updated_at,
         "lines": len(pool_by_name),
         "entries": len(pool_by_name),
         "status": "FORMAL",
         "eligible_controls": eligible,
+        # v2 (fix 2/3): qualification snapshot binds the eligible list to
+        # this manifest revision. The receiver recomputes the id from the
+        # list and refuses a mismatch; generated_at always equals
+        # updated_at, so a hand-edited updated_at also breaks the binding.
+        "qualification_snapshot": {
+            "snapshot_id": qualification_snapshot_id(eligible),
+            "generated_at": updated_at,
+        },
     }
     summary = {"ok": True, "pool_sha_prefix": pool_sha[:12], "generation": generation,
                "members": len(pool_by_name), "eligible": len(eligible),

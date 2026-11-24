@@ -14,7 +14,8 @@
       "country_code": "CA",
       "country_verified": false,
       "vps_ms": 104.0,
-      "protocol": "vmess"
+      "protocol": "vmess",
+      "source_group": "G-matin"
     }
   ]
 }

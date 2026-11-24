@@ -9,6 +9,14 @@ VPS importer until its current schema and receipts have been audited.
 Trusted-failure gate (integration-01, Issue #73 G10): only failures with
 control_verified=1, probe_mode='external_policy_id' and bearer='cellular'
 are imported; the rest are diagnostic history and are never imported.
+
+Integration-01 v2 (Review 6033276893, fix 5): the v2 receiver records
+trial_generation and dual_target_ok per observation. This importer reads
+them when present (PRAGMA detection; a pre-v2 staging DB yields null/0)
+and writes them into the phone_failures detail JSON as audit metadata.
+The G10 gate is unchanged; no generation gate is added here, because
+formal-pool evidence has no trial generation to compare against, and
+pre-v2 trusted rows (11-06/11-20/21) carry no generation.
 """
 from __future__ import annotations
 
@@ -65,7 +73,11 @@ def read_verified_candidates(staging_path, pool_raw, pins, blocked, *, now):
         count = c.execute("SELECT count(*) FROM phone_observations").fetchone()[0]
         if count > MAX_ROWS:
             raise ImportRefused("too_many_observations")
-        q = ("SELECT " + ",".join(COLUMNS) + " FROM phone_observations "
+        # v2 audit columns (integration-01 v2): read when present; a
+        # pre-v2 staging DB yields null generation / dual_target_ok=0.
+        staging_cols = {r[1] for r in c.execute("PRAGMA table_info(phone_observations)")}
+        extra = [n for n in ("trial_generation", "dual_target_ok") if n in staging_cols]
+        q = ("SELECT " + ",".join(COLUMNS + tuple(extra)) + " FROM phone_observations "
              "WHERE status='failure' ORDER BY id ASC")
         rows = c.execute(q).fetchall()
     finally:
@@ -74,7 +86,10 @@ def read_verified_candidates(staging_path, pool_raw, pins, blocked, *, now):
     skipped = {"pinned": 0, "stale": 0, "untrusted": 0,
                "outside_pool": 0, "old": 0, "blocked": 0}
     seen = set()
-    for nonce, proto, host, port, status, mode, trusted, ts, bearer, sha, cv in rows:
+    for row in rows:
+        nonce, proto, host, port, status, mode, trusted, ts, bearer, sha, cv = row[:11]
+        gen = row[11 + extra.index("trial_generation")] if "trial_generation" in extra else None
+        dual = row[11 + extra.index("dual_target_ok")] if "dual_target_ok" in extra else 0
         key = (proto, host, port)
         item_key = (nonce, *key)
         if item_key in seen:
@@ -109,7 +124,7 @@ def read_verified_candidates(staging_path, pool_raw, pins, blocked, *, now):
         if key not in current:
             skipped["outside_pool"] += 1
             continue
-        candidates.append((nonce, *key, ts, bearer, mode))
+        candidates.append((nonce, *key, ts, bearer, mode, gen, dual))
     return candidates, skipped
 
 
@@ -158,7 +173,7 @@ def import_once(staging_path, production_db, pool_file, *, now=None,
              nonce TEXT NOT NULL, protocol TEXT NOT NULL, host TEXT NOT NULL,
              port INTEGER NOT NULL, imported_at INTEGER NOT NULL,
              PRIMARY KEY(nonce,protocol,host,port))""")
-        for nonce, proto, host, port, ts, bearer, mode in candidates:
+        for nonce, proto, host, port, ts, bearer, mode, gen, dual in candidates:
             item = (nonce, proto, host, port)
             if c.execute("""SELECT 1 FROM phone_import_item_v2 WHERE
                          nonce=? AND protocol=? AND host=? AND port=?""", item).fetchone():
@@ -174,8 +189,13 @@ def import_once(staging_path, production_db, pool_file, *, now=None,
             if exists:
                 out["reconciled_old"] += 1
             else:
+                # v2 audit metadata (fix 5): generation and dual-target
+                # evidence ride in the detail JSON; they are audit-only and
+                # never change the G10 admission decision.
                 detail = json.dumps({"method": mode, "bearer": bearer,
-                                     "control_verified": 1},
+                                     "control_verified": 1,
+                                     "trial_generation": gen,
+                                     "dual_target_ok": dual},
                                     sort_keys=True, separators=(",", ":"))
                 c.execute("""INSERT INTO phone_failures
                       (protocol,host,port,reported_at,source,detail)
