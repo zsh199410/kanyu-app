@@ -1,0 +1,11 @@
+{
+  "entries": {
+    "vmess|104.18.42.163|443": {
+      "evidence": "P1-2: admitted from matin-vmess; promoted to the formal pool 2026-11-21 via #73",
+      "source_group": "G-matin",
+      "verified_at": "2026-11-24"
+    }
+  },
+  "note": "Verified source groups for formal-pool members only. Absent members are 'unknown' (G6) and can never serve as C4 independent controls. An entry requires real config identity + verifiable independent source/operator evidence; legacy backfill is forbidden.",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly formal-pool manifest refresh (Issue #73, integration-01)
+Documentation=https://github.com/zsh199410/kanyu-app/issues/73
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
