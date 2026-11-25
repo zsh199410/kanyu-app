@@ -1,7 +1,5 @@
 import SwiftUI
 import UIKit
-import ImageIO
-import UniformTypeIdentifiers
 
 /// Private-family export: never uses concept JPGs or placeholder example text.
 /// Export is deliberately gated by the immutable owner and source snapshot.
@@ -24,36 +22,14 @@ enum PosterFamilyExport {
             .frame(width: width, alignment: .topLeading)
             .fixedSize(horizontal: true, vertical: true)
             .frame(minHeight: 1081, alignment: .top)
-        let renderer = ImageRenderer(content: content)
-        renderer.scale = 1
-        // Record the stage and dimensions before attempting PNG compression.
-        // Keep all source fields intact: do not truncate report content to hide a render failure.
-        guard let image = renderer.uiImage else {
-            NSLog("[PosterFamilyExport] ImageRenderer returned nil: kind=%@ sections=%d", snapshot.kind.rawValue, snapshot.sections.count)
-            throw Failure.renderingFailed
-        }
-        NSLog("[PosterFamilyExport] rasterized: kind=%@ points=%.0fx%.0f pixels=%.0fx%.0f sections=%d",
-              snapshot.kind.rawValue, image.size.width, image.size.height,
-              image.size.width * image.scale, image.size.height * image.scale, snapshot.sections.count)
+        // Use the existing CPU-backed 8-bit sRGB rasterizer. ImageRenderer.uiImage
+        // can supply a backing image that ImageIO cannot read for tall canvases
+        // (premium: 1080 x 9426). Changing only the destination did not fix it.
+        // Keep the exact canvas, pixel scale, owner gate and all report sections.
+        let output = try PosterRasterizer.render(content, scale: 1)
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("kanyu-\(snapshot.kind.rawValue)-\(UUID().uuidString).png")
-        // ImageIO writes directly to disk, avoiding UIImage.pngData's large
-        // intermediate Data allocation for tall, full-resolution reports.
-        // Never downscale or omit sections: export remains a lossless PNG.
-        guard let cgImage = image.cgImage,
-              let destination = CGImageDestinationCreateWithURL(
-                  url as CFURL, UTType.png.identifier as CFString, 1, nil
-              ) else {
-            NSLog("[PosterFamilyExport] PNG destination unavailable: kind=%@", snapshot.kind.rawValue)
-            throw Failure.renderingFailed
-        }
-        CGImageDestinationAddImage(destination, cgImage, nil)
-        guard CGImageDestinationFinalize(destination) else {
-            try? FileManager.default.removeItem(at: url)
-            NSLog("[PosterFamilyExport] ImageIO PNG encoding failed: kind=%@ pixels=%.0fx%.0f",
-                  snapshot.kind.rawValue, image.size.width * image.scale, image.size.height * image.scale)
-            throw Failure.renderingFailed
-        }
+        try output.pngData.write(to: url, options: .atomic)
         return url
     }
 }
