@@ -22,6 +22,7 @@ enum PosterFamilyExport {
             .frame(width: width, alignment: .topLeading)
             .fixedSize(horizontal: true, vertical: true)
             .frame(minHeight: 1081, alignment: .top)
+            .background(snapshot.kind.paper)
         // Use the existing CPU-backed 8-bit sRGB rasterizer. ImageRenderer.uiImage
         // can supply a backing image that ImageIO cannot read for tall canvases
         // (premium: 1080 x 9426). Changing only the destination did not fix it.
