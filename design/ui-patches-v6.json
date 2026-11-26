@@ -1951,20 +1951,20 @@
   },
   {
     "path": "Sources/PosterModule.swift",
-    "before": "    var body: some View {\n        ScrollView {",
-    "after": "    var body: some View {\n        GeometryReader { geometry in\n        let previewWidth = max(1, geometry.size.width - 40)\n        ScrollView {",
+    "before": "struct PosterSheetView: View {\n    let chart: BaziChart\n    let name: String\n    var personID: UUID? = nil\n    @EnvironmentObject var peopleStore: PeopleStore\n    @State private var fileURL: URL?\n    @State private var previewImage: UIImage?\n    @State private var style: PosterStyle = .songQingdai\n    @State private var showEditor = false\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()\n\n    var body: some View {\n        ScrollView {",
+    "after": "struct PosterSheetView: View {\n    let chart: BaziChart\n    let name: String\n    var personID: UUID? = nil\n    @EnvironmentObject var peopleStore: PeopleStore\n    @State private var fileURL: URL?\n    @State private var previewImage: UIImage?\n    @State private var style: PosterStyle = .songQingdai\n    @State private var showEditor = false\n    @State private var saveMessage: String?\n    @State private var renderError: String?\n    @State private var renderRequestID = UUID()\n\n    var body: some View {\n        GeometryReader { geometry in\n        let previewWidth = max(1, geometry.size.width - 40)\n        ScrollView {",
     "count": 1
   },
   {
     "path": "Sources/PosterModule.swift",
-    "before": "                        .scaledToFit()\n                        .frame(maxWidth: .infinity)",
-    "after": "                        .scaledToFit()\n                        // Fix the cached image geometry before lazy scrolling measures it.\n                        .frame(width: previewWidth, height: previewWidth * img.size.height / img.size.width)",
+    "before": "                } else if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        .frame(maxWidth: .infinity)",
+    "after": "                } else if let img = previewImage {\n                    Image(uiImage: img)\n                        .resizable()\n                        .scaledToFit()\n                        // Fix the cached image geometry before lazy scrolling measures it.\n                        .frame(width: previewWidth, height: previewWidth * img.size.height / img.size.width)",
     "count": 1
   },
   {
     "path": "Sources/PosterModule.swift",
-    "before": "        .task(id: style) { render() }\n    }",
-    "after": "        .task(id: style) { render() }\n        }\n    }",
+    "before": "        .task(id: style) { render() }\n    }\n\n    // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图",
+    "after": "        .task(id: style) { render() }\n        }\n    }\n\n    // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图",
     "count": 1
   }
 ]
