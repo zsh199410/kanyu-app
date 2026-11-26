@@ -8,9 +8,13 @@ permissions:
   contents: read
 
 jobs:
-  guide-dark-accessibility:
+  guide-remaining:
     runs-on: macos-26
     timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [light-standard, dark-standard, light-accessibility]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,13 +34,13 @@ jobs:
           mkdir -p build
           git rev-parse HEAD | tee build/guide-commit.txt
           test "$(cat build/guide-commit.txt)" = "$GITHUB_SHA"
-      - name: Run frozen illustrated dark accessibility test
-        run: python3 design/run_context_acceptance.py --suite guides --case dark-accessibility
+      - name: Run remaining frozen illustrated guide test
+        run: python3 design/run_context_acceptance.py --suite guides --case '${{ matrix.case }}'
       - name: Preserve actual UI results (including failures)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: illustrated-dark-accessibility-${{ github.sha }}
+          name: illustrated-${{ matrix.case }}-${{ github.sha }}
           path: |
             build/context-evidence
             build/guide-commit.txt
