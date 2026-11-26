@@ -1,0 +1,46 @@
+name: P0 poster share targeted
+on:
+  push:
+    branches: [codex/p0-share-ui-20261126]
+permissions:
+  contents: read
+jobs:
+  share:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 design/verify_v6.py
+      - name: Toolchain
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X"
+          xcodebuild -version
+          brew install xcodegen
+          xcodegen generate
+      - name: Frozen poster business and bitmap tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          git rev-parse HEAD > build/commit.txt
+          DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for v in d.values() for x in v if 'iPhone' in x['name']))")
+          xcodebuild test -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Share.xcresult CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -only-testing:KanyuUITests/PosterExportAcceptanceUITests/testPosterBusinessEntriesAndShareFlow -only-testing:KanyuTests/PosterFamilyBitmapRegressionTests -only-testing:KanyuTests/PosterFamilyExportPathTests 2>&1 | tee build/share.log
+      - name: Attachments
+        if: always()
+        run: |
+          if [ -d build/Share.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/Share.xcresult --output-path build/attachments
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p0-share-${{ github.sha }}
+          path: |
+            build/share.log
+            build/commit.txt
+            build/Share.xcresult
+            build/attachments
+          retention-days: 14
