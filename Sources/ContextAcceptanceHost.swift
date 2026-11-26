@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A read-only environment receipt for the dedicated UI acceptance bundle.
 /// No profile seeding, data reset, navigation shortcut or production launch mode.
@@ -39,11 +40,8 @@ private struct ContextAcceptanceReceipt: View {
     }
     var body: some View {
         VStack(spacing: 0) {
-            Text(environmentReceipt)
-                .font(.system(size: 1)).fixedSize()
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(environmentReceipt)
-                .accessibilityIdentifier("qa.context.environment")
+            NativeContextEnvironmentReceipt(swiftUIReceipt: environmentReceipt)
+                .fixedSize()
             Text(clockReceipt)
                 .font(.system(size: 1)).fixedSize()
                 .accessibilityElement(children: .ignore)
@@ -59,4 +57,57 @@ private struct ContextAcceptanceReceipt: View {
         }
     }
 }
+/// Read the traits of the attached receipt view, not a preferred scheme from a
+/// different SwiftUI modifier scope. Never substitute the requested test case.
+private struct NativeContextEnvironmentReceipt: UIViewRepresentable {
+    let swiftUIReceipt: String
+    func makeUIView(context: Context) -> ContextEnvironmentLabel { ContextEnvironmentLabel() }
+    func updateUIView(_ view: ContextEnvironmentLabel, context: Context) {
+        view.swiftUIReceipt = swiftUIReceipt
+        view.refreshReceipt()
+    }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: ContextEnvironmentLabel,
+                     context: Context) -> CGSize? { uiView.intrinsicContentSize }
+}
+
+private final class ContextEnvironmentLabel: UILabel {
+    var swiftUIReceipt = ""
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        font = .systemFont(ofSize: 1)
+        isUserInteractionEnabled = false
+        isAccessibilityElement = true
+        accessibilityTraits = .staticText
+        accessibilityIdentifier = "qa.context.environment"
+        refreshReceipt()
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        refreshReceipt()
+    }
+    override func traitCollectionDidChange(_ previous: UITraitCollection?) {
+        super.traitCollectionDidChange(previous)
+        refreshReceipt()
+    }
+    func refreshReceipt() {
+        let category = traitCollection.preferredContentSizeCategory
+        let size = category == .large ? "large"
+            : category == .accessibilityExtraExtraExtraLarge ? "accessibility5" : "other"
+        let scheme = traitCollection.userInterfaceStyle == .dark ? "dark" : "light"
+        let receipt = "QA环境 \(scheme) \(size)"
+        text = receipt
+        accessibilityLabel = receipt
+        guard window != nil else { return }
+        let values: [String: String] = ["label": receipt, "swiftUIReceipt": swiftUIReceipt,
+            "contentSizeCategory": category.rawValue,
+            "interfaceStyle": String(traitCollection.userInterfaceStyle.rawValue)]
+        if let data = try? JSONSerialization.data(withJSONObject: values, options: [.prettyPrinted, .sortedKeys]) {
+            try? data.write(to: FileManager.default.temporaryDirectory
+                .appendingPathComponent("context-environment-receipt.json"), options: .atomic)
+        }
+        NSLog("[ContextReceipt UIKit] %@ | SwiftUI=%@", receipt, swiftUIReceipt)
+    }
+}
+
 #endif

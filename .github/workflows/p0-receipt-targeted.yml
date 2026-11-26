@@ -1,0 +1,48 @@
+name: P0 627 native receipt targeted
+
+on:
+  push:
+    branches: [codex/p0-627-receipt-20261126]
+
+permissions:
+  contents: read
+
+jobs:
+  guide-remaining:
+    runs-on: macos-26
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [dark-standard]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify protected sources
+        run: python3 design/verify_v6.py
+      - name: Select Xcode 26
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Record exact checkout
+        run: |
+          mkdir -p build
+          git rev-parse HEAD | tee build/guide-commit.txt
+          test "$(cat build/guide-commit.txt)" = "$GITHUB_SHA"
+      - name: Run frozen failed dark-standard test
+        run: python3 design/run_context_acceptance.py --suite guides --case '${{ matrix.case }}'
+      - name: Preserve actual UI results (including failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: illustrated-${{ matrix.case }}-${{ github.sha }}
+          path: |
+            build/context-evidence
+            build/guide-commit.txt
+          if-no-files-found: warn
+          retention-days: 7
