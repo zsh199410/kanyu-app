@@ -71,7 +71,7 @@ def _sample_loop(evidence, stop_event):
     count = 0
     while not stop_event.wait(10):
         try:
-            found = subprocess.run(['pgrep', '-f', 'Kanyu.app/Kanyu'],
+            found = subprocess.run(['pgrep', '-x', 'Kanyu'],
                                    capture_output=True, text=True, timeout=10)
             for pid in (found.stdout or '').split():
                 if pid.isdigit():
@@ -160,7 +160,7 @@ def main():
             raise
         finally:
             try:
-                samplerstop.set()
+                sampler_stop.set()
             except NameError:
                 pass
             if result_bundle.exists():
@@ -169,11 +169,20 @@ def main():
                 # Keep the full result bundle: attachments alone carry no main-thread stack.
             shutil.copytree(result_bundle, evidence / 'Results.xcresult', dirs_exist_ok=True)
             # Sample the app once while it is still alive; best effort, never fails the run.
-            found = command(['pgrep', '-f', 'Kanyu.app/Kanyu'], check=False)
+            found = command(['pgrep', '-x', 'Kanyu'], check=False)
             for pid in (found.stdout or '').split():
                 if pid.isdigit():
                     command(['sample', pid, '5', '-file', str(evidence / 'main-thread-sample.txt')], check=False)
                     break
+            # Preserve actual observed traits even when the frozen AX assertion fails.
+            if device:
+                try:
+                    value = command(['xcrun', 'simctl', 'get_app_container', device, BUNDLE, 'data'], check=False)
+                    receipt = Path(value.stdout.strip()) / 'tmp/context-environment-receipt.json'
+                    if receipt.is_file():
+                        shutil.copyfile(receipt, evidence / 'context-environment-receipt.json')
+                except Exception as diagnostic_error:
+                    print('Receipt diagnostic unavailable: ' + str(diagnostic_error), flush=True)
             (evidence / 'manifest.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
             (evidence / 'commit.txt').write_text(commit + '\n')
             if device:
