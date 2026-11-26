@@ -5,6 +5,7 @@ struct PhysiognomyGuideView: View {
     let kind: PhysiognomyGuideKind
     @State private var group = ""
     @State private var selectedID: String?
+    @State private var explanationRequest = 0
 
     private var entries: [PhysiognomyGuideEntry] { PhysiognomyGuideContent.entries(for: kind) }
     private var groups: [String] {
@@ -36,19 +37,18 @@ struct PhysiognomyGuideView: View {
                             PhysiognomyMarker(id: $0.id, label: $0.title,
                                                x: CGFloat($0.point.x), y: CGFloat($0.point.y))
                         },
-                        onSelect: { selectedID = $0 }
+                        onSelect: selectEntry
                     )
                     Text("点图上编号查看说明，也可从下方列表选择。示意位置用于认识名称，不是你的测量结果。".scriptConverted)
                         .font(.footnote).foregroundStyle(Ky.sub)
                     if let entry = selected {
-                        explanation(entry).id("guide.explanation")
+                        explanation(entry)
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         Text("本章图例".scriptConverted).font(.headline)
                         ForEach(Array(visible.enumerated()), id: \.element.id) { index, entry in
                             Button {
-                                selectedID = entry.id
-                                proxy.scrollTo("guide.explanation", anchor: .top)
+                                selectEntry(entry.id)
                             } label: {
                                 HStack(alignment: .top, spacing: 10) {
                                     Text(String(index + 1)).monospacedDigit()
@@ -83,7 +83,17 @@ struct PhysiognomyGuideView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { if group.isEmpty { group = groups.first ?? "" } }
             .onChange(of: group) { _, _ in selectedID = nil }
+            .onChange(of: explanationRequest) { _, _ in
+                // Resolve the heading after SwiftUI observes the selection update.
+                proxy.scrollTo("guide.explanation.title", anchor: .top)
+            }
         }
+    }
+
+    private func selectEntry(_ id: String) {
+        selectedID = id
+        // Also reveal the explanation when the current item is selected again.
+        explanationRequest &+= 1
     }
 
     private var introduction: some View {
@@ -103,8 +113,11 @@ struct PhysiognomyGuideView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(entry.title.scriptConverted)
                 .font(.system(.title2, design: .serif).weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel(Text(entry.title.scriptConverted))
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("physiognomy.explanation.title")
+                .id("guide.explanation.title")
             paragraph("在哪个位置", entry.region)
             paragraph("用白话说", entry.plainMeaning)
             VStack(alignment: .leading, spacing: 8) {
