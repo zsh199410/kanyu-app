@@ -1966,5 +1966,17 @@
     "before": "        .task(id: style) { render() }\n    }\n\n    // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图",
     "after": "        .task(id: style) { render() }\n        }\n    }\n\n    // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图",
     "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "        let previewWidth = max(1, geometry.size.width - 40)\n        ScrollView {\n            LazyVStack(spacing: 16) {",
+    "after": "        let previewWidth = max(1, geometry.size.width - 40)\n        ScrollView {\n            // Measure the single cached long image eagerly; only footer actions are lazy.\n            VStack(spacing: 16) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "                if fileURL != nil, let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? \"尊享预测单长图海报\" : \"命盘海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        let savingStyle = style\n                        PosterPhotoSaver.save(img) { message in\n                            if style == savingStyle { saveMessage = message }\n                        }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }",
+    "after": "                LazyVStack(spacing: 16) {\n                if fileURL != nil, let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? \"尊享预测单长图海报\" : \"命盘海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        let savingStyle = style\n                        PosterPhotoSaver.save(img) { message in\n                            if style == savingStyle { saveMessage = message }\n                        }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n                }\n                .id(style)",
+    "count": 1
   }
 ]
