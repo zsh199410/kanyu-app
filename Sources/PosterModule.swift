@@ -1405,10 +1405,10 @@ struct PosterSheetView: View {
     @State private var renderRequestID = UUID()
 
     var body: some View {
+        GeometryReader { geometry in
+        let previewWidth = max(1, geometry.size.width - 40)
         ScrollView {
-            // The cached preview is one image, not a lazy report tree. Measure it
-            // eagerly so scrolling cannot keep moving the share controls away.
-            VStack(spacing: 16) {
+            LazyVStack(spacing: 16) {
                 // 尊享预测单独立入口（不占款式位）：宋纸青黛与预测单长图二选一
                 Picker("海报款式", selection: $style) {
                     ForEach(PosterStyle.allCases, id: \.self) { option in
@@ -1439,7 +1439,8 @@ struct PosterSheetView: View {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFit()
-                        .frame(maxWidth: .infinity)
+                        // Fix the cached image geometry before lazy scrolling measures it.
+                        .frame(width: previewWidth, height: previewWidth * img.size.height / img.size.width)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
@@ -1477,6 +1478,7 @@ struct PosterSheetView: View {
         .navigationTitle("命盘海报")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: style) { render() }
+        }
     }
 
     // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图
