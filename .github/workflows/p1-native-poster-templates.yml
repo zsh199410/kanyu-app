@@ -1,0 +1,52 @@
+name: P1 native poster template visual acceptance
+on:
+  push:
+    branches: [gpt/p1-native-poster-templates-20261126]
+permissions:
+  contents: read
+jobs:
+  native-posters:
+    runs-on: macos-26
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify protected sources and immutable baseline
+        run: |
+          python3 design/verify_v6.py
+          python3 design/verify_web_source.py
+          git diff --exit-code 0bce0727f83000236a40e2c960c908dd3d154a8e HEAD -- Tests UITests Resources
+          mkdir -p build/poster-visual
+          git rev-parse HEAD | tee build/poster-visual/commit.txt
+          test "$(cat build/poster-visual/commit.txt)" = "$GITHUB_SHA"
+      - name: Select Xcode 26
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Frozen real-data bitmap and ownership tests
+        run: |
+          set -o pipefail
+          DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; u=[x['udid'] for v in d.values() for x in v if 'iPhone' in x.get('name','') and x.get('isAvailable', True)]; print(u[0] if u else '')")
+          test -n "$DEST"
+          xcodebuild test -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/SimulatorDD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/poster-visual/Results.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/PosterFamilyBitmapRegressionTests -only-testing:KanyuTests/PosterFamilyExportPathTests -only-testing:KanyuTests/PosterDynamicSnapshotTests -only-testing:KanyuTests/PosterRealDataBindingTests -only-testing:KanyuTests/PosterBatch2OwnershipTests -only-testing:KanyuTests/PosterFormalExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/poster-visual/tests.log
+      - name: Extract original PNG and receipt attachments
+        if: always()
+        run: |
+          if [ -d build/poster-visual/Results.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/poster-visual/Results.xcresult --output-path build/poster-visual/attachments
+          fi
+      - name: Preserve exact SHA, tests and visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-posters-${{ github.sha }}
+          path: build/poster-visual
+          if-no-files-found: warn
+          retention-days: 14
