@@ -1,0 +1,126 @@
+name: P0 candidate RC and unsigned IPA
+on:
+  push:
+    branches: [codex/p0-candidate-20261126]
+permissions:
+  contents: read
+jobs:
+  profile:
+    uses: ./.github/workflows/context-acceptance.yml
+  illustrated:
+    uses: ./.github/workflows/illustrated-acceptance.yml
+  provenance:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.2'
+      - run: |
+          mkdir -p build/source-trust
+          swiftc Sources/InterpretSourceLabelPolicy.swift design/qa/InterpretSourceLabelPolicyCheck.swift -o build/source-trust/check
+          build/source-trust/check
+  build:
+    needs: [profile, illustrated, provenance]
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify protected engines and design contracts
+        run: |
+          python3 design/verify_v6.py
+          python3 design/verify_web_source.py
+
+      - name: Select Xcode 26 (iOS 26 SDK / Liquid Glass)
+        run: |
+          ls /Applications | grep -i xcode || true
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Unit and UI regression tests
+        run: |
+          set -o pipefail
+          mkdir -p build
+          DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; u=[x['udid'] for v in d.values() for x in v if 'iPhone' in x.get('name','') and x.get('isAvailable', True)]; print(u[0] if u else '')")
+          echo "simulator UDID: $DEST"
+          test -n "$DEST"
+          xcodebuild test -clonedSourcePackagesDirPath build/SourcePackages -derivedDataPath build/SimulatorDD -resultBundlePath build/TestResults.xcresult -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/tests.log
+
+      - name: Verify durable report archive from existing tests
+        run: |
+          python3 design/verify_archive_outputs.py
+          swift design/verify_report_receipts.swift build/report-samples
+
+      - name: Render all poster variants from the Debug app
+        run: python3 design/run_poster_render_qa.py
+
+      - name: Verify complete text in the actual PDF reports
+        run: swift design/verify_report_text.swift build/report-samples build/poster-samples/report-expected-text.json
+
+      - name: Build (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild -project Kanyu.xcodeproj -scheme Kanyu -clonedSourcePackagesDirPath build/SourcePackages \
+            -sdk iphoneos -configuration Release \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            CURRENT_PROJECT_VERSION=626 \
+            -derivedDataPath build/DD build 2>&1 | tee build/device-build.log
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R "build/DD/Build/Products/Release-iphoneos/Kanyu.app" Payload/
+          zip -qry Kanyu-unsigned.ipa Payload
+          unzip -tq Kanyu-unsigned.ipa
+          shasum -a 256 Kanyu-unsigned.ipa > Kanyu-unsigned.ipa.sha256
+          git rev-parse HEAD > build/commit.txt
+          ls -lh Kanyu-unsigned.ipa
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kanyu-unsigned-ipa
+          path: |
+            Kanyu-unsigned.ipa
+            Kanyu-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Export UI screenshot evidence
+        if: always()
+        run: |
+          if [ -d build/TestResults.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/screenshots
+            python3 design/package_ui_evidence.py
+          else
+            echo "No test result bundle; screenshot export skipped."
+          fi
+
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-${{ github.sha }}
+          path: |
+            build/*.log
+            build/commit.txt
+            build/TestResults.xcresult
+            build/screenshots
+            build/report-samples
+            build/archive-verification.json
+            build/report-receipts.json
+            build/report-text-verification.json
+            build/poster-samples
+          if-no-files-found: warn
+          retention-days: 30
+
