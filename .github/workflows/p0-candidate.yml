@@ -1,7 +1,7 @@
-name: P0 candidate RC and unsigned IPA
+name: P0 candidate 627 RC and unsigned IPA
 on:
   push:
-    branches: [codex/p0-candidate-20261126]
+    branches: [codex/p0-candidate-627-20261126]
 permissions:
   contents: read
 jobs:
@@ -73,7 +73,7 @@ jobs:
           xcodebuild -project Kanyu.xcodeproj -scheme Kanyu -clonedSourcePackagesDirPath build/SourcePackages \
             -sdk iphoneos -configuration Release \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            CURRENT_PROJECT_VERSION=626 \
+            CURRENT_PROJECT_VERSION=627 \
             -derivedDataPath build/DD build 2>&1 | tee build/device-build.log
 
       - name: Package IPA
@@ -86,6 +86,41 @@ jobs:
           git rev-parse HEAD > build/commit.txt
           ls -lh Kanyu-unsigned.ipa
 
+      - name: Verify candidate identity and integrity
+        run: |
+          set -euo pipefail
+          codesign -dv --verbose=4 Payload/Kanyu.app > build/signature-status.txt 2>&1 || true
+          cat build/signature-status.txt
+          python3 - <<'PY'
+          import hashlib, json, os, plistlib, subprocess, zipfile
+          from pathlib import Path
+          p = Path("Kanyu-unsigned.ipa")
+          digest = hashlib.sha256(p.read_bytes()).hexdigest()
+          assert digest == Path("Kanyu-unsigned.ipa.sha256").read_text().split()[0]
+          commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          assert commit == os.environ["GITHUB_SHA"]
+          with zipfile.ZipFile(p) as z:
+              names = z.namelist()
+              assert len(names) == len(set(names)), "Duplicate IPA entries"
+              assert z.testzip() is None, "IPA ZIP CRC failure"
+              info = plistlib.loads(z.read("Payload/Kanyu.app/Info.plist"))
+              assert info["CFBundleIdentifier"] == "com.kanyu.survey"
+              assert info["CFBundleShortVersionString"] == "4.6"
+              assert info["CFBundleVersion"] == "627"
+              assert "iPhoneOS" in info["CFBundleSupportedPlatforms"]
+              binary = z.read("Payload/Kanyu.app/" + info["CFBundleExecutable"])
+              for flag in (b"--v6-export-qa", b"--context-acceptance", b"backup-verification.json"):
+                  assert flag not in binary, "Debug QA flag in Release"
+              result = dict(commit=commit, version=info["CFBundleShortVersionString"],
+                            build=info["CFBundleVersion"], bundleID=info["CFBundleIdentifier"],
+                            bytes=p.stat().st_size, sha256=digest, zipCRC="PASS",
+                            codeSignatureDirectory="Payload/Kanyu.app/_CodeSignature/CodeResources" in names,
+                            embeddedProvision="Payload/Kanyu.app/embedded.mobileprovision" in names,
+                            signingRequested=False)
+          Path("build/candidate-integrity.json").write_text(json.dumps(result, indent=2) + "\n")
+          print(json.dumps(result, indent=2))
+          PY
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -93,6 +128,9 @@ jobs:
           path: |
             Kanyu-unsigned.ipa
             Kanyu-unsigned.ipa.sha256
+            build/candidate-integrity.json
+            build/signature-status.txt
+            build/commit.txt
           if-no-files-found: error
           retention-days: 14
 
