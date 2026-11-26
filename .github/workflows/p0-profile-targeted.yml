@@ -1,0 +1,9 @@
+name: P0 profile receipt targeted
+on:
+  push:
+    branches: [codex/p0-profile-receipt-20261126]
+permissions:
+  contents: read
+jobs:
+  profile:
+    uses: ./.github/workflows/context-acceptance.yml

@@ -34,16 +34,29 @@ private struct ContextAcceptanceReceipt: View {
         let epoch = date.map { String(Int($0.timeIntervalSince1970)) } ?? "invalid"
         return "QA时钟 \(solar.year)-\(solar.month)-\(solar.day) \(solar.hour):\(solar.minute)|\(epoch)|\(TimeZone.current.identifier)"
     }
+    private var environmentReceipt: String {
+        "QA环境 \(scheme == .dark ? "dark" : "light") \(sizeName)"
+    }
     var body: some View {
         VStack(spacing: 0) {
-            Text("QA环境 \(scheme == .dark ? "dark" : "light") \(sizeName)")
-                .font(.system(size: 1)).frame(width: 1, height: 1).clipped()
+            Text(environmentReceipt)
+                .font(.system(size: 1)).fixedSize()
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(environmentReceipt)
                 .accessibilityIdentifier("qa.context.environment")
             Text(clockReceipt)
-                .font(.system(size: 1)).frame(width: 1, height: 1).clipped()
+                .font(.system(size: 1)).fixedSize()
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(clockReceipt)
                 .accessibilityIdentifier("qa.context.clock")
         }
+        // Keep real intrinsic glyph bounds: a clipped 1x1 Text has no stable
+        // rendered label for AX snapshots at accessibility Dynamic Type sizes.
         .opacity(0.02).allowsHitTesting(false)
+        .onAppear { NSLog("[ContextReceipt] %@ | %@", environmentReceipt, clockReceipt) }
+        .onChange(of: environmentReceipt) { _, label in
+            NSLog("[ContextReceipt] environment changed: %@", label)
+        }
     }
 }
 #endif

@@ -1405,8 +1405,11 @@ struct PosterSheetView: View {
     @State private var renderRequestID = UUID()
 
     var body: some View {
+        GeometryReader { geometry in
+        let previewWidth = max(1, geometry.size.width - 40)
         ScrollView {
-            LazyVStack(spacing: 16) {
+            // Measure the single cached long image eagerly; only footer actions are lazy.
+            VStack(spacing: 16) {
                 // 尊享预测单独立入口（不占款式位）：宋纸青黛与预测单长图二选一
                 Picker("海报款式", selection: $style) {
                     ForEach(PosterStyle.allCases, id: \.self) { option in
@@ -1437,7 +1440,8 @@ struct PosterSheetView: View {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFit()
-                        .frame(maxWidth: .infinity)
+                        // Fix the cached image geometry before lazy scrolling measures it.
+                        .frame(width: previewWidth, height: previewWidth * img.size.height / img.size.width)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Ky.line, lineWidth: 0.8))
                 } else {
@@ -1445,6 +1449,7 @@ struct PosterSheetView: View {
                         .frame(maxWidth: .infinity)
                 }
 
+                LazyVStack(spacing: 16) {
                 if fileURL != nil, let img = previewImage {
                     ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? "尊享预测单长图海报" : "命盘海报", image: Image(uiImage: img))) {
                         Label("分享海报", systemImage: "square.and.arrow.up")
@@ -1468,6 +1473,8 @@ struct PosterSheetView: View {
                     Text("高清长图 · 宽 1080 像素")
                         .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)
                 }
+                }
+                .id(style)
             }
             .padding(20)
         }
@@ -1475,6 +1482,7 @@ struct PosterSheetView: View {
         .navigationTitle("命盘海报")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: style) { render() }
+        }
     }
 
     // ImageRenderer 必须在 MainActor 上创建及读取，完成后展示缓存图
