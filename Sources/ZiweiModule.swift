@@ -23,6 +23,122 @@ struct ZiweiChart {
     var juName: String; var juNumber: Int
     var palaces: [ZiweiPalace]      // 按地支序 子→亥
     var lunarText: String
+    /// Batch 2 P0：盘面稳定 ID（内容指纹）。ZiweiChart 不存农历日，单凭生辰字段会撞盘，
+    /// 故用全部宫位内容（宫名/宫干/主星/辅星/大限/身宫）＋五行局＋命身宫＋农历文本拼规范键；
+    /// 同一盘面必同一 ID，不同盘面必不同 ID。用于 ZiweiOwnershipIndex 的键。
+    /// 注意：同生辰双胞胎共享同一盘面与同一 stableID，索引一次只能关联一人；
+    /// 另一人导出时索引显示已关联他人，须由用户显式改关联。
+    var stableID: String {
+        let palaceKey = palaces.map { p in
+            let majors = p.majors.map { $0.star + ($0.mutagen ?? "") }.joined(separator: ",")
+            let minors = p.minors.map { $0.star + ($0.mutagen ?? "") }.joined(separator: ",")
+            let decadal = p.decadal.map(String.init).joined(separator: "-")
+            return "\(p.branch):\(p.name):\(p.stem):\(majors):\(minors):\(decadal):\(p.isBody ? "1" : "0")"
+        }.joined(separator: "|")
+        return "zw-\(juNumber)-\(mingGong)-\(shenGong)-\(lunarText)-\(palaceKey)"
+    }
+}
+
+/// QA 导出验收 P0-B：紫微盘面归属外部索引（chartStableID → [personID]，v2 多归属）。
+/// ZiweiChart 本身无归属字段，且原模型不宜改（纯函数排盘核心），故用版本化、可回滚的
+/// 外部索引。文件 ziwei_ownership.json ＋ meta.json，与 StoreSchema 同口径
+/// （schemaVersion + count）；删除索引文件即回到未绑定态（盘面本身不受影响）。
+/// 归属只能由用户显式关联（ZiweiHomeView 的“关联到当前人物”），绝不按姓名、出生时间、
+/// 当前选中人物反推；无归属或归属歧义时正式导出禁用，仅允许明确标记的非正式预览。
+/// v2 说明：stableID 是内容指纹，同生辰/同盘面必然相同，不能作跨人物唯一身份键，
+/// 故同一 stableID 可对应多人（保序数组，先 link 的在前）；ownerID(for:) 仅在
+/// 唯一归属时返回，0 个或 ≥2 个返回 nil，歧义时须由用户显式选人。
+struct ZiweiOwnershipIndex: Codable {
+    var schemaVersion: Int
+    /// chartStableID → 归属人物 UUID 列表（保序；同一人重复 link 不追加，避免假歧义）。
+    var entries: [String: [UUID]]
+    var updatedEpoch: Double
+    static let fileName = "ziwei_ownership.json"
+    static let currentVersion = 2
+    static func fileURL(directory: URL) -> URL { directory.appendingPathComponent(fileName) }
+    static func defaultDirectory() -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+    static func load(directory: URL? = nil) -> ZiweiOwnershipIndex {
+        let dir = directory ?? defaultDirectory()
+        guard let data = try? Data(contentsOf: fileURL(directory: dir)) else {
+            return ZiweiOwnershipIndex(schemaVersion: currentVersion, entries: [:], updatedEpoch: Date().timeIntervalSince1970)
+        }
+        if let idx = try? JSONDecoder().decode(ZiweiOwnershipIndex.self, from: data) {
+            return idx
+        }
+        // v1 迁移：单值 entries 转单元素数组，并立即以 v2 写回磁盘（迁移一次到位）。
+        if let legacy = try? JSONDecoder().decode(ZiweiOwnershipIndexV1.self, from: data) {
+            let migrated = ZiweiOwnershipIndex(schemaVersion: currentVersion,
+                                               entries: legacy.entries.mapValues { [$0] },
+                                               updatedEpoch: Date().timeIntervalSince1970)
+            migrated.save(directory: dir)
+            return migrated
+        }
+        return ZiweiOwnershipIndex(schemaVersion: currentVersion, entries: [:], updatedEpoch: Date().timeIntervalSince1970)
+    }
+    func save(directory: URL? = nil) {
+        let dir = directory ?? Self.defaultDirectory()
+        var copy = self
+        copy.schemaVersion = Self.currentVersion
+        copy.updatedEpoch = Date().timeIntervalSince1970
+        if let data = try? JSONEncoder().encode(copy) {
+            try? data.write(to: Self.fileURL(directory: dir), options: .atomic)
+            StoreSchema.writeMeta(for: Self.fileURL(directory: dir), count: copy.entries.count)
+        }
+    }
+    /// 取某盘面的全部归属人物 UUID（按 link 顺序；未关联返回空数组）。
+    func ownerIDs(for stableID: String) -> [UUID] { entries[stableID] ?? [] }
+    /// 取某盘面的归属人物 UUID；仅唯一归属时返回，未关联或歧义（≥2 人）返回 nil。
+    func ownerID(for stableID: String) -> UUID? {
+        let ids = ownerIDs(for: stableID)
+        return ids.count == 1 ? ids[0] : nil
+    }
+    /// 显式关联（用户点选）。追加到归属列表，不覆盖已有归属；同一人重复 link 不追加。
+    mutating func link(stableID: String, to personID: UUID) {
+        var ids = entries[stableID] ?? []
+        if !ids.contains(personID) { ids.append(personID) }
+        entries[stableID] = ids
+    }
+    /// 解除某盘面的全部关联。
+    mutating func unlink(stableID: String) {
+        entries.removeValue(forKey: stableID)
+    }
+    /// 解除某盘面与某一人的关联；删空后移除该键。
+    mutating func unlink(stableID: String, personID: UUID) {
+        guard var ids = entries[stableID] else { return }
+        ids.removeAll { $0 == personID }
+        if ids.isEmpty { entries.removeValue(forKey: stableID) } else { entries[stableID] = ids }
+    }
+    /// 级联删除：删掉某人的全部盘面关联（删人物时调用，与 PalmRecordStore.removeAll 同口径）。
+    mutating func removeAll(for personID: UUID) {
+        var next: [String: [UUID]] = [:]
+        for (key, ids) in entries {
+            let kept = ids.filter { $0 != personID }
+            if !kept.isEmpty { next[key] = kept }
+        }
+        entries = next
+    }
+    /// 备份/恢复：导出全部条目；导入时整体替换（调用方先备份旧索引）。
+    func exportData() -> Data {
+        (try? JSONEncoder().encode(self)) ?? Data()
+    }
+    static func importData(_ data: Data) -> ZiweiOwnershipIndex? {
+        if let idx = try? JSONDecoder().decode(ZiweiOwnershipIndex.self, from: data) { return idx }
+        if let legacy = try? JSONDecoder().decode(ZiweiOwnershipIndexV1.self, from: data) {
+            return ZiweiOwnershipIndex(schemaVersion: currentVersion,
+                                       entries: legacy.entries.mapValues { [$0] },
+                                       updatedEpoch: Date().timeIntervalSince1970)
+        }
+        return nil
+    }
+}
+
+/// v1 旧形状（entries 单值），仅供 load/importData 迁移解码；新写入一律 v2。
+private struct ZiweiOwnershipIndexV1: Codable {
+    var schemaVersion: Int
+    var entries: [String: UUID]
+    var updatedEpoch: Double
 }
 
 enum ZiweiCore {
@@ -229,6 +345,21 @@ struct ZiweiHomeView: View {
     @State private var chartSnapshot = ""
     @State private var savedTip = false
     @State private var inputCollapsed = false
+    /// Batch 2 P0：速选所选人物（仅速选时有值；手动输入不推断，值为 nil）。
+    @State private var quickSelectedPersonID: UUID? = nil
+    /// QA 导出验收 P0-B：当前盘面在 ZiweiOwnershipIndex 中的全部归属人物（空 ＝ 未关联；
+    /// 多人 ＝ 同盘面歧义，须显式选人）。stableID 是内容指纹，同盘面可对应多人。
+    @State private var linkedPersonIDs: [UUID] = []
+    /// QA 导出验收 P0-B：歧义盘面下用户显式选定的导出人物（唯一归属时自动等于该人）。
+    @State private var selectedExportPersonID: UUID? = nil
+    /// 海报入口的导出人物：显式选定优先；唯一归属时为该人；歧义未选人时为 nil（非正式预览）。
+    private var exportPersonID: UUID? {
+        selectedExportPersonID ?? (linkedPersonIDs.count == 1 ? linkedPersonIDs[0] : nil)
+    }
+    /// 归属人物列表（按 link 顺序，过滤已删人物）。
+    private var linkedPeople: [Person] {
+        linkedPersonIDs.compactMap { id in peopleStore.people.first { $0.id == id } }
+    }
 
     private var inputSnapshot: String { "\(name)|\(gender)|\(birth.timeIntervalSince1970)|\(useLongitude)|\(longitudeText)" }
     private var isStale: Bool { chart != nil && chartSnapshot != inputSnapshot }
@@ -247,7 +378,84 @@ struct ZiweiHomeView: View {
                     ZiweiBoardView(chart: ch, name: name)
                     ZiweiYearView(chart: ch)
                     ZiweiReadingView(chart: ch)
-                    NavigationLink { ZiweiPosterSheetView(chart: ch, name: name) } label: {
+                    // Batch 2 P0：盘面归属（显式关联，绝不按姓名/出生时间/当前选中反推）。
+                    // 已关联显示归属人并可解除；未关联时正式导出禁用，仅非正式预览。
+                    // QA 导出验收 P0-B：同盘面多人时显式选人，歧义未选人时正式导出禁用。
+                    VStack(alignment: .leading, spacing: 8) {
+                        if linkedPersonIDs.count > 1 {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.2.fill").foregroundStyle(Ky.cinnabar)
+                                Text("此盘面共关联 \(linkedPersonIDs.count) 人，请明确选择导出人物").font(.subheadline).fontWeight(.semibold)
+                            }
+                            Text("同生辰或相同盘面会生成相同内容指纹，归属须逐人确认；未选人时正式导出禁用。")
+                                .font(.caption).foregroundStyle(Ky.sub)
+                            ForEach(linkedPeople) { p in
+                                HStack(spacing: 6) {
+                                    Text(p.name).font(.subheadline)
+                                    Spacer()
+                                    if selectedExportPersonID == p.id {
+                                        Image(systemName: "checkmark.circle.fill").foregroundStyle(Ky.qingdai)
+                                    }
+                                    Button("解除此人关联") {
+                                        var idx = ZiweiOwnershipIndex.load()
+                                        idx.unlink(stableID: ch.stableID, personID: p.id)
+                                        idx.save()
+                                        linkedPersonIDs = idx.ownerIDs(for: ch.stableID)
+                                        if selectedExportPersonID == p.id { selectedExportPersonID = nil }
+                                    }.buttonStyle(.bordered)
+                                }
+                            }
+                            Menu {
+                                ForEach(linkedPeople) { p in
+                                    Button(p.name) { selectedExportPersonID = p.id }
+                                }
+                            } label: {
+                                Label("导出为：\(selectedExportPersonID.flatMap { id in peopleStore.people.first { $0.id == id } }?.name ?? "未选择")", systemImage: "person.crop.circle")
+                            }
+                            .buttonStyle(.bordered)
+                            if selectedExportPersonID == nil {
+                                Text("请先选择一位导出人物，否则海报页仅为非正式预览。")
+                                    .font(.caption).foregroundStyle(Ky.cinnabar)
+                            }
+                        } else if let linkedID = linkedPersonIDs.first, let linked = peopleStore.people.first(where: { $0.id == linkedID }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.crop.circle.badge.checkmark").foregroundStyle(Ky.qingdai)
+                                Text("已关联到人物：\(linked.name)").font(.subheadline).fontWeight(.semibold)
+                            }
+                            Text("正式导出已启用，文件名带该人物 -pid。").font(.caption).foregroundStyle(Ky.sub)
+                            Button("解除关联") {
+                                var idx = ZiweiOwnershipIndex.load()
+                                idx.unlink(stableID: ch.stableID)
+                                idx.save()
+                                linkedPersonIDs = []
+                                selectedExportPersonID = nil
+                            }.buttonStyle(.bordered)
+                        } else {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.shield").foregroundStyle(Ky.cinnabar)
+                                Text("未关联到人物档案").font(.subheadline).fontWeight(.semibold)
+                            }
+                            Text("正式导出已禁用：此盘未证明归属，仅允许明确标记的非正式预览。关联后可正式导出。")
+                                .font(.caption).foregroundStyle(Ky.sub)
+                            if let targetID = quickSelectedPersonID ?? peopleStore.currentPerson?.id,
+                               let target = peopleStore.people.first(where: { $0.id == targetID }) {
+                                Button("关联到：\(target.name)") {
+                                    var idx = ZiweiOwnershipIndex.load()
+                                    idx.link(stableID: ch.stableID, to: target.id)
+                                    idx.save()
+                                    linkedPersonIDs = idx.ownerIDs(for: ch.stableID)
+                                    selectedExportPersonID = target.id
+                                }.buttonStyle(KyPrimaryButton())
+                            } else {
+                                Text("请先在人物档案里设当前命主，或用速选回填一位人物，再回来关联。")
+                                    .font(.caption).foregroundStyle(Ky.cinnabar)
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(Ky.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    NavigationLink { ZiweiPosterSheetView(chart: ch, name: name, personID: exportPersonID) } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "photo.artframe")
                                 .font(.system(size: 16, weight: .semibold))
@@ -344,6 +552,14 @@ struct ZiweiHomeView: View {
                                 useLongitude = p.useLongitude; longitudeText = String(format: "%.1f", p.longitude)
                                 chart = ZiweiEngine.chart(clock: p.birthDate, gender: p.gender,
                                                           longitude: p.useLongitude ? p.longitude : nil)
+                                // Batch 2 P0：速选回填时记下所选人物 id（仅作“关联到此人”的候选，
+                                // 不自动把盘面归属到他身上；正式关联仍须用户在盘面下方显式点选）。
+                                quickSelectedPersonID = p.id
+                                if let c = chart {
+                                    // QA 导出验收 P0-B：读全部归属；唯一时自动选定导出人物，歧义时清空待用户显式选人。
+                                    linkedPersonIDs = ZiweiOwnershipIndex.load().ownerIDs(for: c.stableID)
+                                    selectedExportPersonID = linkedPersonIDs.count == 1 ? linkedPersonIDs[0] : nil
+                                }
                                 chartSnapshot = "\(p.name)|\(p.gender)|\(p.birthDate.timeIntervalSince1970)|\(p.useLongitude)|\(String(format: "%.1f", p.longitude))"
                                 savedTip = true; inputCollapsed = true
                             } label: {
@@ -383,6 +599,13 @@ struct ZiweiHomeView: View {
             Button("立即排紫微盘".scriptConverted) {
                 chart = ZiweiEngine.chart(clock: birth, gender: gender,
                                           longitude: useLongitude ? Double(longitudeText) : nil)
+                // Batch 2 P0：手动输入不推断人物；排盘后从索引读当前盘面的归属。
+                quickSelectedPersonID = nil
+                if let c = chart {
+                    // QA 导出验收 P0-B：读全部归属；唯一时自动选定导出人物，歧义时清空待用户显式选人。
+                    linkedPersonIDs = ZiweiOwnershipIndex.load().ownerIDs(for: c.stableID)
+                    selectedExportPersonID = linkedPersonIDs.count == 1 ? linkedPersonIDs[0] : nil
+                }
                 chartSnapshot = inputSnapshot; savedTip = false
                 withAnimation(KyMotion.toggle) { inputCollapsed = true }
             }.buttonStyle(KyPrimaryButton())

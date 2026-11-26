@@ -3,6 +3,7 @@
 import hashlib
 import json
 import shutil
+import struct
 from pathlib import Path
 
 simulators = Path.home() / 'Library/Developer/CoreSimulator/Devices'
@@ -24,3 +25,53 @@ for file in files:
     records.append({'file': target.name, 'bytes': len(data), 'sha256': digest})
 Path('build/archive-verification.json').write_text(json.dumps({'scope': 'actual PDFs produced by existing XCTest on simulator; not all poster styles or device testing', 'tiers': sorted(found_tiers), 'files': records}, ensure_ascii=False, indent=2)+'\n')
 print(f'PASS: {len(records)} durable PDFs, all 3 tiers, PDF signatures and archive SHA256 checked')
+
+# --- QA 导出验收：四款正式导出 PNG（PosterFormalExportTests）---
+# 正式导出走 PosterRasterizer.render ＋ ReportExportArchive.save（与生产 sheet 同路），
+# 不走 --v6-export-qa 的 DEBUG 栅格化。本段在现有步骤内运行，不改 build.yml。
+# 收集：模拟器 Documents/KanyuExports/<sha256>/formal-export-<kind>.png ＋
+# 同目录 formal-export-<kind>.json 分片 manifest；拷到 build/poster-samples
+#（run_poster_render_qa.py 的 copytree 是合并式，不会清掉先到的文件）。
+def newest_by_name(paths):
+    best = {}
+    for p in paths:
+        if p.name not in best or p.stat().st_mtime > best[p.name].stat().st_mtime:
+            best[p.name] = p
+    return best
+
+expected_kinds = {'bazi', 'premium', 'ziwei', 'palm'}
+png_by_name = newest_by_name(simulators.glob('*/data/Containers/Data/Application/*/Documents/KanyuExports/*/formal-export-*.png'))
+frag_by_name = newest_by_name(simulators.glob('*/data/Containers/Data/Application/*/Documents/KanyuExports/formal-export-*.json'))
+assert set(png_by_name) == {f'formal-export-{k}.png' for k in expected_kinds}, \
+    f'Missing formal poster exports: {expected_kinds - {n[len("formal-export-"):-4] for n in png_by_name}}'
+assert set(frag_by_name) == {f'formal-export-{k}.json' for k in expected_kinds}, \
+    f'Missing formal export manifests: {expected_kinds - {n[len("formal-export-"):-5] for n in frag_by_name}}'
+poster_samples = Path('build/poster-samples')
+poster_samples.mkdir(parents=True, exist_ok=True)
+formal_records = []
+for kind in sorted(expected_kinds):
+    png = png_by_name[f'formal-export-{kind}.png']
+    frag = json.loads(frag_by_name[f'formal-export-{kind}.json'].read_text())
+    assert frag['kind'] == kind, f'Manifest kind mismatch: {frag["kind"]} != {kind}'
+    assert frag['fileName'] == png.name, f'Manifest fileName mismatch: {frag["fileName"]}'
+    data = png.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    assert data[:8] == b'\x89PNG\r\n\x1a\n', f'Invalid PNG signature: {png.name}'
+    assert png.parent.name == digest, f'Archive content digest mismatch: {png.name}'
+    assert frag['sha256'] == digest, f'Manifest SHA256 mismatch: {png.name}'
+    assert frag['bytes'] == len(data), f'Manifest byte count mismatch: {png.name}'
+    width, height = struct.unpack('>II', data[16:24])
+    assert width == 1080 and height > width, f'Unexpected poster size: {png.name} {width}x{height}'
+    assert frag['width'] == width and frag['height'] == height, f'Manifest size mismatch: {png.name}'
+    assert frag['sourceRecordIDs'], f'Empty source records: {png.name}'
+    assert frag['personUUID'], f'Empty person UUID: {png.name}'
+    target = poster_samples / png.name
+    shutil.copyfile(png, target)
+    formal_records.append({**frag, 'verifiedWidth': width, 'verifiedHeight': height})
+Path('build/poster-samples/formal-exports-manifest.json').write_text(json.dumps(
+    {'scope': 'formal poster exports via PosterRasterizer.render + ReportExportArchive.save on simulator; '
+              'palm photo is a programmatic deterministic image, not a device camera shot',
+     'kinds': sorted(expected_kinds), 'files': formal_records},
+    ensure_ascii=False, indent=2) + '\n')
+print(f'PASS: {len(formal_records)} formal poster exports, PNG signatures, 1080 width, archive SHA256 and source records checked')
+

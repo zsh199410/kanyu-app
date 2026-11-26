@@ -40,7 +40,7 @@ try:
     print(f"QA manifest received: {manifest['status']}, {len(manifest['samples'])} valid samples", flush=True)
     assert manifest['status'] == 'success', manifest
     expected = {f'{kind}-{style}.png' for kind in ['bazi', 'ziwei', 'hecan']
-                for style in ['song', 'zhusha', 'xuanye']} | {'bazi-yucedan.png', 'palm-empty-photo.png'}
+                for style in ['song', 'zhusha', 'xuanye']} | {'bazi-yucedan.png', 'palm-empty-photo.png', 'palm-real-photo.png'}
     assert {row['file'] for row in manifest['samples']} == expected
     for row in manifest['samples']:
         payload = (source / row['file']).read_bytes()
