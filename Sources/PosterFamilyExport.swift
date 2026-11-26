@@ -173,7 +173,28 @@ private struct PosterFamilyExportCanvas: View {
         .foregroundStyle(palette.ink)
         .frame(width: 1080, alignment: .topLeading)
         .background(palette.paper)
-        .overlay { Rectangle().strokeBorder(palette.line.opacity(0.6), lineWidth: 2).padding(18) }
+        .overlay { ornamentFrame }
+    }
+
+    private var ornamentFrame: some View {
+        ZStack {
+            Rectangle().strokeBorder(palette.line.opacity(0.65), lineWidth: 2).padding(16)
+            Rectangle().strokeBorder(palette.line.opacity(0.32), lineWidth: 1).padding(24)
+            Canvas { context, size in
+                for (x, y, sx, sy) in [(CGFloat(16), CGFloat(16), CGFloat(1), CGFloat(1)),
+                                       (size.width - 16, CGFloat(16), CGFloat(-1), CGFloat(1)),
+                                       (CGFloat(16), size.height - 16, CGFloat(1), CGFloat(-1)),
+                                       (size.width - 16, size.height - 16, CGFloat(-1), CGFloat(-1))] {
+                    var p = Path()
+                    p.move(to: CGPoint(x: x, y: y + sy * 72))
+                    p.addLine(to: CGPoint(x: x + sx * 13, y: y + sy * 72))
+                    p.addLine(to: CGPoint(x: x + sx * 13, y: y + sy * 13))
+                    p.addLine(to: CGPoint(x: x + sx * 72, y: y + sy * 13))
+                    p.addLine(to: CGPoint(x: x + sx * 72, y: y))
+                    context.stroke(p, with: .color(palette.line), lineWidth: 3)
+                }
+            }
+        }.allowsHitTesting(false).accessibilityHidden(true)
     }
 
     private var header: some View {
@@ -220,7 +241,7 @@ private struct PosterFamilyExportCanvas: View {
                 Spacer(minLength: 0)
             }
             Rectangle().fill(palette.line.opacity(0.6)).frame(height: 2)
-            if snapshot.kind == .bazi && section.id == "pillars" {
+            if (snapshot.kind == .bazi || isPremium) && section.id == "pillars" {
                 fieldGrid(section.fields, columns: 4)
             } else if snapshot.kind == .bazi && section.id == "dayun" {
                 fieldGrid(section.fields, columns: 3)
@@ -233,7 +254,7 @@ private struct PosterFamilyExportCanvas: View {
                     fieldGrid(section.fields, columns: 3)
                 }
             } else if section.id == "elements" && !isPremium {
-                ForEach(section.fields) { field in elementRow(field) }
+                fiveElementPanel(section.fields)
             } else {
                 ForEach(section.fields) { field in fieldRow(field) }
             }
@@ -350,6 +371,51 @@ private struct PosterFamilyExportCanvas: View {
         .overlay(alignment: .leading) { Rectangle().fill(palette.line).frame(width: 3) }
     }
 
+    /// Five-element diagram is a labelled composition, not a fabricated forecast.
+    private func elementColor(_ label: String) -> Color {
+        switch label {
+        case "木": return Color(red: 0.24, green: 0.40, blue: 0.28)
+        case "火": return Color(red: 0.63, green: 0.24, blue: 0.16)
+        case "土": return Color(red: 0.58, green: 0.39, blue: 0.22)
+        case "金": return Color(red: 0.66, green: 0.46, blue: 0.15)
+        case "水": return Color(red: 0.18, green: 0.35, blue: 0.47)
+        default: return palette.accent
+        }
+    }
+
+    @ViewBuilder private func fiveElementPanel(_ fields: [PosterBoundField]) -> some View {
+        if fields.count == 5 && fields.map(\.label) == ["木", "火", "土", "金", "水"] {
+            HStack(alignment: .center, spacing: 24) {
+                ZStack {
+                    Circle().strokeBorder(palette.line.opacity(0.65), lineWidth: 2)
+                        .frame(width: 270, height: 270)
+                    Circle().strokeBorder(palette.line.opacity(0.30), lineWidth: 2)
+                        .frame(width: 210, height: 210)
+                    VStack(spacing: 5) {
+                        Text("五 行").font(.system(size: 33, weight: .semibold, design: .serif))
+                        Text("构成比例").font(.system(size: 21))
+                    }
+                    ForEach(Array(fields.enumerated()), id: \.element.id) { index, field in
+                        let angle = Double(index) * 2 * Double.pi / 5 - Double.pi / 2
+                        Text(field.label)
+                            .font(.system(size: 36, weight: .semibold, design: .serif))
+                            .foregroundStyle(.white)
+                            .frame(width: 74, height: 74)
+                            .background(elementColor(field.label), in: Circle())
+                            .overlay { Circle().strokeBorder(palette.line, lineWidth: 2) }
+                            .offset(x: CGFloat(cos(angle)) * 135, y: CGFloat(sin(angle)) * 135)
+                    }
+                }
+                .frame(width: 370, height: 370)
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(fields) { field in elementRow(field) }
+                }
+            }
+        } else {
+            ForEach(fields) { field in elementRow(field) }
+        }
+    }
+
     private func elementRow(_ field: PosterBoundField) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -362,7 +428,7 @@ private struct PosterFamilyExportCanvas: View {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle().fill(palette.line.opacity(0.15))
-                        Rectangle().fill(palette.accent.opacity(0.8)).frame(width: geometry.size.width * CGFloat(number / 100))
+                        Rectangle().fill(elementColor(field.label)).frame(width: geometry.size.width * CGFloat(number / 100))
                     }
                 }.frame(height: 14)
             }
