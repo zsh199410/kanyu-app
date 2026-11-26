@@ -157,6 +157,7 @@ private struct PosterFamilyExportCanvas: View {
             ForEach(Array(snapshot.sections.enumerated()), id: \.element.id) { index, section in
                 sectionView(section, index: index)
             }
+            decorativeFooter
             VStack(alignment: .leading, spacing: 15) {
                 Text("来源与说明").font(.system(size: 28, weight: .semibold, design: .serif))
                     .foregroundStyle(palette.accent)
@@ -174,6 +175,48 @@ private struct PosterFamilyExportCanvas: View {
         .frame(width: 1080, alignment: .topLeading)
         .background(palette.paper)
         .overlay { ornamentFrame }
+    }
+
+    // Only approved illustration-only crops are loaded here. Full concept posters
+    // contain sample names/values and must never be used as render backgrounds.
+    private func illustration(_ name: String) -> UIImage? {
+        let url = Bundle.main.url(forResource: name, withExtension: "jpg", subdirectory: "PosterArtworkV2")
+            ?? Bundle.main.url(forResource: name, withExtension: "jpg")
+        return url.flatMap { UIImage(contentsOfFile: $0.path) }
+    }
+
+    @ViewBuilder private var decorativeFooter: some View {
+        switch snapshot.kind {
+        case .palm, .ziwei:
+            let name = snapshot.kind == .palm ? "palm-landscape" : "ziwei-landscape"
+            if let art = illustration(name) {
+                Image(uiImage: art).resizable().scaledToFit()
+                    .frame(maxWidth: .infinity)
+                    .overlay { Rectangle().strokeBorder(palette.line, lineWidth: 2) }
+                    .accessibilityHidden(true)
+            }
+        case .bazi:
+            if let scholar = illustration("bazi-scholar") {
+                HStack(spacing: 24) {
+                    Image(uiImage: scholar).resizable().scaledToFit().frame(width: 175)
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text("观命 · 知己").font(.system(size: 35, weight: .semibold, design: .serif))
+                        Text("传统文化参考 · 以当下行动为重").font(.system(size: 23))
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(18).background(palette.panel)
+                .overlay { Rectangle().strokeBorder(palette.line, lineWidth: 2) }
+            }
+        case .premium:
+            if let left = illustration("premium-landscape-left"),
+               let right = illustration("premium-landscape-right") {
+                HStack(spacing: 0) {
+                    Image(uiImage: left).resizable().scaledToFit()
+                    Image(uiImage: right).resizable().scaledToFit()
+                }.accessibilityHidden(true)
+            }
+        }
     }
 
     private var ornamentFrame: some View {
