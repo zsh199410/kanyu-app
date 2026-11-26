@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Read-only data binding for four poster types. Never parses sample JPEG text.
 enum PosterDynamicKind: String {
@@ -271,74 +272,118 @@ struct PosterDynamicTemplateView: View {
     let snapshot: PosterDynamicSnapshot
     @State private var exportedURL: URL?
     @State private var exportError: String?
+    @State private var previewImage: UIImage?
+    @State private var previewError: String?
+    @State private var renderingExport = false
+    @State private var showDetails = false
     var body: some View {
+        Group {
+            if snapshot.canArchive {
+                availableTemplate
+            } else {
+                unavailableTemplate
+            }
+        }
+        .background(Ky.bg.ignoresSafeArea())
+        .navigationTitle(snapshot.kind.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("poster.dynamic.\(snapshot.kind.rawValue)")
+    }
+
+    private var unavailableTemplate: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: "lock.doc").font(.system(size: 42)).foregroundStyle(snapshot.kind.ink)
+            Text(snapshot.kind.title).font(.system(.title2, design: .serif, weight: .bold))
+            Text("缺少稳定身份：禁止正式导出").font(.headline)
+            ForEach(snapshot.missingFields.filter { $0.blocking }) { field in
+                Text(field.label).font(.body).fixedSize(horizontal: false, vertical: true)
+            }
+            Text("请返回对应排盘或测量页面，明确关联当前人物后再使用模板。不会自动按姓名匹配，也不会写入文件。")
+                .font(.footnote).fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(snapshot.kind.ink)
+        .padding(24)
+        .frame(maxWidth: 520, alignment: .leading)
+        .background(snapshot.kind.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(20)
+        .accessibilityIdentifier("poster.dynamic.unavailable")
+    }
+
+    private var availableTemplate: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 9) {
-                    Text("三术合参 · 动态结构预览").font(.caption.monospaced())
-                    Text(snapshot.kind.title).font(.system(.largeTitle, design: .serif, weight: .bold))
-                    Text(snapshot.displayName.isEmpty ? "未命名" : snapshot.displayName).font(.headline)
-                    Text(snapshot.receipt).font(.caption).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(snapshot.kind.title).font(.system(.title2, design: .serif, weight: .bold))
+                    Text("当前人物 · \(snapshot.displayName.isEmpty ? "未命名" : snapshot.displayName)")
+                        .font(.headline)
+                    Text("以下预览与高清导出使用同一原生排版。浏览不会写入历史归档。")
+                        .font(.footnote).foregroundStyle(.secondary)
                     if !snapshot.canArchive {
-                        Label("缺少稳定身份：禁止正式导出", systemImage: "exclamationmark.shield")
-                            .font(.caption)
+                        Label("人物归属或来源未通过校验，禁止导出", systemImage: "lock.doc")
+                            .font(.footnote)
                     }
                 }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(snapshot.kind.ink)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                ForEach(snapshot.sections) { section in
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(section.title)
-                            .font(.system(.title3, design: .serif, weight: .semibold))
-                            .foregroundStyle(snapshot.kind.ink)
-                        ForEach(section.fields) { field in
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(field.label).font(.subheadline.weight(.semibold)).foregroundStyle(snapshot.kind.ink)
-                                Text(field.value)
-                                    .font(.body)
-                                    .foregroundStyle(.black)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Text("来源：\(field.source)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(12)
-                            .background(.white.opacity(0.87))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                    }
-                    .padding(16)
-                    .background(.white.opacity(0.45))
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                Text(snapshot.caution)
-                    .font(.footnote)
-                    .foregroundStyle(snapshot.kind.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(.primary)
                 if snapshot.canArchive {
                     Button {
-                        do { exportedURL = try PosterFamilyExport.image(snapshot: snapshot) }
-                        catch { exportError = error.localizedDescription }
+                        renderingExport = true
+                        Task { @MainActor in
+                            defer { renderingExport = false }
+                            do { exportedURL = try PosterFamilyExport.image(snapshot: snapshot) }
+                            catch { exportError = error.localizedDescription }
+                        }
                     } label: {
-                        Label("导出真实数据长图（PNG）", systemImage: "square.and.arrow.up")
+                        Label(renderingExport ? "正在生成高清海报…" : "导出真实数据长图（PNG）", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.borderedProminent)
-                } else {
-                    Label("人物归属或来源未通过校验，禁止导出", systemImage: "lock.doc")
-                        .font(.caption)
+                    .disabled(renderingExport || previewImage == nil)
+                    .accessibilityIdentifier("poster.dynamic.export")
+                    Text("1080 px 高清 PNG · 在系统分享菜单保存图片、存储文件或分享")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
+                if let image = previewImage {
+                    Image(uiImage: image)
+                        .resizable().scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .accessibilityLabel("当前人物海报视觉预览")
+                        .accessibilityIdentifier("poster.dynamic.visualPreview")
+                } else if let previewError {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(previewError).font(.footnote)
+                        Button("重新生成预览") { generatePreview() }
+                    }
+                } else {
+                    ProgressView("正在生成当前人物海报…").frame(maxWidth: .infinity)
+                }
+                DisclosureGroup("查看真实数据及来源", isExpanded: $showDetails) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(snapshot.receipt).font(.caption).fixedSize(horizontal: false, vertical: true)
+                        ForEach(snapshot.sections) { section in
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(section.title).font(.headline)
+                                ForEach(section.fields) { field in
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text(field.label).font(.subheadline.weight(.semibold))
+                                        Text(field.value).font(.body).fixedSize(horizontal: false, vertical: true)
+                                        Text("来源：\(field.source)").font(.caption2).foregroundStyle(.secondary)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                        }
+                    }.padding(.vertical, 12)
+                }
+                Text(snapshot.caution).font(.footnote).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(18)
             .frame(maxWidth: 620)
             .frame(maxWidth: .infinity)
         }
-        .background(snapshot.kind.paper.ignoresSafeArea())
-        .navigationTitle(snapshot.kind.title)
-        .navigationBarTitleDisplayMode(.inline)
+        .task { if previewImage == nil { generatePreview() } }
         .sheet(isPresented: Binding(get: { exportedURL != nil }, set: { if !$0 { exportedURL = nil } })) {
             if let url = exportedURL { PosterFamilyShareSheet(url: url) }
         }
@@ -350,6 +395,12 @@ struct PosterDynamicTemplateView: View {
         } message: {
             Text(exportError ?? "")
         }
-        .accessibilityIdentifier("poster.dynamic.\(snapshot.kind.rawValue)")
+    }
+
+    @MainActor private func generatePreview() {
+        guard snapshot.canArchive else { return }
+        previewError = nil
+        do { previewImage = try PosterFamilyExport.preview(snapshot: snapshot) }
+        catch { previewError = error.localizedDescription }
     }
 }

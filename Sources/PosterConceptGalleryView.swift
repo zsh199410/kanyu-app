@@ -46,7 +46,7 @@ private enum PosterConcept: String, CaseIterable, Identifiable {
     }
 }
 
-/// Gallery only. The flat generative design examples are never exported as a user's results.
+/// Four native template entry points. Concept JPEGs remain separately labelled design references.
 struct PosterConceptGalleryView: View {
     var person: Person? = nil
     /// Batch 2 P0：手相动态预览需读当前人物的 PalmRecord（按 personID 匹配）。
@@ -57,7 +57,7 @@ struct PosterConceptGalleryView: View {
                 Text("四境 · 四卷")
                     .font(.system(.title2, design: .serif, weight: .bold))
                     .foregroundStyle(Ky.ink)
-                Text("四种独立视觉语言。画面含设计示例数据，正式报告将使用当前人物真实计算结果重新排版。")
+                Text("选择一种画风，使用当前人物的真实数据生成海报。缩略图为设计参考，不包含本人结果。")
                     .font(.subheadline)
                     .foregroundStyle(Ky.sub)
                     .fixedSize(horizontal: false, vertical: true)
@@ -76,7 +76,7 @@ struct PosterConceptGalleryView: View {
                                 Text(concept.subtitle).font(.footnote).foregroundStyle(Ky.sub)
                                     .fixedSize(horizontal: false, vertical: true)
                                 Spacer(minLength: 0)
-                                Label("查看样张", systemImage: "arrow.up.right")
+                                Label("选择模板", systemImage: "arrow.up.right")
                                     .font(.caption.weight(.semibold)).foregroundStyle(Ky.qingdai)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -122,22 +122,6 @@ struct PosterConceptGalleryView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(c.title).font(.system(.title2, design: .serif, weight: .bold))
                     .foregroundStyle(Ky.ink)
-                Text("设计样张 · 非本人报告：画面中的示例出生时间、测量值及解读不得用于真实导出。")
-                    .font(.footnote.weight(.semibold)).foregroundStyle(Ky.cinnabar)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let image = c.image() {
-                    Image(uiImage: image).resizable().scaledToFit()
-                        .frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(alignment: .topLeading) {
-                            Text("仅供设计预览").font(.caption.weight(.bold)).padding(8)
-                                .background(.regularMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 8)).padding(12)
-                        }
-                } else {
-                    Label("请导入四款 JPG 预览图资源。", systemImage: "photo.badge.exclamationmark")
-                        .foregroundStyle(Ky.sub)
-                }
                 if (c == .bazi || c == .premium), let person {
                     NavigationLink {
                         PosterDynamicTemplateView(snapshot: PosterDynamicSnapshot.bazi(
@@ -147,10 +131,10 @@ struct PosterConceptGalleryView: View {
                                 longitude: person.useLongitude ? person.longitude : nil),
                             premium: c == .premium))
                     } label: {
-                        Label("当前人物动态排版预览（不保存）", systemImage: "doc.text.image")
+                        Label("使用此模板 · 生成本人海报", systemImage: "doc.text.image")
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                     .tint(Ky.qingdai)
                     .accessibilityIdentifier("poster.gallery.dynamic.\(c.rawValue)")
                 }
@@ -161,10 +145,10 @@ struct PosterConceptGalleryView: View {
                         NavigationLink {
                             PosterDynamicTemplateView(snapshot: PosterDynamicSnapshot.palm(record: rec, ownerID: person.id))
                         } label: {
-                            Label("当前人物手相动态预览（不保存）", systemImage: "doc.text.image")
+                            Label("使用此模板 · 生成本人手相海报", systemImage: "doc.text.image")
                                 .frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderedProminent)
                         .tint(Ky.qingdai)
                         .accessibilityIdentifier("poster.gallery.dynamic.palm")
                     } else {
@@ -184,10 +168,10 @@ struct PosterConceptGalleryView: View {
                         NavigationLink {
                             PosterDynamicTemplateView(snapshot: PosterDynamicSnapshot.ziwei(chart: zwChart, name: person.name, ownerIDs: [person.id]))
                         } label: {
-                            Label("当前人物紫微动态预览（不保存）", systemImage: "doc.text.image")
+                            Label("使用此模板 · 生成本人紫微海报", systemImage: "doc.text.image")
                                 .frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderedProminent)
                         .tint(Ky.qingdai)
                         .accessibilityIdentifier("poster.gallery.dynamic.ziwei")
                     } else if zwOwnerIDs.contains(person.id) {
@@ -198,15 +182,39 @@ struct PosterConceptGalleryView: View {
                             .font(.footnote).foregroundStyle(Ky.sub)
                     }
                 }
+                if person == nil {
+                    Label("请先选择人物档案，才可生成本人海报。", systemImage: "person.crop.circle.badge.questionmark")
+                        .font(.footnote).foregroundStyle(Ky.sub)
+                }
+                Divider()
+                Text("原始设计参考").font(.headline)
+                Text("设计样张 · 非本人报告：画面中的示例出生时间、测量值及解读不得用于真实导出。")
+                    .font(.footnote.weight(.semibold)).foregroundStyle(Ky.cinnabar)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let image = c.image() {
+                    Image(uiImage: image).resizable().scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(alignment: .topLeading) {
+                            Text("仅供设计预览").font(.caption.weight(.bold)).padding(8)
+                                .background(.regularMaterial)
+                                .clipShape(RoundedRectangle(cornerRadius: 8)).padding(12)
+                        }
+                } else {
+                    Label("请导入四款 JPG 预览图资源。", systemImage: "photo.badge.exclamationmark")
+                        .foregroundStyle(Ky.sub)
+                }
+                Divider()
+                Text("其他原生导出入口").font(.headline)
                 exportLink(c)
-                Text("设计图里的姓名、命盘、数值仅供欣赏；动态预览只使用当前命主的真实计算字段，不写入文件或替换原有导出。")
+                Text("本人海报使用真实数据原生排版；下方原始设计参考中的示例数据不会导出。")
                     .font(.caption).foregroundStyle(Ky.sub)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(16)
         }
         .background(Ky.bg)
-        .navigationTitle("画风预览")
+        .navigationTitle("使用模板")
         .navigationBarTitleDisplayMode(.inline)
     }
     @ViewBuilder private func exportLink(_ c: PosterConcept) -> some View {
