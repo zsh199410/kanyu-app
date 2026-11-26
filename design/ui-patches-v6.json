@@ -1948,5 +1948,11 @@
     "before": "(\"4. 感情关口与解法\", conclusion(\"婚姻感情\")),\n",
     "after": "// The same 婚姻感情 conclusion is already shown in row 2; do not duplicate it under a misleading second heading.\n",
     "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "            LazyVStack(spacing: 16) {\n                // 尊享预测单独立入口",
+    "after": "            // The cached preview is one image, not a lazy report tree. Measure it\n            // eagerly so scrolling cannot keep moving the share controls away.\n            VStack(spacing: 16) {\n                // 尊享预测单独立入口",
+    "count": 1
   }
 ]

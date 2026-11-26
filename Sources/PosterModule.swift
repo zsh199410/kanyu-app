@@ -1406,7 +1406,9 @@ struct PosterSheetView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 16) {
+            // The cached preview is one image, not a lazy report tree. Measure it
+            // eagerly so scrolling cannot keep moving the share controls away.
+            VStack(spacing: 16) {
                 // 尊享预测单独立入口（不占款式位）：宋纸青黛与预测单长图二选一
                 Picker("海报款式", selection: $style) {
                     ForEach(PosterStyle.allCases, id: \.self) { option in
