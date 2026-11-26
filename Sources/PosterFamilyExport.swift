@@ -183,8 +183,8 @@ private struct PosterFamilyExportCanvas: View {
                 Spacer(minLength: 16)
                 Text(isPremium ? "尊享" : "个人").font(.system(size: 25, weight: .bold, design: .serif))
                     .padding(13)
-                    .foregroundStyle(isNight ? palette.ink : palette.accent)
-                    .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(isNight ? palette.accent : palette.accent, lineWidth: 2) }
+                    .foregroundStyle(snapshot.kind == .palm ? Color(red: 0.98, green: 0.94, blue: 0.82) : (isNight ? palette.ink : palette.accent))
+                    .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(snapshot.kind == .palm ? palette.line : palette.accent, lineWidth: 2) }
             }
             Text(title).font(.system(size: 70, weight: .bold, design: .serif))
                 .fixedSize(horizontal: false, vertical: true)
@@ -225,8 +225,13 @@ private struct PosterFamilyExportCanvas: View {
             } else if snapshot.kind == .bazi && section.id == "dayun" {
                 fieldGrid(section.fields, columns: 3)
             } else if isNight && section.id == "palaces" {
-                // A labelled palace index, not an invented spatial chart.
-                fieldGrid(section.fields, columns: 3)
+                if section.fields.count == 12 &&
+                    section.fields.enumerated().allSatisfy({ $0.element.id == "palace.\($0.offset)" }) {
+                    palaceBoard(section.fields)
+                } else {
+                    // Never guess spatial positions when the snapshot is incomplete.
+                    fieldGrid(section.fields, columns: 3)
+                }
             } else if section.id == "elements" && !isPremium {
                 ForEach(section.fields) { field in elementRow(field) }
             } else {
@@ -237,6 +242,75 @@ private struct PosterFamilyExportCanvas: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(palette.panel)
         .overlay { Rectangle().strokeBorder(palette.line.opacity(0.7), lineWidth: 2) }
+    }
+
+    // ZiweiChart.palaces is ordered 子→亥. Match the existing ZiweiBoardView
+    // arrangement exactly; the center is a decorative legend, not a thirteenth palace.
+    private func palaceBoard(_ fields: [PosterBoundField]) -> some View {
+        let cellWidth: CGFloat = 222
+        let cellHeight: CGFloat = 200
+        let gap: CGFloat = 8
+        return VStack(spacing: gap) {
+            HStack(spacing: gap) {
+                ForEach([5, 6, 7, 8], id: \.self) { i in
+                    palaceCell(fields[i], branch: i, width: cellWidth, height: cellHeight)
+                }
+            }
+            HStack(spacing: gap) {
+                VStack(spacing: gap) {
+                    ForEach([4, 3], id: \.self) { i in
+                        palaceCell(fields[i], branch: i, width: cellWidth, height: cellHeight)
+                    }
+                }
+                ZStack {
+                    PosterFamilyOrnament(kind: .ziwei, tint: palette.line)
+                    VStack(spacing: 15) {
+                        Text("紫 微").font(.system(size: 52, weight: .bold, design: .serif))
+                        Text("十二宫主星").font(.system(size: 28, design: .serif))
+                        Rectangle().fill(palette.line).frame(width: 108, height: 2)
+                        Text("地支方位 · 原盘顺序").font(.system(size: 22))
+                    }
+                    .foregroundStyle(palette.accent)
+                }
+                .frame(width: cellWidth * 2 + gap, height: cellHeight * 2 + gap)
+                .overlay { Rectangle().strokeBorder(palette.line, lineWidth: 2) }
+                VStack(spacing: gap) {
+                    ForEach([9, 10], id: \.self) { i in
+                        palaceCell(fields[i], branch: i, width: cellWidth, height: cellHeight)
+                    }
+                }
+            }
+            HStack(spacing: gap) {
+                ForEach([2, 1, 0, 11], id: \.self) { i in
+                    palaceCell(fields[i], branch: i, width: cellWidth, height: cellHeight)
+                }
+            }
+            Text("宫名、主星与四化：ZiweiChart.palaces · 地支序子至亥")
+                .font(.system(size: 20))
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 12)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func palaceCell(_ field: PosterBoundField, branch: Int, width: CGFloat, height: CGFloat) -> some View {
+        let branches = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Text(field.label).font(.system(size: 27, weight: .semibold, design: .serif))
+                Spacer(minLength: 0)
+                Text(branches[branch]).font(.system(size: 23, design: .serif))
+            }.foregroundStyle(palette.accent)
+            Rectangle().fill(palette.line.opacity(0.6)).frame(height: 1)
+            Text(field.value.replacingOccurrences(of: "、", with: "\n"))
+                .font(.system(size: 28, weight: .medium, design: .serif))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(13)
+        .frame(width: width, height: height, alignment: .topLeading)
+        .background(palette.paper.opacity(0.55))
+        .overlay { Rectangle().strokeBorder(palette.line.opacity(0.75), lineWidth: 1.5) }
     }
 
     private func fieldGrid(_ fields: [PosterBoundField], columns: Int) -> some View {
