@@ -277,6 +277,40 @@ struct PosterDynamicTemplateView: View {
     @State private var renderingExport = false
     @State private var showDetails = false
     var body: some View {
+        Group {
+            if snapshot.canArchive {
+                availableTemplate
+            } else {
+                unavailableTemplate
+            }
+        }
+        .background(Ky.bg.ignoresSafeArea())
+        .navigationTitle(snapshot.kind.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("poster.dynamic.\(snapshot.kind.rawValue)")
+    }
+
+    private var unavailableTemplate: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: "lock.doc").font(.system(size: 42)).foregroundStyle(snapshot.kind.ink)
+            Text(snapshot.kind.title).font(.system(.title2, design: .serif, weight: .bold))
+            Text("缺少稳定身份：禁止正式导出").font(.headline)
+            ForEach(snapshot.missingFields.filter { $0.blocking }) { field in
+                Text(field.label).font(.body).fixedSize(horizontal: false, vertical: true)
+            }
+            Text("请返回对应排盘或测量页面，明确关联当前人物后再使用模板。不会自动按姓名匹配，也不会写入文件。")
+                .font(.footnote).fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(snapshot.kind.ink)
+        .padding(24)
+        .frame(maxWidth: 520, alignment: .leading)
+        .background(snapshot.kind.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(20)
+        .accessibilityIdentifier("poster.dynamic.unavailable")
+    }
+
+    private var availableTemplate: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -350,9 +384,6 @@ struct PosterDynamicTemplateView: View {
             .frame(maxWidth: .infinity)
         }
         .task { if previewImage == nil { generatePreview() } }
-        .background(Ky.bg.ignoresSafeArea())
-        .navigationTitle(snapshot.kind.title)
-        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: Binding(get: { exportedURL != nil }, set: { if !$0 { exportedURL = nil } })) {
             if let url = exportedURL { PosterFamilyShareSheet(url: url) }
         }
@@ -364,10 +395,10 @@ struct PosterDynamicTemplateView: View {
         } message: {
             Text(exportError ?? "")
         }
-        .accessibilityIdentifier("poster.dynamic.\(snapshot.kind.rawValue)")
     }
 
     @MainActor private func generatePreview() {
+        guard snapshot.canArchive else { return }
         previewError = nil
         do { previewImage = try PosterFamilyExport.preview(snapshot: snapshot) }
         catch { previewError = error.localizedDescription }
