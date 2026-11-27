@@ -2,6 +2,7 @@ import SwiftUI
 
 struct V5PersonHero: View {
     let chart: BaziChart?
+    @State private var creating = false
     @EnvironmentObject private var people: PeopleStore
     @EnvironmentObject private var router: V5Router
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -10,25 +11,21 @@ struct V5PersonHero: View {
         let p = theme.palette
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 13) {
-                Text("当前命主").font(.caption.weight(.medium)).tracking(2)
-                    .padding(.horizontal, 12).padding(.vertical, 5)
-                    .overlay(Capsule().stroke(V5Palette.color(p.ornament), lineWidth: 0.6))
+                HStack {
+                    Text("当前命主").font(.caption.weight(.medium)).tracking(2)
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .overlay(Capsule().stroke(V5Palette.color(p.ornament), lineWidth: 0.6))
+                    Spacer(minLength: 8)
+                    Button { creating = true } label: { Image(systemName: "person.badge.plus").frame(width: 48, height: 48) }
+                        .accessibilityLabel("快速新建档案")
+                }
                 if let person = people.currentPerson {
-                    Menu {
-                        ForEach(people.people) { candidate in
-                            Button { people.setCurrentPerson(candidate) } label: {
-                                Text("\(candidate.name) · \(candidate.relation) · \(DisplayTimeReceipt.beijing(candidate.birthDate)) · 档案 \(candidate.id.uuidString.prefix(8))")
-                            }
-                        }
-                        Button("管理人物档案") { router.tab = 3 }
-                    } label: {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(person.name).font(.system(.largeTitle, design: .serif).weight(.semibold))
-                                .fixedSize(horizontal: false, vertical: true)
-                            Image(systemName: "chevron.right").font(.caption)
-                        }.frame(minHeight: V5Metric.target, alignment: .leading)
-                    }.accessibilityLabel("切换命主").accessibilityIdentifier("v5.person.switch").accessibilityValue(person.name + " · " + person.id.uuidString)
-                    if let chart {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(person.name).font(.system(.largeTitle, design: .serif).weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                        V5PersonPickerButton { Image(systemName: "chevron.right").font(.caption).frame(width: 48, height: 48) }
+                    }
+                    if let chart, !typeSize.isAccessibilitySize {
                         Text(chart.pillars.joined(separator: "　")).font(.system(.subheadline, design: .serif))
                             .fixedSize(horizontal: false, vertical: true)
                     } else { Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.subheadline) }
@@ -37,7 +34,7 @@ struct V5PersonHero: View {
                 } else {
                     Text("一人一命书").font(.system(.title, design: .serif))
                     Text("建立真实档案，贯通命盘与解读。").font(.subheadline)
-                    Button("建立人物档案") { router.tab = 3 }.frame(minHeight: V5Metric.target)
+                    Button("添加第一位家人或命主档案") { creating = true }.frame(minHeight: V5Metric.target)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
             if !typeSize.isAccessibilitySize, let object = V5ArtworkRegistry.image(.personObject) {
@@ -56,6 +53,13 @@ struct V5PersonHero: View {
                 .overlay(V5PanelSilhouette(theme: theme).stroke(V5Palette.color(p.ornament), lineWidth: 0.8))
                 .shadow(color: V5Palette.color(p.ink).opacity(0.13), radius: 12, x: 0, y: 8)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("workspace.workbench")
+        .accessibilityValue(people.currentPerson?.name ?? "未建档")
+        .sheet(isPresented: $creating) {
+            PersonFormView(store: people, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970))
+        }
+
     }
 }
 private struct V5FeaturePlaque: Shape {
@@ -100,7 +104,7 @@ struct V5PrimaryFeatureDeck: View {
                 .foregroundStyle(V5Palette.color(theme.palette.ink))
                 .background(V5FeaturePlaque(arched: theme == .song || theme == .night).fill(V5Palette.color(theme.palette.surface)))
                 .overlay(V5FeaturePlaque(arched: theme == .song || theme == .night).stroke(V5Palette.color(theme.palette.ornament).opacity(0.7), lineWidth: 0.7))
-        }.buttonStyle(.plain).accessibilityLabel(title + "，" + subtitle).accessibilityIdentifier("v5.home.entry." + glyph.rawValue)
+        }.buttonStyle(.plain).accessibilityLabel((glyph == .palm ? "手相面相" : title) + "，" + subtitle).accessibilityIdentifier("v5.home.entry." + glyph.rawValue)
     }
 }
 struct V5HomeBookEntry: View {

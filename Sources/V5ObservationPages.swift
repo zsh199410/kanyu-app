@@ -2,7 +2,37 @@ import SwiftUI
 
 /// Native observation entrances. Measurement and annotation stay in the proven photo modules.
 struct V5PalmPage: View {
-    var body: some View { V5ObservationPage(kind: .hand) }
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                V5ArtHeader(eyebrow: "观形察象 · 原生图解", title: "手相与面相", subtitle: "先读懂图，再看自己的照片；所有测量均可手动复核。")
+                HStack(alignment: .top, spacing: 16) {
+                    V5FeatureGlyph(kind: .palm, size: 64)
+                    V5FeatureGlyph(kind: .face, size: 64)
+                    Spacer(minLength: 0)
+                }.accessibilityHidden(true)
+                NavigationLink { PhysiognomyGuideView(kind: .hand) } label: {
+                    V5Card { V5LibraryRow(title: "道家手相图解", detail: "主线、掌丘、五指与传统线名", icon: "hand.raised") }
+                }.buttonStyle(.plain).accessibilityIdentifier("physiognomy.open.hand")
+                NavigationLink { PhysiognomyGuideView(kind: .face) } label: {
+                    V5Card { V5LibraryRow(title: "面相十二宫图解", detail: "十二宫、三停与五眼的白话对照", icon: "face.smiling") }
+                }.buttonStyle(.plain).accessibilityIdentifier("physiognomy.open.face")
+                V5SectionHeading(title: "用自己的照片观测")
+                NavigationLink { V5ObservationPage(kind: .hand) } label: {
+                    V5LibraryRow(title: "手掌照片与记录", detail: "三线控制点、掌型指比及按人归档", icon: "camera")
+                }
+                NavigationLink { V5FacePage() } label: {
+                    V5LibraryRow(title: "面相照片与记录", detail: "正面照片、三停与五眼的手动校准", icon: "viewfinder")
+                }
+                NavigationLink { PalmHomeView() } label: {
+                    V5LibraryRow(title: "全部测量与原记录", detail: "原有照片标注、关联、分享与管理", icon: "archivebox")
+                }
+                Text("传统名称不代表疾病或命运判断。照片仅用于本人授权的观察与留存。")
+                    .font(.footnote).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+            }.padding(V5Metric.page)
+        }.background { V5SceneBackground() }.foregroundStyle(V5Palette.color(V5Palette.current.ink))
+            .navigationTitle("手相面相").navigationBarTitleDisplayMode(.inline)
+    }
 }
 struct V5FacePage: View {
     var body: some View { V5ObservationPage(kind: .face) }

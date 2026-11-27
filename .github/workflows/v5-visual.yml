@@ -38,6 +38,12 @@ jobs:
           mkdir -p "$CONTAINER/Documents"
           cp design/v5/visual-fixture.json "$CONTAINER/Documents/people.json"
           cp design/v5/visual-fixture.json build/fixture.json
+      - name: Verify actual four-theme publication PDFs
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEST=$(cat build/destination.txt)
+          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
       - name: Capture actual four-theme screens on identical data
         shell: bash
         run: |
@@ -48,10 +54,13 @@ jobs:
         if: always()
         run: |
           if [ -d build/Visual.xcresult ]; then
-            xcrun xcresulttool export attachments --path build/Visual.xcresult --output-path build/attachments
+            xcrun xcresulttool export attachments --path build/Visual.xcresult --output-path build/attachments/Visual
             python3 -m venv build/qa-env
             build/qa-env/bin/pip -q install matplotlib
-            build/qa-env/bin/python design/v5/package_visual_evidence.py build/attachments build/comparison
+            build/qa-env/bin/python design/v5/package_visual_evidence.py build/attachments/Visual build/comparison
+          fi
+          if [ -d build/PDF.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/PDF.xcresult --output-path build/attachments/PDF
           fi
       - name: Required art readiness (does not grant visual approval)
         if: always()
@@ -66,6 +75,7 @@ jobs:
             build/commit.txt
             build/destination.txt
             build/Visual.xcresult
+            build/PDF.xcresult
             build/attachments
             build/comparison
           retention-days: 14

@@ -45,6 +45,8 @@ struct V5Palette {
     var heroSecondary: UInt32 { paper == 0x151411 ? 0xDBC296 : secondary }
     var readingPaper: UInt32 { 0xF7F2E7 }
     var readingInk: UInt32 { 0x2D382F }
+    var readingSecondary: UInt32 { 0x686054 }
+    var readingAccent: UInt32 { 0x785521 }
     var success: UInt32 { isDark ? 0x52B788 : 0x306B4B }
     var failure: UInt32 { isDark ? 0xE98A76 : 0x9A2A22 }
     var ornamentText: UInt32 { isDark ? 0xD9B879 : 0x785521 }
@@ -86,11 +88,14 @@ enum V5Metric {
     static let corner: CGFloat = 24
     static let target: CGFloat = 48
 }
-enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, face, tools, settings, appearance, updates, tool(String) }
+enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, face, tools, settings, profileCenter, appearance, updates, tool(String) }
 @MainActor final class V5Router: ObservableObject {
     @Published var tab = 0
     @Published var paths: [Int: [V5Route]] = [:]
-    func open(_ route: V5Route) { paths[tab, default: []].append(route) }
+    func open(_ route: V5Route) {
+        if case .tool(let id) = route { AllToolsData.recordRecent(tool: id) }
+        paths[tab, default: []].append(route)
+    }
     func path(for tab: Int) -> Binding<[V5Route]> {
         Binding(get: { self.paths[tab] ?? [] }, set: { self.paths[tab] = $0 })
     }
@@ -142,6 +147,7 @@ struct V5ProShell: View {
                 case .face: V5FacePage()
                 case .tools: AllToolsView(selectedTab: router.legacySelection)
                 case .settings: V5SettingsPage()
+                case .profileCenter: V5ProfileCenterView()
                 case .updates: V5UpdatePage()
                 case .appearance: V5AppearanceView()
                 case .tool(let id):
@@ -151,13 +157,11 @@ struct V5ProShell: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("外观") { router.open(.appearance) }
-                        Button("设置、AI 与备份") { router.open(.settings) }
-                        Button("全部功能") { router.open(.tools) }
-                        Button("更新与自签交接") { router.open(.updates) }
-                    } label: { Image(systemName: "ellipsis.circle").frame(minWidth: 48, minHeight: 48) }
-                    .accessibilityLabel("全局设置与功能")
+                    Button { router.open(.profileCenter) } label: {
+                        Image(systemName: "person.crop.circle").frame(minWidth: 48, minHeight: 48)
+                    }
+                    .accessibilityLabel("个人中心与全局设置")
+                    .accessibilityIdentifier("全局设置与功能")
                 }
             }
         }
@@ -169,6 +173,7 @@ struct V5HomeView: View {
     @State private var chart: BaziChart?
     @State private var chartPerson: Person?
     var body: some View {
+        VStack(spacing: 0) {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 V5BrandHero()
@@ -196,12 +201,12 @@ struct V5HomeView: View {
                     }
                 }
                 if V5ThemeStore.shared.theme == .song || V5ThemeStore.shared.theme == .night { V5HomeBookEntry() }
-                Button { router.open(.tools) } label: {
-                    HStack { Text("历法、择吉与全部工具"); Spacer(); Image(systemName: "arrow.right") }.frame(minHeight: V5Metric.target)
-                }
+                V5HomeUtilityShelf()
                 Text("传统民俗参考，不构成疾病诊断或保证性预测。")
                     .font(.footnote).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
             }.padding(.horizontal, V5Metric.page).padding(.bottom, 24)
+        }
+        .accessibilityIdentifier("home.scroll")
         }
         .background { V5SceneBackground() }
         .foregroundStyle(V5Palette.color(V5Palette.current.ink))

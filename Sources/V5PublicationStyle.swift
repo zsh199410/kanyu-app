@@ -2,7 +2,7 @@ import UIKit
 
 /// Rendering-only bridge for ReportBuilder's existing CGPDFContext and single pagination pass.
 /// Capture a theme once per export. This type never writes PDFs, paginates, changes report lines,
-/// hashes, metadata, UUID ownership, or archive paths. The production exporter is not wired yet.
+/// hashes, metadata, UUID ownership, or archive paths. ReportBuilder captures one style per export.
 /// Adoption points: makePDF's font declarations/body attributes and page backgrounds; drawCover/
 /// drawTOC color lookups; drawFooter delegates here. Keep paginate/layoutFragments, pages/TOC,
 /// direct CGPDFContext metadata and ReportExportArchive.save unchanged. Header use is optional.
@@ -15,6 +15,24 @@ struct V5PublicationStyle {
     init(theme: V5Theme) {
         self.theme = theme
         palette = theme.palette
+    }
+
+    var coverInk: UIColor { Self.color(palette.heroInk) }
+    var coverSecondary: UIColor { Self.color(palette.heroSecondary) }
+    var coverAccent: UIColor { Self.color(palette.ornament) }
+    var pageInk: UIColor { Self.color(palette.readingInk) }
+    var pageSecondary: UIColor { Self.color(palette.readingSecondary) }
+    var pageAccent: UIColor { Self.color(palette.readingAccent) }
+
+    func drawCoverArtwork(in context: CGContext, pageRect: CGRect) {
+        guard let image = V5ArtworkRegistry.image(.landscape, theme: theme) else { return }
+        let area = CGRect(x: 48, y: 566, width: pageRect.width-96, height: 180)
+        let scale = min(area.width/image.size.width, area.height/image.size.height)
+        let size = CGSize(width: image.size.width*scale, height: image.size.height*scale)
+        context.saveGState();context.setAlpha(0.7)
+        UIGraphicsPushContext(context)
+        image.draw(in: CGRect(x: area.midX-size.width/2, y: area.midY-size.height/2, width: size.width, height: size.height))
+        UIGraphicsPopContext();context.restoreGState()
     }
 
     // Match the existing ReportBuilder metrics exactly so a style-only adoption cannot repaginate.

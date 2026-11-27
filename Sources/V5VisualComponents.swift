@@ -74,12 +74,12 @@ struct V5BrandHero: View {
     var body: some View {
         VStack(spacing: 14) {
             HStack(spacing: 12) {
-                if let emblem = V5ArtworkRegistry.image(.emblem) {
+                if !typeSize.isAccessibilitySize, let emblem = V5ArtworkRegistry.image(.emblem) {
                     Image(uiImage: emblem).resizable().scaledToFit().frame(width: 62, height: 62).accessibilityHidden(true)
                 }
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("三术合参").font(.system(.largeTitle, design: .serif).weight(.semibold)).tracking(2)
+                        Text("三术合参").font(.system(typeSize.isAccessibilitySize ? .title2 : .largeTitle, design: .serif).weight(.semibold)).tracking(2)
                         Text("5.0").font(.caption2.bold()).padding(4).foregroundStyle(.white)
                             .background(KanyuV6.Palette.cinnabar, in: RoundedRectangle(cornerRadius: 4))
                     }

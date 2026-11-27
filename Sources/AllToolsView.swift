@@ -188,7 +188,7 @@ func toolDestination(for item: ToolItem, person: Person, chart: BaziChart) -> so
     case "yearly":
         YearByYearView(chart: chart, name: person.name)
     case "interpret":
-        InterpretView(chart: chart, name: person.name, verificationOwnerID: "person:\(person.id.uuidString)")
+        V5InterpretBookView(person: person, chart: chart)
     case "chartdepth":
         ChartDepthView(person: person, chart: chart)
     case "poster":
