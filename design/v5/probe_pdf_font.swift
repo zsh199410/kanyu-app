@@ -12,6 +12,7 @@ guard let descriptors = CTFontManagerCreateFontDescriptorsFromURL(fontURL as CFU
 var results: [[String: Any]] = []
 for weight in [400, 600] {
     let descriptor = CTFontDescriptorCreateCopyWithAttributes(base, [
+        kCTFontFeatureSettingsAttribute: [[kCTFontOpenTypeFeatureTag: "ccmp", kCTFontOpenTypeFeatureValue: 0]],
         kCTFontVariationAttribute: [NSNumber(value: 0x77676874): NSNumber(value: weight)]
     ] as CFDictionary)
     let font = CTFontCreateWithFontDescriptor(descriptor, 12, nil)
@@ -36,3 +37,5 @@ for weight in [400, 600] {
 }
 try JSONSerialization.data(withJSONObject: results, options: [.prettyPrinted, .sortedKeys]).write(to: folder.appendingPathComponent("font-probe.json"))
 print(String(data: try JSONSerialization.data(withJSONObject: results, options: [.sortedKeys]), encoding: .utf8)!)
+
+guard results.allSatisfy({ $0["passed"] as? Bool == true }) else { fatalError("Font text round trip failed; do not adopt") }
