@@ -15,7 +15,7 @@ packages:
     branch: master
 settings:
   base:
-    CURRENT_PROJECT_VERSION: 702
+    CURRENT_PROJECT_VERSION: 703
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
 targets:

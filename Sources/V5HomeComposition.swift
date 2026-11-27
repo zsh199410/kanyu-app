@@ -16,8 +16,6 @@ struct V5PersonHero: View {
                         .padding(.horizontal, 12).padding(.vertical, 5)
                         .overlay(Capsule().stroke(V5Palette.color(p.ornament), lineWidth: 0.6))
                     Spacer(minLength: 8)
-                    Button { creating = true } label: { Image(systemName: "person.badge.plus").frame(width: 48, height: 48) }
-                        .accessibilityLabel("快速新建档案")
                 }
                 if let person = people.currentPerson {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {

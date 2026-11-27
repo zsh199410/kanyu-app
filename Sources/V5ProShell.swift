@@ -176,6 +176,7 @@ struct V5HomeView: View {
     @EnvironmentObject private var router: V5Router
     @State private var chart: BaziChart?
     @State private var chartPerson: Person?
+    @State private var showingCreatePerson = false
     var body: some View {
         VStack(spacing: 0) {
         ScrollView {
@@ -215,6 +216,19 @@ struct V5HomeView: View {
         .background { V5SceneBackground() }
         .foregroundStyle(V5Palette.color(V5Palette.current.ink))
         .navigationTitle("首页").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showingCreatePerson = true } label: {
+                    Image(systemName: "person.badge.plus").frame(width: 48, height: 48)
+                }
+                .accessibilityLabel("快速新建档案")
+                .accessibilityHint("新建档案，保留当前命主选择")
+                .accessibilityIdentifier("v5.home.create")
+            }
+        }
+        .sheet(isPresented: $showingCreatePerson) {
+            PersonFormView(store: people, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970))
+        }
         .task(id: people.currentPerson) {
             let selected = people.currentPerson
             chart = nil; chartPerson = nil

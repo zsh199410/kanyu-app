@@ -2236,5 +2236,11 @@
     "before": "[.font: sealFont,",
     "after": "[.font: sealFont, .ligature: 0,",
     "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "CURRENT_PROJECT_VERSION: 702",
+    "after": "CURRENT_PROJECT_VERSION: 703",
+    "count": 1
   }
 ]
