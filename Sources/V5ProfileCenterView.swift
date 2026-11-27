@@ -68,7 +68,6 @@ struct V5HomeUtilityShelf: View {
     }
     @ViewBuilder private var shortcuts: some View {
         Button { router.open(.tool("astro")) } label: { Label("星命合参", systemImage: "circle.hexagongrid").frame(minHeight: V5Metric.target) }.accessibilityIdentifier("home.astro")
-        Button { router.open(.palm) } label: { Label("手相面相", systemImage: "hand.raised").frame(minHeight: V5Metric.target) }
         Button { router.open(.tools) } label: { Label("全部工具", systemImage: "square.grid.2x2").frame(minHeight: V5Metric.target) }.accessibilityIdentifier("home.alltools")
     }
 }

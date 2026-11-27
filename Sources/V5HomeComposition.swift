@@ -101,6 +101,7 @@ struct V5PrimaryFeatureDeck: View {
                 .foregroundStyle(V5Palette.color(theme.palette.ink))
                 .background(V5FeaturePlaque(arched: theme == .song || theme == .night).fill(V5Palette.color(theme.palette.surface)))
                 .overlay(V5FeaturePlaque(arched: theme == .song || theme == .night).stroke(V5Palette.color(theme.palette.ornament).opacity(0.7), lineWidth: 0.7))
+                .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityLabel((glyph == .palm ? "手相面相" : title) + "，" + subtitle).accessibilityIdentifier("v5.home.entry." + glyph.rawValue)
     }
 }

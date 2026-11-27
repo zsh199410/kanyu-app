@@ -135,7 +135,7 @@ struct V5ProShell: View {
         // safeAreaInset leaves offscreen controls hittable below the tab bar
         // in iOS 26's hosted ScrollView, notably at accessibility sizes.
             V5BottomNavigation(selection: $router.tab, theme: theme)
-                .frame(height: navigationTypeSize.isAccessibilitySize ? 94 : 60)
+                .frame(height: navigationTypeSize.isAccessibilitySize ? 80 : 60)
                 .background(V5Palette.color(theme.palette.paper).ignoresSafeArea(edges: .bottom))
         }
         .environmentObject(router)

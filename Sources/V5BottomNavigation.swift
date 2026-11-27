@@ -8,13 +8,14 @@ struct V5BottomNavigation: UIViewRepresentable {
     let theme: V5Theme
     func makeUIView(context: Context) -> V5BottomNavigationBar { V5BottomNavigationBar() }
     func updateUIView(_ view: V5BottomNavigationBar, context: Context) {
-        view.update(selection: selection, theme: theme) { selection = $0 }
+        view.update(selection: selection, theme: theme,
+                    accessibilityLayout: context.environment.dynamicTypeSize.isAccessibilitySize) { selection = $0 }
     }
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: V5BottomNavigationBar, context: Context) -> CGSize? {
-        // UITabBar's 60pt intrinsic size must not remain centered inside the
-        // 94pt accessibility frame; the visible control fills its real slot.
+        // UITabBar's 60pt intrinsic size must not remain centered inside its
+        // accessibility frame; the visible control fills its real slot.
         CGSize(width: proposal.width ?? uiView.bounds.width,
-               height: proposal.height ?? (context.environment.dynamicTypeSize.isAccessibilitySize ? 94 : 60))
+               height: proposal.height ?? (context.environment.dynamicTypeSize.isAccessibilitySize ? 80 : 60))
     }
 }
 final class V5BottomNavigationBar: UITabBar {
@@ -51,7 +52,7 @@ final class V5BottomNavigationBar: UITabBar {
     }
     required init?(coder: NSCoder) { fatalError("Use programmatic navigation") }
     override var intrinsicContentSize: CGSize { CGSize(width: UIView.noIntrinsicMetric, height: 60) }
-    func update(selection: Int, theme: V5Theme, onSelect: @escaping (Int) -> Void) {
+    func update(selection: Int, theme: V5Theme, accessibilityLayout: Bool = false, onSelect: @escaping (Int) -> Void) {
         self.onSelect = onSelect;selectedIndex = selection
         let palette = theme.palette
         for (index, button) in controls.enumerated() {
@@ -60,7 +61,11 @@ final class V5BottomNavigationBar: UITabBar {
             button.accessibilityTraits = selected ? [.button, .selected] : [.button]
             var configuration = UIButton.Configuration.plain()
             configuration.title = titles[index]
-            if let art = V5ArtworkRegistry.tabImage(roles[index]) {
+            // At accessibility sizes retain the fully scaled, explicit title;
+            // the redundant icon yields its space rather than clipping text.
+            if accessibilityLayout {
+                configuration.image = nil
+            } else if let art = V5ArtworkRegistry.tabImage(roles[index]) {
                 configuration.image = art.withRenderingMode(.alwaysOriginal)
             } else {
                 configuration.image = UIImage(systemName: symbols[index], withConfiguration: UIImage.SymbolConfiguration(pointSize: 23, weight: .regular))
