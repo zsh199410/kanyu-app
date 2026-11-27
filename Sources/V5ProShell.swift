@@ -14,6 +14,11 @@ enum V5Theme: String, CaseIterable, Identifiable {
         case .collection: return "东方典藏 Pro"
         }
     }
+    static func initialTheme(in defaults: UserDefaults = .standard) -> V5Theme {
+        if let saved = defaults.string(forKey: "v5.theme"), let theme = V5Theme(rawValue: saved) { return theme }
+        // Read the existing display preference without rewriting or migrating user defaults.
+        return defaults.string(forKey: "uiStyle") == "dark" ? .night : .song
+    }
     var scheme: ColorScheme { self == .night ? .dark : .light }
     var palette: V5Palette {
         switch self {
@@ -26,7 +31,7 @@ enum V5Theme: String, CaseIterable, Identifiable {
 }
 @Observable final class V5ThemeStore {
     static let shared = V5ThemeStore()
-    private(set) var theme = V5Theme(rawValue: UserDefaults.standard.string(forKey: "v5.theme") ?? "song") ?? .song
+    private(set) var theme = V5Theme.initialTheme()
     @MainActor func select(_ value: V5Theme) {
         theme = value
         UserDefaults.standard.set(value.rawValue, forKey: "v5.theme")
@@ -121,7 +126,8 @@ struct V5ProShell: View {
                 case .updates: V5UpdatePage()
                 case .appearance: V5AppearanceView()
                 case .tool(let id):
-                    if let item = AllToolsData.item(for: id) { ContextualToolDestination(item: item) }
+                    if id == "almanac" { V5AlmanacPage() }
+                    else if let item = AllToolsData.item(for: id) { ContextualToolDestination(item: item) }
                 }
             }
             .toolbar {

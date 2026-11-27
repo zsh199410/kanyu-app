@@ -93,7 +93,7 @@ struct V5LibraryPage: View {
                         }
                     }
                 }
-                Text("文件列表沿用已有报告扫描规则。旧格式的归属结果来自原有读取逻辑，本页不改写、迁移或删除任何文件。")
+                Text("旧文件若缺少明确的 UUID，只在全部档案展示，不按姓名自动归给当前命主。本页不改写、迁移或删除任何文件。")
                     .font(.footnote).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
             }.padding(V5Metric.page)
         }
@@ -102,7 +102,7 @@ struct V5LibraryPage: View {
         .quickLookPreview($preview)
         .task(id: revision) {
             loading = true
-            let result = await Task.detached(priority: .utility) { ReportHistory.scan() }.value
+            let result = await Task.detached(priority: .utility) { ReportHistory.scan().map(V5ReportOwnership.verified) }.value
             guard !Task.isCancelled else { return }
             entries = result; loading = false
         }
