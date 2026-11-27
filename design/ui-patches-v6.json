@@ -2002,5 +2002,17 @@
     "before": "    ]\n\n    static func filteredItems",
     "after": "    ] }\n\n    static func filteredItems",
     "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "    CODE_SIGN_STYLE: Manual",
+    "after": "    CURRENT_PROJECT_VERSION: 700\n    CODE_SIGN_STYLE: Manual",
+    "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "CFBundleShortVersionString: \"4.6\"",
+    "after": "CFBundleShortVersionString: \"5.0\"",
+    "count": 1
   }
 ]
