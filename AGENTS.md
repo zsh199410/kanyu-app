@@ -12,3 +12,5 @@
 - 文件所有权：Codex负责RootTabView、Ky语义桥接、V5源文件/导航；GPT维护#137海报与视觉资产；Muse负责构建和取证。交叉改动先Issue20登记。
 - 旧五栏UI测试与四栏需求冲突必须明确报告；不得篡改旧测试或隐藏新UI。新合同/98%度量由GPT批准。
 - 交付区分静态/XCTest/模拟器/文件/未签名IPA/开发者签名IPA/真机。CI绿色不等于视觉通过。
+
+- CI按实际范围触发：[publication]只跑出版专项；[visual]或手工visuals跑实际页面；[acceptance]触发全单元/正式海报/Swift来源/Release未签名IPA及四主题取证。发布候选还须在同一SHA手工触发原ios-rc-acceptance八矩阵。跳过不等于通过，素材严格门禁不得以专项scope绕过并声称视觉通过。

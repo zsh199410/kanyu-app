@@ -71,6 +71,7 @@ jobs:
           fi
           if [ -d build/PDF.xcresult ]; then
             xcrun xcresulttool export attachments --path build/PDF.xcresult --output-path build/attachments/PDF
+            swift design/v5/inspect_pdfkit.swift build/attachments/PDF build/pdfkit-original.json
           fi
       - name: Required art readiness (does not grant visual approval)
         if: always() && inputs.scope != 'publication' && !startsWith(github.event.head_commit.message, '[publication]')
