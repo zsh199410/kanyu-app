@@ -137,9 +137,10 @@ private enum V5LibraryIPAInspector {
             count += 1
             guard count <= 100_000, paths.insert(entry.path).inserted else { throw Failure(message: "ZIP 条目过多或包含重复路径。") }
             let components = entry.path.split(separator: "/", omittingEmptySubsequences: false)
-            guard !entry.path.hasPrefix("/"), !entry.path.contains("\\"), !components.contains("..") else { throw Failure(message: "ZIP 包含不安全的路径。") }
-            unpacked += UInt64(entry.uncompressedSize)
-            guard unpacked <= 4_294_967_296 else { throw Failure(message: "展开内容超过检查上限（4 GB）。") }
+            guard !entry.path.hasPrefix("/"), !entry.path.contains("\\"), !components.contains(".."), !components.contains("."), !components.dropLast().contains("") else { throw Failure(message: "ZIP 包含不安全的路径。") }
+            let expanded = unpacked.addingReportingOverflow(UInt64(entry.uncompressedSize))
+            guard !expanded.overflow, expanded.partialValue <= 4_294_967_296 else { throw Failure(message: "展开内容超过检查上限（4 GB）。") }
+            unpacked = expanded.partialValue
             let isMainInfo = components.count == 3 && components[0] == "Payload" && components[1].hasSuffix(".app") && components[2] == "Info.plist"
             if isMainInfo {
                 guard appInfo == nil, entry.type == .file, entry.uncompressedSize <= 2_097_152 else { throw Failure(message: "主应用 Info.plist 缺失、重复或过大。") }
@@ -161,7 +162,7 @@ private enum V5LibraryIPAInspector {
               let identifier = plist["CFBundleIdentifier"] as? String, !identifier.isEmpty,
               let executable = plist["CFBundleExecutable"] as? String, !executable.isEmpty,
               plist["CFBundlePackageType"] as? String == "APPL" else { throw Failure(message: "未发现有效的 Payload 主应用信息。") }
-        guard !executable.contains("/"), !executable.contains("\\"), executable != "..",
+        guard !executable.contains("/"), !executable.contains("\\"), executable != "..", executable != ".",
               let mainInfoPath,
               executablePaths.contains(String(mainInfoPath.dropLast("Info.plist".count)) + executable) else {
             throw Failure(message: "主应用可执行文件缺失或路径不合法。")

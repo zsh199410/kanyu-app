@@ -75,7 +75,7 @@ enum V5Metric {
     static let corner: CGFloat = 24
     static let target: CGFloat = 48
 }
-enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, tools, settings, appearance, tool(String) }
+enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, tools, settings, appearance, updates, tool(String) }
 @MainActor final class V5Router: ObservableObject {
     @Published var tab = 0
     @Published var paths: [Int: [V5Route]] = [:]
@@ -102,22 +102,23 @@ struct V5ProShell: View {
         NavigationStack(path: router.path) {
             TabView(selection: $router.tab) {
                 V5HomeView().accessibilityIdentifier("v5.home").tabItem { Label("首页", systemImage: "house") }.tag(0)
-                V5MeasureView().accessibilityIdentifier("v5.measure").tabItem { Label("测算", systemImage: "safari") }.tag(1)
-                ReportCenterView(person: people.currentPerson)
+                V5CalculationHub().accessibilityIdentifier("v5.measure").tabItem { Label("测算", systemImage: "safari") }.tag(1)
+                V5LibraryPage()
                     .accessibilityIdentifier("v5.reports")
                     .id(people.currentPerson?.id)
                     .tabItem { Label("命书", systemImage: "book.closed") }.tag(2)
-                PeopleView().accessibilityIdentifier("v5.people").tabItem { Label("档案", systemImage: "person.crop.circle") }.tag(3)
+                V5ProfilesPage().accessibilityIdentifier("v5.people").tabItem { Label("档案", systemImage: "person.crop.circle") }.tag(3)
             }
             .navigationDestination(for: V5Route.self) { route in
                 switch route {
-                case .bazi: BaziHomeView().id(people.currentPerson)
-                case .ziwei: ZiweiHomeView().id(people.currentPerson)
+                case .bazi: V5BaziPage().id(people.currentPerson)
+                case .ziwei: V5ZiweiPage().id(people.currentPerson)
                 case .qimen: QimenHomeView()
                 case .survey: KanyuWorkbenchTabView()
                 case .palm: PalmHomeView()
                 case .tools: AllToolsView(selectedTab: router.legacySelection)
-                case .settings: MyView()
+                case .settings: V5SettingsPage()
+                case .updates: V5UpdatePage()
                 case .appearance: V5AppearanceView()
                 case .tool(let id):
                     if let item = AllToolsData.item(for: id) { ContextualToolDestination(item: item) }
@@ -129,6 +130,7 @@ struct V5ProShell: View {
                         Button("外观") { router.open(.appearance) }
                         Button("设置、AI 与备份") { router.open(.settings) }
                         Button("全部功能") { router.open(.tools) }
+                        Button("更新与自签交接") { router.open(.updates) }
                     } label: { Image(systemName: "ellipsis.circle").frame(minWidth: 48, minHeight: 48) }
                     .accessibilityLabel("全局设置与功能")
                 }
@@ -230,12 +232,6 @@ private struct V5MeasureLinks: View {
         Button { router.open(route) } label: {
             V5Card { Label(title, systemImage: icon).font(.headline).frame(minHeight: V5Metric.target) }
         }.buttonStyle(.plain)
-    }
-}
-private struct V5MeasureView: View {
-    var body: some View {
-        ScrollView { V5MeasureLinks().padding(V5Metric.page) }
-            .background(V5Palette.color(V5Palette.current.paper)).navigationTitle("测算")
     }
 }
 struct V5AppearanceView: View {
