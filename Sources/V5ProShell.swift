@@ -33,6 +33,7 @@ enum V5Theme: String, CaseIterable, Identifiable {
 }
 struct V5Palette {
     let paper: UInt32, surface: UInt32, ink: UInt32, secondary: UInt32, accent: UInt32, ornament: UInt32
+    var ornamentText: UInt32 { paper == 0x101C29 ? 0xD9B879 : 0x785521 }
     static var current: V5Palette {
         V5ThemeStore.shared.theme.palette
     }

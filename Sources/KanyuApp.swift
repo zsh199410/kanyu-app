@@ -1306,7 +1306,7 @@ enum Ky {
     static var ink: Color { V5Palette.color(V5Palette.current.ink) }
     static var sub: Color { V5Palette.color(V5Palette.current.secondary) }
     // Legacy gold is frequently used as small text. Original bronze remains an ornament token.
-    static var gold: Color { V5Palette.color(V5Palette.current.ornament) }
+    static var gold: Color { V5Palette.color(V5Palette.current.ornamentText) }
     static var cinnabar: Color { .kyDyn(KanyuV6.Hex.cinnabar, 0xE05A47) }
     static var jade: Color { .kyDyn(0x367552, 0x52B788) }
     static var qingdai: Color { V5Palette.color(V5Palette.current.accent) }

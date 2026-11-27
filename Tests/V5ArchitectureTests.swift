@@ -32,7 +32,7 @@ final class V5ArchitectureTests: XCTestCase {
         }
         for theme in V5Theme.allCases {
             let p = theme.palette
-            for text in [p.ink, p.secondary] {
+            for text in [p.ink, p.secondary, p.ornamentText] {
                 for background in [p.paper, p.surface] {
                     let a = luminance(text), b = luminance(background)
                     XCTAssertGreaterThanOrEqual((max(a,b)+0.05)/(min(a,b)+0.05), 4.5, theme.title)
