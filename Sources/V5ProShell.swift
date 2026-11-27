@@ -129,7 +129,6 @@ struct V5ProShell: View {
             root(3) { V5ProfilesPage().accessibilityIdentifier("v5.people") }
                 .tabItem { Label { Text("档案") } icon: { tabIcon(.navProfiles, symbol: "person.crop.circle") } }.tag(3)
         }
-        .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             V5BottomNavigation(selection: $router.tab, theme: theme)
                 .frame(height: navigationTypeSize.isAccessibilitySize ? 94 : 60)
@@ -176,6 +175,9 @@ struct V5ProShell: View {
                 }
             }
         }
+        // Tab-bar visibility is a preference of each TabView child. Applying it
+        // to TabView itself leaves the iOS 26 system bar alive beside our bar.
+        .toolbar(.hidden, for: .tabBar)
     }
 }
 struct V5HomeView: View {
