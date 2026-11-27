@@ -15,44 +15,62 @@ struct V5UpdatePage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: V5Metric.gap) {
+                V5ArtHeader(eyebrow: "VERSION & PACKAGE", title: "版本与安装包", subtitle: "本机版本 · 自备 IPA")
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("三术合参").font(.system(.headline, design: .serif))
+                    Text(version).font(.system(.largeTitle, design: .serif).weight(.medium)).monospacedDigit()
+                    Text("本机安装版本 · 构建 \(build)").font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                }.padding(.vertical, 12)
                 V5Card {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("版本与安装包").font(.system(.largeTitle, design: .serif))
-                        Text("本机版本 \(version) · 构建 \(build)").font(.headline)
-                        Text("当前没有配置可验证的更新源，无法判断是否存在新版本。这里不会显示未经验证的更新提示。")
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("更新源尚未配置", systemImage: "info.circle").font(.headline)
+                        Text("当前没有可验证的更新源，无法判断是否存在新版本。").font(.subheadline)
                     }
                 }
+                V5SectionHeading(title: "01 · 选择安装包", subtitle: "自备可信 IPA，检查后交给 LCsign")
                 V5Card {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("自备 IPA · 交给 LCsign").font(.title2)
-                        Text("从文件中选择你信任的 IPA。本机会创建独立临时副本，流式计算 SHA-256，并检查 ZIP 校验及主应用信息。通过后可用系统分享交给已安装且支持接收文件的 LCsign，或保存到文件再手动导入。")
-                        Button { importing = true } label: { Label("选择 IPA 文件", systemImage: "folder").frame(minHeight: V5Metric.target) }.disabled(inspecting)
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("文件将复制到本机独立临时目录，计算 SHA-256，并检查 ZIP 内容与主应用信息。")
+                            .font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                        Button { importing = true } label: {
+                            Label("选择 IPA 文件", systemImage: "folder").frame(minHeight: V5Metric.target)
+                        }.buttonStyle(V5PrimaryButton()).disabled(inspecting)
+                        Divider()
                         if inspecting {
                             ProgressView("正在复制与检查文件")
                             Button("取消检查") { worker?.cancel() }.frame(minHeight: V5Metric.target)
                         }
-                        Text(status).font(.subheadline).accessibilityIdentifier("v5.update.status")
+                        Text(status).font(.subheadline).fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("v5.update.status")
                     }
                 }
                 if let package {
+                    V5SectionHeading(title: "02 · 核对文件", subtitle: "以下信息读取自已检查的临时副本")
                     V5Card {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(package.name).font(.title2)
-                            Text("版本 \(package.version) · 构建 \(package.build)")
-                            Text(package.bundleID).font(.subheadline).textSelection(.enabled)
-                            Text("\(package.bytes.formatted()) 字节").font(.caption)
-                            Text("SHA-256\n\(package.sha256)").font(.caption.monospaced()).textSelection(.enabled)
-                            Text("ZIP 内容校验通过。哈希只用于核对文件一致性，不证明来源可信、签名有效或适合当前设备。")
-                                .font(.footnote)
-                            ShareLink(item: package.url) { Label("分享 IPA 文件", systemImage: "square.and.arrow.up").frame(minHeight: V5Metric.target) }
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text(package.name).font(.system(.title2, design: .serif).weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                            receiptField("版本 / 构建", value: "\(package.version) / \(package.build)")
+                            receiptField("应用标识", value: package.bundleID)
+                            receiptField("文件大小", value: "\(package.bytes.formatted()) 字节")
+                            Divider()
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("SHA-256").font(.caption.weight(.semibold)).foregroundStyle(V5Palette.color(V5Palette.current.ornamentText))
+                                Text(package.sha256).font(.caption.monospaced()).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                            }
+                            Text("ZIP 内容校验通过。哈希用于核对文件一致性，不证明来源可信、签名有效或适合当前设备。")
+                                .font(.footnote).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                            ShareLink(item: package.url) {
+                                Label("分享 IPA 文件", systemImage: "square.and.arrow.up").frame(minHeight: V5Metric.target)
+                            }.buttonStyle(V5PrimaryButton())
                         }
                     }
+                    Text("通过系统分享交给已安装且支持接收文件的 LCsign，或先保存到文件再手动导入。")
+                        .font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                 }
                 Text("本页不签名、不读取证书，也不会直接安装应用。覆盖安装前请先使用数据备份功能保存档案。临时副本由系统管理，重新进入后需重新选择文件。")
                     .font(.footnote).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
             }.padding(V5Metric.page)
         }
-        .background(V5Palette.color(V5Palette.current.paper)).foregroundStyle(V5Palette.color(V5Palette.current.ink))
+        .background { V5SceneBackground() }.foregroundStyle(V5Palette.color(V5Palette.current.ink))
         .navigationTitle("版本与 IPA").navigationBarTitleDisplayMode(.inline)
         .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(filenameExtension: "ipa") ?? .data]) { result in
             switch result {
@@ -61,6 +79,12 @@ struct V5UpdatePage: View {
             }
         }
         .onDisappear { worker?.cancel() }
+    }
+    private func receiptField(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+            Text(value).font(.subheadline).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+        }
     }
     private func inspect(_ url: URL) {
         worker?.cancel()
