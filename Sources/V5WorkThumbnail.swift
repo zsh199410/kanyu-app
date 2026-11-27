@@ -3,12 +3,17 @@ import ImageIO
 import UIKit
 
 /// Reads the saved work itself. No template, generated cover, or icon is presented as a preview.
+private struct V5WorkThumbnailBitmap {
+    let image: UIImage
+    let showsUpperRegion: Bool
+}
+
 struct V5WorkThumbnail: View {
     let url: URL
     let modifiedAt: Date
     @State private var phase: Phase = .loading
     @State private var attempt = 0
-    private enum Phase { case loading, ready(UIImage), unavailable(String) }
+    private enum Phase { case loading, ready(V5WorkThumbnailBitmap), unavailable(String) }
     private struct Request: Hashable { let url: URL; let modifiedAt: Date; let attempt: Int }
     var body: some View {
         ZStack {
@@ -16,8 +21,17 @@ struct V5WorkThumbnail: View {
             switch phase {
             case .loading:
                 ProgressView("读取作品").font(.caption)
-            case .ready(let image):
-                Image(uiImage: image).resizable().scaledToFit().accessibilityHidden(true)
+            case .ready(let bitmap):
+                ZStack(alignment: .bottomLeading) {
+                    Image(uiImage: bitmap.image).resizable().scaledToFit().accessibilityHidden(true)
+                    if bitmap.showsUpperRegion {
+                        Text("长图上部")
+                            .font(.caption.weight(.medium)).padding(.horizontal, 8).padding(.vertical, 5)
+                            .background(V5Palette.color(V5Palette.current.surface).opacity(0.96), in: Capsule())
+                            .padding(8)
+                            .accessibilityLabel("长图仅显示上部，打开预览可查看完整作品")
+                    }
+                }
             case .unavailable(let message):
                 VStack(spacing: 8) {
                     Image(systemName: "exclamationmark.document").font(.title3).accessibilityHidden(true)
@@ -28,6 +42,7 @@ struct V5WorkThumbnail: View {
         }
         .aspectRatio(0.707, contentMode: .fit)
         .overlay(Rectangle().stroke(V5Palette.color(V5Palette.current.ornament).opacity(0.24), lineWidth: 0.6).allowsHitTesting(false))
+        .accessibilityElement(children: .contain)
         .task(id: Request(url: url, modifiedAt: modifiedAt, attempt: attempt)) {
             phase = .loading
             do {
@@ -48,7 +63,7 @@ struct V5WorkThumbnail: View {
 /// Serial off-main rendering bounds concurrent decode work; a strict LRU bounds retained bitmap bytes.
 private actor V5WorkThumbnailStore {
     static let shared = V5WorkThumbnailStore()
-    private struct Cached { let image: UIImage; let bytes: Int }
+    private struct Cached { let bitmap: V5WorkThumbnailBitmap; let bytes: Int }
     private var cache: [String: Cached] = [:]
     private var order: [String] = []
     private var retainedBytes = 0
@@ -59,7 +74,7 @@ private actor V5WorkThumbnailStore {
         let message: String
         var errorDescription: String? { message }
     }
-    func image(for url: URL) throws -> UIImage {
+    func image(for url: URL) throws -> V5WorkThumbnailBitmap {
         try Task.checkCancellation()
         let attributes: [FileAttributeKey: Any]
         do { attributes = try FileManager.default.attributesOfItem(atPath: url.path) }
@@ -72,37 +87,72 @@ private actor V5WorkThumbnailStore {
         let key = "\(url.standardizedFileURL.path)|\(size)|\(modified)"
         if let hit = cache[key] {
             order.removeAll { $0 == key }; order.append(key)
-            return hit.image
+            return hit.bitmap
         }
-        let image: UIImage = try autoreleasepool {
+        let bitmap: V5WorkThumbnailBitmap = try autoreleasepool {
             switch url.pathExtension.lowercased() {
-            case "pdf": return try pdfThumbnail(url)
+            case "pdf": return V5WorkThumbnailBitmap(image: try pdfThumbnail(url), showsUpperRegion: false)
             case "png": return try imageThumbnail(url)
             default: throw Failure(message: "此格式暂不支持缩略图")
             }
         }
         try Task.checkCancellation()
-        let bytes = (image.cgImage?.bytesPerRow ?? 0) * (image.cgImage?.height ?? 0)
+        let bytes = (bitmap.image.cgImage?.bytesPerRow ?? 0) * (bitmap.image.cgImage?.height ?? 0)
         if bytes > 0, bytes <= byteLimit {
             while retainedBytes + bytes > byteLimit || order.count >= countLimit {
                 guard let oldest = order.first else { break }
                 order.removeFirst()
                 if let evicted = cache.removeValue(forKey: oldest) { retainedBytes -= evicted.bytes }
             }
-            cache[key] = Cached(image: image, bytes: bytes)
+            cache[key] = Cached(bitmap: bitmap, bytes: bytes)
             order.append(key); retainedBytes += bytes
         }
-        return image
+        return bitmap
     }
-    private func imageThumbnail(_ url: URL) throws -> UIImage {
+    private func imageThumbnail(_ url: URL) throws -> V5WorkThumbnailBitmap {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
-              let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
-                kCGImageSourceCreateThumbnailFromImageAlways: true,
-                kCGImageSourceCreateThumbnailWithTransform: true,
-                kCGImageSourceThumbnailMaxPixelSize: maximumPixels,
-                kCGImageSourceShouldCacheImmediately: true
-              ] as CFDictionary) else { throw Failure(message: "图片损坏或暂时无法解码") }
-        return UIImage(cgImage: thumbnail)
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let rawWidth = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
+              let rawHeight = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue,
+              rawWidth.isFinite, rawHeight.isFinite, rawWidth > 0, rawHeight > 0 else {
+            throw Failure(message: "图片损坏或暂时无法读取尺寸")
+        }
+        let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+        let rotated = (5...8).contains(orientation)
+        let width = rotated ? rawHeight : rawWidth
+        let height = rotated ? rawWidth : rawHeight
+        let longImage = height / width > 2
+        // Preserve a readable ~360px width for long posters instead of shrinking the entire strip to 640px high.
+        // ImageIO downsamples directly; reject extreme aspect ratios before any bitmap decode.
+        let reduction = min(1, 360 / width)
+        let requestedEdge = ceil(max(width, height) * reduction)
+        guard requestedEdge.isFinite, requestedEdge > 0, requestedEdge <= 4_096 else {
+            throw Failure(message: "长图尺寸过大，请使用预览查看完整原件")
+        }
+        try Task.checkCancellation()
+        guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: Int(requestedEdge),
+            kCGImageSourceShouldCacheImmediately: true
+        ] as CFDictionary) else { throw Failure(message: "图片损坏或暂时无法解码") }
+        try Task.checkCancellation()
+        guard max(thumbnail.width, thumbnail.height) <= 4_096, thumbnail.width <= 400 else {
+            throw Failure(message: "图片尺寸信息不一致，请使用预览查看原件")
+        }
+        guard longImage else { return V5WorkThumbnailBitmap(image: UIImage(cgImage: thumbnail), showsUpperRegion: false) }
+        let cropHeight = min(thumbnail.height, Int(ceil(Double(thumbnail.width) / 0.707)))
+        guard let upper = thumbnail.cropping(to: CGRect(x: 0, y: 0, width: CGFloat(thumbnail.width), height: CGFloat(cropHeight))) else {
+            throw Failure(message: "无法读取长图上部，请预览完整原件")
+        }
+        // Materialize the crop into its own small bitmap: CGImage.cropping alone may retain the entire decoded strip.
+        let size = CGSize(width: CGFloat(upper.width), height: CGFloat(upper.height))
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1; format.opaque = false
+        let compact = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            UIImage(cgImage: upper).draw(in: CGRect(origin: .zero, size: size))
+        }
+        return V5WorkThumbnailBitmap(image: compact, showsUpperRegion: true)
     }
     private func pdfThumbnail(_ url: URL) throws -> UIImage {
         guard let document = CGPDFDocument(url as CFURL), !document.isEncrypted, let page = document.page(at: 1) else {
