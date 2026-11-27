@@ -79,7 +79,7 @@ struct V5UpdatePage: View {
     }
 }
 
-private struct V5LibraryIPAReceipt {
+struct V5LibraryIPAReceipt {
     let url: URL
     let name: String
     let version: String
@@ -89,7 +89,7 @@ private struct V5LibraryIPAReceipt {
     let sha256: String
 }
 
-private enum V5LibraryIPAInspector {
+enum V5LibraryIPAInspector {
     private struct Failure: LocalizedError {
         let message: String
         var errorDescription: String? { message }
@@ -128,6 +128,7 @@ private enum V5LibraryIPAInspector {
         let archive = try Archive(url: copy, accessMode: .read)
         var appInfo: Data?
         var unpacked: UInt64 = 0
+        var streamed: UInt64 = 0
         var count = 0
         var paths = Set<String>()
         var executablePaths = Set<String>()
@@ -137,7 +138,7 @@ private enum V5LibraryIPAInspector {
             count += 1
             guard count <= 100_000, paths.insert(entry.path).inserted else { throw Failure(message: "ZIP 条目过多或包含重复路径。") }
             let components = entry.path.split(separator: "/", omittingEmptySubsequences: false)
-            guard !entry.path.hasPrefix("/"), !entry.path.contains("\\"), !components.contains(".."), !components.contains("."), !components.dropLast().contains("") else { throw Failure(message: "ZIP 包含不安全的路径。") }
+            guard !entry.path.isEmpty, !entry.path.hasPrefix("/"), !entry.path.contains("\\"), !components.contains(".."), !components.contains("."), !components.dropLast().contains("") else { throw Failure(message: "ZIP 包含不安全的路径。") }
             let expanded = unpacked.addingReportingOverflow(UInt64(entry.uncompressedSize))
             guard !expanded.overflow, expanded.partialValue <= 4_294_967_296 else { throw Failure(message: "展开内容超过检查上限（4 GB）。") }
             unpacked = expanded.partialValue
@@ -146,13 +147,23 @@ private enum V5LibraryIPAInspector {
                 guard appInfo == nil, entry.type == .file, entry.uncompressedSize <= 2_097_152 else { throw Failure(message: "主应用 Info.plist 缺失、重复或过大。") }
             }
             var info = Data()
+            var entryBytes: UInt64 = 0
             let crc = try archive.extract(entry, bufferSize: 65_536, skipCRC32: false) { chunk in
                 try Task.checkCancellation()
+                let nextEntry = entryBytes.addingReportingOverflow(UInt64(chunk.count))
+                let nextTotal = streamed.addingReportingOverflow(UInt64(chunk.count))
+                guard !nextEntry.overflow, nextEntry.partialValue <= UInt64(entry.uncompressedSize),
+                      !nextTotal.overflow, nextTotal.partialValue <= 4_294_967_296 else {
+                    throw Failure(message: "实际展开内容超过声明大小或检查上限。")
+                }
+                entryBytes = nextEntry.partialValue
+                streamed = nextTotal.partialValue
                 if isMainInfo {
                     guard info.count + chunk.count <= 2_097_152 else { throw Failure(message: "应用信息过大。") }
                     info.append(chunk)
                 }
             }
+            guard entryBytes == UInt64(entry.uncompressedSize) else { throw Failure(message: "ZIP 实际内容大小与声明不符。") }
             guard crc == entry.checksum else { throw Failure(message: "ZIP 内容 CRC 校验失败。") }
             if entry.type == .file && entry.uncompressedSize > 0 { executablePaths.insert(entry.path) }
             if isMainInfo { appInfo = info; mainInfoPath = entry.path }
