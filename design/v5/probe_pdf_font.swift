@@ -12,7 +12,6 @@ guard let descriptors = CTFontManagerCreateFontDescriptorsFromURL(fontURL as CFU
 var results: [[String: Any]] = []
 for weight in [400, 600] {
     let descriptor = CTFontDescriptorCreateCopyWithAttributes(base, [
-        kCTFontFeatureSettingsAttribute: [[kCTFontOpenTypeFeatureTag: "ccmp", kCTFontOpenTypeFeatureValue: 0]],
         kCTFontVariationAttribute: [NSNumber(value: 0x77676874): NSNumber(value: weight)]
     ] as CFDictionary)
     let font = CTFontCreateWithFontDescriptor(descriptor, 12, nil)
@@ -26,8 +25,10 @@ for weight in [400, 600] {
     guard let context = CGContext(consumer: consumer, mediaBox: &box, nil) else { fatalError("No PDF context") }
     context.beginPDFPage(nil)
     context.textPosition = CGPoint(x: 48, y: 750)
+    CGPDFContextBeginTag(context, .span, [CGPDFTagProperty.actualText.rawValue: original] as CFDictionary)
     let text = NSAttributedString(string: original, attributes: [NSAttributedString.Key(kCTFontAttributeName as String): font, .ligature: 0])
     CTLineDraw(CTLineCreateWithAttributedString(text), context)
+    CGPDFContextEndTag(context)
     context.endPDFPage(); context.closePDF()
     try (data as Data).write(to: folder.appendingPathComponent("font-probe-\(weight).pdf"))
     guard let document = PDFDocument(data: data as Data), let extracted = document.page(at: 0)?.string else { fatalError("Cannot extract") }
