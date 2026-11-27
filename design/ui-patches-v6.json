@@ -2242,5 +2242,11 @@
     "before": "CURRENT_PROJECT_VERSION: 702",
     "after": "CURRENT_PROJECT_VERSION: 703",
     "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "CURRENT_PROJECT_VERSION: 703",
+    "after": "CURRENT_PROJECT_VERSION: 704",
+    "count": 1
   }
 ]

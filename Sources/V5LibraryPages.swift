@@ -124,7 +124,7 @@ struct V5LibraryPage: View {
                         .accessibilityIdentifier("v5.profile.uuid").accessibilityValue(person.id.uuidString)
                     NavigationLink { PersonDetailView(person: person, store: people) } label: {
                         Label("生成命书与专业解读", systemImage: "plus.circle").font(.subheadline.weight(.medium)).frame(minHeight: V5Metric.target)
-                    }
+                    }.accessibilityIdentifier("v5.library.generate")
                 } else {
                     Text("建立档案，开启你的个人命书。").font(.subheadline)
                     NavigationLink { V5ProfilesPage() } label: {
@@ -161,7 +161,7 @@ struct V5LibraryPage: View {
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
     @ViewBuilder private func fileActions(_ entry: ReportHistoryEntry) -> some View {
-        Button { preview = entry.url } label: { Label("预览", systemImage: "arrow.up.right.square").font(.subheadline).frame(minHeight: V5Metric.target) }
+        Button { preview = entry.url } label: { Label("预览", systemImage: "arrow.up.right.square").font(.subheadline).frame(minHeight: V5Metric.target) }.accessibilityIdentifier("v5.work.preview." + entry.url.lastPathComponent)
         ShareLink(item: entry.url) { Label("分享", systemImage: "square.and.arrow.up").font(.subheadline).frame(minHeight: V5Metric.target) }
     }
     private func displayKind(_ entry: ReportHistoryEntry) -> String {

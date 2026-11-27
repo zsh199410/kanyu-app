@@ -117,6 +117,22 @@ struct V5ProShell: View {
     @StateObject private var router = V5Router()
     @EnvironmentObject private var people: PeopleStore
     private var theme: V5Theme { V5ThemeStore.shared.theme }
+    init() {
+        // Keep the native tab/VoiceOver contract while removing the heavy custom
+        // selection plate. Tint and actual original glyphs remain theme driven.
+        let appearance = UITabBarAppearance()
+        appearance.configureWithTransparentBackground()
+        let format = UIGraphicsImageRendererFormat();format.opaque = false
+        appearance.selectionIndicatorImage = UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1), format: format).image { _ in }
+        appearance.selectionIndicatorTintColor = .clear
+        appearance.shadowColor = .clear
+        for item in [appearance.stackedLayoutAppearance, appearance.inlineLayoutAppearance, appearance.compactInlineLayoutAppearance] {
+            item.normal.titleTextAttributes = [.font: UIFontMetrics(forTextStyle: .caption2).scaledFont(for: UIFont.systemFont(ofSize: 11, weight: .regular))]
+            item.selected.titleTextAttributes = [.font: UIFontMetrics(forTextStyle: .caption2).scaledFont(for: UIFont.systemFont(ofSize: 11, weight: .semibold))]
+        }
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
     var body: some View {
         TabView(selection: $router.tab) {
             root(0) { V5HomeView() }
@@ -128,6 +144,8 @@ struct V5ProShell: View {
             root(3) { V5ProfilesPage().accessibilityIdentifier("v5.people") }
                 .tabItem { Label { Text("档案") } icon: { tabIcon(.navProfiles, symbol: "person.crop.circle") } }.tag(3)
         }
+        .toolbarBackground(V5Palette.color(theme.palette.paper).opacity(0.96), for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .environmentObject(router)
         .tint(V5Palette.color(theme.palette.accent))
         .preferredColorScheme(theme.scheme)
@@ -180,28 +198,23 @@ struct V5HomeView: View {
     var body: some View {
         VStack(spacing: 0) {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 12) {
                 V5BrandHero().accessibilityElement(children: .contain).accessibilityIdentifier("v5.home")
                 V5PersonHero(chart: chartPerson == people.currentPerson ? chart : nil)
-                if V5ThemeStore.shared.theme != .song {
-                    Button { router.tab = 1 } label: {
-                        HStack { Spacer(); Text("开始测算").font(V5Typography.song(.title2)); Image(systemName: "chevron.right"); Spacer() }
-                    }.buttonStyle(V5PrimaryButton())
-                }
                 V5PrimaryFeatureDeck().accessibilityElement(children: .contain).accessibilityIdentifier("v5.home.features")
                 if V5ThemeStore.shared.theme == .celadon || V5ThemeStore.shared.theme == .collection { V5HomeBookEntry() }
                 if let person = people.currentPerson {
                     V5Card {
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text("八字命局 · 速览").font(V5Typography.section)
+                                Text("四柱 · 五行").font(V5Typography.section)
                                 Spacer(minLength: 4)
                                 Button { router.open(.bazi) } label: { Image(systemName: "chevron.right").frame(width: 48, height: 48) }
                                     .accessibilityLabel("查看八字命盘")
                             }
                             if chartPerson == person, let chart { V5HomeChartPreview(chart: chart) }
                             else { ProgressView("正在读取当前人物命盘") }
-                            Button("阅读命局白话解读") { router.open(.tool("interpret")) }.frame(minHeight: V5Metric.target)
+                            Button("阅读白话解读") { router.open(.tool("interpret")) }.font(.subheadline.weight(.medium)).frame(minHeight: V5Metric.target)
                         }
                     }
                 }

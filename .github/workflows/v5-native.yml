@@ -44,15 +44,15 @@ jobs:
           xcodebuild build -project Kanyu.xcodeproj -scheme Kanyu -configuration Release -sdk iphoneos -derivedDataPath build/DeviceDD -clonedSourcePackagesDirPath build/SourcePackages CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/device-build.log
           mkdir -p Payload
           cp -R build/DeviceDD/Build/Products/Release-iphoneos/Kanyu.app Payload/
-          zip -qry Kanyu-5.0-703-unsigned-engineering.ipa Payload
+          zip -qry Kanyu-5.0-704-unsigned-engineering.ipa Payload
           codesign -dv --verbose=4 Payload/Kanyu.app > build/signature-status.txt 2>&1 || true
-          python3 design/v5/verify_ipa.py Kanyu-5.0-703-unsigned-engineering.ipa --version 5.0 --build 703 --output build/candidate-integrity.json
+          python3 design/v5/verify_ipa.py Kanyu-5.0-704-unsigned-engineering.ipa --version 5.0 --build 704 --output build/candidate-integrity.json
       - uses: actions/upload-artifact@v4
         with:
-          name: Kanyu-5.0-703-unsigned-engineering-${{ github.sha }}
+          name: Kanyu-5.0-704-unsigned-engineering-${{ github.sha }}
           path: |
-            Kanyu-5.0-703-unsigned-engineering.ipa
-            Kanyu-5.0-703-unsigned-engineering.ipa.sha256
+            Kanyu-5.0-704-unsigned-engineering.ipa
+            Kanyu-5.0-704-unsigned-engineering.ipa.sha256
             build/candidate-integrity.json
             build/signature-status.txt
             build/commit.txt

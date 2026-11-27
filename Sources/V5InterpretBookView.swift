@@ -97,7 +97,7 @@ struct V5InterpretBookView: View {
                     .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
             }
-            Text(item.conclusion).font(V5Typography.song(.body)).lineSpacing(7)
+            Text(item.conclusion).font(V5Typography.body).lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             if let time = item.timeRange, !time.isEmpty { marginNote("时间范围", text: time) }
             if let advice = item.advice, !advice.isEmpty { marginNote("生活参考", text: advice) }

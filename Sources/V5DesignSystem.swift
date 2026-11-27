@@ -27,7 +27,7 @@ enum V5Typography {
     static func printFont(size: CGFloat, emphasis: Bool = false) -> Font { .custom(emphasis ? V5Typeface.emphasizedName : V5Typeface.regularName, fixedSize: size) }
     static let page = song(.largeTitle, emphasis: true)
     static let section = song(.title2, emphasis: true)
-    static let title = song(.headline, emphasis: true)
+    static let title = Font.headline
     static let body = Font.body
     static let detail = Font.subheadline
     static let evidence = Font.footnote
@@ -97,4 +97,20 @@ struct V5StatusPanel: View {
         .foregroundStyle(V5Palette.color(V5Palette.current.ink))
         .accessibilityElement(children: .contain)
     }
+}
+
+/// Display only: original epochs, birth inputs and report formats are never rewritten.
+enum V5DisplayText {
+    private static let long: DateFormatter = make("yyyy年M月d日 HH:mm")
+    private static let short: DateFormatter = make("yyyy年M月d日")
+    private static func make(_ pattern: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(secondsFromGMT: 8 * 3600)
+        formatter.dateFormat = pattern
+        return formatter
+    }
+    static func dateTime(_ value: Date) -> String { long.string(from: value) }
+    static func date(_ value: Date) -> String { short.string(from: value) }
 }

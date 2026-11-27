@@ -4,52 +4,50 @@ struct V5PersonHero: View {
     let chart: BaziChart?
     @State private var creating = false
     @EnvironmentObject private var people: PeopleStore
-    @EnvironmentObject private var router: V5Router
     @Environment(\.dynamicTypeSize) private var typeSize
     private var theme: V5Theme { V5ThemeStore.shared.theme }
     var body: some View {
         let p = theme.palette
-        HStack(alignment: .center, spacing: 8) {
-            VStack(alignment: .leading, spacing: 13) {
-                HStack {
-                    Text("当前命主").font(.caption.weight(.medium)).tracking(2)
-                        .padding(.horizontal, 12).padding(.vertical, 5)
-                        .overlay(Capsule().stroke(V5Palette.color(p.ornament), lineWidth: 0.6))
-                    Spacer(minLength: 8)
-                }
-                if let person = people.currentPerson {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(person.name).font(V5Typography.song(.largeTitle, emphasis: true))
-                            .fixedSize(horizontal: false, vertical: true)
-                        V5PersonPickerButton { Image(systemName: "chevron.right").font(.caption).frame(width: 48, height: 48) }
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("当前命主").font(.caption.weight(.medium)).tracking(1)
+                    if let person = people.currentPerson, !person.relation.isEmpty {
+                        Text(person.relation).font(.caption2.weight(.medium)).padding(.horizontal, 8).padding(.vertical, 3)
+                            .overlay(Capsule().stroke(V5Palette.color(p.ornament).opacity(0.6), lineWidth: 0.6))
                     }
-                    if let chart, !typeSize.isAccessibilitySize {
-                        Text(chart.pillars.joined(separator: "　")).font(V5Typography.song(.subheadline))
+                }.foregroundStyle(V5Palette.color(p.heroSecondary))
+                if let person = people.currentPerson {
+                    HStack(alignment: .center, spacing: 4) {
+                        Text(person.name).font(V5Typography.song(.title2, emphasis: true))
                             .fixedSize(horizontal: false, vertical: true)
-                    } else { Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.subheadline) }
-                    Text("\(person.relation.isEmpty ? "已建档" : person.relation) · \(person.gender == "M" ? "男" : "女")")
-                        .font(.subheadline).foregroundStyle(V5Palette.color(p.heroSecondary))
+                        V5PersonPickerButton { Image(systemName: "chevron.down").font(.caption).frame(width: 48, height: 48) }
+                    }
+                    Text(V5DisplayText.dateTime(person.birthDate)).font(.subheadline.monospacedDigit())
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("北京时间 · \(person.gender == "M" ? "男" : "女")").font(.caption)
+                        .foregroundStyle(V5Palette.color(p.heroSecondary))
                 } else {
-                    Text("添加第一位家人或命主档案").font(V5Typography.song(.headline, emphasis: true))
-                    Text("建立真实档案，贯通命盘与解读。").font(.subheadline)
-                    Button("建立档案") { creating = true }.frame(minHeight: V5Metric.target)
+                    Text("添加第一位家人或命主档案").font(.headline)
+                    Text("记录生辰，建立个人命书。").font(.subheadline)
+                    Button("建立档案") { creating = true }.font(.body.weight(.medium)).frame(minHeight: V5Metric.target)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
             if !typeSize.isAccessibilitySize, let object = V5ArtworkRegistry.image(.personObject) {
-                Image(uiImage: object).resizable().scaledToFit().frame(width: 128, height: 160).accessibilityHidden(true)
+                Image(uiImage: object).resizable().scaledToFit().frame(width: 112, height: 126).accessibilityHidden(true)
             }
         }
-        .padding(20).frame(maxWidth: .infinity, minHeight: 155, alignment: .leading)
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(V5Palette.color(p.heroInk))
         .background {
             V5PanelSilhouette(theme: theme).fill(V5Palette.color(p.heroSurface))
                 .overlay {
                     if let texture = V5ArtworkRegistry.image(.texture) {
-                        Image(uiImage: texture).resizable(resizingMode: .tile).opacity(0.12).clipShape(V5PanelSilhouette(theme: theme))
+                        Image(uiImage: texture).resizable(resizingMode: .tile).opacity(0.10).clipShape(V5PanelSilhouette(theme: theme))
                     }
                 }
-                .overlay(V5PanelSilhouette(theme: theme).stroke(V5Palette.color(p.ornament), lineWidth: 0.8))
-                .shadow(color: V5Palette.color(p.ink).opacity(0.13), radius: 12, x: 0, y: 8)
+                .overlay(V5PanelSilhouette(theme: theme).stroke(V5Palette.color(p.ornament).opacity(0.65), lineWidth: 0.7))
+                .shadow(color: V5Palette.color(p.ink).opacity(0.08), radius: 8, x: 0, y: 4)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("workspace.workbench")
@@ -57,7 +55,6 @@ struct V5PersonHero: View {
         .sheet(isPresented: $creating) {
             PersonFormView(store: people, person: Person(name: "", birthEpoch: Date().timeIntervalSince1970))
         }
-
     }
 }
 private struct V5FeaturePlaque: Shape {
@@ -92,13 +89,15 @@ struct V5PrimaryFeatureDeck: View {
     }
     private func entry(_ title: String, _ subtitle: String, _ glyph: V5FeatureKind, _ route: V5Route) -> some View {
         Button { router.open(route) } label: {
-            VStack(spacing: 9) {
-                V5FeatureGlyph(kind: glyph, size: typeSize.isAccessibilitySize ? 40 : 35)
-                Text(title).font(V5Typography.song(.title3, emphasis: true))
-                Text(subtitle).font(.caption2).fixedSize(horizontal: false, vertical: true)
-                    .foregroundStyle(V5Palette.color(theme.palette.secondary))
-            }.padding(.horizontal, 4).padding(.vertical, 18)
-                .frame(maxWidth: .infinity, minHeight: 128)
+            VStack(spacing: 7) {
+                V5FeatureGlyph(kind: glyph, size: 44)
+                Text(title).font(.subheadline.weight(.semibold))
+                if typeSize.isAccessibilitySize {
+                    Text(subtitle).font(.footnote).fixedSize(horizontal: false, vertical: true)
+                        .foregroundStyle(V5Palette.color(theme.palette.secondary))
+                }
+            }.padding(.horizontal, 4).padding(.vertical, 12)
+                .frame(maxWidth: .infinity, minHeight: 96)
                 .foregroundStyle(V5Palette.color(theme.palette.ink))
                 .background(V5FeaturePlaque(arched: theme == .song || theme == .night).fill(V5Palette.color(theme.palette.surface)))
                 .overlay(V5FeaturePlaque(arched: theme == .song || theme == .night).stroke(V5Palette.color(theme.palette.ornament).opacity(0.7), lineWidth: 0.7))
@@ -112,7 +111,7 @@ struct V5HomeBookEntry: View {
     @State private var latest: ReportHistoryEntry?
     private var theme: V5Theme { V5ThemeStore.shared.theme }
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("个人命书").font(V5Typography.section)
                 Spacer()
@@ -139,19 +138,23 @@ struct V5HomeBookEntry: View {
             latest = result
         }
     }
+    @ViewBuilder private func bookFace(_ person: Person) -> some View {
+        if let latest { V5WorkThumbnail(url: latest.url, modifiedAt: latest.generatedAt) }
+        else { V5BookCover(personName: person.name) }
+    }
     @ViewBuilder private func content(_ person: Person) -> some View {
-        if typeSize.isAccessibilitySize || theme == .collection {
-            VStack(alignment: .leading, spacing: 18) { V5BookCover(personName: person.name).frame(width: 122); details(person) }
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) { bookFace(person).frame(width: 90); details(person) }
         } else {
-            HStack(spacing: 20) { V5BookCover(personName: person.name).frame(width: 98); details(person) }
+            HStack(spacing: 16) { bookFace(person).frame(width: 82); details(person) }
         }
     }
     private func details(_ person: Person) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 7) {
             Text("三术合参 · 综合解读").font(.caption).foregroundStyle(V5Palette.color(theme.palette.ornamentText))
-            Text(person.name + "的命书").font(V5Typography.song(.title2, emphasis: true)).fixedSize(horizontal: false, vertical: true)
+            Text(person.name + " · 个人卷").font(V5Typography.song(.headline, emphasis: true)).fixedSize(horizontal: false, vertical: true)
             Text("八字 · 紫微 · 手相 · 面相").font(.subheadline)
-            if let latest { Text(latest.generatedAt, format: .dateTime.year().month().day()).font(.caption) }
+            if let latest { Text(V5DisplayText.date(latest.generatedAt)).font(.caption) }
             else { Text("按当前档案生成与阅读").font(.caption) }
             Image(systemName: "arrow.up.right").frame(minWidth: 48, minHeight: 48, alignment: .leading).accessibilityHidden(true)
         }.foregroundStyle(V5Palette.color(theme.palette.ink))
