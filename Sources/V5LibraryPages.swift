@@ -40,6 +40,7 @@ struct V5LibraryPage: View {
                         if let person = selected {
                             Text("当前命主 · \(person.name)").font(.headline)
                             Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
+                                .accessibilityIdentifier("v5.profile.uuid").accessibilityValue(person.id.uuidString)
                             NavigationLink { PersonDetailView(person: person, store: people) } label: {
                                 Label("生成命书 / 专业解读", systemImage: "doc.badge.plus").frame(minHeight: V5Metric.target)
                             }
@@ -137,7 +138,7 @@ struct V5ProfilesPage: View {
                         Text("一份真实档案，贯通三术与个人命书。共 \(people.people.count) 位。")
                         Button { editing = Person(name: "", birthEpoch: Date().timeIntervalSince1970) } label: {
                             Label("新建人物", systemImage: "person.badge.plus").frame(minHeight: V5Metric.target)
-                        }
+                        }.accessibilityIdentifier("v5.profile.create")
                     }
                 }
                 if filtered.isEmpty { Text(query.isEmpty ? "还没有人物档案，请先添加命主。" : "未找到匹配档案。") }
@@ -151,6 +152,7 @@ struct V5ProfilesPage: View {
                             Text("\(person.relation.isEmpty ? "未备注关系" : person.relation) · \(person.gender == "M" ? "男" : "女")").font(.subheadline)
                             Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.subheadline)
                             Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
+                                .accessibilityIdentifier("v5.profile.uuid").accessibilityValue(person.id.uuidString)
                             if !person.tags.isEmpty { Text(person.tags).font(.caption) }
                             NavigationLink { PersonDetailView(person: person, store: people) } label: {
                                 V5LibraryRow(title: "专业详情与命书", detail: "合参、命盘、详批与原有导出", icon: "person.text.rectangle")
@@ -158,10 +160,12 @@ struct V5ProfilesPage: View {
                             Button { people.setCurrentPerson(person) } label: {
                                 Label(people.currentPerson?.id == person.id ? "已选为当前命主" : "设为当前命主", systemImage: "person.crop.circle.badge.checkmark").frame(minHeight: V5Metric.target)
                             }.disabled(people.currentPerson?.id == person.id)
+                            .accessibilityIdentifier("v5.profile.select.\(person.id.uuidString)")
                             Menu {
                                 Button("编辑档案", systemImage: "pencil") { editing = person }
                                 Button("删除档案与归属记录", systemImage: "trash", role: .destructive) { pendingDelete = person }
                             } label: { Label("管理此档案", systemImage: "ellipsis.circle").frame(minHeight: V5Metric.target) }
+                            .accessibilityIdentifier("v5.profile.manage.\(person.id.uuidString)")
                         }
                     }
                 }

@@ -17,7 +17,7 @@ struct V5CalculationHub: View {
                 Text("观形察象").font(.system(.title2, design: .serif))
                 V5CalculationEntry(title: "手相", detail: "掌纹图解、照片测量与按人归档", icon: "hand.raised") { router.open(.palm) }
                 NavigationLink {
-                    FaceMeasureView(person: people.currentPerson).id(people.currentPerson)
+                    V5FacePage()
                 } label: {
                     V5CalculationEntryLabel(title: "面相", detail: "正面照片三停校准 · 手动复核标线", icon: "face.smiling")
                 }.buttonStyle(.plain)
@@ -108,6 +108,7 @@ struct V5BaziPage: View {
                 Text("日柱旬空：\(chart.xunKong)").font(.subheadline)
             }
         }
+        V5TenGodDistribution(chart: chart)
         V5Card {
             VStack(alignment: .leading, spacing: 12) {
                 Text("大运脉络").font(.system(.title2, design: .serif))
@@ -314,6 +315,7 @@ private struct V5CalculationPersonHeader: View {
                     Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.subheadline)
                     Text("档案 \(person.id.uuidString.prefix(8)) · \(person.useLongitude ? "经度校时" : "北京时间")")
                         .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                        .accessibilityIdentifier("v5.calculation.owner").accessibilityValue(person.id.uuidString)
                 } else {
                     Text("尚未选择人物档案").font(.headline)
                     Button("添加人物档案") { router.tab = 3 }.frame(minHeight: V5Metric.target)

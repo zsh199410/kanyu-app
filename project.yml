@@ -15,6 +15,7 @@ packages:
     branch: master
 settings:
   base:
+    CURRENT_PROJECT_VERSION: 700
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
 targets:
@@ -44,7 +45,7 @@ targets:
             CFBundleIconFiles:
               - AppIcon
             UIPrerenderedIcon: true
-        CFBundleShortVersionString: "4.6"
+        CFBundleShortVersionString: "5.0"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CADisableMinimumFrameDurationOnPhone: true
         UILaunchScreen: {}

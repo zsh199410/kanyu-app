@@ -25,6 +25,7 @@ struct V5BirthOverview: View {
             }
             .accessibilityLabel("四柱，按年、月、日、时顺序")
             Text("五行构成").font(.system(.title2, design: .serif))
+            V5ElementCycle(values: chart.wuxingPercents)
             ForEach(Array(chart.wuxingPercents.prefix(5).enumerated()), id: \.offset) { index, value in
                 HStack(spacing: 12) {
                     Text(elements[index]).frame(minWidth: 24)
