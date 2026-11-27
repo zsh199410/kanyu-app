@@ -71,17 +71,18 @@ struct V5ProShell: View {
     var body: some View {
         NavigationStack(path: router.path) {
             TabView(selection: $router.tab) {
-                V5HomeView().tabItem { Label("首页", systemImage: "house") }.tag(0)
-                V5MeasureView().tabItem { Label("测算", systemImage: "safari") }.tag(1)
+                V5HomeView().accessibilityIdentifier("v5.home").tabItem { Label("首页", systemImage: "house") }.tag(0)
+                V5MeasureView().accessibilityIdentifier("v5.measure").tabItem { Label("测算", systemImage: "safari") }.tag(1)
                 ReportCenterView(person: people.currentPerson)
+                    .accessibilityIdentifier("v5.reports")
                     .id(people.currentPerson?.id)
                     .tabItem { Label("命书", systemImage: "book.closed") }.tag(2)
-                PeopleView().tabItem { Label("档案", systemImage: "person.crop.circle") }.tag(3)
+                PeopleView().accessibilityIdentifier("v5.people").tabItem { Label("档案", systemImage: "person.crop.circle") }.tag(3)
             }
             .navigationDestination(for: V5Route.self) { route in
                 switch route {
-                case .bazi: BaziHomeView()
-                case .ziwei: ZiweiHomeView()
+                case .bazi: BaziHomeView().id(people.currentPerson)
+                case .ziwei: ZiweiHomeView().id(people.currentPerson)
                 case .qimen: QimenHomeView()
                 case .survey: KanyuWorkbenchTabView()
                 case .palm: PalmHomeView()
@@ -134,10 +135,21 @@ struct V5HomeView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("当前命主").font(.caption)
                         if let person = people.currentPerson {
-                            Button { router.tab = 3 } label: {
+                            Menu {
+                                ForEach(people.people) { candidate in
+                                    Button {
+                                        people.setCurrentPerson(candidate)
+                                    } label: {
+                                        Text("\(candidate.name) · \(candidate.relation) · \(DisplayTimeReceipt.beijing(candidate.birthDate)) · 档案 \(candidate.id.uuidString.prefix(8))")
+                                    }
+                                }
+                                Button("管理人物档案") { router.tab = 3 }
+                            } label: {
                                 Label(person.name, systemImage: "person.crop.circle")
                                     .font(.system(.title, design: .serif))
                             }
+                            .accessibilityLabel("切换命主")
+                            .accessibilityIdentifier("v5.person.switch")
                             Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.subheadline)
                             Text(person.relation).font(.caption)
                         } else {
