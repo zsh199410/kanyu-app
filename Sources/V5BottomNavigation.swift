@@ -10,6 +10,12 @@ struct V5BottomNavigation: UIViewRepresentable {
     func updateUIView(_ view: V5BottomNavigationBar, context: Context) {
         view.update(selection: selection, theme: theme) { selection = $0 }
     }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: V5BottomNavigationBar, context: Context) -> CGSize? {
+        // UITabBar's 60pt intrinsic size must not remain centered inside the
+        // 94pt accessibility frame; the visible control fills its real slot.
+        CGSize(width: proposal.width ?? uiView.bounds.width,
+               height: proposal.height ?? (context.environment.dynamicTypeSize.isAccessibilitySize ? 94 : 60))
+    }
 }
 final class V5BottomNavigationBar: UITabBar {
     private let titles = ["首页", "测算", "命书", "档案"]

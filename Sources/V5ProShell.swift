@@ -119,6 +119,7 @@ struct V5ProShell: View {
     @EnvironmentObject private var people: PeopleStore
     private var theme: V5Theme { V5ThemeStore.shared.theme }
     var body: some View {
+        VStack(spacing: 0) {
         TabView(selection: $router.tab) {
             root(0) { V5HomeView() }
                 .tabItem { Label { Text("首页") } icon: { tabIcon(.navHome, symbol: "house") } }.tag(0)
@@ -129,7 +130,10 @@ struct V5ProShell: View {
             root(3) { V5ProfilesPage().accessibilityIdentifier("v5.people") }
                 .tabItem { Label { Text("档案") } icon: { tabIcon(.navProfiles, symbol: "person.crop.circle") } }.tag(3)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Keep the UIKit navigation viewport above the actual bar. An outer
+        // safeAreaInset leaves offscreen controls hittable below the tab bar
+        // in iOS 26's hosted ScrollView, notably at accessibility sizes.
             V5BottomNavigation(selection: $router.tab, theme: theme)
                 .frame(height: navigationTypeSize.isAccessibilitySize ? 94 : 60)
                 .background(V5Palette.color(theme.palette.paper).ignoresSafeArea(edges: .bottom))
