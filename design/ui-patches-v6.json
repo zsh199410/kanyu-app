@@ -1990,5 +1990,17 @@
     "before": "        .preferredColorScheme(appearanceScheme)\n",
     "after": "",
     "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "    static let allItems: [ToolItem] = [\n",
+    "after": "    static var allItems: [ToolItem] { [\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "    ]\n\n    static func filteredItems",
+    "after": "    ] }\n\n    static func filteredItems",
+    "count": 1
   }
 ]

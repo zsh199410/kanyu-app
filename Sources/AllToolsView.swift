@@ -89,7 +89,7 @@ struct AllToolsData {
     static let recentKey = "recentTools.v1"
     static let recentLimit = 6
 
-    static let allItems: [ToolItem] = [
+    static var allItems: [ToolItem] { [
         ToolItem(id: "learning", title: "白话使用指南", desc: "七大主题 · 操作步骤 · 术语解释", icon: "book.closed.fill", color: Ky.qingdai, group: .knowledge),
         ToolItem(id: "astro", title: "星命合参", desc: "八字 × 西洋星盘 · 双术印证", icon: "sparkles", color: Ky.gold, group: .paipan),
         ToolItem(id: "synastry", title: "合盘合婚", desc: "合婚四看 · 喜用互补", icon: "heart.circle.fill", color: Ky.cinnabar, group: .paipan),
@@ -127,7 +127,7 @@ struct AllToolsData {
         ToolItem(id: "backup", title: "备份恢复", desc: "人物与前瞻备份 · ZIP 导入恢复", icon: "archivebox.fill", color: Ky.qingdai, group: .tools),
         ToolItem(id: "caliber", title: "排盘口径设置", desc: "晚子时 · 紫微闰月 · 签名证书", icon: "slider.horizontal.3", color: Ky.qingdai, group: .tools),
         ToolItem(id: "workbench", title: "风水勘察", desc: "罗盘定盘 · 玄空八宅 · 案件", icon: "safari.fill", color: Ky.gold, group: .tools),
-    ]
+    ] }
 
     static func filteredItems(query: String, groupIndex: Int) -> [ToolItem] {
         let groups: [ToolGroup] = [.all, .paipan, .calendar, .knowledge, .tools]

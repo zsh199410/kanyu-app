@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import Kanyu
 
 final class V5ArchitectureTests: XCTestCase {
@@ -21,6 +22,24 @@ final class V5ArchitectureTests: XCTestCase {
         XCTAssertEqual(router.path.wrappedValue, [.bazi])
         router.tab = 2
         XCTAssertEqual(router.path.wrappedValue, [.tool("poster")])
+    }
+    @MainActor func testCatalogRefreshesThemeWithoutChangingToolIdentity() throws {
+        let store = V5ThemeStore.shared
+        let original = store.theme
+        let saved = UserDefaults.standard.object(forKey: "v5.theme")
+        defer {
+            store.select(original)
+            if let saved { UserDefaults.standard.set(saved, forKey: "v5.theme") }
+            else { UserDefaults.standard.removeObject(forKey: "v5.theme") }
+        }
+        store.select(.song)
+        let first = AllToolsData.allItems
+        store.select(.night)
+        let second = AllToolsData.allItems
+        XCTAssertEqual(first.map(\.id), second.map(\.id))
+        let light = try XCTUnwrap(first.first(where: { $0.id == "astro" }))
+        let dark = try XCTUnwrap(second.first(where: { $0.id == "astro" }))
+        XCTAssertNotEqual(light.color, dark.color, "Catalog cached the old theme colors")
     }
     func testAllThemesHaveReadableSemanticText() {
         func luminance(_ hex: UInt32) -> Double {
