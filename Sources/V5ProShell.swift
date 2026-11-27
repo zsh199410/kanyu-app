@@ -115,6 +115,7 @@ enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, face, tools, set
 }
 struct V5ProShell: View {
     @StateObject private var router = V5Router()
+    @Environment(\.dynamicTypeSize) private var navigationTypeSize
     @EnvironmentObject private var people: PeopleStore
     private var theme: V5Theme { V5ThemeStore.shared.theme }
     var body: some View {
@@ -131,7 +132,7 @@ struct V5ProShell: View {
         .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             V5BottomNavigation(selection: $router.tab, theme: theme)
-                .frame(height: 60)
+                .frame(height: navigationTypeSize.isAccessibilitySize ? 94 : 60)
                 .background(V5Palette.color(theme.palette.paper).ignoresSafeArea(edges: .bottom))
         }
         .environmentObject(router)
