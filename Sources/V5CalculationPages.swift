@@ -1,138 +1,120 @@
 import SwiftUI
 
 /// The calculation workspace uses the same selected UUID and routes as the shell.
-/// Every card is a navigation entry; existing professional tools remain available.
+/// Compact, independent feature entrances retain every professional destination.
 struct V5CalculationHub: View {
     @EnvironmentObject private var router: V5Router
     @Environment(\.dynamicTypeSize) private var typeSize
     private var primaryColumns: [GridItem] {
-        [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 250 : 145), spacing: 14)]
+        [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 240 : 140), spacing: 10)]
     }
-    private var matrixColumns: [GridItem] {
-        [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 150 : 80), spacing: 12)]
+    private var observationColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 140 : 86), spacing: 8)]
     }
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                V5ArtHeader(eyebrow: "三术合参 · 测算", title: "以命为经\n以术为纬", subtitle: "观天时，察地理，照见自己的生命脉络。")
+            VStack(alignment: .leading, spacing: 18) {
                 V5CalculationPersonHeader()
-                primaryMatrix
-                observationMatrix
-                timingMatrix
-                complementaryTools
+                primaryEntries
+                observationEntries
+                utilityEntries
+                Button { router.open(.tools) } label: {
+                    HStack {
+                        Image(systemName: "square.grid.2x2")
+                        Text("全部功能").font(.body.weight(.semibold))
+                        Spacer()
+                        Text("合婚 · 择吉 · 报告").font(.caption)
+                        Image(systemName: "chevron.right").font(.caption)
+                    }.frame(minHeight: V5Metric.target).contentShape(Rectangle())
+                }.buttonStyle(.plain)
                 V5CalculationDisclaimer()
-            }.padding(V5Metric.page)
+            }.padding(.horizontal, V5Metric.page).padding(.vertical, 12)
         }
         .v5CalculationPage(title: "测算")
         .accessibilityIdentifier("v5.calculation.hub")
     }
-    private var primaryMatrix: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            V5SectionHeading(title: "命盘 · 双术", subtitle: "从四柱与十二宫开始")
-            LazyVGrid(columns: primaryColumns, spacing: 14) {
-                Button { router.open(.bazi) } label: {
-                    V5CalculationPrimaryTile(number: "壹", title: "八字命理", detail: "四柱十神 · 五行岁运", kind: .bazi)
-                }.buttonStyle(.plain).accessibilityIdentifier("v5.measure.bazi")
-                Button { router.open(.ziwei) } label: {
-                    V5CalculationPrimaryTile(number: "贰", title: "紫微斗数", detail: "十二宫垣 · 星曜四化", kind: .ziwei)
-                }.buttonStyle(.plain).accessibilityIdentifier("v5.measure.ziwei")
-            }
+    private var primaryEntries: some View {
+        LazyVGrid(columns: primaryColumns, spacing: 10) {
+            Button { router.open(.bazi) } label: {
+                V5CalculationMainEntry(title: "八字", detail: "四柱 · 十神 · 岁运", kind: .bazi)
+            }.buttonStyle(.plain).accessibilityIdentifier("v5.measure.bazi")
+            Button { router.open(.ziwei) } label: {
+                V5CalculationMainEntry(title: "紫微", detail: "十二宫 · 星曜四化", kind: .ziwei)
+            }.buttonStyle(.plain).accessibilityIdentifier("v5.measure.ziwei")
         }
     }
-    private var observationMatrix: some View {
-        V5Card {
-            VStack(alignment: .leading, spacing: 20) {
-                V5SectionHeading(title: "观形 · 察象", subtitle: "相由形见，地以势观")
-                LazyVGrid(columns: matrixColumns, spacing: 16) {
-                    Button { router.open(.palm) } label: {
-                        V5CalculationMatrixLabel(title: "手相", detail: "掌纹与指比", kind: .palm)
-                    }.buttonStyle(.plain)
-                    NavigationLink { V5FacePage() } label: {
-                        V5CalculationMatrixLabel(title: "面相", detail: "三停与五眼", kind: .face)
-                    }.buttonStyle(.plain)
-                    Button { router.open(.survey) } label: {
-                        V5CalculationMatrixLabel(title: "风水", detail: "堪舆与户型", kind: .survey)
-                    }.buttonStyle(.plain)
-                }
-            }
+    private var observationEntries: some View {
+        LazyVGrid(columns: observationColumns, spacing: 8) {
+            Button { router.open(.palm) } label: {
+                V5CalculationObservationEntry(title: "手相", detail: "掌纹测量", kind: .palm)
+            }.buttonStyle(.plain)
+            Button { router.open(.face) } label: {
+                V5CalculationObservationEntry(title: "面相", detail: "三停五眼", kind: .face)
+            }.buttonStyle(.plain)
+            Button { router.open(.survey) } label: {
+                V5CalculationObservationEntry(title: "风水", detail: "堪舆勘察", kind: .survey)
+            }.buttonStyle(.plain)
         }
     }
-    private var timingMatrix: some View {
-        V5Card {
-            VStack(alignment: .leading, spacing: 20) {
-                V5SectionHeading(title: "时序 · 万象", subtitle: "循节气，识时局，览诸术")
-                LazyVGrid(columns: matrixColumns, spacing: 16) {
-                    Button { router.open(.tool("almanac")) } label: {
-                        V5CalculationMatrixLabel(title: "万年历", detail: "干支与节气", kind: .calendar)
-                    }.buttonStyle(.plain)
-                    Button { router.open(.qimen) } label: {
-                        V5CalculationMatrixLabel(title: "奇门", detail: "时局与解读", kind: .qimen)
-                    }.buttonStyle(.plain)
-                    Button { router.open(.tools) } label: {
-                        V5CalculationMatrixLabel(title: "全部功能", detail: "合婚与择吉", kind: .tools)
-                    }.buttonStyle(.plain)
-                }
-            }
+    private var utilityEntries: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("历法与合参").font(V5Typography.song(.headline, emphasis: true))
+                .accessibilityAddTraits(.isHeader).padding(.bottom, 6)
+            utility("万年历", detail: "干支节气", icon: "calendar", route: .tool("almanac"))
+            Divider()
+            utility("奇门遁甲", detail: "时局排盘", icon: "square.grid.3x3", route: .qimen)
+            Divider()
+            utility("罗盘实测", detail: "磁北与真北", icon: "location.north.circle", route: .tool("compass"))
+            Divider()
+            utility("星命合参", detail: "八字 × 西洋星盘", icon: "circle.hexagongrid", route: .tool("astro"))
         }
     }
-    private var complementaryTools: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            V5SectionHeading(title: "相参 · 互证")
-            LazyVGrid(columns: primaryColumns, spacing: 14) {
-                Button { router.open(.tool("compass")) } label: {
-                    V5CalculationCompanionLabel(title: "罗盘实测", detail: "磁北 · 真北 · 定向", icon: "location.north.circle")
-                }.buttonStyle(.plain)
-                Button { router.open(.tool("astro")) } label: {
-                    V5CalculationCompanionLabel(title: "星命合参", detail: "八字 × 西洋星盘", icon: "circle.hexagongrid")
-                }.buttonStyle(.plain)
-            }
-        }
-    }
-}
-private struct V5CalculationPrimaryTile: View {
-    let number: String; let title: String; let detail: String; let kind: V5FeatureKind
-    var body: some View {
-        V5Card {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top) {
-                    Text(number).font(V5Typography.song(.title2))
-                        .foregroundStyle(V5Palette.color(V5Palette.current.ornamentText))
-                    Spacer()
-                    Image(systemName: "arrow.up.right").font(.caption).accessibilityHidden(true)
-                }
-                V5FeatureGlyph(kind: kind, size: 82).frame(maxWidth: .infinity).padding(.vertical, 6).accessibilityHidden(true)
-                Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.4)).frame(height: 1)
-                Text(title).font(V5Typography.song(.title2, emphasis: true))
+    private func utility(_ title: String, detail: String, icon: String, route: V5Route) -> some View {
+        Button { router.open(route) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon).frame(width: 24).accessibilityHidden(true)
+                Text(title).font(.body)
+                Spacer(minLength: 8)
                 Text(detail).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                    .fixedSize(horizontal: false, vertical: true)
-            }.frame(maxWidth: .infinity, minHeight: V5Metric.target, alignment: .leading)
-        }.accessibilityElement(children: .ignore).accessibilityLabel("\(title)，\(detail)")
+                Image(systemName: "chevron.right").font(.caption2).accessibilityHidden(true)
+            }.frame(minHeight: V5Metric.target).contentShape(Rectangle())
+        }.buttonStyle(.plain).accessibilityElement(children: .combine)
     }
 }
-private struct V5CalculationMatrixLabel: View {
+private struct V5CalculationMainEntry: View {
     let title: String; let detail: String; let kind: V5FeatureKind
     var body: some View {
-        VStack(spacing: 12) {
-            V5FeatureGlyph(kind: kind, size: 56).accessibilityHidden(true)
-            Text(title).font(V5Typography.title)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center) {
+                Text(title).font(V5Typography.song(.title2, emphasis: true))
+                Spacer(minLength: 6)
+                V5FeatureGlyph(kind: kind, size: 42)
+            }
             Text(detail).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-        }.multilineTextAlignment(.center).frame(maxWidth: .infinity, minHeight: 136)
-            .padding(.vertical, 4).contentShape(Rectangle())
-            .accessibilityElement(children: .combine)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Text("查看命盘").font(.caption.weight(.medium))
+                Spacer()
+                Image(systemName: "arrow.up.right").font(.caption)
+            }.foregroundStyle(V5Palette.color(V5Palette.current.accent)).padding(.top, 4)
+        }.padding(14).frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
+            .background(V5Palette.color(V5Palette.current.surface), in: RoundedRectangle(cornerRadius: 14))
+            .overlay(alignment: .top) {
+                Rectangle().fill(V5Palette.color(V5Palette.current.ornament)).frame(height: 1)
+            }.contentShape(Rectangle()).accessibilityElement(children: .combine)
     }
 }
-private struct V5CalculationCompanionLabel: View {
-    let title: String; let detail: String; let icon: String
+private struct V5CalculationObservationEntry: View {
+    let title: String; let detail: String; let kind: V5FeatureKind
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: icon).font(.title2).foregroundStyle(V5Palette.color(V5Palette.current.accent)).accessibilityHidden(true)
-            Text(title).font(V5Typography.title)
+        VStack(spacing: 7) {
+            V5FeatureGlyph(kind: kind, size: 34)
+            Text(title).font(V5Typography.song(.headline, emphasis: true))
             Text(detail).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-        }.padding(16).frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
-            .background(V5Palette.color(V5Palette.current.surface).opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
-            .overlay(alignment: .leading) {
-                Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.7)).frame(width: 2)
-            }.accessibilityElement(children: .combine)
+        }.multilineTextAlignment(.center).padding(.vertical, 12).padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, minHeight: 106)
+            .background(V5Palette.color(V5Palette.current.surface).opacity(0.65), in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle()).accessibilityElement(children: .combine)
     }
 }
 
@@ -143,7 +125,6 @@ struct V5BaziPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: V5Metric.gap) {
-                V5ArtHeader(eyebrow: "四柱 · 岁运", title: "八字命理", subtitle: "一字一柱，读原局，观岁运。")
                 V5CalculationPersonHeader()
                 if let person = people.currentPerson {
                     if let result, result.person == person {
@@ -182,18 +163,18 @@ struct V5BaziPage: View {
     @ViewBuilder private func content(_ chart: BaziChart) -> some View {
         V5Card {
             VStack(alignment: .leading, spacing: 12) {
-                Text("日主 · \(chart.rizhu)").font(V5Typography.song(.title))
+                Text("日主 · \(chart.rizhu)").font(V5Typography.song(.headline, emphasis: true))
                 Text(chart.lunarText).font(.subheadline)
                 Text(chart.longitude == nil ? "北京时间 · 未启用经度校正" : "已按档案经度校正真太阳时")
                     .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                 if let solarDate = chart.trueSolarDate {
-                    Text("真太阳时 \(DisplayTimeReceipt.beijing(solarDate))").font(.caption)
+                    Text("真太阳时 \(V5DisplayText.dateTime(solarDate))").font(.caption)
                 }
                 V5BirthOverview(chart: chart)
             }
         }
         V5Card { V5PillarDetailTable(chart: chart) }
-        V5TenGodDistribution(chart: chart)
+        V5Card { V5TenGodLedger(chart: chart) }
         V5Card {
             VStack(alignment: .leading, spacing: 12) {
                 Text("大运脉络").font(V5Typography.song(.title2))
@@ -234,7 +215,6 @@ struct V5ZiweiPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: V5Metric.gap) {
-                V5ArtHeader(eyebrow: "十二宫 · 星曜", title: "紫微斗数", subtitle: "循宫垣观星曜，以三方四正互参。")
                 V5CalculationPersonHeader()
                 if let person = people.currentPerson {
                     if let result, result.person == person {
@@ -269,10 +249,10 @@ struct V5ZiweiPage: View {
     @ViewBuilder private func content(_ chart: ZiweiChart) -> some View {
         V5Card {
             VStack(alignment: .leading, spacing: 8) {
-                Text(chart.juName).font(V5Typography.song(.title))
+                Text(chart.juName).font(V5Typography.song(.headline, emphasis: true))
                 Text(chart.lunarText)
                 Text("命宫 \(ZiweiCore.DZ[chart.mingGong]) · 身宫 \(chart.palaces[chart.shenGong].name)")
-                Text("横向滑动阅读完整原盘，点宫位查看全部星曜。中心为图例，不是宫位。")
+                Text("点宫位看完整主辅星与对宫；大字号可横向滑动原盘。")
                     .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
             }
         }
@@ -321,57 +301,82 @@ struct V5ZiweiPage: View {
 private struct V5ZiweiRing: View {
     let chart: ZiweiChart
     @Binding var selectedBranch: Int
-    @ScaledMetric(relativeTo: .body) private var cellWidth: CGFloat = 154
-    @ScaledMetric(relativeTo: .body) private var cellHeight: CGFloat = 164
-    private let gap: CGFloat = 6
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var expandedWidth: CGFloat = 154
+    @ScaledMetric(relativeTo: .body) private var expandedHeight: CGFloat = 164
+    private let gap: CGFloat = 4
+    private var expanded: Bool { typeSize > .large }
+    private var cellHeight: CGFloat { expanded ? expandedHeight : 116 }
     var body: some View {
-        ScrollView(.horizontal) {
-            VStack(spacing: gap) {
-                HStack(spacing: gap) { ForEach([5, 6, 7, 8], id: \.self) { cell($0) } }
-                HStack(spacing: gap) {
-                    VStack(spacing: gap) { cell(4); cell(3) }
-                    ZStack {
-                        VStack(spacing: 12) {
-                            V5FeatureGlyph(kind: .ziwei, size: 88).accessibilityHidden(true)
-                            Text("紫 微").font(V5Typography.song(.largeTitle))
-                            Text(chart.juName).font(.headline)
-                            Text("十二宫 · 生年四化").font(.caption)
-                            Text("禄 · 权 · 科 · 忌").font(.caption)
-                        }
-                    }
-                    .frame(width: cellWidth * 2 + gap, height: cellHeight * 2 + gap)
-                    .background(V5Palette.color(V5Palette.current.surface), in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityElement(children: .ignore).accessibilityLabel("紫微盘图例，十二宫环绕中心")
-                    VStack(spacing: gap) { cell(9); cell(10) }
-                }
-                HStack(spacing: gap) { ForEach([2, 1, 0, 11], id: \.self) { cell($0) } }
-            }.padding(2)
-        }.accessibilityIdentifier("v5.ziwei.ring")
+        GeometryReader { geometry in
+            let width = expanded ? expandedWidth : max(76, (geometry.size.width - gap * 3) / 4)
+            ScrollView(.horizontal) {
+                board(width: width)
+            }
+        }.frame(height: cellHeight * 4 + gap * 3)
+            .accessibilityIdentifier("v5.ziwei.ring")
     }
-    private func cell(_ branch: Int) -> some View {
+    private func board(width: CGFloat) -> some View {
+        VStack(spacing: gap) {
+            HStack(spacing: gap) { ForEach([5, 6, 7, 8], id: \.self) { cell($0, width: width) } }
+            HStack(spacing: gap) {
+                VStack(spacing: gap) { cell(4, width: width); cell(3, width: width) }
+                VStack(spacing: expanded ? 12 : 8) {
+                    V5FeatureGlyph(kind: .ziwei, size: expanded ? 64 : 38)
+                    Text(chart.juName).font(V5Typography.song(expanded ? .title2 : .headline, emphasis: true))
+                    Text("命宫 \(ZiweiCore.DZ[chart.mingGong])").font(.caption)
+                    Text("禄 · 权 · 科 · 忌").font(.caption2)
+                    Text("格内数字为大限年龄").font(.caption2)
+                    Text("十二宫环列 · 中央为图例").font(.caption2)
+                        .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                        .multilineTextAlignment(.center)
+                }.frame(width: width * 2 + gap, height: cellHeight * 2 + gap)
+                    .background(V5Palette.color(V5Palette.current.surface).opacity(0.65))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("紫微盘图例，十二宫环绕中心")
+                VStack(spacing: gap) { cell(9, width: width); cell(10, width: width) }
+            }
+            HStack(spacing: gap) { ForEach([2, 1, 0, 11], id: \.self) { cell($0, width: width) } }
+        }
+    }
+    private func cell(_ branch: Int, width: CGFloat) -> some View {
         let palace = chart.palaces[branch]
         return Button { selectedBranch = branch } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(palace.name).font(.headline)
+            VStack(alignment: .leading, spacing: expanded ? 8 : 4) {
+                HStack(spacing: 2) {
+                    Text(palace.name).font(expanded ? .headline : .caption.weight(.semibold))
                     Spacer(minLength: 0)
-                    if palace.isBody { Text("身").font(.caption).fontWeight(.bold) }
+                    if palace.isBody { Text("身").font(.caption2).fontWeight(.bold) }
                 }
-                Text(palace.majors.isEmpty ? "无主星" : palace.majors.map { $0.star + ($0.mutagen ?? "") }.joined(separator: " · "))
-                    .font(.body)
+                if palace.majors.isEmpty {
+                    Text("无主星").font(expanded ? .body : .caption)
+                        .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                } else {
+                    ForEach(Array(palace.majors.enumerated()), id: \.offset) { _, star in
+                        HStack(spacing: 2) {
+                            Text(star.star).font(expanded ? .body : .caption)
+                            if let mutagen = star.mutagen {
+                                Text(mutagen).font(.caption2.weight(.semibold))
+                                    .foregroundStyle(V5Palette.color(V5Palette.current.accent))
+                            }
+                        }
+                    }
+                }
                 Spacer(minLength: 0)
-                Text("\(palace.stem)\(ZiweiCore.DZ[branch])").font(.caption)
-                if let first = palace.decadal.first, let last = palace.decadal.last {
-                    Text("\(first)–\(last) 岁").font(.caption).monospacedDigit()
-                }
-            }
-            .padding(12).frame(width: cellWidth, height: cellHeight, alignment: .topLeading)
-            .foregroundStyle(V5Palette.color(V5Palette.current.ink))
-            .background(V5Palette.color(selectedBranch == branch ? V5Palette.current.paper : V5Palette.current.surface), in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(V5Palette.color(selectedBranch == branch ? V5Palette.current.accent : V5Palette.current.ornament).opacity(selectedBranch == branch ? 1 : 0.4), lineWidth: selectedBranch == branch ? 2 : 0.7))
+                HStack(spacing: 2) {
+                    Text("\(palace.stem)\(ZiweiCore.DZ[branch])")
+                    Spacer(minLength: 0)
+                    if let first = palace.decadal.first, let last = palace.decadal.last {
+                        Text("\(first)–\(last)").monospacedDigit()
+                    }
+                }.font(.caption2)
+            }.padding(expanded ? 12 : 6).frame(width: width, height: cellHeight, alignment: .topLeading)
+                .foregroundStyle(V5Palette.color(V5Palette.current.ink))
+                .background(V5Palette.color(selectedBranch == branch ? V5Palette.current.paper : V5Palette.current.surface))
+                .overlay(Rectangle().stroke(V5Palette.color(selectedBranch == branch ? V5Palette.current.accent : V5Palette.current.ornament).opacity(selectedBranch == branch ? 1 : 0.4), lineWidth: selectedBranch == branch ? 2 : 0.7))
         }.buttonStyle(.plain).accessibilityElement(children: .combine)
             .accessibilityAddTraits(selectedBranch == branch ? .isSelected : [])
-            .accessibilityHint("显示此宫全部主辅星与对宫")
+            .accessibilityHint("显示此宫全部主辅星与对宫；数字为大限起止年龄")
     }
 }
 
@@ -379,33 +384,37 @@ private struct V5CalculationPersonHeader: View {
     @EnvironmentObject private var people: PeopleStore
     @EnvironmentObject private var router: V5Router
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             if let person = people.currentPerson {
-                Menu {
-                    ForEach(people.people) { candidate in
-                        Button { people.setCurrentPerson(candidate) } label: {
-                            Text("\(candidate.name) · \(candidate.relation) · \(DisplayTimeReceipt.beijing(candidate.birthDate)) · \(candidate.id.uuidString.prefix(8))")
-                        }
-                    }
-                    Button("管理档案") { router.tab = 3 }
-                } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                V5PersonPickerButton {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text("当前命主").font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                        Text(person.name).font(V5Typography.song(.title3, emphasis: true))
+                        Text(person.name).font(.headline)
                         Spacer(minLength: 0)
-                        Image(systemName: "chevron.down").font(.caption)
-                    }.frame(minHeight: V5Metric.target)
-                }.accessibilityLabel("切换命主，当前为\(person.name)")
-                Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.caption)
-                Text("档案 \(person.id.uuidString.prefix(8)) · \(person.useLongitude ? "经度校时" : "北京时间")")
-                    .font(.caption2).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                        Text("切换").font(.caption)
+                        Image(systemName: "chevron.down").font(.caption2)
+                    }.frame(maxWidth: .infinity, minHeight: V5Metric.target)
+                }
+                Text("\(V5DisplayText.dateTime(person.birthDate)) · \(person.useLongitude ? "经度校时" : "北京时间")")
+                    .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                Text("档案 \(person.id.uuidString.prefix(8))").font(.caption2.monospaced())
+                    .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                     .accessibilityIdentifier("v5.calculation.owner").accessibilityValue(person.id.uuidString)
             } else {
-                Button("添加人物档案") { router.tab = 3 }.font(V5Typography.title).frame(minHeight: V5Metric.target)
-                Text("从真实生辰出发，展开个人命盘。").font(.caption)
+                Button { router.tab = 3 } label: {
+                    HStack {
+                        Label("添加人物档案", systemImage: "person.badge.plus").font(.body.weight(.semibold))
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption)
+                    }.frame(minHeight: V5Metric.target)
+                }.buttonStyle(.plain)
+                Text("建立真实生辰档案后查看个人命盘").font(.caption)
+                    .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
             }
-            Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.45)).frame(height: 1).padding(.top, 8)
-        }
+        }.padding(.bottom, 8)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.35)).frame(height: 0.7)
+            }
     }
 }
 private struct V5CalculationProfilePrompt: View {
@@ -434,7 +443,7 @@ private struct V5CalculationEntryLabel: View {
                 Image(systemName: icon).font(.title2).frame(width: V5Metric.target)
                     .foregroundStyle(V5Palette.color(V5Palette.current.accent))
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(title).font(V5Typography.song(.title3, emphasis: true))
+                    Text(title).font(.headline)
                     Text(detail).font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                 }
                 Spacer(minLength: 0)

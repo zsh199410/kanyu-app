@@ -1,93 +1,188 @@
 import SwiftUI
 
-/// Read-only typesetting of actual engine output. Each stem sits above its branch.
-struct V5BirthOverview: View {
+/// A compact real-data preview for the home composition. No second chart engine.
+struct V5HomeChartPreview: View {
     let chart: BaziChart
     @Environment(\.dynamicTypeSize) private var typeSize
-    private let names = ["年柱", "月柱", "日柱", "时柱"]
-    private let elements = ["木", "火", "土", "金", "水"]
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("四柱命盘").font(V5Typography.section)
-                Spacer()
-                Text("天干在上 · 地支在下").font(.caption)
-                    .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+        if typeSize > .large {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("四柱").font(.headline)
+                V5FourPillars(chart: chart, compact: true)
+                Text("五行构成").font(.headline)
+                V5FiveElementBars(values: chart.wuxingPercents)
             }
-            if typeSize.isAccessibilitySize {
-                ScrollView(.horizontal) { pillarColumns(minimumWidth: 112) }
-            } else {
-                pillarColumns(minimumWidth: 52)
+        } else {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("四柱").font(.caption.weight(.semibold))
+                    V5FourPillars(chart: chart, compact: true)
+                }.frame(maxWidth: .infinity)
+                Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.3)).frame(width: 0.7, height: 112)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("五行").font(.caption.weight(.semibold))
+                    V5CompactElementBars(values: chart.wuxingPercents)
+                }.frame(maxWidth: .infinity)
             }
-            Divider().overlay(V5Palette.color(V5Palette.current.ornament).opacity(0.3))
-            V5SectionHeading(title: "五行气象", subtitle: "天干与藏干的真实构成比例")
-            V5ElementCycle(values: chart.wuxingPercents)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 110 : 46))], spacing: 12) {
-                ForEach(Array(chart.wuxingPercents.prefix(5).enumerated()), id: \.offset) { index, value in
-                    VStack(spacing: 8) {
-                        Text(elements[index]).font(V5Typography.song(.title2))
-                        Text(value.isFinite ? String(format: "%.1f%%", value) : "未提供")
-                            .font(.caption.monospacedDigit())
-                    }.padding(.vertical, 12).frame(maxWidth: .infinity)
-                        .overlay(alignment: .top) {
-                            Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.4)).frame(height: 1)
+        }
+    }
+}
+private struct V5CompactElementBars: View {
+    let values: [Double]
+    private let names = ["木", "火", "土", "金", "水"]
+    var body: some View {
+        VStack(spacing: 6) {
+            ForEach(Array(values.prefix(5).enumerated()), id: \.offset) { index, value in
+                HStack(spacing: 4) {
+                    Text(names[index]).font(.caption).frame(width: 14)
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(V5Palette.color(V5Palette.current.secondary).opacity(0.12))
+                            if value.isFinite {
+                                Capsule().fill(V5Palette.color(V5Palette.current.accent))
+                                    .frame(width: geometry.size.width * CGFloat(min(100, max(0, value))) / 100)
+                            }
                         }
-                        .accessibilityElement(children: .combine)
-                }
+                    }.frame(height: 5).accessibilityHidden(true)
+                    Text(value.isFinite ? String(format: "%.1f%%", value) : "未提供")
+                        .font(.caption2.monospacedDigit()).frame(minWidth: 42, alignment: .trailing)
+                }.accessibilityElement(children: .combine)
             }
-            Text("图表读取当前命主的真实排盘结果。传统民俗参考。")
-                .font(V5Typography.evidence).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+        }
+    }
+}
+
+struct V5BirthOverview: View {
+    let chart: BaziChart
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("四柱命盘").font(V5Typography.song(.headline, emphasis: true))
+                Spacer()
+                Text("天干 / 地支").font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+            }
+            V5FourPillars(chart: chart)
+            Divider()
+            Text("五行构成").font(V5Typography.song(.headline, emphasis: true)).accessibilityAddTraits(.isHeader)
+            V5FiveElementBars(values: chart.wuxingPercents)
+            DisclosureGroup("五行生克关系图") { V5ElementCycle(values: chart.wuxingPercents).padding(.top, 12) }
+                .font(.subheadline)
+            Text("比例沿用天干与藏干的引擎口径，不代表健康或吉凶评分。")
+                .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
         }.foregroundStyle(V5Palette.color(V5Palette.current.ink))
     }
-    private func pillarColumns(minimumWidth: CGFloat) -> some View {
+}
+private struct V5FourPillars: View {
+    let chart: BaziChart
+    var compact = false
+    @Environment(\.dynamicTypeSize) private var typeSize
+    private let names = ["年柱", "月柱", "日柱", "时柱"]
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            ScrollView(.horizontal) { columns(minimumWidth: compact ? 100 : 112) }
+        } else { columns(minimumWidth: compact ? 28 : 52) }
+    }
+    private func columns(minimumWidth: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 0) {
             ForEach(Array(chart.pillars.enumerated()), id: \.offset) { index, pillar in
-                V5VerticalPillar(name: names[index], pillar: pillar,
-                                 god: chart.stemShiShen[index], hidden: chart.hideGan[index], isDay: index == 2)
+                V5VerticalPillar(name: names[index], pillar: pillar, god: chart.stemShiShen[index],
+                                 hidden: chart.hideGan[index], isDay: index == 2, compact: compact)
                     .frame(minWidth: minimumWidth, maxWidth: .infinity)
             }
         }
     }
 }
 private struct V5VerticalPillar: View {
-    let name: String; let pillar: String; let god: String; let hidden: [String]; let isDay: Bool
-    @ScaledMetric(relativeTo: .largeTitle) private var characterSize: CGFloat = 42
+    let name: String; let pillar: String; let god: String; let hidden: [String]; let isDay: Bool; let compact: Bool
+    @ScaledMetric(relativeTo: .title) private var characterSize: CGFloat = 34
     var body: some View {
         VStack(spacing: 0) {
-            Text(name).font(.caption).padding(.top, 12).padding(.bottom, 10)
+            Text(name).font(.caption).padding(.top, 8).padding(.bottom, 6)
                 .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-            Text(god).font(.caption).padding(.bottom, 14)
-                .foregroundStyle(V5Palette.color(isDay ? V5Palette.current.accent : V5Palette.current.secondary))
-            VStack(spacing: 10) {
+            if !compact {
+                Text(god).font(.caption).padding(.bottom, 8)
+                    .foregroundStyle(V5Palette.color(isDay ? V5Palette.current.accent : V5Palette.current.secondary))
+            }
+            VStack(spacing: compact ? 2 : 5) {
                 Text(pillar.first.map(String.init) ?? "—")
                 Text(pillar.last.map(String.init) ?? "—")
-            }.font(V5Typography.printFont(size: characterSize, emphasis: true))
+            }.font(V5Typography.printFont(size: characterSize * (compact ? 0.8 : 1), emphasis: true))
                 .foregroundStyle(V5Palette.color(isDay ? V5Palette.current.accent : V5Palette.current.ink))
-                .padding(.bottom, 18)
-            Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.45))
-                .frame(width: 24, height: 1).padding(.bottom, 12)
-            Text("藏干").font(.caption2).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-            Text(hidden.joined(separator: " ")).font(.caption).padding(.top, 6).padding(.bottom, 14)
-                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, compact ? 8 : 12)
+            if !compact {
+                Text("藏干").font(.caption2).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                Text(hidden.joined(separator: " ")).font(.caption).padding(.top, 4).padding(.bottom, 8)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }.frame(maxWidth: .infinity)
+            .background(V5Palette.color(V5Palette.current.accent).opacity(isDay ? 0.07 : 0))
+            .overlay(alignment: .top) {
+                Rectangle().fill(V5Palette.color(isDay ? V5Palette.current.accent : V5Palette.current.ornament).opacity(isDay ? 0.9 : 0.35))
+                    .frame(height: isDay ? 2 : 0.7)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(name)，\(pillar)，\(god)\(compact ? "" : "，藏干" + hidden.joined(separator: "、"))\(isDay ? "，日主所在柱" : "")")
+    }
+}
+private struct V5FiveElementBars: View {
+    let values: [Double]
+    private let names = ["木", "火", "土", "金", "水"]
+    var body: some View {
+        VStack(spacing: 10) {
+            ForEach(Array(values.prefix(5).enumerated()), id: \.offset) { index, value in
+                HStack(spacing: 12) {
+                    Text(names[index]).font(.body).frame(minWidth: 24, alignment: .leading)
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(V5Palette.color(V5Palette.current.secondary).opacity(0.12))
+                            if value.isFinite {
+                                Capsule().fill(V5Palette.color(V5Palette.current.accent))
+                                    .frame(width: geometry.size.width * CGFloat(min(100, max(0, value))) / 100)
+                            }
+                        }
+                    }.frame(height: 8).accessibilityHidden(true)
+                    Text(value.isFinite ? String(format: "%.1f%%", value) : "未提供")
+                        .font(.subheadline.monospacedDigit()).frame(minWidth: 64, alignment: .trailing)
+                }.accessibilityElement(children: .combine)
+            }
         }
-        .frame(maxWidth: .infinity)
-        .background(V5Palette.color(V5Palette.current.accent).opacity(isDay ? 0.07 : 0))
-        .overlay(alignment: .top) {
-            Rectangle().fill(V5Palette.color(isDay ? V5Palette.current.accent : V5Palette.current.ornament).opacity(isDay ? 0.9 : 0.35))
-                .frame(height: isDay ? 3 : 1)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(name)，\(pillar)，\(god)，藏干\(hidden.joined(separator: "、"))\(isDay ? "，日主所在柱" : "")")
     }
 }
 
-/// Dense data is arranged as one aligned ledger, rather than four repeated prose cards.
+struct V5TenGodLedger: View {
+    let chart: BaziChart
+    @Environment(\.dynamicTypeSize) private var typeSize
+    private let order = ["比肩", "劫财", "食神", "伤官", "偏财", "正财", "七杀", "正官", "偏印", "正印"]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("十神分布").font(V5Typography.song(.headline, emphasis: true)).accessibilityAddTraits(.isHeader)
+            Text("天干 / 藏干出现次数 · 不含日主，不加权重").font(.caption)
+                .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 220 : 130))], spacing: 0) {
+                ForEach(order, id: \.self) { name in
+                    let stems = chart.stemShiShen.filter { $0 == name }.count
+                    let hidden = chart.hideShiShen.flatMap { $0 }.filter { $0 == name }.count
+                    HStack(spacing: 8) {
+                        Text(name).font(.subheadline)
+                        Spacer(minLength: 4)
+                        Text("\(stems) / \(hidden)").font(.subheadline.monospacedDigit())
+                    }.padding(.vertical, 12).padding(.horizontal, 6)
+                        .overlay(alignment: .bottom) { Divider() }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(name)，天干\(stems)次，藏干\(hidden)次")
+                }
+            }
+        }
+    }
+}
+
+/// Dense data is arranged as one aligned ledger, rather than repeated prose cards.
 struct V5PillarDetailTable: View {
     let chart: BaziChart
     @ScaledMetric(relativeTo: .body) private var columnWidth: CGFloat = 84
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            V5SectionHeading(title: "命局细目", subtitle: "横向展开四柱，按同一行核对十神、藏干与纳音。")
+        VStack(alignment: .leading, spacing: 12) {
+            Text("命局细目").font(V5Typography.song(.headline, emphasis: true)).accessibilityAddTraits(.isHeader)
             ScrollView(.horizontal) {
                 Grid(alignment: .center, horizontalSpacing: 12, verticalSpacing: 0) {
                     row("四柱", values: ["年柱", "月柱", "日柱", "时柱"], emphasized: true)
@@ -99,18 +194,18 @@ struct V5PillarDetailTable: View {
                     row("纳音", values: chart.naYin)
                 }
             }
-            Text("日柱旬空 · \(chart.xunKong)").font(V5Typography.detail)
+            Text("日柱旬空 · \(chart.xunKong)").font(.caption)
                 .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
         }
     }
     private func row(_ title: String, values: [String], emphasized: Bool = false) -> some View {
         GridRow(alignment: .top) {
             Text(title).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                .frame(width: 36, alignment: .leading).padding(.vertical, 12)
+                .frame(width: 36, alignment: .leading).padding(.vertical, 9)
             ForEach(Array(values.prefix(4).enumerated()), id: \.offset) { _, value in
-                Text(value).font(emphasized ? V5Typography.title : V5Typography.detail)
+                Text(value).font(emphasized ? .headline : .subheadline)
                     .multilineTextAlignment(.center).frame(width: columnWidth)
-                    .fixedSize(horizontal: false, vertical: true).padding(.vertical, 12)
+                    .fixedSize(horizontal: false, vertical: true).padding(.vertical, 9)
             }
         }.background(emphasized ? V5Palette.color(V5Palette.current.accent).opacity(0.05) : .clear)
             .accessibilityElement(children: .combine)
