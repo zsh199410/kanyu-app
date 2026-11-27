@@ -63,7 +63,7 @@ struct V5PublicationStyle {
         paragraph.lineSpacing = role == .caption || role == .brand ? 0 : Self.lineSpacing
         paragraph.lineBreakMode = .byWordWrapping
         let ink = cover ? (role == .caption ? palette.heroSecondary : palette.heroInk) : palette.readingInk
-        return [.font: font(for: role), .paragraphStyle: paragraph, .foregroundColor: Self.color(ink)]
+        return [.font: font(for: role), .ligature: 0, .paragraphStyle: paragraph, .foregroundColor: Self.color(ink)]
     }
     func contentRect(in pageRect: CGRect) -> CGRect {
         pageRect.insetBy(dx: Self.inset, dy: Self.inset)

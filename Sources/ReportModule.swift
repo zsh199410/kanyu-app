@@ -235,7 +235,7 @@ enum ReportBuilder {
             for placed in page.lines {
                 let style = NSMutableParagraphStyle()
                 style.lineSpacing = 3
-                let attr: [NSAttributedString.Key: Any] = [.font: placed.font, .paragraphStyle: style, .foregroundColor: publication.pageInk]
+                let attr: [NSAttributedString.Key: Any] = [.font: placed.font, .ligature: 0, .paragraphStyle: style, .foregroundColor: publication.pageInk]
                 (placed.text as NSString).draw(with: CGRect(x: 48, y: placed.y, width: pageRect.width - 96, height: placed.height),
                                                 options: [.usesLineFragmentOrigin], attributes: attr, context: nil)
             }
@@ -299,7 +299,7 @@ enum ReportBuilder {
             let gap: CGFloat = i == 0 ? 10 : (line.hasPrefix("【") ? 6 : 5)
             let style = NSMutableParagraphStyle()
             style.lineSpacing = 3
-            let attr: [NSAttributedString.Key: Any] = [.font: font, .paragraphStyle: style]
+            let attr: [NSAttributedString.Key: Any] = [.font: font, .ligature: 0, .paragraphStyle: style]
             // Keep a chapter with its first paragraph; long paragraphs can begin in the
             // remaining space and continue on the next page without orphaning the title.
             if line.hasPrefix("【"), let nextIndex = lines.indices.dropFirst(i + 1).first(where: {
@@ -308,7 +308,7 @@ enum ReportBuilder {
                 let headingHeight = ceil((line as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
                     options: [.usesLineFragmentOrigin], attributes: attr, context: nil).height)
                 let nextFont = lines[nextIndex].hasPrefix("【") ? headFont : bodyFont
-                let nextAttr: [NSAttributedString.Key: Any] = [.font: nextFont, .paragraphStyle: style]
+                let nextAttr: [NSAttributedString.Key: Any] = [.font: nextFont, .ligature: 0, .paragraphStyle: style]
                 let nextHeight = ceil((lines[nextIndex] as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
                     options: [.usesLineFragmentOrigin], attributes: nextAttr, context: nil).height)
                 let blankSpacing = CGFloat(nextIndex - i - 1) * 5
@@ -391,7 +391,7 @@ enum ReportBuilder {
         let style = NSMutableParagraphStyle()
         style.alignment = NSTextAlignment.center
         style.lineSpacing = 3
-        let attr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: style]
+        let attr: [NSAttributedString.Key: Any] = [.font: font, .ligature: 0, .foregroundColor: color, .paragraphStyle: style]
         let h = (text as NSString).boundingRect(with: CGSize(width: width - 96, height: .greatestFiniteMagnitude),
                                                  options: [.usesLineFragmentOrigin], attributes: attr, context: nil).height
         (text as NSString).draw(with: CGRect(x: 48, y: y, width: width - 96, height: h),
@@ -403,7 +403,7 @@ enum ReportBuilder {
     private static func drawLeft(ctx: CGContext, text: String, font: UIFont, y: CGFloat, x: CGFloat, width: CGFloat, color: UIColor) -> CGFloat {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = 3
-        let attr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: style]
+        let attr: [NSAttributedString.Key: Any] = [.font: font, .ligature: 0, .foregroundColor: color, .paragraphStyle: style]
         let h = (text as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
                                                  options: [.usesLineFragmentOrigin], attributes: attr, context: nil).height
         (text as NSString).draw(with: CGRect(x: x, y: y, width: width, height: h),
@@ -443,7 +443,7 @@ enum ReportBuilder {
         let sealFont = UIFont(name: V5PublicationStyle.emphasizedFontName, size: 16) ?? UIFont.boldSystemFont(ofSize: 16)
         let sealStyle = NSMutableParagraphStyle()
         sealStyle.alignment = NSTextAlignment.center
-        let sealAttr: [NSAttributedString.Key: Any] = [.font: sealFont, .foregroundColor: UIColor.white, .paragraphStyle: sealStyle]
+        let sealAttr: [NSAttributedString.Key: Any] = [.font: sealFont, .ligature: 0, .foregroundColor: UIColor.white, .paragraphStyle: sealStyle]
         ("三术" as NSString).draw(with: CGRect(x: sealRect.minX, y: sealRect.minY + 12, width: sealSize, height: 20), options: [], attributes: sealAttr, context: nil)
         ("合参" as NSString).draw(with: CGRect(x: sealRect.minX, y: sealRect.minY + 32, width: sealSize, height: 20), options: [], attributes: sealAttr, context: nil)
         let df = DateFormatter()
@@ -501,7 +501,7 @@ enum ReportBuilder {
     private static func drawTOCItemCell(ctx: CGContext, title: String, page: Int, y: CGFloat, x: CGFloat, width: CGFloat, font: UIFont, ink: UIColor) {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = 3
-        let titleAttr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: ink, .paragraphStyle: style]
+        let titleAttr: [NSAttributedString.Key: Any] = [.font: font, .ligature: 0, .foregroundColor: ink, .paragraphStyle: style]
         let h = (title as NSString).boundingRect(with: CGSize(width: width - 40, height: .greatestFiniteMagnitude),
                                                   options: [.usesLineFragmentOrigin], attributes: titleAttr, context: nil).height
         (title as NSString).draw(with: CGRect(x: x, y: y, width: width - 40, height: h),
@@ -509,7 +509,7 @@ enum ReportBuilder {
         let pageText = "\(page)"
         let pageStyle = NSMutableParagraphStyle()
         pageStyle.alignment = NSTextAlignment.right
-        let pageAttr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: ink, .paragraphStyle: pageStyle]
+        let pageAttr: [NSAttributedString.Key: Any] = [.font: font, .ligature: 0, .foregroundColor: ink, .paragraphStyle: pageStyle]
         (pageText as NSString).draw(with: CGRect(x: x + width - 32, y: y, width: 32, height: h),
                                      options: [.usesLineFragmentOrigin], attributes: pageAttr, context: nil)
     }
@@ -518,7 +518,7 @@ enum ReportBuilder {
     private static func drawTOCRow(ctx: CGContext, title: String, page: Int, y: CGFloat, x: CGFloat, width: CGFloat, bodyFont: UIFont, ink: UIColor, sub: UIColor) -> CGFloat {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = 3
-        let titleAttr: [NSAttributedString.Key: Any] = [.font: bodyFont, .foregroundColor: ink, .paragraphStyle: style]
+        let titleAttr: [NSAttributedString.Key: Any] = [.font: bodyFont, .ligature: 0, .foregroundColor: ink, .paragraphStyle: style]
         let h = (title as NSString).boundingRect(with: CGSize(width: width - 60, height: .greatestFiniteMagnitude),
                                                   options: [.usesLineFragmentOrigin], attributes: titleAttr, context: nil).height
         (title as NSString).draw(with: CGRect(x: x, y: y, width: width - 60, height: h),
@@ -526,7 +526,7 @@ enum ReportBuilder {
         let pageText = "\(page)"
         let pageStyle = NSMutableParagraphStyle()
         pageStyle.alignment = NSTextAlignment.right
-        let pageAttr: [NSAttributedString.Key: Any] = [.font: bodyFont, .foregroundColor: ink, .paragraphStyle: pageStyle]
+        let pageAttr: [NSAttributedString.Key: Any] = [.font: bodyFont, .ligature: 0, .foregroundColor: ink, .paragraphStyle: pageStyle]
         (pageText as NSString).draw(with: CGRect(x: x + width - 50, y: y, width: 50, height: h),
                                      options: [.usesLineFragmentOrigin], attributes: pageAttr, context: nil)
         ctx.setStrokeColor(sub.withAlphaComponent(0.4).cgColor)
@@ -543,7 +543,7 @@ enum ReportBuilder {
         let color = cover ? publication.coverSecondary : publication.pageSecondary
         let style = NSMutableParagraphStyle()
         style.alignment = NSTextAlignment.center
-        let attr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: style]
+        let attr: [NSAttributedString.Key: Any] = [.font: font, .ligature: 0, .foregroundColor: color, .paragraphStyle: style]
         let text = "三术合参 · 命书 — 第 \(page) 页（共 \(total) 页）"
         (text as NSString).draw(with: CGRect(x: 48, y: 812, width: pageRect.width - 96, height: 12),
                                  options: [.usesLineFragmentOrigin], attributes: attr, context: nil)

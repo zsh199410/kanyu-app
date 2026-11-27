@@ -177,7 +177,7 @@ new_test_blobs = {
     'Resources/Fonts/NotoSerifCJKsc-SemiBold.otf': '41668d00fa67926d143544ddba2937b7d7f6fcf6',
     'Resources/Fonts/NotoSerifCJKsc-Regular.otf': 'cba8a4783cc38574ac7cda52cae7d9b4241c07a5',
     'Tests/V5FormalPDFExportTests.swift': '8d3a2f094cda7f87d5a25322fd956307cdb03cda',
-    'Tests/V5PublicationStyleTests.swift': '714abf93c220f9678b462935c63591b5408f77de',
+    'Tests/V5PublicationStyleTests.swift': '8b1b394fab0b986790e2033286f08b93e455b739',
     'UITests/V5VisualAcceptanceTests.swift': '73db2e447be313d441f115f5430c83ca6a30a815',
     'Tests/PosterCanvasMatteTests.swift': '54cfbde4618d5f7e4e5ec5148f5530174c21cbfd',
     'Tests/V5NavigationPathIsolationTests.swift': 'a1c08bbcdcee1803835cfce7485960c259969bf9',

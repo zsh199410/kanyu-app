@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   actual-ui:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, '[visual]') || startsWith(github.event.head_commit.message, '[acceptance]')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, '[visual]') || startsWith(github.event.head_commit.message, '[acceptance]') || startsWith(github.event.head_commit.message, '[publication]')
     runs-on: macos-26
     timeout-minutes: 40
     steps:
@@ -54,7 +54,7 @@ jobs:
           DEST=$(cat build/destination.txt)
           xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5TypographyTests -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
       - name: Capture actual four-theme screens on identical data
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' && inputs.scope != 'publication' }}
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' && inputs.scope != 'publication' && !startsWith(github.event.head_commit.message, '[publication]') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -73,7 +73,7 @@ jobs:
             xcrun xcresulttool export attachments --path build/PDF.xcresult --output-path build/attachments/PDF
           fi
       - name: Required art readiness (does not grant visual approval)
-        if: always()
+        if: always() && inputs.scope != 'publication' && !startsWith(github.event.head_commit.message, '[publication]')
         run: python3 design/v5/verify_artwork.py --output build/artwork-readiness.json --strict
       - uses: actions/upload-artifact@v4
         if: always()

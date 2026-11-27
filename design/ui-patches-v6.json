@@ -2206,5 +2206,35 @@
     "before": "UIFont(name: V5Typeface.emphasizedName, size: 16)",
     "after": "UIFont(name: V5PublicationStyle.emphasizedFontName, size: 16)",
     "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: bodyFont,",
+    "after": "[.font: bodyFont, .ligature: 0,",
+    "count": 2
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: font,",
+    "after": "[.font: font, .ligature: 0,",
+    "count": 6
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: nextFont,",
+    "after": "[.font: nextFont, .ligature: 0,",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: placed.font,",
+    "after": "[.font: placed.font, .ligature: 0,",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: sealFont,",
+    "after": "[.font: sealFont, .ligature: 0,",
+    "count": 1
   }
 ]

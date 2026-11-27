@@ -65,6 +65,18 @@ final class V5PublicationStyleTests: XCTestCase {
             }
         }
     }
+    func testRepeatedEmDashPreservesOriginalCodePointsInPDFKit() throws {
+        // CoreText's default ligature maps two U+2014 characters to U+2E3A.
+        // No compatibility normalization is allowed to disguise a changed source string.
+        let original = "甲——乙——丙；office 2026–2035，原文标点不替换。"
+        for theme in V5Theme.allCases {
+            let document = try XCTUnwrap(PDFDocument(data: rawPDF(style: V5PublicationStyle(theme: theme), texts: [original])))
+            let extracted = normalized(try XCTUnwrap(document.page(at: 0)?.string))
+            XCTAssertTrue(extracted.contains(normalized(original)), theme.rawValue)
+            XCTAssertFalse(extracted.contains("⸺"), "The original double em dash must not become a different code point")
+        }
+    }
+
     func testOverflowRejectsRatherThanSilentlyClippingDynamicText() throws {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 595, height: 842))
         let style = V5PublicationStyle(theme: .song)
