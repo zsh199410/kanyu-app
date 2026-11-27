@@ -95,22 +95,44 @@ struct V5LibraryPage: View {
         }
         .refreshable { revision += 1 }
     }
+    private var currentPersonPDF: ReportHistoryEntry? {
+        guard let id = selected?.id else { return nil }
+        return entries.first { $0.personID == id && $0.url.pathExtension.lowercased() == "pdf" }
+    }
     private var personContext: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let person = selected {
-                Text("当前命主 · \(person.name)").font(.headline).fixedSize(horizontal: false, vertical: true)
-                Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
-                    .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                    .accessibilityIdentifier("v5.profile.uuid").accessibilityValue(person.id.uuidString)
-                NavigationLink { PersonDetailView(person: person, store: people) } label: {
-                    Label("生成命书与专业解读", systemImage: "plus.circle").font(.subheadline.weight(.medium)).frame(minHeight: V5Metric.target)
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+        return layout {
+            Group {
+                if loading {
+                    ProgressView().frame(height: 124).accessibilityLabel("正在读取个人卷")
+                } else if let report = currentPersonPDF {
+                    V5WorkThumbnail(url: report.url, modifiedAt: report.generatedAt)
+                        .accessibilityLabel("当前命主已存命书的真实首页")
+                } else {
+                    // This is the not-yet-generated personal-volume entry, never a saved-work thumbnail.
+                    // Independent cover artwork remains supplied and reviewed through the shared component.
+                    V5BookCover(personName: selected?.name).accessibilityHidden(true)
                 }
-            } else {
-                NavigationLink { V5ProfilesPage() } label: {
-                    Label("先建立命主档案", systemImage: "person.badge.plus").frame(minHeight: V5Metric.target)
+            }.frame(width: 88)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(selected == nil ? "个人命书" : "个人卷 · 当前命主").font(.caption.weight(.medium))
+                    .foregroundStyle(V5Palette.color(V5Palette.current.ornamentText))
+                if let person = selected {
+                    Text(person.name).font(.headline).fixedSize(horizontal: false, vertical: true)
+                    Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
+                        .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                        .accessibilityIdentifier("v5.profile.uuid").accessibilityValue(person.id.uuidString)
+                    NavigationLink { PersonDetailView(person: person, store: people) } label: {
+                        Label("生成命书与专业解读", systemImage: "plus.circle").font(.subheadline.weight(.medium)).frame(minHeight: V5Metric.target)
+                    }
+                } else {
+                    Text("建立档案，开启你的个人命书。").font(.subheadline)
+                    NavigationLink { V5ProfilesPage() } label: {
+                        Label("先建立命主档案", systemImage: "person.badge.plus").frame(minHeight: V5Metric.target)
+                    }
                 }
-            }
-        }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background { V5Surface() }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(.vertical, 6)
     }
     private func workCell(_ entry: ReportHistoryEntry) -> some View {
         VStack(alignment: .leading, spacing: 9) {
