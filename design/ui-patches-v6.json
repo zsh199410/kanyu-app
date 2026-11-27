@@ -2248,5 +2248,11 @@
     "before": "CURRENT_PROJECT_VERSION: 703",
     "after": "CURRENT_PROJECT_VERSION: 704",
     "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "CURRENT_PROJECT_VERSION: 704",
+    "after": "CURRENT_PROJECT_VERSION: 705",
+    "count": 1
   }
 ]

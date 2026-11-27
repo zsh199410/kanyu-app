@@ -117,22 +117,6 @@ struct V5ProShell: View {
     @StateObject private var router = V5Router()
     @EnvironmentObject private var people: PeopleStore
     private var theme: V5Theme { V5ThemeStore.shared.theme }
-    init() {
-        // Keep the native tab/VoiceOver contract while removing the heavy custom
-        // selection plate. Tint and actual original glyphs remain theme driven.
-        let appearance = UITabBarAppearance()
-        appearance.configureWithTransparentBackground()
-        let format = UIGraphicsImageRendererFormat();format.opaque = false
-        appearance.selectionIndicatorImage = UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1), format: format).image { _ in }
-        appearance.selectionIndicatorTintColor = .clear
-        appearance.shadowColor = .clear
-        for item in [appearance.stackedLayoutAppearance, appearance.inlineLayoutAppearance, appearance.compactInlineLayoutAppearance] {
-            item.normal.titleTextAttributes = [.font: UIFontMetrics(forTextStyle: .caption2).scaledFont(for: UIFont.systemFont(ofSize: 11, weight: .regular))]
-            item.selected.titleTextAttributes = [.font: UIFontMetrics(forTextStyle: .caption2).scaledFont(for: UIFont.systemFont(ofSize: 11, weight: .semibold))]
-        }
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
-    }
     var body: some View {
         TabView(selection: $router.tab) {
             root(0) { V5HomeView() }
@@ -144,8 +128,12 @@ struct V5ProShell: View {
             root(3) { V5ProfilesPage().accessibilityIdentifier("v5.people") }
                 .tabItem { Label { Text("档案") } icon: { tabIcon(.navProfiles, symbol: "person.crop.circle") } }.tag(3)
         }
-        .toolbarBackground(V5Palette.color(theme.palette.paper).opacity(0.96), for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
+        .toolbar(.hidden, for: .tabBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            V5BottomNavigation(selection: $router.tab, theme: theme)
+                .frame(height: 60)
+                .background(V5Palette.color(theme.palette.paper).ignoresSafeArea(edges: .bottom))
+        }
         .environmentObject(router)
         .tint(V5Palette.color(theme.palette.accent))
         .preferredColorScheme(theme.scheme)
