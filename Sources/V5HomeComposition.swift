@@ -32,9 +32,9 @@ struct V5PersonHero: View {
                     Text("\(person.relation.isEmpty ? "已建档" : person.relation) · \(person.gender == "M" ? "男" : "女")")
                         .font(.subheadline).foregroundStyle(V5Palette.color(p.heroSecondary))
                 } else {
-                    Text("一人一命书").font(V5Typography.song(.title))
+                    Text("添加第一位家人或命主档案").font(V5Typography.song(.headline, emphasis: true))
                     Text("建立真实档案，贯通命盘与解读。").font(.subheadline)
-                    Button("添加第一位家人或命主档案") { creating = true }.frame(minHeight: V5Metric.target)
+                    Button("建立档案") { creating = true }.frame(minHeight: V5Metric.target)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
             if !typeSize.isAccessibilitySize, let object = V5ArtworkRegistry.image(.personObject) {

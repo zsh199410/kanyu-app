@@ -132,6 +132,12 @@ def main():
             app = directory / 'DD/Build/Products/Debug-iphonesimulator/Kanyu.app'
             info = plistlib.loads((app / 'Info.plist').read_bytes())
             assert info['CFBundleIdentifier'] == BUNDLE, 'Refuse to exercise the normal app bundle'
+            font_manifest = ROOT / 'design/v5/font-provenance.json'
+            if font_manifest.exists():
+                expected_fonts = [Path(font['path']).name for font in json.loads(font_manifest.read_text())['fonts']]
+                assert set(expected_fonts) <= set(info.get('UIAppFonts', [])), 'QA Info.plist lost production font registration'
+                assert all((app / name).is_file() for name in expected_fonts), 'QA bundle lost production font resources'
+                report['registeredFonts'] = expected_fonts
             # RC #8: pre-grant location so the system permission alert never
             # appears during the acceptance run (it blocked the QA environment
             # label read in dark-accessibility). Install first so the grant has
