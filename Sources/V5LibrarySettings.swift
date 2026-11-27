@@ -20,7 +20,7 @@ struct V5SettingsPage: View {
                 group("数据与通知") {
                     NavigationLink { BackupView() } label: { row("数据备份与恢复", "沿用完整备份校验与恢复流程", "externaldrive") }
                     NavigationLink { PeopleView() } label: { row("人物 JSON 导入与导出", "保留原有档案交换格式", "person.2") }
-                    NavigationLink { MyView() } label: { row("本地通知与原有偏好", "每日运势提醒、推送时间及全部原有设置", "bell") }
+                    V5LibraryNotificationSettings()
                 }
                 group("古籍与来源") {
                     NavigationLink { ClassicsView() } label: { row("古籍原文检索", "公有领域原文逐句对照与检索", "books.vertical") }
@@ -47,6 +47,66 @@ struct V5SettingsPage: View {
                 Text(title).font(.title2.bold())
                 content()
             }
+        }
+    }
+}
+
+
+private struct V5LibraryNotificationSettings: View {
+    @EnvironmentObject private var people: PeopleStore
+    @AppStorage("todayNotify.enabled") private var enabled = false
+    @AppStorage("todayNotify.hour") private var hour = 7
+    @AppStorage("todayNotify.minute") private var minute = 30
+    @State private var notice = ""
+    private var notificationPerson: Person? {
+        people.people.first(where: { $0.relation == "本人" }) ?? people.people.first
+    }
+    private var time: Binding<Date> {
+        Binding(get: {
+            var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+            components.hour = hour; components.minute = minute
+            return Calendar.current.date(from: components) ?? Date()
+        }, set: { date in
+            let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+            hour = components.hour ?? 7; minute = components.minute ?? 30
+            if enabled { TodayNotificationManager.scheduleDaily(person: notificationPerson) }
+        })
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle("每日推送今日运势", isOn: $enabled)
+                .frame(minHeight: V5Metric.target)
+                .onChange(of: enabled) { _, value in
+                    notice = ""
+                    if value {
+                        TodayNotificationManager.requestAuthorization { granted in
+                            Task { @MainActor in
+                                guard enabled else { return }
+                                if granted {
+                                    TodayNotificationManager.scheduleDaily(person: notificationPerson)
+                                } else {
+                                    enabled = false
+                                    notice = "系统尚未允许通知，可在 iPhone 系统设置中为三术合参开启通知权限。"
+                                }
+                            }
+                        }
+                    } else { TodayNotificationManager.cancel() }
+                }
+            if enabled {
+                DatePicker("推送时间", selection: time, displayedComponents: .hourAndMinute)
+                    .frame(minHeight: V5Metric.target)
+                Text("按设备本地时间提醒。沿用既有通知规则：本人档案优先，其次为第一位档案。")
+                    .font(.footnote)
+                if let person = notificationPerson {
+                    Text("提醒命主：\(person.name) · 档案 \(person.id.uuidString.prefix(8))").font(.caption)
+                } else {
+                    Text("尚无档案，当前不会安排提醒；添加人物后请重新开启通知。上方开关仅保存提醒偏好。")
+                        .font(.footnote)
+                }
+            }
+            if !notice.isEmpty { Text(notice).font(.footnote).accessibilityIdentifier("v5.settings.notificationStatus") }
+            Text("默认关闭；每天一条本机通知，不走服务端。可随时关闭取消排期。")
+                .font(.footnote).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
         }
     }
 }
