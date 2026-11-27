@@ -13,6 +13,7 @@ final class V5NavigationUITests: XCTestCase {
             let tab = app.tabBars.buttons[title]
             XCTAssertTrue(tab.waitForExistence(timeout: 15), title)
             tab.tap()
+            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 10), "Native tab title did not attach: \(title)")
             XCTAssertTrue(app.descendants(matching: .any).matching(identifier: identity).firstMatch.waitForExistence(timeout: 10), identity)
         }
         app.tabBars.buttons["首页"].tap()

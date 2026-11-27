@@ -182,7 +182,7 @@ struct V5ProfilesPage: View {
         }
         .background(V5Palette.color(V5Palette.current.paper)).foregroundStyle(V5Palette.color(V5Palette.current.ink))
         .navigationTitle("档案").navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $query, prompt: "姓名、关系或标签")
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "姓名、关系或标签")
         // The existing form owns its sheet NavigationStack; the V5 page never nests a root stack.
         .sheet(item: $editing) { PersonFormView(store: people, person: $0) }
         .alert("删除人物档案？", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })) {

@@ -39,7 +39,7 @@ enum V5Theme: String, CaseIterable, Identifiable {
 }
 struct V5Palette {
     let paper: UInt32, surface: UInt32, ink: UInt32, secondary: UInt32, accent: UInt32, ornament: UInt32
-    var success: UInt32 { paper == 0x101C29 ? 0x52B788 : 0x367552 }
+    var success: UInt32 { paper == 0x101C29 ? 0x52B788 : 0x306B4B }
     var failure: UInt32 { paper == 0x101C29 ? 0xE98A76 : 0x9A2A22 }
     var ornamentText: UInt32 { paper == 0x101C29 ? 0xD9B879 : 0x785521 }
     static var current: V5Palette {
@@ -85,7 +85,10 @@ enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, tools, settings,
     @Published var tab = 0
     @Published var paths: [Int: [V5Route]] = [:]
     func open(_ route: V5Route) { paths[tab, default: []].append(route) }
-    var path: Binding<[V5Route]> { Binding(get: { self.paths[self.tab] ?? [] }, set: { self.paths[self.tab] = $0 }) }
+    func path(for tab: Int) -> Binding<[V5Route]> {
+        Binding(get: { self.paths[tab] ?? [] }, set: { self.paths[tab] = $0 })
+    }
+    var path: Binding<[V5Route]> { path(for: tab) }
     /// Old feature views keep their semantic destinations; old tab numbers never select V5 tabs directly.
     var legacySelection: Binding<Int> {
         Binding(get: { 0 }, set: { value in
@@ -104,16 +107,25 @@ struct V5ProShell: View {
     @EnvironmentObject private var people: PeopleStore
     private var theme: V5Theme { V5ThemeStore.shared.theme }
     var body: some View {
-        NavigationStack(path: router.path) {
-            TabView(selection: $router.tab) {
-                V5HomeView().accessibilityIdentifier("v5.home").tabItem { Label("首页", systemImage: "house") }.tag(0)
-                V5CalculationHub().accessibilityIdentifier("v5.measure").tabItem { Label("测算", systemImage: "safari") }.tag(1)
-                V5LibraryPage()
-                    .accessibilityIdentifier("v5.reports")
-                    .id(people.currentPerson?.id)
-                    .tabItem { Label("命书", systemImage: "book.closed") }.tag(2)
-                V5ProfilesPage().accessibilityIdentifier("v5.people").tabItem { Label("档案", systemImage: "person.crop.circle") }.tag(3)
-            }
+        TabView(selection: $router.tab) {
+            root(0) { V5HomeView().accessibilityIdentifier("v5.home") }
+                .tabItem { Label("首页", systemImage: "house") }.tag(0)
+            root(1) { V5CalculationHub().accessibilityIdentifier("v5.measure") }
+                .tabItem { Label("测算", systemImage: "safari") }.tag(1)
+            root(2) { V5LibraryPage().id(people.currentPerson?.id).accessibilityIdentifier("v5.reports") }
+                .tabItem { Label("命书", systemImage: "book.closed") }.tag(2)
+            root(3) { V5ProfilesPage().accessibilityIdentifier("v5.people") }
+                .tabItem { Label("档案", systemImage: "person.crop.circle") }.tag(3)
+        }
+        .environmentObject(router)
+        .tint(V5Palette.color(theme.palette.accent))
+        .preferredColorScheme(theme.scheme)
+    }
+    // Sibling stacks share typed routing; each tab owns its native title/search
+    // preferences and stable path binding. There is no stack nested around TabView.
+    private func root<Content: View>(_ tab: Int, @ViewBuilder content: () -> Content) -> some View {
+        NavigationStack(path: router.path(for: tab)) {
+            content()
             .navigationDestination(for: V5Route.self) { route in
                 switch route {
                 case .bazi: V5BaziPage().id(people.currentPerson)
@@ -142,9 +154,6 @@ struct V5ProShell: View {
                 }
             }
         }
-        .environmentObject(router)
-        .tint(V5Palette.color(theme.palette.accent))
-        .preferredColorScheme(theme.scheme)
     }
 }
 struct V5HomeView: View {

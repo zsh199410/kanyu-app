@@ -12,7 +12,7 @@ struct V5ElementCycle: View {
     var body: some View {
         if valid {
             VStack(alignment: .leading, spacing: 12) {
-                if !typeSize.isAccessibilitySize {
+                if typeSize <= .large {
                     GeometryReader { geometry in
                         let side = min(geometry.size.width, geometry.size.height)
                         let center = CGPoint(x: geometry.size.width / 2, y: side / 2)

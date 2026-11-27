@@ -19,6 +19,8 @@ private struct V5ObservationPage: View {
     @EnvironmentObject private var router: V5Router
     @State private var records: [PalmRecord] = []
     @State private var recordError: String?
+    @State private var reading = true
+    @State private var revision = 0
     private var ownedRecords: [PalmRecord] {
         guard let person = people.currentPerson else { return [] }
         return records.filter { $0.personID == person.id && $0.kind == kind.recordKind }
@@ -64,8 +66,9 @@ private struct V5ObservationPage: View {
         }
         .v5ObservationBackground(title: kind.title)
         .accessibilityIdentifier(kind == .hand ? "v5.palm.page" : "v5.face.page")
-        .onAppear { loadRecordSnapshot() }
-        .onChange(of: people.currentPerson?.id) { _, _ in loadRecordSnapshot() }
+        .task(id: "\(people.currentPerson?.id.uuidString ?? "none"):\(revision)") {
+            await loadRecordSnapshot()
+        }
     }
     @ViewBuilder private var guideEntry: some View {
         if kind == .hand {
@@ -102,8 +105,10 @@ private struct V5ObservationPage: View {
     private var recordSection: some View {
         VStack(alignment: .leading, spacing: V5Metric.gap) {
             V5SectionHeading(title: "当前人物的观测记录", subtitle: "仅显示明确归属当前人物 UUID 的\(kind.recordKind)记录。")
-            if let recordError {
-                V5StatusPanel(state: .failure, title: "记录暂时无法读取", message: recordError, retry: loadRecordSnapshot)
+            if reading {
+                ProgressView("正在读取本机观测记录")
+            } else if let recordError {
+                V5StatusPanel(state: .failure, title: "记录暂时无法读取", message: recordError, retry: { revision += 1 })
             } else if people.currentPerson == nil {
                 V5StatusPanel(state: .empty, title: "尚未选择人物", message: "选择档案后查看该人物的观测记录。")
             } else if ownedRecords.isEmpty {
@@ -130,13 +135,26 @@ private struct V5ObservationPage: View {
     /// Read-only snapshot of the existing Codable index. Do not instantiate a second
     /// mutable PalmRecordStore at this entrance: its init performs legacy migration.
     /// Reload after returning from measurement so summaries reflect the original store's saves.
-    private func loadRecordSnapshot() {
-        records = []; recordError = nil
-        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("palm_records.json")
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
-        do { records = try JSONDecoder().decode([PalmRecord].self, from: Data(contentsOf: url)) }
-        catch { recordError = "未能读取已保存的测量索引。请重试，或进入原记录工作台检查。原文件保持不变。" }
+    private func loadRecordSnapshot() async {
+        reading = true; recordError = nil
+        let worker = Task.detached(priority: .utility) { () throws -> [PalmRecord] in
+            try Task.checkCancellation()
+            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("palm_records.json")
+            guard FileManager.default.fileExists(atPath: url.path) else { return [] }
+            let snapshot = try JSONDecoder().decode([PalmRecord].self, from: Data(contentsOf: url, options: .mappedIfSafe))
+            try Task.checkCancellation()
+            return snapshot
+        }
+        do {
+            let snapshot = try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
+            guard !Task.isCancelled else { return }
+            records = snapshot; reading = false
+        } catch {
+            guard !Task.isCancelled else { return }
+            records = []; reading = false
+            recordError = "未能读取已保存的测量索引。请重试，或进入原记录工作台检查。原文件保持不变。"
+        }
     }
 }
 

@@ -21,9 +21,11 @@ final class V5PersonLifecycleUITests: XCTestCase {
         }
         func reveal(_ element: XCUIElement) {
             let scroll = app.scrollViews.firstMatch
-            for _ in 0..<12 {
-                if element.exists && element.isHittable { return }
-                scroll.swipeUp()
+            for upward in [true, false] {
+                for _ in 0..<12 {
+                    if element.exists && element.isHittable { return }
+                    if upward { scroll.swipeUp() } else { scroll.swipeDown() }
+                }
             }
             XCTFail("Profile control unreachable: \(element.identifier)")
         }
