@@ -3,7 +3,7 @@ import ImageIO
 import UIKit
 
 /// Reads the saved work itself. No template, generated cover, or icon is presented as a preview.
-private struct V5WorkThumbnailBitmap {
+struct V5WorkThumbnailBitmap {
     let image: UIImage
     let showsUpperRegion: Bool
 }
@@ -61,7 +61,7 @@ struct V5WorkThumbnail: View {
 }
 
 /// Serial off-main rendering bounds concurrent decode work; a strict LRU bounds retained bitmap bytes.
-private actor V5WorkThumbnailStore {
+actor V5WorkThumbnailStore {
     static let shared = V5WorkThumbnailStore()
     private struct Cached { let bitmap: V5WorkThumbnailBitmap; let bytes: Int }
     private var cache: [String: Cached] = [:]
