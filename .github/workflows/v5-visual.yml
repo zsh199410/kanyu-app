@@ -2,10 +2,17 @@ name: V5 actual native UI evidence (visual approval separate)
 on:
   push:
     branches: [codex/v5-oriental-pro-redesign]
+  workflow_dispatch:
+    inputs:
+      scope:
+        type: choice
+        default: all
+        options: [all, publication, visuals]
 permissions:
   contents: read
 jobs:
   actual-ui:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, '[visual]') || startsWith(github.event.head_commit.message, '[acceptance]')
     runs-on: macos-26
     timeout-minutes: 40
     steps:
@@ -40,13 +47,14 @@ jobs:
           cp design/v5/visual-fixture.json "$CONTAINER/Documents/people.json"
           cp design/v5/visual-fixture.json build/fixture.json
       - name: Verify actual four-theme publication PDFs
+        if: inputs.scope != 'visuals'
         shell: bash
         run: |
           set -euo pipefail
           DEST=$(cat build/destination.txt)
           xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5TypographyTests -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
       - name: Capture actual four-theme screens on identical data
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' && inputs.scope != 'publication' }}
         shell: bash
         run: |
           set -euo pipefail

@@ -28,6 +28,14 @@ with zipfile.ZipFile(a.ipa) as z:
     assert info['CFBundlePackageType'] == 'APPL'
     assert 'iPhoneOS' in info['CFBundleSupportedPlatforms']
     assert info['MinimumOSVersion'] == '17.0'
+    font_manifest = json.loads((Path(__file__).parent / 'font-provenance.json').read_text())
+    expected_fonts = {Path(font['path']).name: font['sha256'] for font in font_manifest['fonts']}
+    assert sorted(info.get('UIAppFonts', [])) == sorted(expected_fonts), 'Release font registration mismatch'
+    bundled_fonts = {}
+    for name, expected_sha in expected_fonts.items():
+        actual_sha = hashlib.sha256(z.read(root + name)).hexdigest()
+        assert actual_sha == expected_sha, f'Release font bytes mismatch: {name}'
+        bundled_fonts[name] = actual_sha
     executable = info['CFBundleExecutable']
     assert executable and '/' not in executable and executable not in ('.', '..')
     binary = z.read(root + executable)
@@ -39,7 +47,7 @@ with zipfile.ZipFile(a.ipa) as z:
     assert not signature and not provision, 'Unexpected main app signing payload'
 receipt = dict(commit=commit, version=a.version, build=a.build,
                bundleID=info['CFBundleIdentifier'], bytes=a.ipa.stat().st_size,
-               sha256=sha, zipCRC='PASS', executable=executable,
+               sha256=sha, zipCRC='PASS', executable=executable, registeredFonts=bundled_fonts,
                mainAppCodeResources=signature, embeddedProvision=provision,
                signingRequested=False, classification='unsigned engineering candidate',
                fullVisualAcceptance=False, physicalDeviceAcceptance=False)

@@ -1,0 +1,25 @@
+name: V5 PDFKit original evidence diagnostic
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: macos-26
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: v5-actual-ui-306f534bb96e57726ba3bda87612a7b5da44d512
+          run-id: 45958565676
+          github-token: ${{ github.token }}
+          path: build/prior
+      - name: Read original export with platform PDFKit
+        run: swift design/v5/inspect_pdfkit.swift build/prior/attachments/PDF build/pdfkit-original.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v5-pdfkit-original-${{ github.sha }}
+          path: build/pdfkit-original.json
