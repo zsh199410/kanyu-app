@@ -7,6 +7,7 @@ struct V5PersonPicker: View {
     @EnvironmentObject private var router: V5Router
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    @Environment(\.dynamicTypeSize) private var typeSize
     private var matches: [Person] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !term.isEmpty else { return people.people }
@@ -72,11 +73,13 @@ struct V5PersonPicker: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(displayName(person)).font(V5Typography.song(.title3, emphasis: true))
                             .fixedSize(horizontal: false, vertical: true)
-                        Text(details(person)).font(V5Typography.evidence)
+                        Text(typeSize.isAccessibilitySize ? String(DisplayTimeReceipt.beijing(person.birthDate).prefix(10)) : details(person)).font(V5Typography.evidence)
                             .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
-                            .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                        if !typeSize.isAccessibilitySize || hasNamesake {
+                            Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
+                                .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                        }
                     }
                     Spacer(minLength: 0)
                     Image(systemName: selected ? "checkmark.circle.fill" : "circle")
@@ -85,16 +88,16 @@ struct V5PersonPicker: View {
                 }.frame(maxWidth: .infinity, minHeight: V5Metric.target, alignment: .leading)
                     .contentShape(Rectangle())
             }
+            // Semantics belong to the native Button's label. Applying ignore to the
+            // styled Button itself creates a separate Other element on iOS 26.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(hasNamesake ? "选择命主：\(displayName(person))，\(details(person))，档案\(person.id.uuidString.prefix(8))" : "选择命主：\(displayName(person))")
+            .accessibilityValue("\(selected ? "当前命主，" : "")\(details(person))，档案\(person.id.uuidString)")
         }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        // Preserve the existing unique-name action label as a real accessibility
-        // contract. Namesakes receive the actual distinguishing birth/UUID receipt.
-        .accessibilityLabel(hasNamesake ? "选择命主：\(displayName(person))，\(details(person))，档案\(person.id.uuidString.prefix(8))" : "选择命主：\(displayName(person))")
-        .accessibilityValue("\(selected ? "当前命主，" : "")\(details(person))，档案\(person.id.uuidString)")
         .accessibilityHint("设为当前命主并关闭选择窗口")
         .accessibilityIdentifier("v5.person.choice." + person.id.uuidString)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .buttonStyle(.plain)
     }
     private func displayName(_ person: Person) -> String { person.name.isEmpty ? "未命名" : person.name }
     private func details(_ person: Person) -> String {

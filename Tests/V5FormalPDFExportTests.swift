@@ -33,23 +33,30 @@ final class V5FormalPDFExportTests: XCTestCase {
         let document = try XCTUnwrap(PDFDocument(data: bytes))
         XCTAssertGreaterThan(document.pageCount, 3)
         var body = ""
+        var extractionPassed = true
         for pageNumber in 0..<document.pageCount {
             let page = try XCTUnwrap(document.page(at: pageNumber))
             XCTAssertEqual(page.bounds(for: .mediaBox), V5PublicationStyle.a4)
             let text = normalized(try XCTUnwrap(page.string))
             let footer = normalized("三术合参 · 命书 — 第 \(pageNumber+1) 页（共 \(document.pageCount) 页）")
-            XCTAssertTrue(text.contains(footer), "Missing page furniture")
+            let footerPresent = text.contains(footer)
+            extractionPassed = extractionPassed && footerPresent
+            XCTAssertTrue(footerPresent, "Missing page furniture")
             if pageNumber >= 2 { body += text.replacingOccurrences(of: footer, with: "") }
         }
         for line in lines where !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            XCTAssertTrue(body.contains(normalized(line)), "Missing actual report text: \(line.prefix(100))")
+            let linePresent = body.contains(normalized(line))
+            extractionPassed = extractionPassed && linePresent
+            XCTAssertTrue(linePresent, "Missing actual report text: \(line.prefix(100))")
         }
-        XCTAssertTrue(normalized(document.page(at: 0)?.string ?? "").contains(person.name))
+        let ownerPresent = normalized(document.page(at: 0)?.string ?? "").contains(person.name)
+        extractionPassed = extractionPassed && ownerPresent
+        XCTAssertTrue(ownerPresent)
         let pdf = XCTAttachment(data: bytes, uniformTypeIdentifier: "com.adobe.pdf")
         pdf.name = "v5-formal-\(theme.rawValue)-professional";pdf.lifetime = .keepAlways;add(pdf)
         let receipt: [String: Any] = ["theme": theme.rawValue,"personID": person.id.uuidString,
             "pages": document.pageCount,"bytes": bytes.count,"sha256": digest,"sourceLineCount": lines.count,
-            "textExtraction": "PASS","visualApproval": false,"renderer": "ReportBuilder.makePDF"]
+            "textExtraction": extractionPassed ? "PASS" : "FAIL","visualApproval": false,"renderer": "ReportBuilder.makePDF"]
         let attachment = XCTAttachment(data: try JSONSerialization.data(withJSONObject: receipt, options: [.sortedKeys, .prettyPrinted]), uniformTypeIdentifier: "public.json")
         attachment.name = "v5-formal-\(theme.rawValue)-receipt";attachment.lifetime = .keepAlways;add(attachment)
     }
