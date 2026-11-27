@@ -179,6 +179,7 @@ new_test_blobs = {
     'UITests/V5HomeQuickCreateUITests.swift': 'e0cbb2a53541329f4c78a470d5f19a4658eddb57',
     'Tests/V5WorkThumbnailTests.swift': 'd24215c16216f3d25945968387c3f10a9e046632',
     'UITests/V5ArchiveCreationUITests.swift': '6aca4e99c4f51d5952787fb6fec9512c67a90500',
+    'UITests/V5PublicationSharingUITests.swift': '93a9231c15fcfde6e1f8d63d2ca1278273cf728f',
     'Tests/V5BottomNavigationTests.swift': '2f0a83c7adb6afcb65efa8ba7e5fad495dcda1c0',
     'Tests/V5FormalPDFExportTests.swift': '8d3a2f094cda7f87d5a25322fd956307cdb03cda',
     'Tests/V5PublicationStyleTests.swift': '8b1b394fab0b986790e2033286f08b93e455b739',
