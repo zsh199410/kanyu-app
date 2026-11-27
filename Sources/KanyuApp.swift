@@ -1300,17 +1300,17 @@ extension Color {
 
 enum Ky {
     // Compatibility facade; preserve call sites and the existing uiStyle preference.
-    static var bg: Color { .kyDyn(KanyuV6.Hex.paper, KanyuV6.Hex.obsidian) }
-    static var card: Color { .kyDyn(KanyuV6.Hex.ivory, KanyuV6.Hex.jadeCard) }
-    static var elevated: Color { .kyDyn(KanyuV6.Hex.elevatedLight, KanyuV6.Hex.elevatedDark) }
-    static var ink: Color { .kyDyn(KanyuV6.Hex.ink, KanyuV6.Hex.foregroundDark) }
-    static var sub: Color { .kyDyn(KanyuV6.Hex.secondaryLight, KanyuV6.Hex.secondaryDark) }
+    static var bg: Color { V5Palette.color(V5Palette.current.paper) }
+    static var card: Color { V5Palette.color(V5Palette.current.surface) }
+    static var elevated: Color { V5Palette.color(V5Palette.current.surface) }
+    static var ink: Color { V5Palette.color(V5Palette.current.ink) }
+    static var sub: Color { V5Palette.color(V5Palette.current.secondary) }
     // Legacy gold is frequently used as small text. Original bronze remains an ornament token.
-    static var gold: Color { .kyDyn(KanyuV6.Hex.bronzeText, KanyuV6.Hex.champagne) }
+    static var gold: Color { V5Palette.color(V5Palette.current.ornament) }
     static var cinnabar: Color { .kyDyn(KanyuV6.Hex.cinnabar, 0xE05A47) }
     static var jade: Color { .kyDyn(0x367552, 0x52B788) }
-    static var qingdai: Color { .kyDyn(KanyuV6.Hex.indigo, KanyuV6.Hex.nightIndigo) }
-    static var line: Color { .kyDyn(KanyuV6.Hex.ruleLight, KanyuV6.Hex.ruleDark) }
+    static var qingdai: Color { V5Palette.color(V5Palette.current.accent) }
+    static var line: Color { V5Palette.color(V5Palette.current.ornament) }
     static let instBg = Color(rgb: 0x111317)
     static let instGold = Color(rgb: 0xD1AC53)
     static let instCinnabar = Color(rgb: 0xE05A47)

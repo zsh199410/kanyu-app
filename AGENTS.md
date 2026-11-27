@@ -1,0 +1,14 @@
+# 三术合参 5.0 Pro 工程约束
+
+- 本分支为完整5.0研发候选，不得将局部实现标记完整验收。
+- main、原PR、Tests/UITests、design/acceptance、golden、算法和用户数据格式冻结。不得迁移数据库、签名、合并或发布。
+- 视觉源为机主参考包01/02；03/04是早期参考，GPT最终审美批准。禁止把整张参考图、示例人物/命盘/百分比嵌入UI。
+- 全部新增界面使用V5Theme/V5Palette/V5Metric；Ky为旧页面语义桥接。禁止再建独立界面色板。冻结海报专业配色由GPT在#137维护。
+- 四个一级入口：首页/测算/命书/档案。统一V5Router，旧tab编号必须经legacySelection转成语义路由，不得直接改选V5 tab。
+- 命主唯一来源为已有PeopleStore；按UUID归属，不按姓名推断。页面切换不得复制store或重建用户档案。
+- 无嵌套根NavigationStack；工具页导航及sheet逐项消除，完成前不得声称全页面重制。
+- 原创山水/星象仪/图标/封面等独立资源由GPT审核、Muse传输，缺失须登记，禁止低质量占位冒充定稿。
+- iOS最低17不升级；支持Dynamic Type/VoiceOver/Reduce Motion，触控48pt起。动画应使用既有KyMotion并尊重Reduce Motion。
+- 文件所有权：Codex负责RootTabView、Ky语义桥接、V5源文件/导航；GPT维护#137海报与视觉资产；Muse负责构建和取证。交叉改动先Issue20登记。
+- 旧五栏UI测试与四栏需求冲突必须明确报告；不得篡改旧测试或隐藏新UI。新合同/98%度量由GPT批准。
+- 交付区分静态/XCTest/模拟器/文件/未签名IPA/开发者签名IPA/真机。CI绿色不等于视觉通过。
