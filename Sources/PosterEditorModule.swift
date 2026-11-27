@@ -198,7 +198,7 @@ struct PosterEditorView: View {
             let scheme: ColorScheme = style == .xuanye ? .dark : .light
             let output: PosterRasterizer.Output
             do {
-                output = try PosterRasterizer.render(view.environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+                output = try PosterRasterizer.render(view.environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large), matte: style.exportMatteColor)
             } catch {
                 renderError = error.localizedDescription
                 return

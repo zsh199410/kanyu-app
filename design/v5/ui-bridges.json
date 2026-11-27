@@ -36,6 +36,18 @@
       "before": "static let minimumHitTarget: CGFloat = 44",
       "after": "static let minimumHitTarget: CGFloat = V5Metric.target",
       "count": 1
+    },
+    {
+      "path": "Sources/PosterRasterizer.swift",
+      "before": "static func render<Content: View>(_ content: Content, scale: CGFloat = 2) throws -> Output {",
+      "after": "static func render<Content: View>(_ content: Content, scale: CGFloat = 2, matte: Color = KanyuV6.Palette.paper) throws -> Output {",
+      "count": 1
+    },
+    {
+      "path": "Sources/PosterRasterizer.swift",
+      "before": "            context.scaleBy(x: scale, y: scale)\n            draw(context)",
+      "after": "            // Fill the complete integer-pixel canvas before SwiftUI draws. A\n            // fractional point height can otherwise leave a partial-alpha final\n            // row, and flexible ZStack backgrounds can leave transparent margins.\n            context.setFillColor(UIColor(matte).cgColor)\n            context.fill(CGRect(x: 0, y: 0, width: width, height: height))\n            context.scaleBy(x: scale, y: scale)\n            draw(context)",
+      "count": 1
     }
   ]
 }

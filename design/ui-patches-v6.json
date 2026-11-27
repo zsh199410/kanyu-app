@@ -2006,13 +2006,31 @@
   {
     "path": "project.yml",
     "before": "    CODE_SIGN_STYLE: Manual",
-    "after": "    CURRENT_PROJECT_VERSION: 700\n    CODE_SIGN_STYLE: Manual",
+    "after": "    CURRENT_PROJECT_VERSION: 701\n    CODE_SIGN_STYLE: Manual",
     "count": 1
   },
   {
     "path": "project.yml",
     "before": "CFBundleShortVersionString: \"4.6\"",
     "after": "CFBundleShortVersionString: \"5.0\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "extension PosterStyle {\n    var fileSuffix: String {",
+    "after": "extension PosterStyle {\n    var exportMatteColor: Color { palette.bg0 }\n    var fileSuffix: String {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": ".environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))",
+    "after": ".environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large), matte: style.exportMatteColor)",
+    "count": 3
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": ".environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))",
+    "after": ".environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large), matte: style.exportMatteColor)",
     "count": 1
   }
 ]

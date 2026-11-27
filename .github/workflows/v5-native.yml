@@ -20,6 +20,14 @@ jobs:
           xcodebuild -version
           brew install xcodegen
           xcodegen generate
+      - name: Formal poster and complete paper regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          git rev-parse HEAD > build/commit.txt
+          DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for v in d.values() for x in v if 'iPhone' in x['name']))")
+          xcodebuild test -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Posters.xcresult CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -parallel-testing-enabled NO -only-testing:KanyuTests/PosterCanvasMatteTests -only-testing:KanyuTests/PosterFamilyBitmapRegressionTests -only-testing:KanyuTests/PosterFamilyExportPathTests -only-testing:KanyuTests/PosterDynamicSnapshotTests -only-testing:KanyuTests/PosterRealDataBindingTests -only-testing:KanyuTests/PosterBatch2OwnershipTests -only-testing:KanyuTests/PosterFormalExportTests 2>&1 | tee build/posters.log
       - name: Compile native app and run all unit tests
         shell: bash
         run: |
@@ -35,15 +43,15 @@ jobs:
           xcodebuild build -project Kanyu.xcodeproj -scheme Kanyu -configuration Release -sdk iphoneos -derivedDataPath build/DeviceDD -clonedSourcePackagesDirPath build/SourcePackages CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/device-build.log
           mkdir -p Payload
           cp -R build/DeviceDD/Build/Products/Release-iphoneos/Kanyu.app Payload/
-          zip -qry Kanyu-5.0-700-unsigned-engineering.ipa Payload
+          zip -qry Kanyu-5.0-701-unsigned-engineering.ipa Payload
           codesign -dv --verbose=4 Payload/Kanyu.app > build/signature-status.txt 2>&1 || true
-          python3 design/v5/verify_ipa.py Kanyu-5.0-700-unsigned-engineering.ipa --version 5.0 --build 700 --output build/candidate-integrity.json
+          python3 design/v5/verify_ipa.py Kanyu-5.0-701-unsigned-engineering.ipa --version 5.0 --build 701 --output build/candidate-integrity.json
       - uses: actions/upload-artifact@v4
         with:
-          name: Kanyu-5.0-700-unsigned-engineering-${{ github.sha }}
+          name: Kanyu-5.0-701-unsigned-engineering-${{ github.sha }}
           path: |
-            Kanyu-5.0-700-unsigned-engineering.ipa
-            Kanyu-5.0-700-unsigned-engineering.ipa.sha256
+            Kanyu-5.0-701-unsigned-engineering.ipa
+            Kanyu-5.0-701-unsigned-engineering.ipa.sha256
             build/candidate-integrity.json
             build/signature-status.txt
             build/commit.txt
@@ -51,9 +59,11 @@ jobs:
       - name: Attachments
         if: always()
         run: |
-          if [ -d build/Share.xcresult ]; then
-            xcrun xcresulttool export attachments --path build/Share.xcresult --output-path build/attachments
-          fi
+          for RESULT in Share Posters; do
+            if [ -d "build/$RESULT.xcresult" ]; then
+              xcrun xcresulttool export attachments --path "build/$RESULT.xcresult" --output-path "build/attachments/$RESULT"
+            fi
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -62,6 +72,7 @@ jobs:
             build/*.log
             build/commit.txt
             build/Share.xcresult
+            build/Posters.xcresult
             build/attachments
           retention-days: 14
   provenance:
