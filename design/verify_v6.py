@@ -176,6 +176,7 @@ new_test_blobs = {
     'Resources/Fonts/LICENSE-NotoSerifCJK.txt': 'd952d62c065f3f35fb83a173496e90b21525aef3',
     'Resources/Fonts/NotoSerifCJKsc-SemiBold.otf': '41668d00fa67926d143544ddba2937b7d7f6fcf6',
     'Resources/Fonts/NotoSerifCJKsc-Regular.otf': 'cba8a4783cc38574ac7cda52cae7d9b4241c07a5',
+    'UITests/V5HomeQuickCreateUITests.swift': 'e0cbb2a53541329f4c78a470d5f19a4658eddb57',
     'Tests/V5FormalPDFExportTests.swift': '8d3a2f094cda7f87d5a25322fd956307cdb03cda',
     'Tests/V5PublicationStyleTests.swift': '8b1b394fab0b986790e2033286f08b93e455b739',
     'UITests/V5VisualAcceptanceTests.swift': '73db2e447be313d441f115f5430c83ca6a30a815',

@@ -59,7 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           DEST=$(cat build/destination.txt)
-          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Visual.xcresult -parallel-testing-enabled NO -only-testing:KanyuUITests/V5VisualAcceptanceTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/visual.log
+          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Visual.xcresult -parallel-testing-enabled NO -only-testing:KanyuUITests/V5VisualAcceptanceTests -only-testing:KanyuUITests/V5HomeQuickCreateUITests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/visual.log
       - name: Preserve actual screenshots and comparison
         if: always()
         run: |
