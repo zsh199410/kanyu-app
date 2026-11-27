@@ -6,69 +6,78 @@ struct V5LibraryRow: View {
     let detail: String
     let icon: String
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: icon).font(.system(size: 20)).foregroundStyle(V5Palette.color(V5Palette.current.accent)).frame(width: 28).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(V5Typography.song(.headline))
-                Text(detail).font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon).font(.system(size: 19)).foregroundStyle(V5Palette.color(V5Palette.current.accent)).frame(width: 26).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.headline)
+                Text(detail).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
             }.fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(V5Palette.color(V5Palette.current.ornamentText)).accessibilityHidden(true)
-        }.frame(minHeight: V5Metric.target, alignment: .center).contentShape(Rectangle())
+            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).accessibilityHidden(true)
+        }.frame(minHeight: V5Metric.target).contentShape(Rectangle())
     }
 }
+
 struct V5LibraryPage: View {
     @EnvironmentObject private var people: PeopleStore
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var entries: [ReportHistoryEntry] = []
     @State private var allPeople = false
     @State private var loading = true
     @State private var preview: URL?
     @State private var revision = 0
-    @Environment(\.dynamicTypeSize) private var typeSize
     private var selected: Person? { people.currentPerson }
     private var shown: [ReportHistoryEntry] {
         if allPeople { return entries }
         guard let id = selected?.id else { return [] }
         return entries.filter { $0.personID == id }
     }
+    private var columns: [GridItem] {
+        typeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 150), spacing: 18, alignment: .top)]
+    }
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: V5Metric.gap) {
-                V5ArtHeader(eyebrow: "三术合参 · 命书", title: "命书", subtitle: "三术合参 · 本机珍藏")
-                publicationHero
+            LazyVStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("命书收藏").font(V5Typography.song(.title, emphasis: true)).accessibilityAddTraits(.isHeader)
+                    Text("已保存的命书与海报，逐件留存。").font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                }
+                personContext
                 Picker("报告范围", selection: $allPeople) {
                     Text("当前命主").tag(false)
                     Text("全部档案").tag(true)
                 }.pickerStyle(.segmented).frame(minHeight: V5Metric.target)
-                V5SectionHeading(title: "已存命书与作品", subtitle: "共 \(shown.count) 份 · \(shown.filter { $0.url.pathExtension.lowercased() == "pdf" }.count) 份 PDF")
+                HStack {
+                    Text("本机作品").font(.headline).accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    Text("共 \(shown.count) 件").font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                }
                 if loading {
-                    ProgressView("正在读取本机归档").frame(maxWidth: .infinity, minHeight: V5Metric.target)
+                    ProgressView("正在读取本机归档").frame(maxWidth: .infinity, minHeight: 96)
                 } else if shown.isEmpty {
-                    V5StatusPanel(state: .empty, title: "这一册，等待写下", message: "在命主详情中生成命书，或在结果页导出海报。未归属文件可切换到全部档案查看。")
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("还没有已保存的作品").font(.headline)
+                        Text("在命主详情生成命书，或在结果页导出海报后，作品会出现在这里。未归属文件请切换到全部档案查看。")
+                            .font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                    }.padding(.vertical, 12)
                 } else {
-                    V5Card {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            ForEach(shown) { entry in
-                                archiveRow(entry)
-                                if entry.id != shown.last?.id { Divider().padding(.vertical, 18) }
-                            }
-                        }
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 26) {
+                        ForEach(shown) { entry in workCell(entry) }
                     }
                 }
-                V5SectionHeading(title: "续写与创作", subtitle: "年度记录、海报设计与完整归档")
-                V5Card {
-                    VStack(alignment: .leading, spacing: 8) {
-                        NavigationLink { PosterConceptGalleryView(person: selected) } label: {
-                            V5LibraryRow(title: "海报作品库", detail: "既有四款设计与导出入口", icon: "paintpalette")
-                        }
-                        Divider()
-                        NavigationLink { AnnualArchiveView(person: selected) } label: {
-                            V5LibraryRow(title: "年度档案", detail: "已生成的年度报告", icon: "calendar")
-                        }
-                        Divider()
-                        NavigationLink { ReportCenterView(person: selected) } label: {
-                            V5LibraryRow(title: "完整报告中心", detail: "年度生成、历史与全部导出功能", icon: "archivebox")
-                        }
+                Divider().padding(.top, 6)
+                Text("创作与归档").font(.headline).accessibilityAddTraits(.isHeader)
+                VStack(alignment: .leading, spacing: 10) {
+                    NavigationLink { PosterConceptGalleryView(person: selected) } label: {
+                        V5LibraryRow(title: "海报设计", detail: "既有四款设计与导出入口", icon: "paintpalette")
+                    }
+                    Divider()
+                    NavigationLink { AnnualArchiveView(person: selected) } label: {
+                        V5LibraryRow(title: "年度档案", detail: "已生成的年度报告", icon: "calendar")
+                    }
+                    Divider()
+                    NavigationLink { ReportCenterView(person: selected) } label: {
+                        V5LibraryRow(title: "完整报告中心", detail: "年度生成、历史与全部导出功能", icon: "archivebox")
                     }
                 }
                 Text("未明确归属的旧文件，可在“全部档案”中查看。人物同名时也不会自动归入当前档案。")
@@ -86,68 +95,55 @@ struct V5LibraryPage: View {
         }
         .refreshable { revision += 1 }
     }
-    private var publicationHero: some View {
-        let vertical = typeSize.isAccessibilitySize || V5ThemeStore.shared.theme == .collection
-        let layout = vertical ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(alignment: .center, spacing: 20))
-        return layout {
-            V5BookCover(personName: selected?.name)
-                .frame(width: vertical ? 176 : 128)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 12) {
-                Text("本机藏书 · 个人卷").font(.caption).tracking(2).foregroundStyle(V5Palette.color(V5Palette.current.ornamentText))
-                if let person = selected {
-                    Text(person.name).font(V5Typography.song(.title, emphasis: true)).fixedSize(horizontal: false, vertical: true)
-                    Text("三术合参 · 个人命书").font(.subheadline)
-                    Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
-                        .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                        .accessibilityIdentifier("v5.profile.uuid").accessibilityValue(person.id.uuidString)
-                    NavigationLink { PersonDetailView(person: person, store: people) } label: {
-                        Label("生成 / 阅读命书", systemImage: "arrow.up.right").frame(minHeight: V5Metric.target)
-                    }.buttonStyle(.bordered)
-                } else {
-                    Text("为一位真实命主立卷").font(V5Typography.song(.title2))
-                    Text("建立档案后，生成你的个人命书。").font(.subheadline)
-                    NavigationLink("建立命主档案") { V5ProfilesPage() }.frame(minHeight: V5Metric.target)
+    private var personContext: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let person = selected {
+                Text("当前命主 · \(person.name)").font(.headline).fixedSize(horizontal: false, vertical: true)
+                Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
+                    .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                    .accessibilityIdentifier("v5.profile.uuid").accessibilityValue(person.id.uuidString)
+                NavigationLink { PersonDetailView(person: person, store: people) } label: {
+                    Label("生成命书与专业解读", systemImage: "plus.circle").font(.subheadline.weight(.medium)).frame(minHeight: V5Metric.target)
                 }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-        }.padding(.vertical, 12)
-    }
-    private func archiveRow(_ entry: ReportHistoryEntry) -> some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
-        return layout {
-            if entry.url.pathExtension.lowercased() == "pdf" {
-                V5BookCover(personName: entry.personName, title: entry.url.pathExtension.lowercased() == "pdf" ? "个人命书" : "海报作品", compact: true)
-                    .frame(width: 72).accessibilityHidden(true)
             } else {
-                Image(systemName: entry.icon).font(.system(size: 28))
-                    .foregroundStyle(V5Palette.color(V5Palette.current.ornamentText))
-                    .frame(width: 64).frame(minHeight: 72).accessibilityHidden(true)
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                Text(entry.kind).font(V5Typography.song(.title3, emphasis: true))
-                Text(ownerLabel(entry)).font(.subheadline).fixedSize(horizontal: false, vertical: true)
-                Text(entry.generatedAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                Text([entry.tierName, "\(entry.sizeKB) KB", entry.url.pathExtension.uppercased()].compactMap { $0 }.joined(separator: " · "))
-                    .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.ornamentText))
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 20) { fileActions(entry) }
-                    VStack(alignment: .leading, spacing: 0) { fileActions(entry) }
+                NavigationLink { V5ProfilesPage() } label: {
+                    Label("先建立命主档案", systemImage: "person.badge.plus").frame(minHeight: V5Metric.target)
                 }
-                DisclosureGroup {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(entry.url.lastPathComponent).textSelection(.enabled)
-                        if let hash = entry.hashShort { Text("内容版本 · \(hash)").font(.caption.monospaced()).textSelection(.enabled) }
-                    }.font(.caption).padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    Text("文件信息").frame(minHeight: V5Metric.target)
-                }.font(.caption)
-            }.frame(maxWidth: .infinity, alignment: .leading)
-        }
+            }
+        }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background { V5Surface() }
+    }
+    private func workCell(_ entry: ReportHistoryEntry) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            V5WorkThumbnail(url: entry.url, modifiedAt: entry.generatedAt)
+                .accessibilityLabel("\(displayKind(entry))的真实文件缩略图")
+            Text(displayKind(entry)).font(.headline).fixedSize(horizontal: false, vertical: true)
+            Text(ownerLabel(entry)).font(.caption).fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+            Text(V5DisplayText.dateTime(entry.generatedAt)).font(.caption)
+                .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+            Text([entry.tierName, "\(entry.sizeKB) 千字节", entry.url.pathExtension.lowercased() == "pdf" ? "文档" : "图片"].compactMap { $0 }.joined(separator: " · "))
+                .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 16) { fileActions(entry) }
+                VStack(alignment: .leading, spacing: 0) { fileActions(entry) }
+            }
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(entry.url.lastPathComponent).textSelection(.enabled)
+                    if let id = entry.personID { Text("归属档案：\(id.uuidString)").textSelection(.enabled) }
+                    if let hash = entry.hashShort { Text("内容版本：\(hash)").textSelection(.enabled) }
+                }.font(.caption).padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
+            } label: {
+                Text("文件信息").font(.caption).frame(minHeight: V5Metric.target)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
     @ViewBuilder private func fileActions(_ entry: ReportHistoryEntry) -> some View {
-        Button { preview = entry.url } label: { Label("预览", systemImage: "doc.text.magnifyingglass").frame(minHeight: V5Metric.target) }
-        ShareLink(item: entry.url) { Label("分享文件", systemImage: "square.and.arrow.up").frame(minHeight: V5Metric.target) }
+        Button { preview = entry.url } label: { Label("预览", systemImage: "arrow.up.right.square").font(.subheadline).frame(minHeight: V5Metric.target) }
+        ShareLink(item: entry.url) { Label("分享", systemImage: "square.and.arrow.up").font(.subheadline).frame(minHeight: V5Metric.target) }
+    }
+    private func displayKind(_ entry: ReportHistoryEntry) -> String {
+        entry.kind.replacingOccurrences(of: " PDF", with: "文档").replacingOccurrences(of: " PNG", with: "图片")
     }
     private func ownerLabel(_ entry: ReportHistoryEntry) -> String {
         guard let id = entry.personID else { return "未归属 · \(entry.personName)" }
@@ -160,43 +156,44 @@ struct V5LibraryPage: View {
 
 struct V5ProfilesPage: View {
     @EnvironmentObject private var people: PeopleStore
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var editing: Person?
     @State private var pendingDelete: Person?
     @State private var query = ""
-    @Environment(\.dynamicTypeSize) private var typeSize
     private var filtered: [Person] {
         people.people.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.relation.localizedCaseInsensitiveContains(query) || $0.tags.localizedCaseInsensitiveContains(query) }
     }
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: V5Metric.gap) {
-                V5ArtHeader(eyebrow: "家人 · 档案", title: "人物档案", subtitle: "一人一卷 · 三术共用")
+            LazyVStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("本机人物 · \(people.people.count) 位").font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                     Spacer(minLength: 8)
                     Button { editing = Person(name: "", birthEpoch: Date().timeIntervalSince1970) } label: {
-                        Label("新建", systemImage: "plus").frame(minHeight: V5Metric.target)
-                    }.buttonStyle(.bordered).accessibilityIdentifier("v5.profile.create")
+                        Label("添加人物", systemImage: "plus").font(.subheadline.weight(.medium)).frame(minHeight: V5Metric.target)
+                    }.accessibilityIdentifier("v5.profile.create")
                 }
                 if filtered.isEmpty {
-                    V5StatusPanel(state: .empty, title: query.isEmpty ? "从第一份档案开始" : "未找到匹配档案", message: query.isEmpty ? "记录真实出生资料，供命盘、合参与个人命书共用。" : "试试姓名、关系或标签。")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(query.isEmpty ? "从第一份档案开始" : "未找到匹配档案").font(.headline)
+                        Text(query.isEmpty ? "记录真实出生资料，供命盘、合参与个人命书共用。" : "试试姓名、关系或标签。")
+                            .font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                    }.padding(.vertical, 12)
                 }
                 ForEach(filtered) { person in profileCard(person) }
-                V5SectionHeading(title: "记录与管理", subtitle: "数据留存在本机，定期备份更安心")
-                V5Card {
-                    VStack(spacing: 8) {
-                        NavigationLink { PeopleView() } label: { V5LibraryRow(title: "档案导入与导出", detail: "保留原有 JSON 导入、导出与管理功能", icon: "square.and.arrow.up") }
-                        Divider()
-                        NavigationLink { BackupView() } label: { V5LibraryRow(title: "完整备份与恢复", detail: "人物、手相、前瞻与堪舆案件", icon: "externaldrive") }
-                        Divider()
-                        NavigationLink { ForecastView() } label: { V5LibraryRow(title: "前瞻登记簿", detail: "封存断语与到期回验", icon: "checkmark.seal") }
-                        Divider()
-                        NavigationLink { PalmHomeView() } label: { V5LibraryRow(title: "手相面相记录", detail: "测量与原有鉴定记录", icon: "hand.raised") }
-                        Divider()
-                        NavigationLink { V5SettingsPage() } label: { V5LibraryRow(title: "设置", detail: "外观、口径、语音与数据", icon: "gearshape") }
-                    }
-                }
-            }.padding(V5Metric.page)
+                Text("记录与数据").font(.headline).accessibilityAddTraits(.isHeader).padding(.top, 14)
+                VStack(alignment: .leading, spacing: 8) {
+                    NavigationLink { PeopleView() } label: { V5LibraryRow(title: "档案导入与导出", detail: "沿用原有档案交换格式", icon: "square.and.arrow.up") }
+                    Divider()
+                    NavigationLink { BackupView() } label: { V5LibraryRow(title: "完整备份与恢复", detail: "人物、手相、前瞻与堪舆案件", icon: "externaldrive") }
+                    Divider()
+                    NavigationLink { ForecastView() } label: { V5LibraryRow(title: "前瞻登记簿", detail: "封存断语与到期回验", icon: "checkmark.seal") }
+                    Divider()
+                    NavigationLink { PalmHomeView() } label: { V5LibraryRow(title: "手相面相记录", detail: "测量与原有鉴定记录", icon: "hand.raised") }
+                    Divider()
+                    NavigationLink { V5SettingsPage() } label: { V5LibraryRow(title: "设置", detail: "外观、口径、语音与数据", icon: "gearshape") }
+                }.padding(14).background { V5Surface() }
+            }.padding(.horizontal, V5Metric.page).padding(.bottom, 20)
         }
         .background { V5SceneBackground() }.foregroundStyle(V5Palette.color(V5Palette.current.ink))
         .navigationTitle("档案").navigationBarTitleDisplayMode(.inline)
@@ -215,49 +212,58 @@ struct V5ProfilesPage: View {
     }
     private func profileCard(_ person: Person) -> some View {
         let current = people.currentPerson?.id == person.id
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
-        return V5Card {
-            VStack(alignment: .leading, spacing: 16) {
-                NavigationLink { PersonDetailView(person: person, store: people) } label: {
-                    HStack(alignment: .top, spacing: 16) {
-                        Text(String(person.name.prefix(1))).font(V5Typography.printFont(size: 28, emphasis: true))
-                            .foregroundStyle(V5Palette.color(V5Palette.current.accent))
-                            .frame(width: 56, height: 64)
-                            .background(V5Palette.color(V5Palette.current.accent).opacity(0.09), in: RoundedRectangle(cornerRadius: 16))
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(person.name).font(V5Typography.song(.title2, emphasis: true)).fixedSize(horizontal: false, vertical: true)
-                            Text("\(person.relation.isEmpty ? "未备注关系" : person.relation) · \(person.gender == "M" ? "男" : "女")").font(.subheadline)
-                                .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                            if current { Label("当前命主", systemImage: "checkmark.circle.fill").font(.caption.weight(.semibold)).foregroundStyle(V5Palette.color(V5Palette.current.accent)) }
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "arrow.up.right").font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.ornamentText)).accessibilityHidden(true)
-                    }
-                }.buttonStyle(.plain).accessibilityHint("打开专业详情、命盘与命书导出")
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.subheadline.monospacedDigit())
-                    Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
-                        .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                        .accessibilityIdentifier("v5.profile.uuid").accessibilityValue(person.id.uuidString)
-                    if !person.tags.isEmpty { Text(person.tags).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary)) }
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .center, spacing: 8))
+        return VStack(alignment: .leading, spacing: 10) {
+            NavigationLink { PersonDetailView(person: person, store: people) } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    Text(person.name.isEmpty ? "人" : String(person.name.prefix(1)))
+                        .font(.system(size: 23, weight: .medium))
+                        .foregroundStyle(V5Palette.color(V5Palette.current.accent))
+                        .frame(width: 48, height: 48)
+                        .background(V5Palette.color(V5Palette.current.accent).opacity(0.1), in: Circle())
+                        .overlay(Circle().stroke(V5Palette.color(V5Palette.current.accent).opacity(current ? 0.7 : 0), lineWidth: 1.5))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(person.name).font(.headline).fixedSize(horizontal: false, vertical: true)
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 8) { identityLabels(person, current: current) }
+                            VStack(alignment: .leading, spacing: 6) { identityLabels(person, current: current) }
+                        }
+                        Text(V5DisplayText.dateTime(person.birthDate) + "（北京时间）")
+                            .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary)).fixedSize(horizontal: false, vertical: true)
+                        if !person.tags.isEmpty { Text(person.tags).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary)) }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).padding(.top, 5).accessibilityHidden(true)
                 }
-                Divider()
-                layout {
+            }.buttonStyle(.plain).accessibilityHint("打开专业详情、命盘与命书导出")
+            Divider()
+            layout {
+                Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
+                    .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
+                    .accessibilityIdentifier("v5.profile.uuid").accessibilityValue(person.id.uuidString)
+                if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+                HStack(spacing: 4) {
                     Button { people.setCurrentPerson(person) } label: {
-                        Label(current ? "已选为当前命主" : "设为当前命主", systemImage: current ? "checkmark.circle" : "person.crop.circle.badge.checkmark")
-                            .font(.subheadline.weight(.medium)).frame(minHeight: V5Metric.target)
-                    }.disabled(current).accessibilityIdentifier("v5.profile.select.\(person.id.uuidString)")
-                    if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+                        Text(current ? "已选" : "设为命主").font(.subheadline.weight(.medium)).padding(.horizontal, 8).frame(minHeight: V5Metric.target)
+                    }.disabled(current).accessibilityLabel(current ? "已选为当前命主" : "设为当前命主")
+                        .accessibilityIdentifier("v5.profile.select.\(person.id.uuidString)")
                     Menu {
                         Button("编辑档案", systemImage: "pencil") { editing = person }
                         Button("删除档案与归属记录", systemImage: "trash", role: .destructive) { pendingDelete = person }
                     } label: {
-                        Label("管理", systemImage: "ellipsis").font(.subheadline).padding(.horizontal, 12).frame(minHeight: V5Metric.target)
-                    }.accessibilityLabel("管理此档案：\(person.name)")
-                        .accessibilityIdentifier("v5.profile.manage.\(person.id.uuidString)")
+                        Image(systemName: "ellipsis").font(.body.weight(.semibold)).frame(width: V5Metric.target, height: V5Metric.target)
+                    }.accessibilityLabel("管理此档案：\(person.name)").accessibilityIdentifier("v5.profile.manage.\(person.id.uuidString)")
                 }
             }
+        }.padding(14).background { V5Surface() }
+    }
+    @ViewBuilder private func identityLabels(_ person: Person, current: Bool) -> some View {
+        Text("\(person.relation.isEmpty ? "未备注关系" : person.relation) · \(person.gender == "M" ? "男" : "女")")
+            .font(.caption).padding(.horizontal, 8).padding(.vertical, 4)
+            .background(V5Palette.color(V5Palette.current.accent).opacity(0.08), in: Capsule())
+        if current {
+            Label("当前命主", systemImage: "checkmark.circle.fill").font(.caption.weight(.medium))
+                .foregroundStyle(V5Palette.color(V5Palette.current.accent))
         }
     }
-
 }
