@@ -9,6 +9,22 @@ enum V5ArtworkRole: String, CaseIterable {
     func name(for theme: V5Theme) -> String { "v5-\(theme.rawValue)-\(rawValue)" }
 }
 enum V5ArtworkRegistry {
+    @MainActor private static let tabCache = NSCache<NSString, UIImage>()
+    @MainActor static func tabImage(_ role: V5ArtworkRole) -> UIImage? {
+        let theme = V5ThemeStore.shared.theme
+        let key = role.name(for: theme) as NSString
+        if let cached = tabCache.object(forKey: key) { return cached }
+        guard let original = image(role, theme: theme) else { return nil }
+        let size = CGSize(width: 28, height: 28)
+        let format = UIGraphicsImageRendererFormat();format.opaque = false;format.preferredRange = .standard
+        let thumbnail = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            let scale = min(size.width/original.size.width, size.height/original.size.height)
+            let fitted = CGSize(width: original.size.width*scale, height: original.size.height*scale)
+            original.draw(in: CGRect(x: (size.width-fitted.width)/2, y: (size.height-fitted.height)/2, width: fitted.width, height: fitted.height))
+        }
+        tabCache.setObject(thumbnail, forKey: key)
+        return thumbnail
+    }
     static func image(_ role: V5ArtworkRole, theme: V5Theme = V5ThemeStore.shared.theme) -> UIImage? {
         UIImage(named: role.name(for: theme))
     }

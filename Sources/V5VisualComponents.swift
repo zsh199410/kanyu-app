@@ -22,7 +22,7 @@ struct V5ArtHeader: View {
                 Rectangle().fill(V5Palette.color(V5Palette.current.ornament)).frame(width: 28, height: 1)
                 Text(eyebrow).font(.caption.weight(.medium)).tracking(3)
             }.foregroundStyle(V5Palette.color(V5Palette.current.ornamentText))
-            Text(title).font(.system(.largeTitle, design: .serif).weight(.semibold)).accessibilityAddTraits(.isHeader)
+            Text(title).font(V5Typography.song(.largeTitle, emphasis: true)).accessibilityAddTraits(.isHeader)
             Text(subtitle).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
         }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
@@ -60,6 +60,12 @@ struct V5Surface: View {
                         .clipShape(V5PanelSilhouette(theme: theme))
                 }
             }
+            .overlay(alignment: .bottomTrailing) {
+                if let flourish = V5ArtworkRegistry.image(.flourish) {
+                    Image(uiImage: flourish).resizable().scaledToFit().frame(width: 160, height: 42)
+                        .opacity(0.2).padding(6).clipShape(V5PanelSilhouette(theme: theme))
+                }
+            }
             .overlay {
                 V5PanelSilhouette(theme: theme).stroke(
                     LinearGradient(colors: [V5Palette.color(p.ornament).opacity(0.8), V5Palette.color(p.surface), V5Palette.color(p.ornament).opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: contrast == .increased ? 1.6 : 0.8)
@@ -79,7 +85,7 @@ struct V5BrandHero: View {
                 }
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("三术合参").font(.system(typeSize.isAccessibilitySize ? .title2 : .largeTitle, design: .serif).weight(.semibold)).tracking(2)
+                        Text("三术合参").font(V5Typography.song(typeSize.isAccessibilitySize ? .title2 : .largeTitle, emphasis: true)).tracking(2)
                         Text("5.0").font(.caption2.bold()).padding(4).foregroundStyle(.white)
                             .background(KanyuV6.Palette.cinnabar, in: RoundedRectangle(cornerRadius: 4))
                     }
@@ -116,7 +122,7 @@ struct V5BookCover: View {
                 HStack(alignment: .top, spacing: 4) {
                     Spacer(minLength: 6)
                     VStack(spacing: 5) {
-                        ForEach(Array(title.enumerated()), id: \.offset) { _, c in Text(String(c)).font(.system(compact ? .caption : .headline, design: .serif)) }
+                        ForEach(Array(title.enumerated()), id: \.offset) { _, c in Text(String(c)).font(V5Typography.printFont(size: compact ? 12 : 17)) }
                         Rectangle().fill(KanyuV6.Palette.cinnabar).frame(width: 8, height: 12)
                     }.padding(.horizontal, compact ? 5 : 8).padding(.vertical, 10)
                         .foregroundStyle(V5Palette.color(p.readingInk)).background(V5Palette.color(p.readingPaper))

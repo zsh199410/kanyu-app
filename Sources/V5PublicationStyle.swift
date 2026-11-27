@@ -43,11 +43,11 @@ struct V5PublicationStyle {
     func font(for role: TextRole) -> UIFont {
         let specification: (name: String, size: CGFloat, bold: Bool)
         switch role {
-        case .title: specification = ("STSongti-SC-Bold", 20, true)
-        case .heading: specification = ("STSongti-SC-Bold", 12.5, true)
-        case .body: specification = ("STSongti-SC-Regular", 11.5, false)
-        case .caption: specification = ("STSongti-SC-Regular", 9, false)
-        case .brand: specification = ("STSongti-SC-Bold", 28, true)
+        case .title: specification = (V5Typeface.emphasizedName, 20, true)
+        case .heading: specification = (V5Typeface.emphasizedName, 12.5, true)
+        case .body: specification = (V5Typeface.regularName, 11.5, false)
+        case .caption: specification = (V5Typeface.regularName, 9, false)
+        case .brand: specification = (V5Typeface.emphasizedName, 28, true)
         }
         return UIFont(name: specification.name, size: specification.size)
             ?? (specification.bold ? .boldSystemFont(ofSize: specification.size) : .systemFont(ofSize: specification.size))

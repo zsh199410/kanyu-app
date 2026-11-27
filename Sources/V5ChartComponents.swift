@@ -25,7 +25,7 @@ struct V5BirthOverview: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 110 : 46))], spacing: 12) {
                 ForEach(Array(chart.wuxingPercents.prefix(5).enumerated()), id: \.offset) { index, value in
                     VStack(spacing: 8) {
-                        Text(elements[index]).font(.system(.title2, design: .serif))
+                        Text(elements[index]).font(V5Typography.song(.title2))
                         Text(value.isFinite ? String(format: "%.1f%%", value) : "未提供")
                             .font(.caption.monospacedDigit())
                     }.padding(.vertical, 12).frame(maxWidth: .infinity)
@@ -61,7 +61,7 @@ private struct V5VerticalPillar: View {
             VStack(spacing: 10) {
                 Text(pillar.first.map(String.init) ?? "—")
                 Text(pillar.last.map(String.init) ?? "—")
-            }.font(.system(size: characterSize, weight: .medium, design: .serif))
+            }.font(V5Typography.printFont(size: characterSize, emphasis: true))
                 .foregroundStyle(V5Palette.color(isDay ? V5Palette.current.accent : V5Palette.current.ink))
                 .padding(.bottom, 18)
             Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.45))

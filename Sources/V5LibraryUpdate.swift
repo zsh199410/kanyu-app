@@ -17,8 +17,8 @@ struct V5UpdatePage: View {
             VStack(alignment: .leading, spacing: V5Metric.gap) {
                 V5ArtHeader(eyebrow: "版本 · 安装包", title: "版本与安装包", subtitle: "本机版本 · 自备 IPA")
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("三术合参").font(.system(.headline, design: .serif))
-                    Text(version).font(.system(.largeTitle, design: .serif).weight(.medium)).monospacedDigit()
+                    Text("三术合参").font(V5Typography.song(.headline))
+                    Text(version).font(V5Typography.song(.largeTitle, emphasis: true)).monospacedDigit()
                     Text("本机安装版本 · 构建 \(build)").font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                 }.padding(.vertical, 12)
                 V5Card {
@@ -47,7 +47,7 @@ struct V5UpdatePage: View {
                     V5SectionHeading(title: "02 · 核对文件", subtitle: "以下信息读取自已检查的临时副本")
                     V5Card {
                         VStack(alignment: .leading, spacing: 14) {
-                            Text(package.name).font(.system(.title2, design: .serif).weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                            Text(package.name).font(V5Typography.song(.title2, emphasis: true)).fixedSize(horizontal: false, vertical: true)
                             receiptField("版本 / 构建", value: "\(package.version) / \(package.build)")
                             receiptField("应用标识", value: package.bundleID)
                             receiptField("文件大小", value: "\(package.bytes.formatted()) 字节")

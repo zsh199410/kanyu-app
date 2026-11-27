@@ -2,10 +2,32 @@ import SwiftUI
 import UIKit
 
 /// All V5 interface components share these semantic primitives; artwork is not a substitute for content.
+enum V5Typeface {
+    static let regularName = "NotoSerifCJKsc-Regular"
+    static let emphasizedName = "NotoSerifCJKsc-SemiBold"
+}
 enum V5Typography {
-    static let page = Font.system(.largeTitle, design: .serif).weight(.semibold)
-    static let section = Font.system(.title2, design: .serif).weight(.semibold)
-    static let title = Font.system(.headline, design: .serif)
+    static func song(_ style: Font.TextStyle, emphasis: Bool = false) -> Font {
+        let points: CGFloat
+        switch style {
+        case .largeTitle: points = 34
+        case .title: points = 28
+        case .title2: points = 22
+        case .title3: points = 20
+        case .headline, .body: points = 17
+        case .callout: points = 16
+        case .subheadline: points = 15
+        case .footnote: points = 13
+        case .caption: points = 12
+        case .caption2: points = 11
+        @unknown default: points = 17
+        }
+        return .custom(emphasis ? V5Typeface.emphasizedName : V5Typeface.regularName, size: points, relativeTo: style)
+    }
+    static func printFont(size: CGFloat, emphasis: Bool = false) -> Font { .custom(emphasis ? V5Typeface.emphasizedName : V5Typeface.regularName, fixedSize: size) }
+    static let page = song(.largeTitle, emphasis: true)
+    static let section = song(.title2, emphasis: true)
+    static let title = song(.headline, emphasis: true)
     static let body = Font.body
     static let detail = Font.subheadline
     static let evidence = Font.footnote
@@ -29,14 +51,17 @@ struct V5PrimaryButton: ButtonStyle {
     @Environment(\.isEnabled) private var enabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
-        let p = V5Palette.current
+        let theme = V5ThemeStore.shared.theme
+        let p = theme.palette
+        let background = enabled ? (theme == .night ? p.heroSurface : p.accent) : p.surface
+        let foreground = enabled ? (theme == .night ? p.ornamentText : (theme == .collection ? p.heroSurface : p.paper)) : p.secondary
         configuration.label.font(.body.weight(.semibold))
             .multilineTextAlignment(.center)
             .padding(.horizontal, 20).padding(.vertical, 14)
             .frame(maxWidth: .infinity, minHeight: 52)
-            .foregroundStyle(V5Palette.color(enabled ? p.paper : p.secondary))
-            .background(V5Palette.color(enabled ? p.accent : p.surface), in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(V5Palette.color(p.ornament), lineWidth: 0.7).allowsHitTesting(false))
+            .foregroundStyle(V5Palette.color(foreground))
+            .background(V5Palette.color(background), in: Capsule())
+            .overlay(Capsule().stroke(V5Palette.color(p.ornament), lineWidth: 0.8).allowsHitTesting(false))
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
             .animation(reduceMotion ? nil : V5Motion.press, value: configuration.isPressed)
     }

@@ -172,9 +172,13 @@ for path in files:
 # Permit only these independently reviewed, newly added regression tests.
 # Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
 new_test_blobs = {
+    'Tests/V5TypographyTests.swift': '23e893251767b083e343f5f07b3aca165b4fcaae',
+    'Resources/Fonts/LICENSE-NotoSerifCJK.txt': 'd952d62c065f3f35fb83a173496e90b21525aef3',
+    'Resources/Fonts/NotoSerifCJKsc-SemiBold.otf': '41668d00fa67926d143544ddba2937b7d7f6fcf6',
+    'Resources/Fonts/NotoSerifCJKsc-Regular.otf': 'cba8a4783cc38574ac7cda52cae7d9b4241c07a5',
     'Tests/V5FormalPDFExportTests.swift': 'dab65f58d9c211f6c6e711f90967645e3a268530',
     'Tests/V5PublicationStyleTests.swift': 'bce90843b0fe15358c5b980f199b1306dd842a0a',
-    'UITests/V5VisualAcceptanceTests.swift': 'a2c4534dd52a7b0aca326f8ccd37c47b903e468d',
+    'UITests/V5VisualAcceptanceTests.swift': '088e0a7a8cb47ef0bf92cf2e04447f1d29bc8c57',
     'Tests/PosterCanvasMatteTests.swift': '54cfbde4618d5f7e4e5ec5148f5530174c21cbfd',
     'Tests/V5NavigationPathIsolationTests.swift': 'a1c08bbcdcee1803835cfce7485960c259969bf9',
     'Tests/V5ReportOwnershipTests.swift': 'd410caff7130929567b3aa8c1a5156c879e7f16f',

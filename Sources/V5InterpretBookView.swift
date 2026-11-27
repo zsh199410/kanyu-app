@@ -77,9 +77,9 @@ struct V5InterpretBookView: View {
             HStack(alignment: .top, spacing: 20) {
                 if !typeSize.isAccessibilitySize { V5BookCover(personName: person.name).frame(width: 90) }
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(chart.lunarText).font(.system(.headline, design: .serif))
+                    Text(chart.lunarText).font(V5Typography.song(.headline))
                     Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.subheadline)
-                    Text(chart.pillars.joined(separator: "　")).font(.system(.subheadline, design: .serif))
+                    Text(chart.pillars.joined(separator: "　")).font(V5Typography.song(.subheadline))
                     Text("档案 " + String(person.id.uuidString.prefix(8))).font(.caption.monospaced())
                         .accessibilityIdentifier("v5.reader.owner").accessibilityValue(person.id.uuidString)
                     Button { voiceOptions = true } label: { Label("朗读设置", systemImage: "waveform").frame(minHeight: 48) }
@@ -91,13 +91,13 @@ struct V5InterpretBookView: View {
     private func chapter(_ item: InterpretItem, index: Int) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(String(format: "%02d", index+1)).font(.system(.title, design: .serif)).monospacedDigit()
+                Text(String(format: "%02d", index+1)).font(V5Typography.song(.title)).monospacedDigit()
                     .foregroundStyle(V5Palette.color(p.ornamentText))
                 Text(item.title).font(V5Typography.section).fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
             }
-            Text(item.conclusion).font(.system(.body, design: .serif)).lineSpacing(7)
+            Text(item.conclusion).font(V5Typography.song(.body)).lineSpacing(7)
                 .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             if let time = item.timeRange, !time.isEmpty { marginNote("时间范围", text: time) }
             if let advice = item.advice, !advice.isEmpty { marginNote("生活参考", text: advice) }

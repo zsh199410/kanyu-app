@@ -34,7 +34,7 @@ struct V5ElementCycle: View {
                                     V5Motion.selectionFeedback()
                                 } label: {
                                     VStack(spacing: 3) {
-                                        Text(labels[i]).font(.system(.title2, design: .serif).weight(.semibold))
+                                        Text(labels[i]).font(V5Typography.song(.title2, emphasis: true))
                                         Text(String(format: "%.1f%%", values[i])).font(.caption.monospacedDigit())
                                     }
                                     .frame(width: 76, height: 76)

@@ -95,14 +95,14 @@ private struct V5CalculationPrimaryTile: View {
         V5Card {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .top) {
-                    Text(number).font(.system(.title2, design: .serif))
+                    Text(number).font(V5Typography.song(.title2))
                         .foregroundStyle(V5Palette.color(V5Palette.current.ornamentText))
                     Spacer()
                     Image(systemName: "arrow.up.right").font(.caption).accessibilityHidden(true)
                 }
                 V5FeatureGlyph(kind: kind, size: 82).frame(maxWidth: .infinity).padding(.vertical, 6).accessibilityHidden(true)
                 Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.4)).frame(height: 1)
-                Text(title).font(.system(.title2, design: .serif).weight(.semibold))
+                Text(title).font(V5Typography.song(.title2, emphasis: true))
                 Text(detail).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                     .fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, minHeight: V5Metric.target, alignment: .leading)
@@ -182,7 +182,7 @@ struct V5BaziPage: View {
     @ViewBuilder private func content(_ chart: BaziChart) -> some View {
         V5Card {
             VStack(alignment: .leading, spacing: 12) {
-                Text("日主 · \(chart.rizhu)").font(.system(.title, design: .serif))
+                Text("日主 · \(chart.rizhu)").font(V5Typography.song(.title))
                 Text(chart.lunarText).font(.subheadline)
                 Text(chart.longitude == nil ? "北京时间 · 未启用经度校正" : "已按档案经度校正真太阳时")
                     .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
@@ -196,13 +196,13 @@ struct V5BaziPage: View {
         V5TenGodDistribution(chart: chart)
         V5Card {
             VStack(alignment: .leading, spacing: 12) {
-                Text("大运脉络").font(.system(.title2, design: .serif))
+                Text("大运脉络").font(V5Typography.song(.title2))
                 Text("\(chart.qiyunDirection) · 起运 \(chart.qiyunDate)").font(.subheadline)
                 ScrollView(.horizontal) {
                     HStack(spacing: 12) {
                         ForEach(Array(chart.dayunGanZhi.enumerated()), id: \.offset) { index, ganZhi in
                             VStack(spacing: 8) {
-                                Text(ganZhi).font(.system(.title2, design: .serif))
+                                Text(ganZhi).font(V5Typography.song(.title2))
                                 Text("\(String(chart.dayunStartYear(index))) 年起").font(.caption).monospacedDigit()
                             }.padding(12).background(V5Palette.color(V5Palette.current.paper), in: RoundedRectangle(cornerRadius: 12))
                                 .accessibilityElement(children: .combine)
@@ -215,7 +215,7 @@ struct V5BaziPage: View {
         }
         V5Card {
             VStack(alignment: .leading, spacing: 8) {
-                Text("节气与辅助信息").font(.system(.title2, design: .serif))
+                Text("节气与辅助信息").font(V5Typography.song(.title2))
                 Text(chart.prevJieQiText)
                 Text(chart.nextJieQiText)
                 Text("胎元 \(chart.taiYuan) · 胎息 \(chart.taiXi)")
@@ -269,7 +269,7 @@ struct V5ZiweiPage: View {
     @ViewBuilder private func content(_ chart: ZiweiChart) -> some View {
         V5Card {
             VStack(alignment: .leading, spacing: 8) {
-                Text(chart.juName).font(.system(.title, design: .serif))
+                Text(chart.juName).font(V5Typography.song(.title))
                 Text(chart.lunarText)
                 Text("命宫 \(ZiweiCore.DZ[chart.mingGong]) · 身宫 \(chart.palaces[chart.shenGong].name)")
                 Text("横向滑动阅读完整原盘，点宫位查看全部星曜。中心为图例，不是宫位。")
@@ -281,7 +281,7 @@ struct V5ZiweiPage: View {
             let palace = chart.palaces[selectedBranch]
             VStack(alignment: .leading, spacing: 12) {
                 Text("\(palace.name)宫 · \(palace.stem)\(ZiweiCore.DZ[palace.branch])\(palace.isBody ? " · 身宫" : "")")
-                    .font(.system(.title2, design: .serif))
+                    .font(V5Typography.song(.title2))
                 Text("主星：\(starText(palace.majors, empty: "无主星，请结合对宫参考"))")
                 Text("辅星：\(starText(palace.minors, empty: "无"))")
                 if let first = palace.decadal.first, let last = palace.decadal.last {
@@ -294,7 +294,7 @@ struct V5ZiweiPage: View {
         }
         V5Card {
             VStack(alignment: .leading, spacing: 12) {
-                Text("十二宫目录").font(.system(.title2, design: .serif))
+                Text("十二宫目录").font(V5Typography.song(.title2))
                 ForEach(chart.palaces, id: \.branch) { palace in
                     Button { selectedBranch = palace.branch } label: {
                         HStack(alignment: .top) {
@@ -333,7 +333,7 @@ private struct V5ZiweiRing: View {
                     ZStack {
                         VStack(spacing: 12) {
                             V5FeatureGlyph(kind: .ziwei, size: 88).accessibilityHidden(true)
-                            Text("紫 微").font(.system(.largeTitle, design: .serif))
+                            Text("紫 微").font(V5Typography.song(.largeTitle))
                             Text(chart.juName).font(.headline)
                             Text("十二宫 · 生年四化").font(.caption)
                             Text("禄 · 权 · 科 · 忌").font(.caption)
@@ -391,7 +391,7 @@ private struct V5CalculationPersonHeader: View {
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
                         Text("当前命主").font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                        Text(person.name).font(.system(.title3, design: .serif).weight(.semibold))
+                        Text(person.name).font(V5Typography.song(.title3, emphasis: true))
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.down").font(.caption)
                     }.frame(minHeight: V5Metric.target)
@@ -413,7 +413,7 @@ private struct V5CalculationProfilePrompt: View {
     var body: some View {
         V5Card {
             VStack(alignment: .leading, spacing: 12) {
-                Text("先建立真实档案").font(.system(.title2, design: .serif))
+                Text("先建立真实档案").font(V5Typography.song(.title2))
                 Text("排盘需要出生时间、性别与校时设置。添加档案后，命盘会随当前人物更新。")
                 Button("前往档案创建人物") { router.tab = 3 }.frame(minHeight: V5Metric.target)
             }
@@ -434,7 +434,7 @@ private struct V5CalculationEntryLabel: View {
                 Image(systemName: icon).font(.title2).frame(width: V5Metric.target)
                     .foregroundStyle(V5Palette.color(V5Palette.current.accent))
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(title).font(.system(.title3, design: .serif).weight(.semibold))
+                    Text(title).font(V5Typography.song(.title3, emphasis: true))
                     Text(detail).font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                 }
                 Spacer(minLength: 0)

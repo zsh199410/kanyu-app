@@ -30,7 +30,7 @@ jobs:
           xcodebuild build-for-testing -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/compile.log
           xcrun simctl boot "$DEST"
           xcrun simctl bootstatus "$DEST" -b
-          xcrun simctl status_bar "$DEST" override --time '9:41' --batteryState charged --batteryLevel 100
+          xcrun simctl status_bar "$DEST" override --time '9:41' --batteryState discharging --batteryLevel 100 --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4
           xcrun simctl install "$DEST" build/DD/Build/Products/Debug-iphonesimulator/Kanyu.app
           CONTAINER=$(xcrun simctl get_app_container "$DEST" com.kanyu.survey data)
           test -n "$CONTAINER"
@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           DEST=$(cat build/destination.txt)
-          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
+          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5TypographyTests -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
       - name: Capture actual four-theme screens on identical data
         shell: bash
         run: |

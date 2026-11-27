@@ -2006,7 +2006,7 @@
   {
     "path": "project.yml",
     "before": "    CODE_SIGN_STYLE: Manual",
-    "after": "    CURRENT_PROJECT_VERSION: 701\n    CODE_SIGN_STYLE: Manual",
+    "after": "    CURRENT_PROJECT_VERSION: 702\n    CODE_SIGN_STYLE: Manual",
     "count": 1
   },
   {
@@ -2139,6 +2139,60 @@
     "path": "Sources/ReportModule.swift",
     "before": "let color = publication.pageSecondary",
     "after": "let color = cover ? publication.coverSecondary : publication.pageSecondary",
+    "count": 1
+  },
+  {
+    "path": "Sources/KanyuApp.swift",
+    "before": "        manager.headingFilter = 1\n        manager.requestWhenInUseAuthorization()\n        authDenied =",
+    "after": "        manager.headingFilter = 1\n        authDenied =",
+    "count": 1
+  },
+  {
+    "path": "Sources/KanyuApp.swift",
+    "before": "    func start() {\n        demand += 1\n        if demand == 1 { applyStart() }\n    }\n    func stop()",
+    "after": "    func start() {\n        demand += 1\n        guard demand == 1 else { return }\n        if manager.authorizationStatus == .notDetermined {\n            manager.requestWhenInUseAuthorization()\n        } else if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {\n            applyStart()\n        }\n    }\n    func stop()",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let brandFont = UIFont(name: \"STSongti-SC-Bold\", size: 28) ?? UIFont.boldSystemFont(ofSize: 28)",
+    "after": "let brandFont = publication.font(for: .brand)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let nameFont = UIFont(name: \"STSongti-SC-Bold\", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)",
+    "after": "let nameFont = publication.font(for: .title)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let bodyFont = UIFont(name: \"STSongti-SC-Regular\", size: 11.5) ?? UIFont.systemFont(ofSize: 11.5)",
+    "after": "let bodyFont = publication.font(for: .body)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "UIFont(name: \"STSongti-SC-Regular\", size: 10)",
+    "after": "UIFont(name: V5Typeface.regularName, size: 10)",
+    "count": 2
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "UIFont(name: \"STSongti-SC-Bold\", size: 16)",
+    "after": "UIFont(name: V5Typeface.emphasizedName, size: 16)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let font = UIFont(name: \"STSongti-SC-Regular\", size: 9) ?? UIFont.systemFont(ofSize: 9)",
+    "after": "let font = publication.font(for: .caption)",
+    "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "        CFBundleDisplayName: 三术合参",
+    "after": "        CFBundleDisplayName: 三术合参\n        UIAppFonts:\n          - NotoSerifCJKsc-Regular.otf\n          - NotoSerifCJKsc-SemiBold.otf",
     "count": 1
   }
 ]

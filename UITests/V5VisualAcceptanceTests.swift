@@ -8,6 +8,8 @@ final class V5VisualAcceptanceTests: XCTestCase {
         let app = XCUIApplication()
         let owner = "00000000-0000-4000-8000-000000005000"
         func screenshot(_ name: String) {
+            XCTAssertFalse(app.alerts.firstMatch.exists, "An app alert invalidates the visual evidence")
+            XCTAssertFalse(XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch.exists, "A system permission alert invalidates the visual evidence")
             let a = XCTAttachment(screenshot: app.screenshot());a.name = name;a.lifetime = .keepAlways;add(a)
         }
         func frame(_ id: String) -> [String: Double]? {

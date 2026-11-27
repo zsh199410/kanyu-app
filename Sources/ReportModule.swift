@@ -414,10 +414,10 @@ enum ReportBuilder {
     /// 封面（第 1 页）：品牌＋命书名＋生辰／四柱收据＋朱砂印＋日期；只取 lines() 前三行原文，不另编断语。
     /// G1：封面底部加档位与内容哈希短码（与 PDF 元数据 Keywords 内全量哈希同源），版本可目视核对。
     private static func drawCover(ctx: CGContext, lines: [String], pageRect: CGRect, tier: ReportTier, hashShort: String, publication: V5PublicationStyle) {
-        let brandFont = UIFont(name: "STSongti-SC-Bold", size: 28) ?? UIFont.boldSystemFont(ofSize: 28)
-        let nameFont = UIFont(name: "STSongti-SC-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)
-        let bodyFont = UIFont(name: "STSongti-SC-Regular", size: 11.5) ?? UIFont.systemFont(ofSize: 11.5)
-        let smallFont = UIFont(name: "STSongti-SC-Regular", size: 10) ?? UIFont.systemFont(ofSize: 10)
+        let brandFont = publication.font(for: .brand)
+        let nameFont = publication.font(for: .title)
+        let bodyFont = publication.font(for: .body)
+        let smallFont = UIFont(name: V5Typeface.regularName, size: 10) ?? UIFont.systemFont(ofSize: 10)
         let ink = publication.coverInk
         let accent = publication.coverAccent
         let sub = publication.coverSecondary
@@ -440,7 +440,7 @@ enum ReportBuilder {
         let sealRect = CGRect(x: (pageRect.width - sealSize) / 2, y: y + 18, width: sealSize, height: sealSize)
         ctx.setFillColor(cinnabar.cgColor)
         ctx.fill(sealRect)
-        let sealFont = UIFont(name: "STSongti-SC-Bold", size: 16) ?? UIFont.boldSystemFont(ofSize: 16)
+        let sealFont = UIFont(name: V5Typeface.emphasizedName, size: 16) ?? UIFont.boldSystemFont(ofSize: 16)
         let sealStyle = NSMutableParagraphStyle()
         sealStyle.alignment = NSTextAlignment.center
         let sealAttr: [NSAttributedString.Key: Any] = [.font: sealFont, .foregroundColor: UIColor.white, .paragraphStyle: sealStyle]
@@ -465,7 +465,7 @@ enum ReportBuilder {
         let ink = publication.pageInk
         let sub = publication.pageSecondary
         let accent = publication.pageAccent
-        let itemFont = UIFont(name: "STSongti-SC-Regular", size: 10) ?? UIFont.systemFont(ofSize: 10)
+        let itemFont = UIFont(name: V5Typeface.regularName, size: 10) ?? UIFont.systemFont(ofSize: 10)
         var y: CGFloat = 48
         y = drawLeft(ctx: ctx, text: "目录", font: headFont, y: y, x: inset, width: width, color: ink)
         y += 6
@@ -539,7 +539,7 @@ enum ReportBuilder {
 
     /// 页脚（每页）：「三术合参 · 命书 — 第 N 页（共 M 页）」居中，画在正文区（y ≤ 794）之外，不参与分页。
     private static func drawFooter(ctx: CGContext, pageRect: CGRect, page: Int, total: Int, publication: V5PublicationStyle, cover: Bool = false) {
-        let font = UIFont(name: "STSongti-SC-Regular", size: 9) ?? UIFont.systemFont(ofSize: 9)
+        let font = publication.font(for: .caption)
         let color = cover ? publication.coverSecondary : publication.pageSecondary
         let style = NSMutableParagraphStyle()
         style.alignment = NSTextAlignment.center

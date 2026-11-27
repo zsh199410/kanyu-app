@@ -9,7 +9,7 @@ struct V5LibraryRow: View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: icon).font(.system(size: 20)).foregroundStyle(V5Palette.color(V5Palette.current.accent)).frame(width: 28).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.system(.headline, design: .serif))
+                Text(title).font(V5Typography.song(.headline))
                 Text(detail).font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
             }.fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
@@ -96,7 +96,7 @@ struct V5LibraryPage: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("本机藏书 · 个人卷").font(.caption).tracking(2).foregroundStyle(V5Palette.color(V5Palette.current.ornamentText))
                 if let person = selected {
-                    Text(person.name).font(.system(.title, design: .serif).weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                    Text(person.name).font(V5Typography.song(.title, emphasis: true)).fixedSize(horizontal: false, vertical: true)
                     Text("三术合参 · 个人命书").font(.subheadline)
                     Text("档案 \(person.id.uuidString.prefix(8))").font(.caption.monospaced())
                         .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
@@ -105,7 +105,7 @@ struct V5LibraryPage: View {
                         Label("生成 / 阅读命书", systemImage: "arrow.up.right").frame(minHeight: V5Metric.target)
                     }.buttonStyle(.bordered)
                 } else {
-                    Text("为一位真实命主立卷").font(.system(.title2, design: .serif))
+                    Text("为一位真实命主立卷").font(V5Typography.song(.title2))
                     Text("建立档案后，生成你的个人命书。").font(.subheadline)
                     NavigationLink("建立命主档案") { V5ProfilesPage() }.frame(minHeight: V5Metric.target)
                 }
@@ -116,7 +116,7 @@ struct V5LibraryPage: View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
         return layout {
             if entry.url.pathExtension.lowercased() == "pdf" {
-                V5BookCover(personName: entry.personName, title: entry.kind, compact: true)
+                V5BookCover(personName: entry.personName, title: entry.url.pathExtension.lowercased() == "pdf" ? "个人命书" : "海报作品", compact: true)
                     .frame(width: 72).accessibilityHidden(true)
             } else {
                 Image(systemName: entry.icon).font(.system(size: 28))
@@ -124,7 +124,7 @@ struct V5LibraryPage: View {
                     .frame(width: 64).frame(minHeight: 72).accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 8) {
-                Text(entry.kind).font(.system(.title3, design: .serif).weight(.semibold))
+                Text(entry.kind).font(V5Typography.song(.title3, emphasis: true))
                 Text(ownerLabel(entry)).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 Text(entry.generatedAt.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
@@ -220,13 +220,13 @@ struct V5ProfilesPage: View {
             VStack(alignment: .leading, spacing: 16) {
                 NavigationLink { PersonDetailView(person: person, store: people) } label: {
                     HStack(alignment: .top, spacing: 16) {
-                        Text(String(person.name.prefix(1))).font(.system(size: 28, weight: .medium, design: .serif))
+                        Text(String(person.name.prefix(1))).font(V5Typography.printFont(size: 28, emphasis: true))
                             .foregroundStyle(V5Palette.color(V5Palette.current.accent))
                             .frame(width: 56, height: 64)
                             .background(V5Palette.color(V5Palette.current.accent).opacity(0.09), in: RoundedRectangle(cornerRadius: 16))
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(person.name).font(.system(.title2, design: .serif).weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                            Text(person.name).font(V5Typography.song(.title2, emphasis: true)).fixedSize(horizontal: false, vertical: true)
                             Text("\(person.relation.isEmpty ? "未备注关系" : person.relation) · \(person.gender == "M" ? "男" : "女")").font(.subheadline)
                                 .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                             if current { Label("当前命主", systemImage: "checkmark.circle.fill").font(.caption.weight(.semibold)).foregroundStyle(V5Palette.color(V5Palette.current.accent)) }

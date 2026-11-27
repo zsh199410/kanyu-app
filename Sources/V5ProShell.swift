@@ -23,7 +23,7 @@ enum V5Theme: String, CaseIterable, Identifiable {
     var palette: V5Palette {
         switch self {
         case .song: return .init(paper: 0xF5EFE3, surface: 0xFCF8EF, ink: 0x173F32, secondary: 0x686054, accent: 0x23624B, ornament: 0xA57A39)
-        case .night: return .init(paper: 0x101C29, surface: 0x1A2B3C, ink: 0xF3E9D3, secondary: 0xBEB9AC, accent: 0xA6CEC8, ornament: 0xD9B879)
+        case .night: return .init(paper: 0x101C29, surface: 0x1A2B3C, ink: 0xF3E9D3, secondary: 0xBEB9AC, accent: 0xD9B879, ornament: 0xD9B879)
         case .celadon: return .init(paper: 0xEFF4EE, surface: 0xFAFCF7, ink: 0x214B46, secondary: 0x5B7069, accent: 0x34776D, ornament: 0x96753E)
         case .collection: return .init(paper: 0x151411, surface: 0x25201B, ink: 0xF1D9AA, secondary: 0xC8B89C, accent: 0xE5BE77, ornament: 0xB88A46)
         }
@@ -120,17 +120,21 @@ struct V5ProShell: View {
     var body: some View {
         TabView(selection: $router.tab) {
             root(0) { V5HomeView().accessibilityIdentifier("v5.home") }
-                .tabItem { Label("首页", systemImage: "house") }.tag(0)
+                .tabItem { Label { Text("首页") } icon: { tabIcon(.navHome, symbol: "house") } }.tag(0)
             root(1) { V5CalculationHub().accessibilityIdentifier("v5.measure") }
-                .tabItem { Label("测算", systemImage: "safari") }.tag(1)
+                .tabItem { Label { Text("测算") } icon: { tabIcon(.navMeasure, symbol: "safari") } }.tag(1)
             root(2) { V5LibraryPage().id(people.currentPerson?.id).accessibilityIdentifier("v5.reports") }
-                .tabItem { Label("命书", systemImage: "book.closed") }.tag(2)
+                .tabItem { Label { Text("命书") } icon: { tabIcon(.navReports, symbol: "book.closed") } }.tag(2)
             root(3) { V5ProfilesPage().accessibilityIdentifier("v5.people") }
-                .tabItem { Label("档案", systemImage: "person.crop.circle") }.tag(3)
+                .tabItem { Label { Text("档案") } icon: { tabIcon(.navProfiles, symbol: "person.crop.circle") } }.tag(3)
         }
         .environmentObject(router)
         .tint(V5Palette.color(theme.palette.accent))
         .preferredColorScheme(theme.scheme)
+    }
+    private func tabIcon(_ role: V5ArtworkRole, symbol: String) -> Image {
+        if let art = V5ArtworkRegistry.tabImage(role) { return Image(uiImage: art).renderingMode(.original) }
+        return Image(systemName: symbol)
     }
     // Sibling stacks share typed routing; each tab owns its native title/search
     // preferences and stable path binding. There is no stack nested around TabView.
@@ -180,7 +184,7 @@ struct V5HomeView: View {
                 V5PersonHero(chart: chartPerson == people.currentPerson ? chart : nil)
                 if V5ThemeStore.shared.theme != .song {
                     Button { router.tab = 1 } label: {
-                        HStack { Spacer(); Text("开始测算").font(.system(.title2, design: .serif)); Image(systemName: "chevron.right"); Spacer() }
+                        HStack { Spacer(); Text("开始测算").font(V5Typography.song(.title2)); Image(systemName: "chevron.right"); Spacer() }
                     }.buttonStyle(V5PrimaryButton())
                 }
                 V5PrimaryFeatureDeck()
@@ -224,13 +228,5 @@ struct V5HomeView: View {
     }
 }
 struct V5AppearanceView: View {
-    private var theme: String { V5ThemeStore.shared.theme.rawValue }
-    var body: some View {
-        List(V5Theme.allCases) { option in
-            Button { V5ThemeStore.shared.select(option) } label: {
-                HStack { Text(option.title); Spacer(); if theme == option.rawValue { Image(systemName: "checkmark") } }
-                    .frame(minHeight: V5Metric.target)
-            }.accessibilityAddTraits(theme == option.rawValue ? .isSelected : [])
-        }.navigationTitle("四时外观")
-    }
+    var body: some View { V5AppearancePage() }
 }

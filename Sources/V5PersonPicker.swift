@@ -70,7 +70,7 @@ struct V5PersonPicker: View {
             V5Card {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(displayName(person)).font(.system(.title3, design: .serif).weight(.semibold))
+                        Text(displayName(person)).font(V5Typography.song(.title3, emphasis: true))
                             .fixedSize(horizontal: false, vertical: true)
                         Text(details(person)).font(V5Typography.evidence)
                             .foregroundStyle(V5Palette.color(V5Palette.current.secondary))

@@ -21,18 +21,18 @@ struct V5PersonHero: View {
                 }
                 if let person = people.currentPerson {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(person.name).font(.system(.largeTitle, design: .serif).weight(.semibold))
+                        Text(person.name).font(V5Typography.song(.largeTitle, emphasis: true))
                             .fixedSize(horizontal: false, vertical: true)
                         V5PersonPickerButton { Image(systemName: "chevron.right").font(.caption).frame(width: 48, height: 48) }
                     }
                     if let chart, !typeSize.isAccessibilitySize {
-                        Text(chart.pillars.joined(separator: "　")).font(.system(.subheadline, design: .serif))
+                        Text(chart.pillars.joined(separator: "　")).font(V5Typography.song(.subheadline))
                             .fixedSize(horizontal: false, vertical: true)
                     } else { Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.subheadline) }
                     Text("\(person.relation.isEmpty ? "已建档" : person.relation) · \(person.gender == "M" ? "男" : "女")")
                         .font(.subheadline).foregroundStyle(V5Palette.color(p.heroSecondary))
                 } else {
-                    Text("一人一命书").font(.system(.title, design: .serif))
+                    Text("一人一命书").font(V5Typography.song(.title))
                     Text("建立真实档案，贯通命盘与解读。").font(.subheadline)
                     Button("添加第一位家人或命主档案") { creating = true }.frame(minHeight: V5Metric.target)
                 }
@@ -96,7 +96,7 @@ struct V5PrimaryFeatureDeck: View {
         Button { router.open(route) } label: {
             VStack(spacing: 9) {
                 V5FeatureGlyph(kind: glyph, size: typeSize.isAccessibilitySize ? 40 : 35)
-                Text(title).font(.system(.title3, design: .serif).weight(.medium))
+                Text(title).font(V5Typography.song(.title3, emphasis: true))
                 Text(subtitle).font(.caption2).fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(V5Palette.color(theme.palette.secondary))
             }.padding(.horizontal, 4).padding(.vertical, 18)
@@ -151,7 +151,7 @@ struct V5HomeBookEntry: View {
     private func details(_ person: Person) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("三术合参 · 综合解读").font(.caption).foregroundStyle(V5Palette.color(theme.palette.ornamentText))
-            Text(person.name + "的命书").font(.system(.title2, design: .serif).weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+            Text(person.name + "的命书").font(V5Typography.song(.title2, emphasis: true)).fixedSize(horizontal: false, vertical: true)
             Text("八字 · 紫微 · 手相 · 面相").font(.subheadline)
             if let latest { Text(latest.generatedAt, format: .dateTime.year().month().day()).font(.caption) }
             else { Text("按当前档案生成与阅读").font(.caption) }

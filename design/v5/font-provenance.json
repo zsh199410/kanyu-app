@@ -1,0 +1,38 @@
+{
+  "source": "notofonts/noto-cjk",
+  "commit": "f8d157532fbfaeda587e826d4cd5b21a49186f7c",
+  "license": "SIL Open Font License 1.1",
+  "runtimeDependency": false,
+  "modified": false,
+  "aestheticApproval": "GPT pending",
+  "fonts": [
+    {
+      "path": "Resources/Fonts/NotoSerifCJKsc-SemiBold.otf",
+      "sha256": "d627b53dbcde61e07de1498d2623a8b287f78585ffbc90cc0618d0caaa2ed6b0",
+      "names": {
+        "1": "Noto Serif CJK SC SemiBold",
+        "2": "Regular",
+        "5": "Version 2.003;hotconv 1.1.1;makeotfexe 2.6.0",
+        "6": "NotoSerifCJKsc-SemiBold",
+        "8": "Adobe",
+        "9": "Ryoko NISHIZUKA 西塚涼子 (kana & ideographs); Frank Grießhammer (Latin, Greek & Cyrillic); Wenlong ZHANG 张文龙 (bopomofo); Sandoll Communications 산돌커뮤니케이션, Soohyun PARK 박수현, Yejin WE 위예진 & Donghoon HAN 한동훈 (hangul elements, letters & syllables)",
+        "13": "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.",
+        "14": "http://scripts.sil.org/OFL"
+      }
+    },
+    {
+      "path": "Resources/Fonts/NotoSerifCJKsc-Regular.otf",
+      "sha256": "2a2eae2628df83556c54018c41e20fa532c1b862c5256ae8b3f23feb918d12ca",
+      "names": {
+        "1": "Noto Serif CJK SC",
+        "2": "Regular",
+        "5": "Version 2.003;hotconv 1.1.1;makeotfexe 2.6.0",
+        "6": "NotoSerifCJKsc-Regular",
+        "8": "Adobe",
+        "9": "Ryoko NISHIZUKA 西塚涼子 (kana & ideographs); Frank Grießhammer (Latin, Greek & Cyrillic); Wenlong ZHANG 张文龙 (bopomofo); Sandoll Communications 산돌커뮤니케이션, Soohyun PARK 박수현, Yejin WE 위예진 & Donghoon HAN 한동훈 (hangul elements, letters & syllables)",
+        "13": "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.",
+        "14": "http://scripts.sil.org/OFL"
+      }
+    }
+  ]
+}

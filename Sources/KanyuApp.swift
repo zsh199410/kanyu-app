@@ -732,7 +732,6 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.headingFilter = 1
-        manager.requestWhenInUseAuthorization()
         authDenied = (manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted)
     }
 
@@ -741,7 +740,12 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     private var demand = 0
     func start() {
         demand += 1
-        if demand == 1 { applyStart() }
+        guard demand == 1 else { return }
+        if manager.authorizationStatus == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        } else if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            applyStart()
+        }
     }
     func stop() {
         guard demand > 0 else { return }
