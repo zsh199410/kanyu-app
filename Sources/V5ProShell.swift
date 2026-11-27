@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import UIKit
 
 /// The only V5 palette authority. Artwork is independently supplied; no reference screenshot is rendered.
 enum V5Theme: String, CaseIterable, Identifiable {
@@ -33,9 +34,38 @@ enum V5Theme: String, CaseIterable, Identifiable {
 }
 struct V5Palette {
     let paper: UInt32, surface: UInt32, ink: UInt32, secondary: UInt32, accent: UInt32, ornament: UInt32
+    var success: UInt32 { paper == 0x101C29 ? 0x52B788 : 0x367552 }
+    var failure: UInt32 { paper == 0x101C29 ? 0xE98A76 : 0x9A2A22 }
     var ornamentText: UInt32 { paper == 0x101C29 ? 0xD9B879 : 0x785521 }
     static var current: V5Palette {
         V5ThemeStore.shared.theme.palette
+    }
+    enum Role: Sendable { case paper, surface, ink, secondary, accent, ornament, ornamentText, success, failure }
+    func hex(_ role: Role) -> UInt32 {
+        switch role {
+        case .success: return success
+        case .failure: return failure
+        case .paper: return paper
+        case .surface: return surface
+        case .ink: return ink
+        case .secondary: return secondary
+        case .accent: return accent
+        case .ornament: return ornament
+        case .ornamentText: return ornamentText
+        }
+    }
+    /// Capture the observable selection, then respect explicitly forced rendering
+    /// schemes as well (e.g. a light poster while the application is in night mode).
+    static func adaptive(_ role: Role) -> Color {
+        let selected = V5ThemeStore.shared.theme
+        return Color(uiColor: UIColor { traits in
+            let scheme: ColorScheme = traits.userInterfaceStyle == .dark ? .dark : .light
+            let p = (selected.scheme == scheme ? selected : (scheme == .dark ? V5Theme.night : .song)).palette
+            let value = p.hex(role)
+            return UIColor(red: CGFloat((value >> 16) & 255)/255,
+                           green: CGFloat((value >> 8) & 255)/255,
+                           blue: CGFloat(value & 255)/255, alpha: 1)
+        })
     }
     static func color(_ value: UInt32) -> Color { Color(rgb: value) }
 }
@@ -109,16 +139,6 @@ struct V5ProShell: View {
         .preferredColorScheme(theme.scheme)
     }
 }
-private struct V5Panel<Content: View>: View {
-    let content: Content
-    init(@ViewBuilder content: () -> Content) { self.content = content() }
-    var body: some View {
-        content.padding(V5Metric.page)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(V5Palette.color(V5Palette.current.surface), in: RoundedRectangle(cornerRadius: V5Metric.corner))
-            .overlay(RoundedRectangle(cornerRadius: V5Metric.corner).stroke(V5Palette.color(V5Palette.current.ornament).opacity(0.4), lineWidth: 0.7))
-    }
-}
 struct V5HomeView: View {
     @EnvironmentObject private var people: PeopleStore
     @EnvironmentObject private var router: V5Router
@@ -131,7 +151,7 @@ struct V5HomeView: View {
                     Text("三术合参").font(.system(.largeTitle, design: .serif).weight(.semibold))
                     Text("东方命理 · 个人命书").font(.subheadline).tracking(3)
                 }.padding(.vertical, 24)
-                V5Panel {
+                V5Card {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("当前命主").font(.caption)
                         if let person = people.currentPerson {
@@ -161,7 +181,7 @@ struct V5HomeView: View {
                 }
                 V5MeasureLinks()
                 if let person = people.currentPerson {
-                    V5Panel { VStack(alignment: .leading, spacing: 12) {
+                    V5Card { VStack(alignment: .leading, spacing: 12) {
                         Text("命局 · 速览").font(.system(.title2, design: .serif))
                         if chartPerson == person, let chart {
                             V5BirthOverview(chart: chart)
@@ -208,7 +228,7 @@ private struct V5MeasureLinks: View {
     }
     private func entry(_ title: String, _ icon: String, _ route: V5Route) -> some View {
         Button { router.open(route) } label: {
-            V5Panel { Label(title, systemImage: icon).font(.headline).frame(minHeight: V5Metric.target) }
+            V5Card { Label(title, systemImage: icon).font(.headline).frame(minHeight: V5Metric.target) }
         }.buttonStyle(.plain)
     }
 }

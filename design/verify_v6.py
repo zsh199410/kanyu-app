@@ -125,6 +125,16 @@ def home_layout_v6(text):
 '''
     return refine_home_v6(head+home[:a]+helper+grid+home[b:])
 
+# V5 strengthens the added-file bridge contract without exempting legacy files.
+if (ROOT/'Sources/V5ProShell.swift').exists():
+    contract = json.loads((ROOT/'design/v5/ui-bridges.json').read_text())
+    for path in {p['path'] for p in contract['patches']}:
+        expected = subprocess.check_output(['git', 'show', contract['base'] + ':' + path], cwd=ROOT, text=True)
+        for patch in [p for p in contract['patches'] if p['path'] == path]:
+            assert expected.count(patch['before']) == patch['count'], 'V5 bridge anchor drift: ' + path
+            expected = expected.replace(patch['before'], patch['after'])
+        assert expected == (ROOT/path).read_text(), 'Unreviewed V5 bridge: ' + path
+
 patches = json.loads((ROOT/'design/ui-patches-v6.json').read_text())
 def apply_ui_patches(path, value):
     for patch in [p for p in patches if p['path'] == path]:
@@ -163,7 +173,7 @@ for path in files:
 # Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
 new_test_blobs = {
     'UITests/V5NavigationUITests.swift': 'd8f8aacc24b8e734467bdc2fead1ff0f178057b0',
-    'Tests/V5ArchitectureTests.swift': 'bee18ba88443a581e52c6e175f56ec4df568c662',
+    'Tests/V5ArchitectureTests.swift': '3a0ec127afd87615cd0acd857dc3912ebd31cc22',
     'Tests/PosterFamilyBitmapRegressionTests.swift': 'd4af33788334ccb77bf5cbe14043b929ba1fe93b',
     'Tests/BackupRestoreTests.swift': '9f65869e6e3aa2c937f564f8b3323590f07c8f96',
     'Tests/PersonIsolationTests.swift': 'ef72047459e4278a5bd466ad2836d6677c14a97e',

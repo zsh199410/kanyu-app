@@ -32,7 +32,7 @@ struct V5BirthOverview: View {
                         ZStack(alignment: .leading) {
                             Capsule().fill(V5Palette.color(V5Palette.current.secondary).opacity(0.15))
                             if value.isFinite {
-                                Capsule().fill(V5Palette.color(V5Palette.current.accent))
+                                Capsule().fill(KyV2.wuxingColors[index])
                                     .frame(width: geometry.size.width * CGFloat(min(100, max(0, value))) / 100)
                             }
                         }

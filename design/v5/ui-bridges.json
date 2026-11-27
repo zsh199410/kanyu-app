@@ -1,0 +1,41 @@
+{
+  "base": "ebecb96077f909d509ae5b7f345226e9317e09e8",
+  "patches": [
+    {
+      "path": "Sources/DesignSystemV6.swift",
+      "before": "        static func resolved(_ scheme: ColorScheme) -> Theme { scheme == .dark ? .dark : .light }",
+      "after": "        static func resolved(_ scheme: ColorScheme) -> Theme {\n            let selected = V5ThemeStore.shared.theme\n            let p = (selected.scheme == scheme ? selected : (scheme == .dark ? V5Theme.night : .song)).palette\n            return Theme(background: V5Palette.color(p.paper), card: V5Palette.color(p.surface),\n                foreground: V5Palette.color(p.ink), secondary: V5Palette.color(p.secondary),\n                action: V5Palette.color(p.accent), actionForeground: V5Palette.color(p.paper),\n                actionHighlight: V5Palette.color(p.accent), ornament: V5Palette.color(p.ornament),\n                rule: V5Palette.color(p.ornament).opacity(0.35))\n        }",
+      "count": 1
+    },
+    {
+      "path": "Sources/DesignSystemV6.swift",
+      "before": "static let cardGap: CGFloat = 15",
+      "after": "static let cardGap: CGFloat = V5Metric.gap",
+      "count": 1
+    },
+    {
+      "path": "Sources/DesignSystemV6.swift",
+      "before": "static let cardInset: CGFloat = 16",
+      "after": "static let cardInset: CGFloat = V5Metric.page",
+      "count": 1
+    },
+    {
+      "path": "Sources/DesignSystemV6.swift",
+      "before": "static let cardRadius: CGFloat = 18",
+      "after": "static let cardRadius: CGFloat = V5Metric.corner",
+      "count": 1
+    },
+    {
+      "path": "Sources/DesignSystemV6.swift",
+      "before": "static let buttonRadius: CGFloat = 14",
+      "after": "static let buttonRadius: CGFloat = 16",
+      "count": 1
+    },
+    {
+      "path": "Sources/DesignSystemV6.swift",
+      "before": "static let minimumHitTarget: CGFloat = 44",
+      "after": "static let minimumHitTarget: CGFloat = V5Metric.target",
+      "count": 1
+    }
+  ]
+}

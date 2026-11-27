@@ -1300,17 +1300,17 @@ extension Color {
 
 enum Ky {
     // Compatibility facade; preserve call sites and the existing uiStyle preference.
-    static var bg: Color { V5Palette.color(V5Palette.current.paper) }
-    static var card: Color { V5Palette.color(V5Palette.current.surface) }
-    static var elevated: Color { V5Palette.color(V5Palette.current.surface) }
-    static var ink: Color { V5Palette.color(V5Palette.current.ink) }
-    static var sub: Color { V5Palette.color(V5Palette.current.secondary) }
+    static var bg: Color { V5Palette.adaptive(.paper) }
+    static var card: Color { V5Palette.adaptive(.surface) }
+    static var elevated: Color { V5Palette.adaptive(.surface) }
+    static var ink: Color { V5Palette.adaptive(.ink) }
+    static var sub: Color { V5Palette.adaptive(.secondary) }
     // Legacy gold is frequently used as small text. Original bronze remains an ornament token.
-    static var gold: Color { V5Palette.color(V5Palette.current.ornamentText) }
-    static var cinnabar: Color { .kyDyn(KanyuV6.Hex.cinnabar, 0xE05A47) }
-    static var jade: Color { .kyDyn(0x367552, 0x52B788) }
-    static var qingdai: Color { V5Palette.color(V5Palette.current.accent) }
-    static var line: Color { V5Palette.color(V5Palette.current.ornament) }
+    static var gold: Color { V5Palette.adaptive(.ornamentText) }
+    static var cinnabar: Color { V5Palette.adaptive(.failure) }
+    static var jade: Color { V5Palette.adaptive(.success) }
+    static var qingdai: Color { V5Palette.adaptive(.accent) }
+    static var line: Color { V5Palette.adaptive(.ornament) }
     static let instBg = Color(rgb: 0x111317)
     static let instGold = Color(rgb: 0xD1AC53)
     static let instCinnabar = Color(rgb: 0xE05A47)

@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import UIKit
 @testable import Kanyu
 
 final class V5ArchitectureTests: XCTestCase {
@@ -34,12 +35,13 @@ final class V5ArchitectureTests: XCTestCase {
         }
         store.select(.song)
         let first = AllToolsData.allItems
-        store.select(.night)
+        store.select(.celadon)
         let second = AllToolsData.allItems
         XCTAssertEqual(first.map(\.id), second.map(\.id))
-        let light = try XCTUnwrap(first.first(where: { $0.id == "astro" }))
-        let dark = try XCTUnwrap(second.first(where: { $0.id == "astro" }))
-        XCTAssertNotEqual(light.color, dark.color, "Catalog cached the old theme colors")
+        let light = try XCTUnwrap(first.first(where: { $0.id == "learning" }))
+        let dark = try XCTUnwrap(second.first(where: { $0.id == "learning" }))
+        let traits = UITraitCollection(userInterfaceStyle: .light)
+        XCTAssertNotEqual(UIColor(light.color).resolvedColor(with: traits), UIColor(dark.color).resolvedColor(with: traits), "Catalog cached the old theme colors")
     }
     func testAllThemesHaveReadableSemanticText() {
         func luminance(_ hex: UInt32) -> Double {
@@ -51,7 +53,7 @@ final class V5ArchitectureTests: XCTestCase {
         }
         for theme in V5Theme.allCases {
             let p = theme.palette
-            for text in [p.ink, p.secondary, p.ornamentText] {
+            for text in [p.ink, p.secondary, p.ornamentText, p.success, p.failure] {
                 for background in [p.paper, p.surface] {
                     let a = luminance(text), b = luminance(background)
                     XCTAssertGreaterThanOrEqual((max(a,b)+0.05)/(min(a,b)+0.05), 4.5, theme.title)
