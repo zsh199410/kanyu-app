@@ -2252,7 +2252,25 @@
   {
     "path": "project.yml",
     "before": "CURRENT_PROJECT_VERSION: 704",
-    "after": "CURRENT_PROJECT_VERSION: 706",
+    "after": "CURRENT_PROJECT_VERSION: 707",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "                recentSection\n                ForEach(grouped, id: \\.0)",
+    "after": "                // Keep matching results above the keyboard; recents return when search is cleared.\n                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { recentSection }\n                ForEach(grouped, id: \\.0)",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "        .accessibilityIdentifier(\"alltools.scroll\")\n        .background(Ky.bg)",
+    "after": "        .accessibilityIdentifier(\"alltools.scroll\")\n        .scrollDismissesKeyboard(.interactively)\n        .background(Ky.bg)",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))\n    }\n}",
+    "after": "        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))\n        .contentShape(Rectangle())\n    }\n}",
     "count": 1
   }
 ]

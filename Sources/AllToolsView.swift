@@ -312,7 +312,8 @@ struct AllToolsView: View {
             LazyVStack(alignment: .leading, spacing: 14) {
                 KySearchBar(text: $query, placeholder: "搜索功能或用途，如：PDF、指南针、入门")
                 KyFilterBar(options: filterOptions, selectedIndex: $selectedGroup)
-                recentSection
+                // Keep matching results above the keyboard; recents return when search is cleared.
+                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { recentSection }
                 ForEach(grouped, id: \.0) { g in
                     KySectionTitle(title: g.0.rawValue, trailing: "共 \(g.1.count) 项")
                     VStack(spacing: 10) {
@@ -328,6 +329,7 @@ struct AllToolsView: View {
             .padding(.bottom, 100)
         }
         .accessibilityIdentifier("alltools.scroll")
+        .scrollDismissesKeyboard(.interactively)
         .background(Ky.bg)
         .navigationTitle("全部工具".scriptConverted)
         .navigationBarTitleDisplayMode(.inline)
@@ -446,5 +448,6 @@ struct AllToolsView: View {
         .background(Ky.card)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))
+        .contentShape(Rectangle())
     }
 }
