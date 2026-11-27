@@ -53,6 +53,14 @@ final class V5PersonLifecycleUITests: XCTestCase {
             let owner = app.staticTexts["v5.calculation.owner"]
             XCTAssertTrue(owner.waitForExistence(timeout: 10))
             XCTAssertEqual(owner.value as? String, id)
+            for kind in ["bazi", "ziwei"] {
+                let entry = app.buttons["v5.measure." + kind]
+                reveal(entry); entry.tap()
+                let resultOwner = app.staticTexts["v5." + kind + ".result.owner"]
+                XCTAssertTrue(resultOwner.waitForExistence(timeout: 10), "Actual chart did not finish loading")
+                XCTAssertEqual(resultOwner.value as? String, id, "Rendered chart belongs to a different profile")
+                app.navigationBars.firstMatch.buttons.element(boundBy: 0).tap()
+            }
             app.tabBars.buttons["档案"].tap()
         }
         app.terminate(); app.launch()

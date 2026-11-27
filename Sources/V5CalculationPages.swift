@@ -12,8 +12,8 @@ struct V5CalculationHub: View {
                 Text("以命为经 · 以术为纬").font(.system(.title, design: .serif))
                 Text("从真实档案出发，核对命盘，再展开专业分析。")
                     .foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-                V5CalculationEntry(title: "八字命理", detail: "四柱 · 藏干十神 · 五行 · 大运", icon: "tablecells") { router.open(.bazi) }
-                V5CalculationEntry(title: "紫微斗数", detail: "十二宫原盘 · 主辅星 · 生年四化", icon: "sparkles") { router.open(.ziwei) }
+                V5CalculationEntry(title: "八字命理", detail: "四柱 · 藏干十神 · 五行 · 大运", icon: "tablecells") { router.open(.bazi) }.accessibilityIdentifier("v5.measure.bazi")
+                V5CalculationEntry(title: "紫微斗数", detail: "十二宫原盘 · 主辅星 · 生年四化", icon: "sparkles") { router.open(.ziwei) }.accessibilityIdentifier("v5.measure.ziwei")
                 Text("观形察象").font(.system(.title2, design: .serif))
                 V5CalculationEntry(title: "手相", detail: "掌纹图解、照片测量与按人归档", icon: "hand.raised") { router.open(.palm) }
                 NavigationLink {
@@ -49,6 +49,8 @@ struct V5BaziPage: View {
                 V5CalculationPersonHeader()
                 if let person = people.currentPerson {
                     if let result, result.person == person {
+                        Text("命盘档案 \(result.person.id.uuidString.prefix(8))").font(.caption.monospaced())
+                            .accessibilityIdentifier("v5.bazi.result.owner").accessibilityValue(result.person.id.uuidString)
                         content(result.chart)
                     } else {
                         ProgressView("正在排出当前命主的四柱").frame(minHeight: 120)
@@ -152,6 +154,8 @@ struct V5ZiweiPage: View {
                 V5CalculationPersonHeader()
                 if let person = people.currentPerson {
                     if let result, result.person == person {
+                        Text("命盘档案 \(result.person.id.uuidString.prefix(8))").font(.caption.monospaced())
+                            .accessibilityIdentifier("v5.ziwei.result.owner").accessibilityValue(result.person.id.uuidString)
                         content(result.chart)
                     } else {
                         ProgressView("正在安置当前命主的十二宫星曜").frame(minHeight: 120)
