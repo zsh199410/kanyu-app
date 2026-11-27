@@ -1,0 +1,95 @@
+name: V5 native architecture regression
+on:
+  push:
+    branches: [codex/v5-oriental-pro-redesign]
+permissions:
+  contents: read
+jobs:
+  native:
+    if: startsWith(github.event.head_commit.message, '[acceptance]')
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 design/verify_v6.py
+      - name: Toolchain
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X"
+          xcodebuild -version
+          brew install xcodegen
+          xcodegen generate
+      - name: Formal poster and complete paper regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          git rev-parse HEAD > build/commit.txt
+          DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for v in d.values() for x in v if 'iPhone' in x['name']))")
+          xcodebuild test -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Posters.xcresult CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -parallel-testing-enabled NO -only-testing:KanyuTests/PosterCanvasMatteTests -only-testing:KanyuTests/PosterFamilyBitmapRegressionTests -only-testing:KanyuTests/PosterFamilyExportPathTests -only-testing:KanyuTests/PosterDynamicSnapshotTests -only-testing:KanyuTests/PosterRealDataBindingTests -only-testing:KanyuTests/PosterBatch2OwnershipTests -only-testing:KanyuTests/PosterFormalExportTests 2>&1 | tee build/posters.log
+      - name: Compile native app and run all unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          git rev-parse HEAD > build/commit.txt
+          DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for v in d.values() for x in v if 'iPhone' in x['name']))")
+          xcodebuild test -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Share.xcresult CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -only-testing:KanyuTests -only-testing:KanyuUITests/V5NavigationUITests -only-testing:KanyuUITests/V5PersonLifecycleUITests 2>&1 | tee build/share.log
+      - name: Build unsigned engineering candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild build -project Kanyu.xcodeproj -scheme Kanyu -configuration Release -sdk iphoneos -derivedDataPath build/DeviceDD -clonedSourcePackagesDirPath build/SourcePackages CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/device-build.log
+          mkdir -p Payload
+          cp -R build/DeviceDD/Build/Products/Release-iphoneos/Kanyu.app Payload/
+          zip -qry Kanyu-5.0-707-unsigned-engineering.ipa Payload
+          codesign -dv --verbose=4 Payload/Kanyu.app > build/signature-status.txt 2>&1 || true
+          python3 design/v5/verify_ipa.py Kanyu-5.0-707-unsigned-engineering.ipa --version 5.0 --build 707 --output build/candidate-integrity.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kanyu-5.0-707-unsigned-engineering-${{ github.sha }}
+          path: |
+            Kanyu-5.0-707-unsigned-engineering.ipa
+            Kanyu-5.0-707-unsigned-engineering.ipa.sha256
+            build/candidate-integrity.json
+            build/signature-status.txt
+            build/commit.txt
+          retention-days: 14
+      - name: Attachments
+        if: always()
+        run: |
+          for RESULT in Share Posters; do
+            if [ -d "build/$RESULT.xcresult" ]; then
+              xcrun xcresulttool export attachments --path "build/$RESULT.xcresult" --output-path "build/attachments/$RESULT"
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v5-native-${{ github.sha }}
+          path: |
+            build/*.log
+            build/commit.txt
+            build/Share.xcresult
+            build/Posters.xcresult
+            build/attachments
+          retention-days: 14
+  provenance:
+    if: startsWith(github.event.head_commit.message, '[acceptance]')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.2'
+      - run: |
+          mkdir -p build/source-trust
+          swiftc Sources/InterpretSourceLabelPolicy.swift design/qa/InterpretSourceLabelPolicyCheck.swift -o build/source-trust/check
+          build/source-trust/check 2>&1 | tee build/source-trust/result.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v5-source-trust-${{ github.sha }}
+          path: build/source-trust/result.log

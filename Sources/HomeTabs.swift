@@ -19,22 +19,10 @@ struct RootTabView: View {
         return nil
     }
     var body: some View {
-        TabView(selection: $tab) {
-            NavigationStack { HomePageView(selectedTab: $tab) }
-                .tabItem { Label("合参".scriptConverted, systemImage: "sparkles.rectangle.stack.fill") }.tag(0)
-            NavigationStack { BaziHomeView() }
-                .tabItem { Label("八字".scriptConverted, systemImage: "tablecells.fill") }.tag(1)
-            NavigationStack { ZiweiHomeView() }
-                .tabItem { Label("紫微".scriptConverted, systemImage: "moon.stars.fill") }.tag(2)
-            NavigationStack { QimenHomeView() }
-                .tabItem { Label("奇门".scriptConverted, systemImage: "circle.grid.3x3.fill") }.tag(3)
-            NavigationStack { KanyuWorkbenchTabView() }
-                .tabItem { Label("堪舆".scriptConverted, systemImage: "safari.fill") }.tag(4)
-        }
+        V5ProShell()
         .toolbarBackground(Ky.bg, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .tint(Ky.qingdai)
-        .preferredColorScheme(appearanceScheme)
         .sheet(isPresented: $showingOnboarding) {
             OnboardingView(onDone: { onboardingDone = true; showingOnboarding = false })
         }

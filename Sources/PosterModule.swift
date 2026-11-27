@@ -61,6 +61,7 @@ private extension PosterStyle {
 // MARK: - 导出后缀（internal：PosterEditorModule 共用）
 // 只留宋纸青黛一款：三视图均已解包为无条件宋式版式；尊享预测单走独立布局分支，不进 standardPosterView。
 extension PosterStyle {
+    var exportMatteColor: Color { palette.bg0 }
     var fileSuffix: String {
         switch self {
         case .songQingdai: return "-song"
@@ -1497,7 +1498,7 @@ struct PosterSheetView: View {
             let output: PosterRasterizer.Output
             do {
                 output = try PosterRasterizer.render(PosterView(chart: chart, name: name, style: style)
-                    .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+                    .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large), matte: style.exportMatteColor)
             } catch {
                 renderError = error.localizedDescription
                 return
@@ -1987,7 +1988,7 @@ struct ZiweiPosterSheetView: View {
         let output: PosterRasterizer.Output
         do {
             output = try PosterRasterizer.render(ZiweiPosterView(chart: chart, name: name, style: style)
-                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large), matte: style.exportMatteColor)
         } catch {
             renderError = error.localizedDescription
             return
@@ -2326,7 +2327,7 @@ struct HeCanPosterSheetView: View {
         let output: PosterRasterizer.Output
         do {
             output = try PosterRasterizer.render(HeCanPosterView(bazi: bazi, ziwei: ziwei, name: name, palmLines: palmLines, style: style)
-                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large))
+                .environment(\.colorScheme, scheme).environment(\.dynamicTypeSize, .large), matte: style.exportMatteColor)
         } catch {
             renderError = error.localizedDescription
             return

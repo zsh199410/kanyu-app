@@ -125,6 +125,16 @@ def home_layout_v6(text):
 '''
     return refine_home_v6(head+home[:a]+helper+grid+home[b:])
 
+# V5 strengthens the added-file bridge contract without exempting legacy files.
+if (ROOT/'Sources/V5ProShell.swift').exists():
+    contract = json.loads((ROOT/'design/v5/ui-bridges.json').read_text())
+    for path in {p['path'] for p in contract['patches']}:
+        expected = subprocess.check_output(['git', 'show', contract['base'] + ':' + path], cwd=ROOT, text=True)
+        for patch in [p for p in contract['patches'] if p['path'] == path]:
+            assert expected.count(patch['before']) == patch['count'], 'V5 bridge anchor drift: ' + path
+            expected = expected.replace(patch['before'], patch['after'])
+        assert expected == (ROOT/path).read_text(), 'Unreviewed V5 bridge: ' + path
+
 patches = json.loads((ROOT/'design/ui-patches-v6.json').read_text())
 def apply_ui_patches(path, value):
     for patch in [p for p in patches if p['path'] == path]:
@@ -162,6 +172,26 @@ for path in files:
 # Permit only these independently reviewed, newly added regression tests.
 # Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
 new_test_blobs = {
+    'Tests/V5TypographyTests.swift': '23e893251767b083e343f5f07b3aca165b4fcaae',
+    'Resources/Fonts/LICENSE-NotoSerifCJK.txt': 'd952d62c065f3f35fb83a173496e90b21525aef3',
+    'Resources/Fonts/NotoSerifCJKsc-SemiBold.otf': '41668d00fa67926d143544ddba2937b7d7f6fcf6',
+    'Resources/Fonts/NotoSerifCJKsc-Regular.otf': 'cba8a4783cc38574ac7cda52cae7d9b4241c07a5',
+    'UITests/V5HomeQuickCreateUITests.swift': 'e0cbb2a53541329f4c78a470d5f19a4658eddb57',
+    'Tests/V5WorkThumbnailTests.swift': 'd24215c16216f3d25945968387c3f10a9e046632',
+    'UITests/V5ArchiveCreationUITests.swift': '6aca4e99c4f51d5952787fb6fec9512c67a90500',
+    'UITests/V5PublicationSharingUITests.swift': '93a9231c15fcfde6e1f8d63d2ca1278273cf728f',
+    'Tests/V5BottomNavigationTests.swift': '2f0a83c7adb6afcb65efa8ba7e5fad495dcda1c0',
+    'Tests/V5FormalPDFExportTests.swift': '8d3a2f094cda7f87d5a25322fd956307cdb03cda',
+    'Tests/V5PublicationStyleTests.swift': '8b1b394fab0b986790e2033286f08b93e455b739',
+    'UITests/V5VisualAcceptanceTests.swift': '73db2e447be313d441f115f5430c83ca6a30a815',
+    'Tests/PosterCanvasMatteTests.swift': '54cfbde4618d5f7e4e5ec5148f5530174c21cbfd',
+    'Tests/V5NavigationPathIsolationTests.swift': 'a1c08bbcdcee1803835cfce7485960c259969bf9',
+    'Tests/V5ReportOwnershipTests.swift': 'd410caff7130929567b3aa8c1a5156c879e7f16f',
+    'Tests/V5ThemePreferenceTests.swift': '94dacaf509735536cd5ddf72b540ad1e4f97b1a3',
+    'Tests/V5IPAInspectionTests.swift': '4f484408fcf7d1ff15533177d8f34d84122efeca',
+    'UITests/V5PersonLifecycleUITests.swift': '2bb2c597b4d7678f6279f77ba8a012a155e6ea0c',
+    'UITests/V5NavigationUITests.swift': '65b6d72b989bf883074118121ab9c6bd4b6434ba',
+    'Tests/V5ArchitectureTests.swift': '3a0ec127afd87615cd0acd857dc3912ebd31cc22',
     'Tests/PosterFamilyBitmapRegressionTests.swift': 'd4af33788334ccb77bf5cbe14043b929ba1fe93b',
     'Tests/BackupRestoreTests.swift': '9f65869e6e3aa2c937f564f8b3323590f07c8f96',
     'Tests/PersonIsolationTests.swift': 'ef72047459e4278a5bd466ad2836d6677c14a97e',

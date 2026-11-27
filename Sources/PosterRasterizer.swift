@@ -28,7 +28,7 @@ import UniformTypeIdentifiers
         }
     }
 
-    static func render<Content: View>(_ content: Content, scale: CGFloat = 2) throws -> Output {
+    static func render<Content: View>(_ content: Content, scale: CGFloat = 2, matte: Color = KanyuV6.Palette.paper) throws -> Output {
         guard scale.isFinite, scale > 0 else { throw Failure.invalidSize }
         let renderer = ImageRenderer(content: content)
         var result: Result<Output, Error>?
@@ -52,6 +52,11 @@ import UniformTypeIdentifiers
                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else {
                 result = .failure(Failure.contextUnavailable(width, height)); return
             }
+            // Fill the complete integer-pixel canvas before SwiftUI draws. A
+            // fractional point height can otherwise leave a partial-alpha final
+            // row, and flexible ZStack backgrounds can leave transparent margins.
+            context.setFillColor(UIColor(matte).cgColor)
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
             context.scaleBy(x: scale, y: scale)
             draw(context)
             guard let cgImage = context.makeImage() else {

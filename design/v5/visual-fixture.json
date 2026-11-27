@@ -1,0 +1,12 @@
+[
+  {
+    "id": "00000000-0000-4000-8000-000000005000",
+    "name": "视觉验收样本",
+    "relation": "本人",
+    "gender": "M",
+    "birthEpoch": 946684800.0,
+    "useLongitude": false,
+    "longitude": 116.4,
+    "tags": "隔离模拟器固定夹具"
+  }
+]

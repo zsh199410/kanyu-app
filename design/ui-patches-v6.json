@@ -1978,5 +1978,299 @@
     "before": "                if fileURL != nil, let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? \"尊享预测单长图海报\" : \"命盘海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        let savingStyle = style\n                        PosterPhotoSaver.save(img) { message in\n                            if style == savingStyle { saveMessage = message }\n                        }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }",
     "after": "                LazyVStack(spacing: 16) {\n                if fileURL != nil, let img = previewImage {\n                    ShareLink(item: Image(uiImage: img), preview: SharePreview(style == .yuceDan ? \"尊享预测单长图海报\" : \"命盘海报\", image: Image(uiImage: img))) {\n                        Label(\"分享海报\", systemImage: \"square.and.arrow.up\")\n                    }\n                    .buttonStyle(KyPrimaryButton())\n                    Button {\n                        let savingStyle = style\n                        PosterPhotoSaver.save(img) { message in\n                            if style == savingStyle { saveMessage = message }\n                        }\n                    } label: {\n                        Label(\"保存到相册\", systemImage: \"photo.badge.plus\")\n                            .frame(maxWidth: .infinity, minHeight: 44)\n                    }\n                    .buttonStyle(.bordered)\n                    .tint(Ky.qingdai)\n                    if let saveMessage {\n                        Text(saveMessage)\n                            .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                    }\n                    Text(\"高清长图 · 宽 1080 像素\")\n                        .font(.caption).foregroundStyle(Ky.sub).multilineTextAlignment(.center)\n                }\n                }\n                .id(style)",
     "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "        TabView(selection: $tab) {\n            NavigationStack { HomePageView(selectedTab: $tab) }\n                .tabItem { Label(\"合参\".scriptConverted, systemImage: \"sparkles.rectangle.stack.fill\") }.tag(0)\n            NavigationStack { BaziHomeView() }\n                .tabItem { Label(\"八字\".scriptConverted, systemImage: \"tablecells.fill\") }.tag(1)\n            NavigationStack { ZiweiHomeView() }\n                .tabItem { Label(\"紫微\".scriptConverted, systemImage: \"moon.stars.fill\") }.tag(2)\n            NavigationStack { QimenHomeView() }\n                .tabItem { Label(\"奇门\".scriptConverted, systemImage: \"circle.grid.3x3.fill\") }.tag(3)\n            NavigationStack { KanyuWorkbenchTabView() }\n                .tabItem { Label(\"堪舆\".scriptConverted, systemImage: \"safari.fill\") }.tag(4)\n        }\n",
+    "after": "        V5ProShell()\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/HomeTabs.swift",
+    "before": "        .preferredColorScheme(appearanceScheme)\n",
+    "after": "",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "    static let allItems: [ToolItem] = [\n",
+    "after": "    static var allItems: [ToolItem] { [\n",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "    ]\n\n    static func filteredItems",
+    "after": "    ] }\n\n    static func filteredItems",
+    "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "    CODE_SIGN_STYLE: Manual",
+    "after": "    CURRENT_PROJECT_VERSION: 702\n    CODE_SIGN_STYLE: Manual",
+    "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "CFBundleShortVersionString: \"4.6\"",
+    "after": "CFBundleShortVersionString: \"5.0\"",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": "extension PosterStyle {\n    var fileSuffix: String {",
+    "after": "extension PosterStyle {\n    var exportMatteColor: Color { palette.bg0 }\n    var fileSuffix: String {",
+    "count": 1
+  },
+  {
+    "path": "Sources/PosterModule.swift",
+    "before": ".environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))",
+    "after": ".environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large), matte: style.exportMatteColor)",
+    "count": 3
+  },
+  {
+    "path": "Sources/PosterEditorModule.swift",
+    "before": ".environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large))",
+    "after": ".environment(\\.colorScheme, scheme).environment(\\.dynamicTypeSize, .large), matte: style.exportMatteColor)",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "        InterpretView(chart: chart, name: person.name, verificationOwnerID: \"person:\\(person.id.uuidString)\")",
+    "after": "        V5InterpretBookView(person: person, chart: chart)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "        let titleFont = UIFont(name: \"STSongti-SC-Bold\", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)\n        let bodyFont = UIFont(name: \"STSongti-SC-Regular\", size: 11.5) ?? UIFont.systemFont(ofSize: 11.5)\n        let headFont = UIFont(name: \"STSongti-SC-Bold\", size: 12.5) ?? UIFont.boldSystemFont(ofSize: 12.5)",
+    "after": "        let publication = V5PublicationStyle(theme: V5ThemeStore.shared.theme)\n        let titleFont = publication.font(for: .title)\n        let bodyFont = publication.font(for: .body)\n        let headFont = publication.font(for: .heading)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "drawCover(ctx: context, lines: lines, pageRect: pageRect, tier: tier, hashShort: hashShort)",
+    "after": "publication.drawBackground(in: context, pageRect: pageRect, cover: true)\n        publication.drawCoverArtwork(in: context, pageRect: pageRect)\n        drawCover(ctx: context, lines: lines, pageRect: pageRect, tier: tier, hashShort: hashShort, publication: publication)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "drawTOC(ctx: context, person: person, chapters: chapters, tocItems: tocItems, total: totalPages, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont)",
+    "after": "publication.drawBackground(in: context, pageRect: pageRect)\n        drawTOC(ctx: context, person: person, chapters: chapters, tocItems: tocItems, total: totalPages, pageRect: pageRect, headFont: headFont, bodyFont: bodyFont, publication: publication)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "            UIGraphicsPushContext(context)\n            for placed in page.lines {",
+    "after": "            UIGraphicsPushContext(context)\n            publication.drawBackground(in: context, pageRect: pageRect)\n            for placed in page.lines {",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let attr: [NSAttributedString.Key: Any] = [.font: placed.font, .paragraphStyle: style]",
+    "after": "let attr: [NSAttributedString.Key: Any] = [.font: placed.font, .paragraphStyle: style, .foregroundColor: publication.pageInk]",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "drawFooter(ctx: context, pageRect: pageRect, page: 1, total: totalPages)",
+    "after": "drawFooter(ctx: context, pageRect: pageRect, page: 1, total: totalPages, publication: publication)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "drawFooter(ctx: context, pageRect: pageRect, page: 2, total: totalPages)",
+    "after": "drawFooter(ctx: context, pageRect: pageRect, page: 2, total: totalPages, publication: publication)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "drawFooter(ctx: context, pageRect: pageRect, page: idx + 3, total: totalPages)",
+    "after": "drawFooter(ctx: context, pageRect: pageRect, page: idx + 3, total: totalPages, publication: publication)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "private static func drawCover(ctx: CGContext, lines: [String], pageRect: CGRect, tier: ReportTier, hashShort: String) {",
+    "after": "private static func drawCover(ctx: CGContext, lines: [String], pageRect: CGRect, tier: ReportTier, hashShort: String, publication: V5PublicationStyle) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "        let ink = UIColor(red: 0.18, green: 0.165, blue: 0.15, alpha: 1)\n        let accent = UIColor(red: 0.153, green: 0.306, blue: 0.361, alpha: 1)\n        let sub = UIColor(red: 0.478, green: 0.447, blue: 0.408, alpha: 1)",
+    "after": "        let ink = publication.coverInk\n        let accent = publication.coverAccent\n        let sub = publication.coverSecondary",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "private static func drawTOC(ctx: CGContext, person: Person, chapters: [(title: String, page: Int)], tocItems: [(title: String, page: Int)], total: Int, pageRect: CGRect, headFont: UIFont, bodyFont: UIFont) {",
+    "after": "private static func drawTOC(ctx: CGContext, person: Person, chapters: [(title: String, page: Int)], tocItems: [(title: String, page: Int)], total: Int, pageRect: CGRect, headFont: UIFont, bodyFont: UIFont, publication: V5PublicationStyle) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "        let ink = UIColor(red: 0.18, green: 0.165, blue: 0.15, alpha: 1)\n        let sub = UIColor(red: 0.478, green: 0.447, blue: 0.408, alpha: 1)\n        let accent = UIColor(red: 0.153, green: 0.306, blue: 0.361, alpha: 1)",
+    "after": "        let ink = publication.pageInk\n        let sub = publication.pageSecondary\n        let accent = publication.pageAccent",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "private static func drawFooter(ctx: CGContext, pageRect: CGRect, page: Int, total: Int) {",
+    "after": "private static func drawFooter(ctx: CGContext, pageRect: CGRect, page: Int, total: Int, publication: V5PublicationStyle) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "        let color = UIColor(red: 0.478, green: 0.447, blue: 0.408, alpha: 1)\n        let style = NSMutableParagraphStyle()",
+    "after": "        let color = publication.pageSecondary\n        let style = NSMutableParagraphStyle()",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "drawFooter(ctx: context, pageRect: pageRect, page: 1, total: totalPages, publication: publication)",
+    "after": "drawFooter(ctx: context, pageRect: pageRect, page: 1, total: totalPages, publication: publication, cover: true)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "private static func drawFooter(ctx: CGContext, pageRect: CGRect, page: Int, total: Int, publication: V5PublicationStyle) {",
+    "after": "private static func drawFooter(ctx: CGContext, pageRect: CGRect, page: Int, total: Int, publication: V5PublicationStyle, cover: Bool = false) {",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let color = publication.pageSecondary",
+    "after": "let color = cover ? publication.coverSecondary : publication.pageSecondary",
+    "count": 1
+  },
+  {
+    "path": "Sources/KanyuApp.swift",
+    "before": "        manager.headingFilter = 1\n        manager.requestWhenInUseAuthorization()\n        authDenied =",
+    "after": "        manager.headingFilter = 1\n        authDenied =",
+    "count": 1
+  },
+  {
+    "path": "Sources/KanyuApp.swift",
+    "before": "    func start() {\n        demand += 1\n        if demand == 1 { applyStart() }\n    }\n    func stop()",
+    "after": "    func start() {\n        demand += 1\n        guard demand == 1 else { return }\n        if manager.authorizationStatus == .notDetermined {\n            manager.requestWhenInUseAuthorization()\n        } else if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {\n            applyStart()\n        }\n    }\n    func stop()",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let brandFont = UIFont(name: \"STSongti-SC-Bold\", size: 28) ?? UIFont.boldSystemFont(ofSize: 28)",
+    "after": "let brandFont = publication.font(for: .brand)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let nameFont = UIFont(name: \"STSongti-SC-Bold\", size: 20) ?? UIFont.boldSystemFont(ofSize: 20)",
+    "after": "let nameFont = publication.font(for: .title)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let bodyFont = UIFont(name: \"STSongti-SC-Regular\", size: 11.5) ?? UIFont.systemFont(ofSize: 11.5)",
+    "after": "let bodyFont = publication.font(for: .body)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "UIFont(name: \"STSongti-SC-Regular\", size: 10)",
+    "after": "UIFont(name: V5Typeface.regularName, size: 10)",
+    "count": 2
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "UIFont(name: \"STSongti-SC-Bold\", size: 16)",
+    "after": "UIFont(name: V5Typeface.emphasizedName, size: 16)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "let font = UIFont(name: \"STSongti-SC-Regular\", size: 9) ?? UIFont.systemFont(ofSize: 9)",
+    "after": "let font = publication.font(for: .caption)",
+    "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "        CFBundleDisplayName: 三术合参",
+    "after": "        CFBundleDisplayName: 三术合参\n        UIAppFonts:\n          - NotoSerifCJKsc-Regular.otf\n          - NotoSerifCJKsc-SemiBold.otf",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "UIFont(name: V5Typeface.regularName, size: 10)",
+    "after": "UIFont(name: V5PublicationStyle.regularFontName, size: 10)",
+    "count": 2
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "UIFont(name: V5Typeface.emphasizedName, size: 16)",
+    "after": "UIFont(name: V5PublicationStyle.emphasizedFontName, size: 16)",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: bodyFont,",
+    "after": "[.font: bodyFont, .ligature: 0,",
+    "count": 2
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: font,",
+    "after": "[.font: font, .ligature: 0,",
+    "count": 6
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: nextFont,",
+    "after": "[.font: nextFont, .ligature: 0,",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: placed.font,",
+    "after": "[.font: placed.font, .ligature: 0,",
+    "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "[.font: sealFont,",
+    "after": "[.font: sealFont, .ligature: 0,",
+    "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "CURRENT_PROJECT_VERSION: 702",
+    "after": "CURRENT_PROJECT_VERSION: 703",
+    "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "CURRENT_PROJECT_VERSION: 703",
+    "after": "CURRENT_PROJECT_VERSION: 704",
+    "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "CURRENT_PROJECT_VERSION: 704",
+    "after": "CURRENT_PROJECT_VERSION: 707",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "                recentSection\n                ForEach(grouped, id: \\.0)",
+    "after": "                // Keep matching results above the keyboard; recents return when search is cleared.\n                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { recentSection }\n                ForEach(grouped, id: \\.0)",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "        .accessibilityIdentifier(\"alltools.scroll\")\n        .background(Ky.bg)",
+    "after": "        .accessibilityIdentifier(\"alltools.scroll\")\n        .scrollDismissesKeyboard(.interactively)\n        .background(Ky.bg)",
+    "count": 1
+  },
+  {
+    "path": "Sources/AllToolsView.swift",
+    "before": "        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))\n    }\n}",
+    "after": "        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))\n        .contentShape(Rectangle())\n    }\n}",
+    "count": 1
   }
 ]

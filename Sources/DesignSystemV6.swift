@@ -72,13 +72,13 @@ enum KanyuV6 {
     }
     enum Metric {
         static let pageInset: CGFloat = 20
-        static let cardGap: CGFloat = 15
-        static let cardInset: CGFloat = 16
-        static let cardRadius: CGFloat = 18
+        static let cardGap: CGFloat = V5Metric.gap
+        static let cardInset: CGFloat = V5Metric.page
+        static let cardRadius: CGFloat = V5Metric.corner
         static let innerRadius: CGFloat = 12
-        static let buttonRadius: CGFloat = 14
+        static let buttonRadius: CGFloat = 16
         static let buttonHeight: CGFloat = 52
-        static let minimumHitTarget: CGFloat = 44
+        static let minimumHitTarget: CGFloat = V5Metric.target
         static let hairline: CGFloat = 0.7
         static let pressScale: CGFloat = 0.985
         static let posterWidth: CGFloat = 540
@@ -118,7 +118,15 @@ enum KanyuV6 {
             foreground: Color(rgb: Hex.foregroundDark), secondary: Color(rgb: Hex.secondaryDark), action: Palette.champagne,
             actionForeground: Palette.obsidian, actionHighlight: Color(rgb: Hex.highlightDark),
             ornament: Palette.champagne, rule: Color(rgb: Hex.ruleDark))
-        static func resolved(_ scheme: ColorScheme) -> Theme { scheme == .dark ? .dark : .light }
+        static func resolved(_ scheme: ColorScheme) -> Theme {
+            let selected = V5ThemeStore.shared.theme
+            let p = (selected.scheme == scheme ? selected : (scheme == .dark ? V5Theme.night : .song)).palette
+            return Theme(background: V5Palette.color(p.paper), card: V5Palette.color(p.surface),
+                foreground: V5Palette.color(p.ink), secondary: V5Palette.color(p.secondary),
+                action: V5Palette.color(p.accent), actionForeground: V5Palette.color(p.paper),
+                actionHighlight: V5Palette.color(p.accent), ornament: V5Palette.color(p.ornament),
+                rule: V5Palette.color(p.ornament).opacity(0.35))
+        }
     }
 }
 

@@ -732,7 +732,6 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.headingFilter = 1
-        manager.requestWhenInUseAuthorization()
         authDenied = (manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted)
     }
 
@@ -741,7 +740,12 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     private var demand = 0
     func start() {
         demand += 1
-        if demand == 1 { applyStart() }
+        guard demand == 1 else { return }
+        if manager.authorizationStatus == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        } else if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            applyStart()
+        }
     }
     func stop() {
         guard demand > 0 else { return }
@@ -1300,17 +1304,17 @@ extension Color {
 
 enum Ky {
     // Compatibility facade; preserve call sites and the existing uiStyle preference.
-    static var bg: Color { .kyDyn(KanyuV6.Hex.paper, KanyuV6.Hex.obsidian) }
-    static var card: Color { .kyDyn(KanyuV6.Hex.ivory, KanyuV6.Hex.jadeCard) }
-    static var elevated: Color { .kyDyn(KanyuV6.Hex.elevatedLight, KanyuV6.Hex.elevatedDark) }
-    static var ink: Color { .kyDyn(KanyuV6.Hex.ink, KanyuV6.Hex.foregroundDark) }
-    static var sub: Color { .kyDyn(KanyuV6.Hex.secondaryLight, KanyuV6.Hex.secondaryDark) }
+    static var bg: Color { V5Palette.adaptive(.paper) }
+    static var card: Color { V5Palette.adaptive(.surface) }
+    static var elevated: Color { V5Palette.adaptive(.surface) }
+    static var ink: Color { V5Palette.adaptive(.ink) }
+    static var sub: Color { V5Palette.adaptive(.secondary) }
     // Legacy gold is frequently used as small text. Original bronze remains an ornament token.
-    static var gold: Color { .kyDyn(KanyuV6.Hex.bronzeText, KanyuV6.Hex.champagne) }
-    static var cinnabar: Color { .kyDyn(KanyuV6.Hex.cinnabar, 0xE05A47) }
-    static var jade: Color { .kyDyn(0x367552, 0x52B788) }
-    static var qingdai: Color { .kyDyn(KanyuV6.Hex.indigo, KanyuV6.Hex.nightIndigo) }
-    static var line: Color { .kyDyn(KanyuV6.Hex.ruleLight, KanyuV6.Hex.ruleDark) }
+    static var gold: Color { V5Palette.adaptive(.ornamentText) }
+    static var cinnabar: Color { V5Palette.adaptive(.failure) }
+    static var jade: Color { V5Palette.adaptive(.success) }
+    static var qingdai: Color { V5Palette.adaptive(.accent) }
+    static var line: Color { V5Palette.adaptive(.ornament) }
     static let instBg = Color(rgb: 0x111317)
     static let instGold = Color(rgb: 0xD1AC53)
     static let instCinnabar = Color(rgb: 0xE05A47)
