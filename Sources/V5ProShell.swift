@@ -119,7 +119,7 @@ struct V5ProShell: View {
     private var theme: V5Theme { V5ThemeStore.shared.theme }
     var body: some View {
         TabView(selection: $router.tab) {
-            root(0) { V5HomeView().accessibilityIdentifier("v5.home") }
+            root(0) { V5HomeView() }
                 .tabItem { Label { Text("首页") } icon: { tabIcon(.navHome, symbol: "house") } }.tag(0)
             root(1) { V5CalculationHub().accessibilityIdentifier("v5.measure") }
                 .tabItem { Label { Text("测算") } icon: { tabIcon(.navMeasure, symbol: "safari") } }.tag(1)
@@ -180,14 +180,14 @@ struct V5HomeView: View {
         VStack(spacing: 0) {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                V5BrandHero()
+                V5BrandHero().accessibilityElement(children: .contain).accessibilityIdentifier("v5.home")
                 V5PersonHero(chart: chartPerson == people.currentPerson ? chart : nil)
                 if V5ThemeStore.shared.theme != .song {
                     Button { router.tab = 1 } label: {
                         HStack { Spacer(); Text("开始测算").font(V5Typography.song(.title2)); Image(systemName: "chevron.right"); Spacer() }
                     }.buttonStyle(V5PrimaryButton())
                 }
-                V5PrimaryFeatureDeck()
+                V5PrimaryFeatureDeck().accessibilityElement(children: .contain).accessibilityIdentifier("v5.home.features")
                 if V5ThemeStore.shared.theme == .celadon || V5ThemeStore.shared.theme == .collection { V5HomeBookEntry() }
                 if let person = people.currentPerson {
                     V5Card {
@@ -198,7 +198,7 @@ struct V5HomeView: View {
                                 Button { router.open(.bazi) } label: { Image(systemName: "chevron.right").frame(width: 48, height: 48) }
                                     .accessibilityLabel("查看八字命盘")
                             }
-                            if chartPerson == person, let chart { V5BirthOverview(chart: chart) }
+                            if chartPerson == person, let chart { V5HomeChartPreview(chart: chart) }
                             else { ProgressView("正在读取当前人物命盘") }
                             Button("阅读命局白话解读") { router.open(.tool("interpret")) }.frame(minHeight: V5Metric.target)
                         }

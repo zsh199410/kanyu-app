@@ -70,16 +70,25 @@ final class V5PublicationStyleTests: XCTestCase {
         let style = V5PublicationStyle(theme: .song)
         _ = renderer.image { context in
             let longText = String(repeating: "真实中文姓名与完整说明不得截断。", count: 500)
-            XCTAssertThrowsError(try style.drawText(longText, role: .body,
-                in: style.contentRect(in: V5PublicationStyle.a4), context: context.cgContext)) { error in
-                guard let failure = error as? V5PublicationStyle.Failure, case .textExceedsFrame = failure else { return XCTFail("Unexpected error: \(error)") }
-            }
-            XCTAssertThrowsError(try style.drawHeader(longText, in: context.cgContext, pageRect: V5PublicationStyle.a4))
-            XCTAssertThrowsError(try style.drawFooter(in: context.cgContext, pageRect: V5PublicationStyle.a4, page: 0, total: 1))
+            do {
+                try style.drawText(longText, role: .body, in: style.contentRect(in: V5PublicationStyle.a4), context: context.cgContext)
+                XCTFail("Oversized text must not silently clip")
+            } catch V5PublicationStyle.Failure.textExceedsFrame { }
+              catch { XCTFail("Unexpected error: \(error)") }
+            do {
+                try style.drawHeader(longText, in: context.cgContext, pageRect: V5PublicationStyle.a4)
+                XCTFail("Oversized running title must be rejected")
+            } catch V5PublicationStyle.Failure.textExceedsFrame { }
+              catch { XCTFail("Unexpected error: \(error)") }
+            do {
+                try style.drawFooter(in: context.cgContext, pageRect: V5PublicationStyle.a4, page: 0, total: 1)
+                XCTFail("Invalid page number must be rejected")
+            } catch V5PublicationStyle.Failure.invalidPageNumber { }
+              catch { XCTFail("Unexpected error: \(error)") }
         }
     }
     func testExistingProfessionalExporterKeepsCompleteRealTextAcrossPages() throws {
-        // This baseline exercises the existing renderer. Production V5 style adoption is intentionally pending.
+        // This baseline exercises the existing renderer. The production style bridge must retain the complete original report text.
         let person = Person(name: "分页验证" + String(UUID().uuidString.prefix(8)), birthEpoch: 946684800)
         let lines = ReportBuilder.lines(for: person, tier: .professional)
         let url = try XCTUnwrap(ReportBuilder.makePDF(for: person, tier: .professional))

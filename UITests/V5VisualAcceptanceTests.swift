@@ -29,7 +29,9 @@ final class V5VisualAcceptanceTests: XCTestCase {
             screenshot("v5-visual-" + theme + "-home")
             let layout: [String: Any] = ["theme": theme, "fixtureOwner": owner,
                 "screen": ["width": app.frame.width, "height": app.frame.height],
-                "person": frame("v5.person.switch") ?? [:],
+                "person": frame("workspace.workbench") ?? [:],
+                "brand": frame("v5.home") ?? [:],
+                "features": frame("v5.home.features") ?? [:],
                 "baziEntry": frame("v5.home.entry.bazi") ?? [:],
                 "surveyEntry": frame("v5.home.entry.survey") ?? [:],
                 "visualApproval": false, "metricStatus": "Awaiting GPT reviewed bounds; no 98% claim"]
