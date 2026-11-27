@@ -1,5 +1,8 @@
 name: V5 PDFKit original evidence diagnostic
 on:
+  push:
+    branches: [codex/v5-oriental-pro-redesign]
+    paths: [design/v5/inspect_pdfkit.swift, .github/workflows/v5-pdf-diagnostic.yml]
   workflow_dispatch:
 permissions:
   contents: read
