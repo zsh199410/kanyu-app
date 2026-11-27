@@ -5,7 +5,7 @@ struct V5SettingsPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: V5Metric.gap) {
-                V5ArtHeader(eyebrow: "PREFERENCES & STUDY", title: "设置与研习", subtitle: "从显示、口径，到每一份本机记录")
+                V5ArtHeader(eyebrow: "外观 · 口径 · 研习", title: "设置与研习", subtitle: "从显示、口径，到每一份本机记录")
                 group("显示与阅读", number: "01", subtitle: "四时外观 · 简繁文字") {
                     NavigationLink { V5AppearanceView() } label: { row("四时外观", "当前：\(V5ThemeStore.shared.theme.title)", "circle.lefthalf.filled") }
                     Divider()

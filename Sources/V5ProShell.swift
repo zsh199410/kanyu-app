@@ -19,13 +19,13 @@ enum V5Theme: String, CaseIterable, Identifiable {
         // Read the existing display preference without rewriting or migrating user defaults.
         return defaults.string(forKey: "uiStyle") == "dark" ? .night : .song
     }
-    var scheme: ColorScheme { self == .night ? .dark : .light }
+    var scheme: ColorScheme { self == .night || self == .collection ? .dark : .light }
     var palette: V5Palette {
         switch self {
         case .song: return .init(paper: 0xF5EFE3, surface: 0xFCF8EF, ink: 0x173F32, secondary: 0x686054, accent: 0x23624B, ornament: 0xA57A39)
         case .night: return .init(paper: 0x101C29, surface: 0x1A2B3C, ink: 0xF3E9D3, secondary: 0xBEB9AC, accent: 0xA6CEC8, ornament: 0xD9B879)
         case .celadon: return .init(paper: 0xEFF4EE, surface: 0xFAFCF7, ink: 0x214B46, secondary: 0x5B7069, accent: 0x34776D, ornament: 0x96753E)
-        case .collection: return .init(paper: 0xF1E6D1, surface: 0xFBF3E2, ink: 0x49382A, secondary: 0x746351, accent: 0x754634, ornament: 0x9A7132)
+        case .collection: return .init(paper: 0x151411, surface: 0x25201B, ink: 0xF1D9AA, secondary: 0xC8B89C, accent: 0xE5BE77, ornament: 0xB88A46)
         }
     }
 }
@@ -39,9 +39,15 @@ enum V5Theme: String, CaseIterable, Identifiable {
 }
 struct V5Palette {
     let paper: UInt32, surface: UInt32, ink: UInt32, secondary: UInt32, accent: UInt32, ornament: UInt32
-    var success: UInt32 { paper == 0x101C29 ? 0x52B788 : 0x306B4B }
-    var failure: UInt32 { paper == 0x101C29 ? 0xE98A76 : 0x9A2A22 }
-    var ornamentText: UInt32 { paper == 0x101C29 ? 0xD9B879 : 0x785521 }
+    var isDark: Bool { paper == 0x101C29 || paper == 0x151411 }
+    var heroSurface: UInt32 { paper == 0x151411 ? 0x641B18 : surface }
+    var heroInk: UInt32 { paper == 0x151411 ? 0xF5DCAF : ink }
+    var heroSecondary: UInt32 { paper == 0x151411 ? 0xDBC296 : secondary }
+    var readingPaper: UInt32 { 0xF7F2E7 }
+    var readingInk: UInt32 { 0x2D382F }
+    var success: UInt32 { isDark ? 0x52B788 : 0x306B4B }
+    var failure: UInt32 { isDark ? 0xE98A76 : 0x9A2A22 }
+    var ornamentText: UInt32 { isDark ? 0xD9B879 : 0x785521 }
     static var current: V5Palette {
         V5ThemeStore.shared.theme.palette
     }
@@ -80,7 +86,7 @@ enum V5Metric {
     static let corner: CGFloat = 24
     static let target: CGFloat = 48
 }
-enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, tools, settings, appearance, updates, tool(String) }
+enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, face, tools, settings, appearance, updates, tool(String) }
 @MainActor final class V5Router: ObservableObject {
     @Published var tab = 0
     @Published var paths: [Int: [V5Route]] = [:]
@@ -133,6 +139,7 @@ struct V5ProShell: View {
                 case .qimen: QimenHomeView()
                 case .survey: V5SurveyPage()
                 case .palm: V5PalmPage()
+                case .face: V5FacePage()
                 case .tools: AllToolsView(selectedTab: router.legacySelection)
                 case .settings: V5SettingsPage()
                 case .updates: V5UpdatePage()
@@ -163,58 +170,40 @@ struct V5HomeView: View {
     @State private var chartPerson: Person?
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: V5Metric.gap) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("三术合参").font(.system(.largeTitle, design: .serif).weight(.semibold))
-                    Text("东方命理 · 个人命书").font(.subheadline).tracking(3)
-                }.padding(.vertical, 24)
-                V5Card {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("当前命主").font(.caption)
-                        if let person = people.currentPerson {
-                            Menu {
-                                ForEach(people.people) { candidate in
-                                    Button {
-                                        people.setCurrentPerson(candidate)
-                                    } label: {
-                                        Text("\(candidate.name) · \(candidate.relation) · \(DisplayTimeReceipt.beijing(candidate.birthDate)) · 档案 \(candidate.id.uuidString.prefix(8))")
-                                    }
-                                }
-                                Button("管理人物档案") { router.tab = 3 }
-                            } label: {
-                                Label(person.name, systemImage: "person.crop.circle")
-                                    .font(.system(.title, design: .serif))
+            VStack(alignment: .leading, spacing: 20) {
+                V5BrandHero()
+                V5PersonHero(chart: chartPerson == people.currentPerson ? chart : nil)
+                if V5ThemeStore.shared.theme != .song {
+                    Button { router.tab = 1 } label: {
+                        HStack { Spacer(); Text("开始测算").font(.system(.title2, design: .serif)); Image(systemName: "chevron.right"); Spacer() }
+                    }.buttonStyle(V5PrimaryButton())
+                }
+                V5PrimaryFeatureDeck()
+                if V5ThemeStore.shared.theme == .celadon || V5ThemeStore.shared.theme == .collection { V5HomeBookEntry() }
+                if let person = people.currentPerson {
+                    V5Card {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("八字命局 · 速览").font(V5Typography.section)
+                                Spacer(minLength: 4)
+                                Button { router.open(.bazi) } label: { Image(systemName: "chevron.right").frame(width: 48, height: 48) }
+                                    .accessibilityLabel("查看八字命盘")
                             }
-                            .accessibilityLabel("切换命主")
-                            .accessibilityIdentifier("v5.person.switch")
-                            Text(DisplayTimeReceipt.beijing(person.birthDate)).font(.subheadline)
-                            Text(person.relation).font(.caption)
-                        } else {
-                            Button("添加第一位家人或命主档案") { router.tab = 3 }
-                                .frame(minHeight: V5Metric.target)
-                            Text("创建真实档案后显示命盘与个人解读。")
+                            if chartPerson == person, let chart { V5BirthOverview(chart: chart) }
+                            else { ProgressView("正在读取当前人物命盘") }
+                            Button("阅读命局白话解读") { router.open(.tool("interpret")) }.frame(minHeight: V5Metric.target)
                         }
                     }
                 }
-                V5MeasureLinks()
-                if let person = people.currentPerson {
-                    V5Card { VStack(alignment: .leading, spacing: 12) {
-                        Text("命局 · 速览").font(.system(.title2, design: .serif))
-                        if chartPerson == person, let chart {
-                            V5BirthOverview(chart: chart)
-                        } else {
-                            ProgressView("正在读取当前人物命盘")
-                        }
-                        Button("查看当前人物的真实命盘与解读") { router.open(.tool("interpret")) }
-                            .frame(minHeight: V5Metric.target)
-                        Text(person.name).font(.caption)
-                    } }
+                if V5ThemeStore.shared.theme == .song || V5ThemeStore.shared.theme == .night { V5HomeBookEntry() }
+                Button { router.open(.tools) } label: {
+                    HStack { Text("历法、择吉与全部工具"); Spacer(); Image(systemName: "arrow.right") }.frame(minHeight: V5Metric.target)
                 }
                 Text("传统民俗参考，不构成疾病诊断或保证性预测。")
                     .font(.footnote).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
-            }.padding(V5Metric.page)
+            }.padding(.horizontal, V5Metric.page).padding(.bottom, 24)
         }
-        .background(V5Palette.color(V5Palette.current.paper))
+        .background { V5SceneBackground() }
         .foregroundStyle(V5Palette.color(V5Palette.current.ink))
         .navigationTitle("首页").navigationBarTitleDisplayMode(.inline)
         .task(id: people.currentPerson) {
@@ -227,26 +216,6 @@ struct V5HomeView: View {
             guard !Task.isCancelled, people.currentPerson == selected else { return }
             chartPerson = selected; chart = result
         }
-    }
-}
-private struct V5MeasureLinks: View {
-    @EnvironmentObject private var router: V5Router
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130))], spacing: V5Metric.gap) {
-            entry("八字", "tablecells", .bazi)
-            entry("紫微", "sparkles", .ziwei)
-            entry("手相与面相", "hand.raised", .palm)
-            entry("风水勘察", "safari", .survey)
-            entry("万年历", "calendar", .tool("almanac"))
-            entry("星命合参", "circle.hexagongrid", .tool("astro"))
-            entry("奇门", "square.grid.3x3", .qimen)
-            entry("全部功能", "square.grid.2x2", .tools)
-        }
-    }
-    private func entry(_ title: String, _ icon: String, _ route: V5Route) -> some View {
-        Button { router.open(route) } label: {
-            V5Card { Label(title, systemImage: icon).font(.headline).frame(minHeight: V5Metric.target) }
-        }.buttonStyle(.plain)
     }
 }
 struct V5AppearanceView: View {

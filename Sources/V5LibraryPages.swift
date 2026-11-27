@@ -34,7 +34,7 @@ struct V5LibraryPage: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: V5Metric.gap) {
-                V5ArtHeader(eyebrow: "PERSONAL COLLECTION", title: "命书", subtitle: "三术合参 · 本机珍藏")
+                V5ArtHeader(eyebrow: "三术合参 · 命书", title: "命书", subtitle: "三术合参 · 本机珍藏")
                 publicationHero
                 Picker("报告范围", selection: $allPeople) {
                     Text("当前命主").tag(false)
@@ -71,7 +71,7 @@ struct V5LibraryPage: View {
                         }
                     }
                 }
-                Text("旧文件若缺少明确的 UUID，只在全部档案展示，不按姓名自动归给当前命主。本页不改写、迁移或删除任何文件。")
+                Text("未明确归属的旧文件，可在“全部档案”中查看。人物同名时也不会自动归入当前档案。")
                     .font(.footnote).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
             }.padding(V5Metric.page)
         }
@@ -170,7 +170,7 @@ struct V5ProfilesPage: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: V5Metric.gap) {
-                V5ArtHeader(eyebrow: "PEOPLE & RECORDS", title: "人物档案", subtitle: "一人一卷 · 三术共用")
+                V5ArtHeader(eyebrow: "家人 · 档案", title: "人物档案", subtitle: "一人一卷 · 三术共用")
                 HStack(alignment: .firstTextBaseline) {
                     Text("本机人物 · \(people.people.count) 位").font(.subheadline).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                     Spacer(minLength: 8)

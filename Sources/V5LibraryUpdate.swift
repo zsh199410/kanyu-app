@@ -15,7 +15,7 @@ struct V5UpdatePage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: V5Metric.gap) {
-                V5ArtHeader(eyebrow: "VERSION & PACKAGE", title: "版本与安装包", subtitle: "本机版本 · 自备 IPA")
+                V5ArtHeader(eyebrow: "版本 · 安装包", title: "版本与安装包", subtitle: "本机版本 · 自备 IPA")
                 VStack(alignment: .leading, spacing: 10) {
                     Text("三术合参").font(.system(.headline, design: .serif))
                     Text(version).font(.system(.largeTitle, design: .serif).weight(.medium)).monospacedDigit()

@@ -1,0 +1,728 @@
+{
+  "schema": 1,
+  "approval": "GPT required; missing assets block visual acceptance",
+  "sourceReference": "Kanyu-5.0-visual-reference.zip; 01/02 approved; 03/04 need Pro art approval",
+  "requirements": "Independent text-free sRGB artwork. No names, dates, charts, numbers, UI frames or buttons baked into pixels. No recolored duplicates between themes.",
+  "assets": [
+    {
+      "theme": "song",
+      "role": "landscape",
+      "path": "Resources/V5Artwork/v5-song-landscape.png",
+      "minimumPixels": [
+        1600,
+        800
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "emblem",
+      "path": "Resources/V5Artwork/v5-song-emblem.png",
+      "minimumPixels": [
+        512,
+        512
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "person-object",
+      "path": "Resources/V5Artwork/v5-song-person-object.png",
+      "minimumPixels": [
+        900,
+        1000
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "book-cover-art",
+      "path": "Resources/V5Artwork/v5-song-book-cover-art.png",
+      "minimumPixels": [
+        900,
+        1200
+      ],
+      "alphaRequired": false,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "texture",
+      "path": "Resources/V5Artwork/v5-song-texture.png",
+      "minimumPixels": [
+        512,
+        512
+      ],
+      "alphaRequired": false,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "flourish",
+      "path": "Resources/V5Artwork/v5-song-flourish.png",
+      "minimumPixels": [
+        1200,
+        360
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "glyph-bazi",
+      "path": "Resources/V5Artwork/v5-song-glyph-bazi.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "glyph-ziwei",
+      "path": "Resources/V5Artwork/v5-song-glyph-ziwei.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "glyph-palm",
+      "path": "Resources/V5Artwork/v5-song-glyph-palm.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "glyph-face",
+      "path": "Resources/V5Artwork/v5-song-glyph-face.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "glyph-survey",
+      "path": "Resources/V5Artwork/v5-song-glyph-survey.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "nav-home",
+      "path": "Resources/V5Artwork/v5-song-nav-home.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "nav-measure",
+      "path": "Resources/V5Artwork/v5-song-nav-measure.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "nav-reports",
+      "path": "Resources/V5Artwork/v5-song-nav-reports.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "song",
+      "role": "nav-profiles",
+      "path": "Resources/V5Artwork/v5-song-nav-profiles.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "landscape",
+      "path": "Resources/V5Artwork/v5-night-landscape.png",
+      "minimumPixels": [
+        1600,
+        800
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "emblem",
+      "path": "Resources/V5Artwork/v5-night-emblem.png",
+      "minimumPixels": [
+        512,
+        512
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "person-object",
+      "path": "Resources/V5Artwork/v5-night-person-object.png",
+      "minimumPixels": [
+        900,
+        1000
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "book-cover-art",
+      "path": "Resources/V5Artwork/v5-night-book-cover-art.png",
+      "minimumPixels": [
+        900,
+        1200
+      ],
+      "alphaRequired": false,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "texture",
+      "path": "Resources/V5Artwork/v5-night-texture.png",
+      "minimumPixels": [
+        512,
+        512
+      ],
+      "alphaRequired": false,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "flourish",
+      "path": "Resources/V5Artwork/v5-night-flourish.png",
+      "minimumPixels": [
+        1200,
+        360
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "glyph-bazi",
+      "path": "Resources/V5Artwork/v5-night-glyph-bazi.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "glyph-ziwei",
+      "path": "Resources/V5Artwork/v5-night-glyph-ziwei.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "glyph-palm",
+      "path": "Resources/V5Artwork/v5-night-glyph-palm.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "glyph-face",
+      "path": "Resources/V5Artwork/v5-night-glyph-face.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "glyph-survey",
+      "path": "Resources/V5Artwork/v5-night-glyph-survey.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "nav-home",
+      "path": "Resources/V5Artwork/v5-night-nav-home.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "nav-measure",
+      "path": "Resources/V5Artwork/v5-night-nav-measure.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "nav-reports",
+      "path": "Resources/V5Artwork/v5-night-nav-reports.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "night",
+      "role": "nav-profiles",
+      "path": "Resources/V5Artwork/v5-night-nav-profiles.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "landscape",
+      "path": "Resources/V5Artwork/v5-celadon-landscape.png",
+      "minimumPixels": [
+        1600,
+        800
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "emblem",
+      "path": "Resources/V5Artwork/v5-celadon-emblem.png",
+      "minimumPixels": [
+        512,
+        512
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "person-object",
+      "path": "Resources/V5Artwork/v5-celadon-person-object.png",
+      "minimumPixels": [
+        900,
+        1000
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "book-cover-art",
+      "path": "Resources/V5Artwork/v5-celadon-book-cover-art.png",
+      "minimumPixels": [
+        900,
+        1200
+      ],
+      "alphaRequired": false,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "texture",
+      "path": "Resources/V5Artwork/v5-celadon-texture.png",
+      "minimumPixels": [
+        512,
+        512
+      ],
+      "alphaRequired": false,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "flourish",
+      "path": "Resources/V5Artwork/v5-celadon-flourish.png",
+      "minimumPixels": [
+        1200,
+        360
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "glyph-bazi",
+      "path": "Resources/V5Artwork/v5-celadon-glyph-bazi.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "glyph-ziwei",
+      "path": "Resources/V5Artwork/v5-celadon-glyph-ziwei.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "glyph-palm",
+      "path": "Resources/V5Artwork/v5-celadon-glyph-palm.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "glyph-face",
+      "path": "Resources/V5Artwork/v5-celadon-glyph-face.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "glyph-survey",
+      "path": "Resources/V5Artwork/v5-celadon-glyph-survey.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "nav-home",
+      "path": "Resources/V5Artwork/v5-celadon-nav-home.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "nav-measure",
+      "path": "Resources/V5Artwork/v5-celadon-nav-measure.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "nav-reports",
+      "path": "Resources/V5Artwork/v5-celadon-nav-reports.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "celadon",
+      "role": "nav-profiles",
+      "path": "Resources/V5Artwork/v5-celadon-nav-profiles.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "landscape",
+      "path": "Resources/V5Artwork/v5-collection-landscape.png",
+      "minimumPixels": [
+        1600,
+        800
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "emblem",
+      "path": "Resources/V5Artwork/v5-collection-emblem.png",
+      "minimumPixels": [
+        512,
+        512
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "person-object",
+      "path": "Resources/V5Artwork/v5-collection-person-object.png",
+      "minimumPixels": [
+        900,
+        1000
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "book-cover-art",
+      "path": "Resources/V5Artwork/v5-collection-book-cover-art.png",
+      "minimumPixels": [
+        900,
+        1200
+      ],
+      "alphaRequired": false,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "texture",
+      "path": "Resources/V5Artwork/v5-collection-texture.png",
+      "minimumPixels": [
+        512,
+        512
+      ],
+      "alphaRequired": false,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "flourish",
+      "path": "Resources/V5Artwork/v5-collection-flourish.png",
+      "minimumPixels": [
+        1200,
+        360
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "glyph-bazi",
+      "path": "Resources/V5Artwork/v5-collection-glyph-bazi.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "glyph-ziwei",
+      "path": "Resources/V5Artwork/v5-collection-glyph-ziwei.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "glyph-palm",
+      "path": "Resources/V5Artwork/v5-collection-glyph-palm.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "glyph-face",
+      "path": "Resources/V5Artwork/v5-collection-glyph-face.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "glyph-survey",
+      "path": "Resources/V5Artwork/v5-collection-glyph-survey.png",
+      "minimumPixels": [
+        256,
+        256
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "nav-home",
+      "path": "Resources/V5Artwork/v5-collection-nav-home.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "nav-measure",
+      "path": "Resources/V5Artwork/v5-collection-nav-measure.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "nav-reports",
+      "path": "Resources/V5Artwork/v5-collection-nav-reports.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    },
+    {
+      "theme": "collection",
+      "role": "nav-profiles",
+      "path": "Resources/V5Artwork/v5-collection-nav-profiles.png",
+      "minimumPixels": [
+        192,
+        192
+      ],
+      "alphaRequired": true,
+      "status": "MISSING",
+      "sha256": null
+    }
+  ]
+}

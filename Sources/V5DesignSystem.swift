@@ -22,12 +22,7 @@ struct V5Card<Content: View>: View {
     var body: some View {
         content.padding(V5Metric.page)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(V5Palette.color(V5Palette.current.surface), in: RoundedRectangle(cornerRadius: V5Metric.corner))
-            .overlay {
-                RoundedRectangle(cornerRadius: V5Metric.corner)
-                    .stroke(V5Palette.color(contrast == .increased ? V5Palette.current.ink : V5Palette.current.ornament), lineWidth: contrast == .increased ? 1.4 : 0.7)
-                    .allowsHitTesting(false)
-            }
+            .background { V5Surface() }
     }
 }
 struct V5PrimaryButton: ButtonStyle {
