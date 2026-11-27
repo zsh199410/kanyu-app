@@ -2194,5 +2194,17 @@
     "before": "        CFBundleDisplayName: 三术合参",
     "after": "        CFBundleDisplayName: 三术合参\n        UIAppFonts:\n          - NotoSerifCJKsc-Regular.otf\n          - NotoSerifCJKsc-SemiBold.otf",
     "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "UIFont(name: V5Typeface.regularName, size: 10)",
+    "after": "UIFont(name: V5PublicationStyle.regularFontName, size: 10)",
+    "count": 2
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "UIFont(name: V5Typeface.emphasizedName, size: 16)",
+    "after": "UIFont(name: V5PublicationStyle.emphasizedFontName, size: 16)",
+    "count": 1
   }
 ]

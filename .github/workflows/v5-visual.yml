@@ -14,6 +14,7 @@ jobs:
           fetch-depth: 0
       - run: python3 design/verify_v6.py
       - name: Build native simulator app and UI tests
+        id: native-build
         shell: bash
         run: |
           set -euo pipefail
@@ -45,6 +46,7 @@ jobs:
           DEST=$(cat build/destination.txt)
           xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5TypographyTests -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
       - name: Capture actual four-theme screens on identical data
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail

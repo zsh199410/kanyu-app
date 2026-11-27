@@ -40,14 +40,19 @@ struct V5PublicationStyle {
     static let inset: CGFloat = 48
     static let lineSpacing: CGFloat = 3
 
+    // CoreGraphics embeds Noto CFF glyph aliases as radicals/private-use digits in PDF ToUnicode.
+    // Keep the proven system Songti for searchable, lossless PDF text; app UI uses Noto.
+    static let regularFontName = "STSongti-SC-Regular"
+    static let emphasizedFontName = "STSongti-SC-Bold"
+
     func font(for role: TextRole) -> UIFont {
         let specification: (name: String, size: CGFloat, bold: Bool)
         switch role {
-        case .title: specification = (V5Typeface.emphasizedName, 20, true)
-        case .heading: specification = (V5Typeface.emphasizedName, 12.5, true)
-        case .body: specification = (V5Typeface.regularName, 11.5, false)
-        case .caption: specification = (V5Typeface.regularName, 9, false)
-        case .brand: specification = (V5Typeface.emphasizedName, 28, true)
+        case .title: specification = (Self.emphasizedFontName, 20, true)
+        case .heading: specification = (Self.emphasizedFontName, 12.5, true)
+        case .body: specification = (Self.regularFontName, 11.5, false)
+        case .caption: specification = (Self.regularFontName, 9, false)
+        case .brand: specification = (Self.emphasizedFontName, 28, true)
         }
         return UIFont(name: specification.name, size: specification.size)
             ?? (specification.bold ? .boldSystemFont(ofSize: specification.size) : .systemFont(ofSize: specification.size))

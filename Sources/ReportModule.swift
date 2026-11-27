@@ -417,7 +417,7 @@ enum ReportBuilder {
         let brandFont = publication.font(for: .brand)
         let nameFont = publication.font(for: .title)
         let bodyFont = publication.font(for: .body)
-        let smallFont = UIFont(name: V5Typeface.regularName, size: 10) ?? UIFont.systemFont(ofSize: 10)
+        let smallFont = UIFont(name: V5PublicationStyle.regularFontName, size: 10) ?? UIFont.systemFont(ofSize: 10)
         let ink = publication.coverInk
         let accent = publication.coverAccent
         let sub = publication.coverSecondary
@@ -440,7 +440,7 @@ enum ReportBuilder {
         let sealRect = CGRect(x: (pageRect.width - sealSize) / 2, y: y + 18, width: sealSize, height: sealSize)
         ctx.setFillColor(cinnabar.cgColor)
         ctx.fill(sealRect)
-        let sealFont = UIFont(name: V5Typeface.emphasizedName, size: 16) ?? UIFont.boldSystemFont(ofSize: 16)
+        let sealFont = UIFont(name: V5PublicationStyle.emphasizedFontName, size: 16) ?? UIFont.boldSystemFont(ofSize: 16)
         let sealStyle = NSMutableParagraphStyle()
         sealStyle.alignment = NSTextAlignment.center
         let sealAttr: [NSAttributedString.Key: Any] = [.font: sealFont, .foregroundColor: UIColor.white, .paragraphStyle: sealStyle]
@@ -465,7 +465,7 @@ enum ReportBuilder {
         let ink = publication.pageInk
         let sub = publication.pageSecondary
         let accent = publication.pageAccent
-        let itemFont = UIFont(name: V5Typeface.regularName, size: 10) ?? UIFont.systemFont(ofSize: 10)
+        let itemFont = UIFont(name: V5PublicationStyle.regularFontName, size: 10) ?? UIFont.systemFont(ofSize: 10)
         var y: CGFloat = 48
         y = drawLeft(ctx: ctx, text: "目录", font: headFont, y: y, x: inset, width: width, color: ink)
         y += 6
