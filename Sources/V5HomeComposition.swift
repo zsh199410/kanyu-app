@@ -18,10 +18,12 @@ struct V5PersonHero: View {
                     }
                 }.foregroundStyle(V5Palette.color(p.heroSecondary))
                 if let person = people.currentPerson {
-                    HStack(alignment: .center, spacing: 4) {
-                        Text(person.name).font(V5Typography.song(.title, emphasis: true))
-                            .fixedSize(horizontal: false, vertical: true)
-                        V5PersonPickerButton { Image(systemName: "chevron.down").font(.caption).frame(width: 48, height: 48) }
+                    V5PersonPickerButton {
+                        HStack(alignment: .center, spacing: 6) {
+                            Text(person.name).font(V5Typography.song(.title, emphasis: true))
+                                .fixedSize(horizontal: false, vertical: true)
+                            Image(systemName: "chevron.down").font(.caption)
+                        }.frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                     }
                     Text(V5DisplayText.dateTime(person.birthDate)).font(.subheadline.monospacedDigit())
                         .fixedSize(horizontal: false, vertical: true)
@@ -42,7 +44,7 @@ struct V5PersonHero: View {
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(V5Palette.color(p.heroInk))
         .background {
-            V5PanelSilhouette(theme: theme).fill(V5Palette.color(p.heroSurface))
+            V5PanelSilhouette(theme: theme).fill(V5Palette.color(p.personSurface))
                 .overlay {
                     V5ArtworkLayer(role: .texture, theme: theme) { texture in
                         Image(uiImage: texture).resizable(resizingMode: .tile).opacity(0.10).clipShape(V5PanelSilhouette(theme: theme))

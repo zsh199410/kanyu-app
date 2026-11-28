@@ -42,6 +42,9 @@ struct V5Palette {
     var isDark: Bool { paper == 0x101C29 || paper == 0x151411 }
     var seal: UInt32 { 0xA52F24 }
     var heroSurface: UInt32 { paper == 0x151411 ? 0x641B18 : surface }
+    var personSurface: UInt32 {
+        switch paper { case 0xF5EFE3: return 0xE3E8DC; case 0xEFF4EE: return 0xE6EFEB; default: return heroSurface }
+    }
     var heroInk: UInt32 { paper == 0x151411 ? 0xF5DCAF : ink }
     var heroSecondary: UInt32 { paper == 0x151411 ? 0xDBC296 : secondary }
     var readingPaper: UInt32 { 0xF7F2E7 }
