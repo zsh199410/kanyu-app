@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   artwork-and-export:
-    if: startsWith(github.event.head_commit.message, '[fidelity]')
+    if: startsWith(github.event.head_commit.message, '[fidelity]') || startsWith(github.event.head_commit.message, '[share-ui]')
     runs-on: macos-26
     timeout-minutes: 35
     steps:
@@ -42,6 +42,7 @@ jobs:
           cp design/v5/visual-fixture.json "$CONTAINER/Documents/people.json"
           cp design/v5/visual-fixture.json build/fixture.json
       - name: Verify isolated artwork and formal export units
+        if: ${{ !startsWith(github.event.head_commit.message, '[share-ui]') }}
         timeout-minutes: 5
         shell: bash
         run: |

@@ -173,7 +173,7 @@ for path in files:
 # Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
 new_test_blobs = {
     'Tests/V5PosterShareItemTests.swift': '14025e7abfda2cf17a32a85b930b5c35d06ee992',
-    'UITests/V5PosterSharingUITests.swift': 'ad24618c66359c58a7b7dfcabc5af91da3cc0446',
+    'UITests/V5PosterSharingUITests.swift': 'ff197bcc4aa3b08a783bf7f6f943cd45345ea653',
     'Tests/V5ArtworkStoreTests.swift': 'f5754442804c258b10685e628c999d37375e1729',
     'Tests/V5TypographyTests.swift': '23e893251767b083e343f5f07b3aca165b4fcaae',
     'Resources/Fonts/LICENSE-NotoSerifCJK.txt': 'd952d62c065f3f35fb83a173496e90b21525aef3',

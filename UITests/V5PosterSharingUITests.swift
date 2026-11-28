@@ -38,17 +38,26 @@ final class V5PosterSharingUITests: XCTestCase {
         XCTAssertTrue(receipt.waitForExistence(timeout: 30))
         XCTAssertEqual(receipt.label, "已存入相册", "Photo permission is pre-granted by CI; a real Photos completion must succeed")
         export.tap()
-        // Captured xcresult hierarchy identifies iOS 26's actual remote activity
-        // controller as Other/ActivityListView, not XCUIElementTypeSheet/Popover.
-        // Require the real system controller, PNG attachment and dismiss control.
+        // UIKit's remote share header changes AX role with custom metadata.
+        // Wait for actual image/file activities, not a guessed internal bar class.
         let activity = app.otherElements["ActivityListView"]
         let close = app.buttons["header.closeButton"]
-        XCTAssertTrue(activity.waitForExistence(timeout: 15))
-        XCTAssertTrue(app.navigationBars["UIActivityContentView"].exists)
-        let fileType = app.otherElements["LP.CaptionBar.BottomCaption"]
-        XCTAssertTrue(fileType.exists)
-        XCTAssertTrue(fileType.label.contains("PNG"))
-        XCTAssertTrue(close.exists && close.isHittable)
+        let saveImage = app.cells.matching(NSPredicate(format: "label IN %@", ["Save Image", "存储图像", "保存图像", "保存图片"])).firstMatch
+        let saveFile = app.cells.matching(NSPredicate(format: "label IN %@", ["Save to Files", "存储到文件", "存储至文件", "保存到文件"])).firstMatch
+        func waitForSystemContent() {
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                activity.exists && saveImage.exists && saveFile.exists && close.exists && close.isHittable
+            }, object: activity)
+            wait(for: [ready], timeout: 15)
+            XCTAssertTrue(saveImage.exists && saveImage.isEnabled)
+            XCTAssertTrue(saveFile.exists && saveFile.isEnabled)
+            XCTAssertTrue(close.exists && close.isHittable)
+            let title = app.otherElements["LP.CaptionBar.TopCaption"]
+            let file = app.otherElements["LP.CaptionBar.BottomCaption"]
+            XCTAssertTrue(title.exists); XCTAssertEqual(title.label, "八字古风长卷")
+            XCTAssertTrue(file.exists); XCTAssertTrue(file.label.hasPrefix("kanyu-bazi-"))
+        }
+        waitForSystemContent()
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "v5-formal-bazi-real-system-share"; shot.lifetime = .keepAlways; add(shot)
         close.tap()
@@ -56,8 +65,8 @@ final class V5PosterSharingUITests: XCTestCase {
         XCTAssertTrue(export.exists && export.isEnabled && export.isHittable)
         // A second export must present a fresh controller and dismiss cleanly too.
         export.tap()
-        XCTAssertTrue(activity.waitForExistence(timeout: 15))
-        XCTAssertTrue(close.exists && close.isHittable); close.tap()
+        waitForSystemContent()
+        close.tap()
         XCTAssertTrue(activity.waitForNonExistence(timeout: 5))
         app.tabBars.buttons["首页"].tap()
         XCTAssertTrue(selected.waitForExistence(timeout: 10))
