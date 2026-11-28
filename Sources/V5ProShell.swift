@@ -40,7 +40,11 @@ enum V5Theme: String, CaseIterable, Identifiable {
 struct V5Palette {
     let paper: UInt32, surface: UInt32, ink: UInt32, secondary: UInt32, accent: UInt32, ornament: UInt32
     var isDark: Bool { paper == 0x101C29 || paper == 0x151411 }
+    var seal: UInt32 { 0xA52F24 }
     var heroSurface: UInt32 { paper == 0x151411 ? 0x641B18 : surface }
+    var personSurface: UInt32 {
+        switch paper { case 0xF5EFE3: return 0xE3E8DC; case 0xEFF4EE: return 0xE6EFEB; default: return heroSurface }
+    }
     var heroInk: UInt32 { paper == 0x151411 ? 0xF5DCAF : ink }
     var heroSecondary: UInt32 { paper == 0x151411 ? 0xDBC296 : secondary }
     var readingPaper: UInt32 { 0xF7F2E7 }
@@ -89,15 +93,23 @@ enum V5Metric {
     static let target: CGFloat = 48
 }
 enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, face, tools, settings, profileCenter, appearance, updates, tool(String) }
+/// Each native stack owns an observable path. Updating one stack must not publish
+/// a replacement dictionary to every sibling NavigationStack during a native pop.
+@MainActor final class V5RouteStack: ObservableObject {
+    @Published var routes: [V5Route] = []
+}
 @MainActor final class V5Router: ObservableObject {
     @Published var tab = 0
-    @Published var paths: [Int: [V5Route]] = [:]
+    private let stacks = (0..<4).map { _ in V5RouteStack() }
+    var paths: [Int: [V5Route]] { Dictionary(uniqueKeysWithValues: stacks.enumerated().map { ($0.offset, $0.element.routes) }) }
+    func stack(for tab: Int) -> V5RouteStack { stacks[tab] }
     func open(_ route: V5Route) {
         if case .tool(let id) = route { AllToolsData.recordRecent(tool: id) }
-        paths[tab, default: []].append(route)
+        stacks[tab].routes.append(route)
     }
     func path(for tab: Int) -> Binding<[V5Route]> {
-        Binding(get: { self.paths[tab] ?? [] }, set: { self.paths[tab] = $0 })
+        let stack = stacks[tab]
+        return Binding(get: { stack.routes }, set: { stack.routes = $0 })
     }
     var path: Binding<[V5Route]> { path(for: tab) }
     /// Old feature views keep their semantic destinations; old tab numbers never select V5 tabs directly.
@@ -146,10 +158,19 @@ struct V5ProShell: View {
         if let art = V5ArtworkRegistry.tabImage(role) { return Image(uiImage: art).renderingMode(.original) }
         return Image(systemName: symbol)
     }
-    // Sibling stacks share typed routing; each tab owns its native title/search
-    // preferences and stable path binding. There is no stack nested around TabView.
-    private func root<Content: View>(_ tab: Int, @ViewBuilder content: () -> Content) -> some View {
-        NavigationStack(path: router.path(for: tab)) {
+    private func root<Content: View>(_ tab: Int, @ViewBuilder content: @escaping () -> Content) -> some View {
+        V5NativeNavigationRoot(stack: router.stack(for: tab), content: content)
+    }
+}
+/// Observe only the path belonging to this native stack. The system back button
+/// and interactive swipe write directly through its stable published binding.
+private struct V5NativeNavigationRoot<Content: View>: View {
+    @ObservedObject var stack: V5RouteStack
+    @EnvironmentObject private var router: V5Router
+    @EnvironmentObject private var people: PeopleStore
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        NavigationStack(path: $stack.routes) {
             content()
             .navigationDestination(for: V5Route.self) { route in
                 switch route {
@@ -221,7 +242,7 @@ struct V5HomeView: View {
         }
         .accessibilityIdentifier("home.scroll")
         }
-        .background { V5SceneBackground() }
+        .background { V5SceneBackground(showLandscape: false) }
         .foregroundStyle(V5Palette.color(V5Palette.current.ink))
         .navigationTitle("首页").navigationBarTitleDisplayMode(.inline)
         .toolbar {

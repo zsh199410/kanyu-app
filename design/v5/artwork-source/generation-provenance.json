@@ -1,0 +1,268 @@
+{
+  "tool": "image_gen.imagegen",
+  "handoffSHA": "57b5b81973b60f862bee6f49a719ff0093d35f54",
+  "engineeringBase": "6c752065c1bcdcde493e465d0f0539e1bccfabcd",
+  "generated": [
+    {
+      "name": "v5-song-book-cover-art",
+      "ref": "01-approved-song-pro.png",
+      "transparent": false,
+      "prompt": "1024x1536 portrait original fine-art front-cover illustration, opaque edge-to-edge warm ivory rice paper. Song dynasty blue-green landscape painting: layered jade mountains, a tiny elegant waterside pavilion, curling river and pale gold mist, sparse magnolia at a lower corner, delicate gilded mountain contour lines, naturally aged xuan-paper texture. Exquisite refined Chinese museum publication, quiet luminous daylight, real painterly depth and handmade mineral pigment. Cover artwork ONLY, flat 2D front illustration, NOT a physical book, no mockup. Composition: landscape occupies lower two-thirds, spacious pale upper sky and right edge leave room for live SwiftUI typography. No letters, numbers, names, seals with writing, charts, sample data, title panel or any text. Reference is art direction only; never reproduce the app interface. Full-bleed rectangle, no border frame, no rounded corners, no transparency.",
+      "path": "/workspace/generated_images/exec-c5ab82b5-ad9f-43ca-ba28-627a8e7f1ee4.png"
+    },
+    {
+      "name": "v5-night-book-cover-art",
+      "ref": "02-approved-night-pro.png",
+      "transparent": false,
+      "prompt": "1024x1536 portrait original luxury celestial atlas cover ART ONLY, opaque full bleed. Deep midnight navy and indigo, a luminous crescent moon above an ancient Chinese mountain observatory on a sheer cliff, finely etched gold orbital arcs and sparse original star constellations around it, silver-blue mist and layered night mountains below. Tactile midnight silk texture and very fine gold foil details. High-end Eastern astronomical codex with dramatic depth yet refined quiet balance. This must be a genuinely different composition from a daytime landscape: vertical moon halo, cliffside observatory, diagonal stellar sweep, blue glass-like atmospheric depth. Flat 2D cover illustration, NOT a book mockup. Upper right and upper third remain relatively calm for separately rendered live title. Absolutely no writing, labels, invented characters, numbers, chart values, UI, frames, title plaques, seals containing text, sample people or static data. Reference only informs art, not UI. No transparency.",
+      "path": "/workspace/generated_images/exec-3dad4164-46b5-450f-9a92-2b8010a3cb67.png"
+    },
+    {
+      "name": "v5-night-person-object",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "prompt": "1024x1536 portrait PNG with genuine transparent alpha. Original luxury celestial armillary instrument for a premium Eastern night-sky app. Use the attached approved reference only for the artistic direction, NOT its text or interface. A complex 3D antique gold/brass astronomical sphere with several oblique elliptical rings, a clear deep-blue glass celestial globe holding delicate golden star points and orbital threads, small moon suspended inside, dark lapis/black lacquer circular pedestal with fine gold cloud engraving. Sharper sculptural concentric architecture than a jade daylight instrument. Entire silhouette fits within canvas with clear transparent margins. Warm gold precise highlights, tactile metal, sapphire glass, cinematic yet restrained light. Isolated OBJECT ONLY: no background scene, no UI, no words, no numerals, no letters, no pseudo-writing, no zodiac names, no chart or sample data. No clipping. This will sit on the right of a native dynamic person card.",
+      "path": "/workspace/generated_images/exec-d22c5ff3-a921-44ac-bae6-26eec68ef44b.png"
+    },
+    {
+      "name": "v5-collection-book-cover-art",
+      "ref": "04-collection-earlier-reference.png",
+      "prompt": "1024x1536 portrait original collector's edition Chinese lacquer codex FRONT ART, flat 2D full-bleed opaque, not a book mockup. Rich deep cinnabar-red lacquer and black brocade, an exceptionally elegant antique gold dragon and phoenix following two distinct curling cloud ribbons diagonally through the lower two-thirds, a tiny gold moon and distant imperial pavilion subtly woven into the bottom. Hand-tooled fine gold foil engraving, tactile aged silk brocade, mineral-red lacquer, restrained luxurious highlights. The upper right is relatively calm dark vermilion for separately rendered live book title. A bold imperial archival language distinct from pale jade florals and blue astronomical landscapes. This is an independent original illustration, not a recolor of another cover. Absolutely no words, pseudo-writing, characters, numbers, seals with lettering, UI, badges, title plaques, sample people or charts. Full rectangle to all edges, no transparency. Reference informs only the color/material language.",
+      "path": "/workspace/generated_images/exec-129419f0-8e5f-4a91-9a74-01ed4a0abbf1.png",
+      "transparent": false
+    },
+    {
+      "name": "v5-celadon-book-cover-art",
+      "ref": "03-celadon-earlier-reference.png",
+      "prompt": "1024x1536 portrait original full-bleed opaque fine-art book cover illustration for a white-jade celadon Chinese Pro app. Flat front artwork only, NOT a physical book. A luminous white-jade lotus blossom carved in low relief beside a sinuous celadon river ribbon, slender bamboo leaves and translucent porcelain cloud curls, pale jade mountains with one delicate waterfall receding into pearl-white mist below. Superbly refined Song celadon ceramic crackle and white jade translucency, tiny restrained brushed-gold inlay along the lotus and river contours. Independent composition distinct from a navy astronomy cover or ochre mountain panorama: asymmetrical flowing lotus-and-bamboo relief moving from bottom left to upper left with calm pearl-white upper right for live typography. Subtle porcelain surface, soft white daylight, exquisite Eastern material realism. No text, lettering, characters, numerals, seals, labels, title boxes, UI frames or invented charts/data. Do not reproduce any interface or sample person in the reference. Edge-to-edge rectangular artwork, no borders or transparency.",
+      "path": "/workspace/generated_images/exec-62dc5059-b4f1-45b2-81d3-fa9ec7d16d44.png",
+      "transparent": false
+    },
+    {
+      "name": "v5-song-emblem",
+      "ref": "01-approved-song-pro.png",
+      "prompt": "1024x1024 transparent PNG production brand emblem for Song-dynasty jade Eastern app. A single round polished emerald jade-and-gold medallion, finely inlaid contour mountains, one warm ivory sun above a tiny traditional pavilion and flowing river, elegant asymmetric mountain silhouettes, no lettering. Antique gilt rim with subtle hand-crafted bevel, realistic translucent dark green nephrite and warm brass, refined museum jewelry rather than flat clipart. Centered whole emblem, clear transparent margin 12%, pure real alpha outside circular silhouette, no surrounding scene or background, no UI, no text, numerals, symbols resembling writing, chart data or square icon tile. Original composition inspired only by the attached approved reference's brand motif.",
+      "path": "/workspace/generated_images/exec-b9c8a3f6-af34-45e2-8eb4-42f8ea8a97df.png",
+      "transparent": true
+    },
+    {
+      "name": "v5-celadon-emblem",
+      "ref": "03-celadon-earlier-reference.png",
+      "prompt": "1024x1024 transparent PNG original celadon Pro app emblem. One luminous circular white-jade and celadon porcelain medallion carved with three flowing sculptural cloud waves around a negative-space curl and tiny lotus bud, subtle crackle glaze, milky translucent edges, fine restrained brushed-gold outer ring. A distinct fluid sculptural carving, not a recolored dark green mountain logo, not a yin-yang stock icon. Exquisite precious jade artifact with soft daylight and natural highlights. Centered complete circular object with transparent 12% margins and genuine alpha outside. Absolutely no letters, numerals, Chinese writing, labels, seals, UI boxes, static data or background scene. Match the refined white-jade material direction of the reference, never reproduce its interface.",
+      "path": "/workspace/generated_images/exec-ab4d887f-20bd-45d4-8afe-ad001e9db446.png",
+      "transparent": true
+    },
+    {
+      "name": "v5-collection-emblem",
+      "ref": "04-collection-earlier-reference.png",
+      "transparent": true,
+      "prompt": "1024x1024 transparent PNG original premium Chinese collector app emblem, a circular deep cinnabar lacquer medallion with a crisply engraved antique gold dragon curling around a small cloud-shaped opening. Intricate gold scales and fine cloud filigree, black lacquer inner accents, narrow precious gilt rim with bevel. Independent imperial archival composition, NOT a recolor of a green mountain or white-jade emblem. The dragon is clearly a mythological animal, not a character or logo letter. Exquisite museum jewelry craftsmanship, warm controlled light, elegant compact silhouette. Entire round medallion visible with transparent clear 10% margins, genuine alpha outside. No text, glyphs, numerals, fake seal writing, UI tile, badge or surrounding background. Match the reference's red lacquer / gold engraving vocabulary only.",
+      "path": "/workspace/generated_images/exec-a80233c0-3f40-4380-a627-1b0ff9db19be.png"
+    },
+    {
+      "name": "v5-song-texture",
+      "ref": "01-approved-song-pro.png",
+      "transparent": false,
+      "prompt": "1024x1024 original seamless tileable material texture, pure flat front-facing macro of exquisite warm ivory Song dynasty handmade xuan rice paper. Very fine interwoven natural plant fibers and faint warm cream mineral flecks, sophisticated barely-visible warm beige grain, extremely low contrast so black/green native text stays clear. No stains, no vignette, no shadows, no lighting gradient, no borders, no focal objects, no landscape, no floral motifs, no characters or writing, no UI. Opaque full frame, edge-to-edge physically plausible paper microtexture, edges visually seamless. This is a subtle premium reading surface, not a painting or parchment scroll. Use the reference only for the quiet ivory material tone.",
+      "path": "/workspace/generated_images/exec-132b4310-05b7-4778-957f-dc4e3844c6cc.png"
+    },
+    {
+      "name": "v5-song-person-object",
+      "path": "/workspace/generated_images/exec-5324b695-eaee-4c57-8d4a-0bc6e3743192.png",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "prompt": "Original Song green-jade and brass armillary instrument with magnolia; 1024x1536 transparent, no text or data. Full prompt recorded in the image-generation tool transcript."
+    },
+    {
+      "name": "v5-song-glyph-bazi",
+      "path": "/workspace/generated_images/exec-bd576c2a-37c0-42d9-b1da-f278f56d531b.png",
+      "sha256": "36231859d4aeed191a9265d83a6698fb4861c4a0cb8abb4acb469b5196d64fbe",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-song-glyph-ziwei",
+      "path": "/workspace/generated_images/exec-83a3a95c-437c-4b96-9064-5d09ccef4bba.png",
+      "sha256": "476f00e8518a848f46fa8e9fb9e4859332eaa538d63c71bb255dea370ecc46bc",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-song-glyph-palm",
+      "path": "/workspace/generated_images/exec-bb8874d8-ea04-4ffd-b8dc-5cc0f8bc9173.png",
+      "sha256": "29773280234971fad08e1a2fdc54d2a57ab8de5dd852256225f65aeba5283a77",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-song-glyph-face",
+      "path": "/workspace/generated_images/exec-2c1db5be-7b82-4b41-a677-6da0dde5c85f.png",
+      "sha256": "718fa15dec032e42cc79416876ecbe571918159cd4dd96954ef32dd79fca7a3a",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-song-glyph-survey",
+      "path": "/workspace/generated_images/exec-d0918c0d-808a-4983-8cd2-b9652997e05a.png",
+      "sha256": "77a0fd0c29f2cc591c6181e5f7547a0a1e6e582ec602d2e3cc9b5f34ca8969a2",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-texture",
+      "path": "/workspace/generated_images/exec-458fd47b-d1d2-4a2f-8bdd-047fbd9eaf36.png",
+      "sha256": "1f436ce7caf925947f05ec8c575f986fc75989c6c1f8581b583059c72694d2d4",
+      "ref": "02-approved-night-pro.png",
+      "transparent": false,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-bazi",
+      "path": "/workspace/generated_images/exec-47cf66f3-32b9-4c12-8dc8-82d549c07747.png",
+      "sha256": "e3ae9f74f5b56654874caa70248b86581d1a2af11aa1cb332ac59734a6910efc",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-ziwei",
+      "path": "/workspace/generated_images/exec-bf81d39f-18f8-4b4d-9438-ac25116977ac.png",
+      "sha256": "7ba8b16d3035a9f461a1e0b1e0d4ca9e5cdf389190e9c7df126c1d243ca3024f",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-palm",
+      "path": "/workspace/generated_images/exec-fa458668-f682-46e0-ac41-9095a25e79e6.png",
+      "sha256": "1b74706c2eddfd4d34fd4ac2c17d94ae5e05ea2283f62c535ce4ef8613127629",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-face",
+      "path": "/workspace/generated_images/exec-d7d53578-6d33-49e6-a4a7-80f8a8e3b194.png",
+      "sha256": "e92d41e58755823755057f8ffcf9729136a5c07198d266653274da77ceff2801",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-survey",
+      "path": "/workspace/generated_images/exec-a5c7a198-1b1f-4a71-a029-1f097b28f9a7.png",
+      "sha256": "a357f7935f4af6f20d8ea08fa75ea7b01a3bc79b5f43f5866292df110e26b264",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-celadon-texture",
+      "path": "/workspace/generated_images/exec-348317ec-31b0-44c9-9c84-fcd3d5b4f22e.png",
+      "sha256": "764e637a5141fa28debcd2c6a3f3af1b64aa8c5e1a5a784c59ed9b25314720ca",
+      "ref": "03-celadon-earlier-reference.png",
+      "transparent": false,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-celadon-glyph-bazi",
+      "path": "/workspace/generated_images/exec-1caf0579-5338-40e5-b4f7-cc7b82d714aa.png",
+      "sha256": "3c0ddbceec0f3520c71e972d98d56514221c0fd1afb0fb0fbfa66dc39b90fd26",
+      "ref": "03-celadon-earlier-reference.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-celadon-glyph-ziwei",
+      "path": "/workspace/generated_images/exec-b3ef912a-1545-4ba7-9131-e11dff8d6ab2.png",
+      "sha256": "43e0796311460b53f4e861438da89c2535d009608448ec4a942127cb5bd4e973",
+      "ref": "03-celadon-earlier-reference.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-collection-texture",
+      "path": "/workspace/generated_images/exec-bd76239f-7429-40a2-b283-d2108eaf8d31.png",
+      "sha256": "fedbe224d8f0062b458e2ff70699fec26e85a290c8a96291d0139814c7790d41",
+      "ref": "04-collection-earlier-reference.png",
+      "transparent": false,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-celadon-glyph-face",
+      "ref": "03-celadon-earlier-reference.png",
+      "prompt": "1024x1024 production ORIGINAL standalone feature illustration for 三术合参 5.0 Pro. A smooth white-jade facial cameo in gentle three-quarter view, elegant neutral features indicated by very fine sage-and-gold inlaid brows, eyes, nose and lips; one small porcelain cloud curl beneath. Not a real person photograph, no frame. Luminous white-jade and celadon porcelain carving, milky translucent relief and subtle fine gold inlay, soft pearl-white daylight, delicate ceramic crackle only on the object. Exactly one compact icon, strongly legible at 42pt, entire subject centered within 10% genuinely transparent margins, clean detailed silhouette, no clipping. Independently composed artwork, not a system/SF symbol and not a simple recolor of another theme. No app screen, square tile, label, border panel, writing, pseudo-writing, characters, numerals, names, sample data, chart values or background scene. Transparent alpha must be real, never a checkerboard painted into pixels. Reference only provides material/art direction; ignore all UI and text in it.",
+      "transparent": true,
+      "path": "/workspace/generated_images/exec-c6ae6a31-92cc-4055-ac10-8e794ac48aa8.png"
+    },
+    {
+      "name": "v5-celadon-glyph-palm",
+      "ref": "03-celadon-earlier-reference.png",
+      "prompt": "1024x1024 production ORIGINAL standalone feature illustration for 三术合参 5.0 Pro. A precious white-jade open palm cameo, exactly five anatomically coherent fingers, fine gold inlay following three main palm curves, wrist emerging from a small sculpted celadon lotus. Front view, slender graceful silhouette, no surrounding plaque. Luminous white-jade and celadon porcelain carving, milky translucent relief and subtle fine gold inlay, soft pearl-white daylight, delicate ceramic crackle only on the object. Exactly one compact icon, strongly legible at 42pt, entire subject centered within 10% genuinely transparent margins, clean detailed silhouette, no clipping. Independently composed artwork, not a system/SF symbol and not a simple recolor of another theme. No app screen, square tile, label, border panel, writing, pseudo-writing, characters, numerals, names, sample data, chart values or background scene. Transparent alpha must be real, never a checkerboard painted into pixels. Reference only provides material/art direction; ignore all UI and text in it.",
+      "transparent": true,
+      "path": "/workspace/generated_images/exec-41be3431-9c46-439f-94ca-42bd53753e95.png"
+    },
+    {
+      "name": "v5-celadon-glyph-survey",
+      "ref": "03-celadon-earlier-reference.png",
+      "prompt": "1024x1024 production ORIGINAL standalone feature illustration for 三术合参 5.0 Pro. Three sculptural celadon porcelain mountain peaks rising from a flowing white-jade cloud river, a tiny white-and-gold bridge and one slender bamboo leaf at the side. Clear miniature ceramic relief landscape. No celestial globe or armillary instrument. Luminous white-jade and celadon porcelain carving, milky translucent relief and subtle fine gold inlay, soft pearl-white daylight, delicate ceramic crackle only on the object. Exactly one compact icon, strongly legible at 42pt, entire subject centered within 10% genuinely transparent margins, clean detailed silhouette, no clipping. Independently composed artwork, not a system/SF symbol and not a simple recolor of another theme. No app screen, square tile, label, border panel, writing, pseudo-writing, characters, numerals, names, sample data, chart values or background scene. Transparent alpha must be real, never a checkerboard painted into pixels. Reference only provides material/art direction; ignore all UI and text in it.",
+      "transparent": true,
+      "path": "/workspace/generated_images/exec-791b9d79-ef40-438f-933a-61cd694f9abc.png"
+    },
+    {
+      "name": "v5-collection-glyph-bazi",
+      "ref": "04-collection-earlier-reference.png",
+      "prompt": "1024x1024 production ORIGINAL standalone feature illustration for 三术合参 5.0 Pro. A small diagonally tilted bundle of antique golden bamboo divination slips bound by two fine cinnabar silk cords, rich bamboo grain and brushed-gold edges. All slips completely blank, NO marks or writing. Imperial archival miniature, not a yin-yang coin. Imperial collector aesthetic: antique gold engraving, deep cinnabar lacquer and dark bronze, carefully chased cloud detail, rich archival material realism without excessive glow. Exactly one compact icon, strongly legible at 42pt, entire subject centered within 10% genuinely transparent margins, clean detailed silhouette, no clipping. Independently composed artwork, not a system/SF symbol and not a simple recolor of another theme. No app screen, square tile, label, border panel, writing, pseudo-writing, characters, numerals, names, sample data, chart values or background scene. Transparent alpha must be real, never a checkerboard painted into pixels. Reference only provides material/art direction; ignore all UI and text in it.",
+      "transparent": true,
+      "path": "/workspace/generated_images/exec-6033086c-9294-4504-b773-c168e23d5e5b.png"
+    },
+    {
+      "name": "v5-collection-glyph-ziwei",
+      "ref": "04-collection-earlier-reference.png",
+      "prompt": "1024x1024 production ORIGINAL standalone feature illustration for 三术合参 5.0 Pro. An antique dark-bronze and gold celestial instrument: strong vertical axis, two interlocking engraved metal rings and a tiny gold sphere, small cinnabar-lacquer pedestal with cloud-scroll carving. Clearly different silhouette from a glass armillary orb. No inscriptions or ticks resembling writing. Imperial collector aesthetic: antique gold engraving, deep cinnabar lacquer and dark bronze, carefully chased cloud detail, rich archival material realism without excessive glow. Exactly one compact icon, strongly legible at 42pt, entire subject centered within 10% genuinely transparent margins, clean detailed silhouette, no clipping. Independently composed artwork, not a system/SF symbol and not a simple recolor of another theme. No app screen, square tile, label, border panel, writing, pseudo-writing, characters, numerals, names, sample data, chart values or background scene. Transparent alpha must be real, never a checkerboard painted into pixels. Reference only provides material/art direction; ignore all UI and text in it.",
+      "transparent": true,
+      "path": "/workspace/generated_images/exec-31599363-ad0b-496e-9be8-d72be2f67aa3.png"
+    },
+    {
+      "name": "v5-collection-glyph-palm",
+      "ref": "04-collection-earlier-reference.png",
+      "prompt": "1024x1024 production ORIGINAL standalone feature illustration for 三术合参 5.0 Pro. A single exquisitely chased antique-gold upright open palm with exactly five readable fingers and three fine palm curves, small cinnabar lacquer cuff and two tiny gilded cloud curls at its base. Rich sculptural metal, no labels or measuring markers. Imperial collector aesthetic: antique gold engraving, deep cinnabar lacquer and dark bronze, carefully chased cloud detail, rich archival material realism without excessive glow. Exactly one compact icon, strongly legible at 42pt, entire subject centered within 10% genuinely transparent margins, clean detailed silhouette, no clipping. Independently composed artwork, not a system/SF symbol and not a simple recolor of another theme. No app screen, square tile, label, border panel, writing, pseudo-writing, characters, numerals, names, sample data, chart values or background scene. Transparent alpha must be real, never a checkerboard painted into pixels. Reference only provides material/art direction; ignore all UI and text in it.",
+      "transparent": true,
+      "path": "/workspace/generated_images/exec-bea3ff54-1c44-401b-902a-b1c2848f14f2.png"
+    },
+    {
+      "name": "v5-collection-glyph-face",
+      "ref": "04-collection-earlier-reference.png",
+      "prompt": "1024x1024 production ORIGINAL standalone feature illustration for 三术合参 5.0 Pro. A dignified gender-neutral antique-gold face mask, slight oblique angle, finely engraved brows, eyes, nose and mouth, dark bronze recesses and one small red-lacquer cloud knot beneath. Elegant archival artifact, no demon features, no portrait photo. Imperial collector aesthetic: antique gold engraving, deep cinnabar lacquer and dark bronze, carefully chased cloud detail, rich archival material realism without excessive glow. Exactly one compact icon, strongly legible at 42pt, entire subject centered within 10% genuinely transparent margins, clean detailed silhouette, no clipping. Independently composed artwork, not a system/SF symbol and not a simple recolor of another theme. No app screen, square tile, label, border panel, writing, pseudo-writing, characters, numerals, names, sample data, chart values or background scene. Transparent alpha must be real, never a checkerboard painted into pixels. Reference only provides material/art direction; ignore all UI and text in it.",
+      "transparent": true,
+      "path": "/workspace/generated_images/exec-fa8f91d0-c32e-426f-a666-87ed5419fd34.png"
+    },
+    {
+      "name": "v5-collection-glyph-survey",
+      "ref": "04-collection-earlier-reference.png",
+      "prompt": "1024x1024 production ORIGINAL standalone feature illustration for 三术合参 5.0 Pro. A miniature imperial golden mountain range supporting one crimson-and-gold palace roof, a small bronze sun to the left and fine horizontal cloud ribbons below. Sharp gilded silhouette with rich engraved texture, not a recolored jade landscape. No instruments or celestial globes. Imperial collector aesthetic: antique gold engraving, deep cinnabar lacquer and dark bronze, carefully chased cloud detail, rich archival material realism without excessive glow. Exactly one compact icon, strongly legible at 42pt, entire subject centered within 10% genuinely transparent margins, clean detailed silhouette, no clipping. Independently composed artwork, not a system/SF symbol and not a simple recolor of another theme. No app screen, square tile, label, border panel, writing, pseudo-writing, characters, numerals, names, sample data, chart values or background scene. Transparent alpha must be real, never a checkerboard painted into pixels. Reference only provides material/art direction; ignore all UI and text in it.",
+      "transparent": true,
+      "path": "/workspace/generated_images/exec-093ec573-b0d1-4446-bffe-533c36bf499a.png"
+    }
+  ],
+  "vectorAuthoring": {
+    "source": "render_original_navigation.py",
+    "count": 20,
+    "renderer": "CairoSVG 2.8.2",
+    "license": "LGPL-3.0-or-later, authoring tool only; original SVG artwork is project-authored"
+  },
+  "reusedHandoffAssets": [
+    "Resources/V5Artwork/v5-song-landscape.png",
+    "Resources/V5Artwork/v5-night-landscape.png",
+    "Resources/V5Artwork/v5-night-emblem.png",
+    "Resources/V5Artwork/v5-celadon-landscape.png",
+    "Resources/V5Artwork/v5-celadon-person-object.png",
+    "Resources/V5Artwork/v5-collection-landscape.png",
+    "Resources/V5Artwork/v5-collection-person-object.png"
+  ]
+}

@@ -78,6 +78,18 @@
       "before": "struct PosterFamilyShareSheet: UIViewControllerRepresentable {\n    let url: URL\n    func makeUIViewController(context: Context) -> UIActivityViewController {\n        UIActivityViewController(activityItems: [url], applicationActivities: nil)\n    }\n    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}\n}",
       "after": "struct PosterFamilyShareSheet: UIViewControllerRepresentable {\n    let url: URL\n    var title: String = \"命盘海报\"\n    @Environment(\\.dismiss) private var dismiss\n    func makeUIViewController(context: Context) -> UIActivityViewController {\n        let controller = UIActivityViewController(activityItems: [V5PosterShareItem(url: url, title: title)], applicationActivities: nil)\n        controller.completionWithItemsHandler = { _, _, _, _ in\n            DispatchQueue.main.async { dismiss() }\n        }\n        return controller\n    }\n    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}\n}",
       "count": 1
+    },
+    {
+      "path": "Sources/PosterFamilyExport.swift",
+      "before": "        VStack(alignment: .leading, spacing: 18) {\n            HStack {\n                Text(\"三 术 合 参\")",
+      "after": "        VStack(alignment: .leading, spacing: 18) {\n            HStack {\n                V5PosterBrandMark(kind: snapshot.kind)\n                Text(\"三 术 合 参\")",
+      "count": 1
+    },
+    {
+      "path": "Sources/PosterFamilyExport.swift",
+      "before": "        .background(snapshot.kind == .palm ? palette.ink : palette.panel)\n        .background { PosterFamilyOrnament",
+      "after": "        .background { V5PosterHeaderArt(kind: snapshot.kind) }\n        .background(snapshot.kind == .palm ? palette.ink : palette.panel)\n        .background { PosterFamilyOrnament",
+      "count": 1
     }
   ]
 }

@@ -2,6 +2,7 @@ import SwiftUI
 
 /// A scene is made of independently reviewed, text-free layers. No concept image is a page.
 struct V5SceneBackground: View {
+    var showLandscape = true
     private var theme: V5Theme { V5ThemeStore.shared.theme }
     var body: some View {
         ZStack(alignment: theme == .celadon ? .bottom : .top) {
@@ -9,11 +10,13 @@ struct V5SceneBackground: View {
             V5ArtworkLayer(role: .texture, theme: theme) { image in
                 Image(uiImage: image).resizable(resizingMode: .tile).opacity(theme.scheme == .dark ? 0.12 : 0.18)
             }
-            V5ArtworkLayer(role: .landscape, theme: theme) { landscape in
-                Image(uiImage: landscape).resizable().scaledToFill()
-                    .frame(maxWidth: .infinity).frame(height: theme == .collection ? 300 : 280).clipped()
-                    .mask(LinearGradient(colors: theme == .celadon ? [.clear, .white] : [.white, .clear], startPoint: .top, endPoint: .bottom))
-                    .opacity(theme.scheme == .dark ? 0.55 : 0.38)
+            if showLandscape {
+                V5ArtworkLayer(role: .landscape, theme: theme) { landscape in
+                    Image(uiImage: landscape).resizable().scaledToFill()
+                        .frame(maxWidth: .infinity).frame(height: theme == .collection ? 300 : 280).clipped()
+                        .mask(LinearGradient(colors: theme == .celadon ? [.clear, .white] : [.white, .clear], startPoint: .top, endPoint: .bottom))
+                        .opacity(theme.scheme == .dark ? 0.55 : 0.38)
+                }
             }
         }.ignoresSafeArea().accessibilityHidden(true).allowsHitTesting(false)
     }
@@ -80,29 +83,68 @@ struct V5Surface: View {
             .accessibilityHidden(true).allowsHitTesting(false)
     }
 }
+/// Brand and landscape are separate live layers; reference screenshots are never rendered.
 struct V5BrandHero: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     private var theme: V5Theme { V5ThemeStore.shared.theme }
+    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "5.0" }
     var body: some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
-        layout {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .center, spacing: 12) {
                 if !typeSize.isAccessibilitySize {
                     V5ArtworkLayer(role: .emblem, theme: theme) { emblem in
-                    Image(uiImage: emblem).resizable().scaledToFit().frame(width: 42, height: 42).accessibilityHidden(true)
-                    }
+                        Image(uiImage: emblem).resizable().scaledToFit()
+                    }.frame(width: 58, height: 58)
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("三术合参").font(V5Typography.song(.title2, emphasis: true)).tracking(2)
-                    Text("八字 · 紫微 · 相法").font(.caption).tracking(2)
+                    HStack(alignment: .center, spacing: 7) {
+                        Text("三术合参").font(V5Typography.song(.largeTitle, emphasis: true)).tracking(1)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if !typeSize.isAccessibilitySize {
+                            Text(version).font(.caption2.weight(.semibold)).foregroundStyle(.white)
+                                .padding(.horizontal, 5).padding(.vertical, 4)
+                                .background(V5Palette.color(theme.palette.seal), in: RoundedRectangle(cornerRadius: 4))
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    Text("八字 · 紫微 · 相法").font(.caption).tracking(3)
                         .foregroundStyle(V5Palette.color(theme.palette.secondary))
                 }
+                Spacer(minLength: 0)
             }
-            if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
-            Text("传统民俗参考").font(.caption2)
-                .foregroundStyle(V5Palette.color(theme.palette.secondary))
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
+            HStack(spacing: 8) {
+                Text("东方命理 · 个人命书").font(.caption).tracking(2)
+                Spacer(minLength: 4)
+                Text("传统民俗参考").font(.caption2)
+            }.foregroundStyle(V5Palette.color(theme.palette.secondary)).padding(.top, 3)
+            if !typeSize.isAccessibilitySize {
+                V5ArtworkLayer(role: .landscape, theme: theme) { landscape in
+                    Image(uiImage: landscape).resizable().scaledToFill()
+                }
+                .frame(maxWidth: .infinity).frame(height: theme == .collection ? 100 : 92).clipped()
+                .accessibilityHidden(true)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
             .foregroundStyle(V5Palette.color(theme.palette.ink))
+    }
+}
+
+/// Identity remains live text; the reviewed emblem is a decorative material, never a fake portrait.
+struct V5ProfileMonogram: View {
+    let initial: String
+    let selected: Bool
+    private var theme: V5Theme { V5ThemeStore.shared.theme }
+    var body: some View {
+        ZStack {
+            Circle().fill(V5Palette.color(theme.palette.surface))
+            V5ArtworkLayer(role: .emblem, theme: theme) { image in
+                Image(uiImage: image).resizable().scaledToFit().opacity(theme.scheme == .dark ? 0.28 : 0.18)
+            }
+            Text(initial).font(V5Typography.song(.title2, emphasis: true))
+                .foregroundStyle(V5Palette.color(theme.palette.ink))
+        }.frame(width: 52, height: 52).clipShape(Circle())
+            .overlay(Circle().stroke(V5Palette.color(theme.palette.ornament).opacity(selected ? 0.9 : 0.38), lineWidth: selected ? 1.5 : 0.7))
+            .accessibilityHidden(true)
     }
 }
 

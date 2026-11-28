@@ -1,7 +1,7 @@
 name: V5 actual native UI evidence (visual approval separate)
 on:
   push:
-    branches: [codex/v5-oriental-pro-redesign]
+    branches: [codex/v5-oriental-pro-redesign, codex/v5-artwork-integration-20261128]
   workflow_dispatch:
     inputs:
       scope:
@@ -52,26 +52,30 @@ jobs:
         run: |
           set -euo pipefail
           DEST=$(cat build/destination.txt)
-          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5WorkThumbnailTests -only-testing:KanyuTests/V5TypographyTests -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
+          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5BundledArtworkTests -only-testing:KanyuTests/V5NativeStackOwnershipTests -only-testing:KanyuTests/V5NavigationPathIsolationTests -only-testing:KanyuTests/V5WorkThumbnailTests -only-testing:KanyuTests/V5TypographyTests -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5PublicationArtworkOpacityTests -only-testing:KanyuTests/V5PublicationSealBoundsTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
       - name: Capture actual four-theme screens on identical data
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' && inputs.scope != 'publication' && !startsWith(github.event.head_commit.message, '[publication]') }}
         shell: bash
         run: |
           set -euo pipefail
           DEST=$(cat build/destination.txt)
+          xcrun simctl io "$DEST" recordVideo --codec=h264 build/v5-native-interaction.mov > build/recording.log 2>&1 &
+          VIDEO_PID=$!
+          stop_recording() { kill -INT "$VIDEO_PID" 2>/dev/null || true; wait "$VIDEO_PID" || true; }
+          trap stop_recording EXIT
           xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Visual.xcresult -parallel-testing-enabled NO -only-testing:KanyuUITests/V5ArchiveCreationUITests -only-testing:KanyuUITests/V5PublicationSharingUITests -only-testing:KanyuUITests/V5VisualAcceptanceTests -only-testing:KanyuUITests/V5HomeQuickCreateUITests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/visual.log
       - name: Preserve actual screenshots and comparison
         if: always()
         run: |
+          if [ -d build/PDF.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/PDF.xcresult --output-path build/attachments/PDF
+            swift design/v5/inspect_pdfkit.swift build/attachments/PDF build/pdfkit-original.json
+          fi
           if [ -d build/Visual.xcresult ]; then
             xcrun xcresulttool export attachments --path build/Visual.xcresult --output-path build/attachments/Visual
             python3 -m venv build/qa-env
             build/qa-env/bin/pip -q install matplotlib
             build/qa-env/bin/python design/v5/package_visual_evidence.py build/attachments/Visual build/comparison
-          fi
-          if [ -d build/PDF.xcresult ]; then
-            xcrun xcresulttool export attachments --path build/PDF.xcresult --output-path build/attachments/PDF
-            swift design/v5/inspect_pdfkit.swift build/attachments/PDF build/pdfkit-original.json
           fi
       - name: Required art readiness (does not grant visual approval)
         if: always() && inputs.scope != 'publication' && !startsWith(github.event.head_commit.message, '[publication]')
@@ -85,6 +89,7 @@ jobs:
             build/*.json
             build/commit.txt
             build/destination.txt
+            build/v5-native-interaction.mov
             build/Visual.xcresult
             build/PDF.xcresult
             build/attachments

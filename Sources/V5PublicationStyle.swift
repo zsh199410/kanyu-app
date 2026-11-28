@@ -25,13 +25,21 @@ struct V5PublicationStyle {
     var pageAccent: UIColor { Self.color(palette.readingAccent) }
 
     func drawCoverArtwork(in context: CGContext, pageRect: CGRect) {
-        guard let image = V5ArtworkRegistry.image(.landscape, theme: theme) else { return }
-        let area = CGRect(x: 48, y: 566, width: pageRect.width-96, height: 180)
-        let scale = min(area.width/image.size.width, area.height/image.size.height)
-        let size = CGSize(width: image.size.width*scale, height: image.size.height*scale)
-        context.saveGState();context.setAlpha(0.7)
+        guard let cover = V5ArtworkRegistry.image(.bookCoverArt, theme: theme) else { return }
+        // Illustration and typography remain separate. The body paginator, cover
+        // text metrics, searchable Chinese fonts and ownership metadata are untouched.
+        let area = pageRect.insetBy(dx: 24, dy: 32)
+        let scale = min(area.width / cover.size.width, area.height / cover.size.height)
+        let size = CGSize(width: cover.size.width * scale, height: cover.size.height * scale)
+        context.saveGState()
         UIGraphicsPushContext(context)
-        image.draw(in: CGRect(x: area.midX-size.width/2, y: area.midY-size.height/2, width: size.width, height: size.height))
+        // UIImage's convenience draw uses alpha=1 and overrides a prior CGContext
+        // alpha. Pass the intended artwork opacity into the drawing operation.
+        cover.draw(in: CGRect(x: area.midX-size.width/2, y: area.midY-size.height/2, width: size.width, height: size.height),
+                   blendMode: .normal, alpha: palette.isDark ? 0.22 : 0.38)
+        context.setAlpha(0.65)
+        context.setStrokeColor(coverAccent.cgColor);context.setLineWidth(0.7)
+        context.stroke(pageRect.insetBy(dx: 32, dy: 40))
         UIGraphicsPopContext();context.restoreGState()
     }
 

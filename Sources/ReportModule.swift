@@ -444,8 +444,8 @@ enum ReportBuilder {
         let sealStyle = NSMutableParagraphStyle()
         sealStyle.alignment = NSTextAlignment.center
         let sealAttr: [NSAttributedString.Key: Any] = [.font: sealFont, .ligature: 0, .foregroundColor: UIColor.white, .paragraphStyle: sealStyle]
-        ("三术" as NSString).draw(with: CGRect(x: sealRect.minX, y: sealRect.minY + 12, width: sealSize, height: 20), options: [], attributes: sealAttr, context: nil)
-        ("合参" as NSString).draw(with: CGRect(x: sealRect.minX, y: sealRect.minY + 32, width: sealSize, height: 20), options: [], attributes: sealAttr, context: nil)
+        ("三术" as NSString).draw(with: CGRect(x: sealRect.minX, y: sealRect.minY + 12, width: sealSize, height: 20), options: [.usesLineFragmentOrigin], attributes: sealAttr, context: nil)
+        ("合参" as NSString).draw(with: CGRect(x: sealRect.minX, y: sealRect.minY + 32, width: sealSize, height: 20), options: [.usesLineFragmentOrigin], attributes: sealAttr, context: nil)
         let df = DateFormatter()
         df.dateFormat = "yyyy年M月d日"
         df.timeZone = TimeZone(secondsFromGMT: 8 * 3600)

@@ -21,34 +21,46 @@ struct V5HomeChartPreview: View {
                 Rectangle().fill(V5Palette.color(V5Palette.current.ornament).opacity(0.3)).frame(width: 0.7, height: 112)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("五行").font(.caption.weight(.semibold))
-                    V5CompactElementBars(values: chart.wuxingPercents)
+                    V5CompactElementMedallion(values: chart.wuxingPercents)
                 }.frame(maxWidth: .infinity)
             }
         }
     }
 }
-private struct V5CompactElementBars: View {
+/// Live engine percentages arranged around a native ring, with semantic element
+/// colors shared with the professional charts. Larger text uses the full bars above.
+private struct V5CompactElementMedallion: View {
     let values: [Double]
     private let names = ["木", "火", "土", "金", "水"]
     var body: some View {
-        VStack(spacing: 6) {
-            ForEach(Array(values.prefix(5).enumerated()), id: \.offset) { index, value in
-                HStack(spacing: 4) {
-                    Text(names[index]).font(.caption).frame(width: 14)
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(V5Palette.color(V5Palette.current.secondary).opacity(0.12))
-                            if value.isFinite {
-                                Capsule().fill(V5Palette.color(V5Palette.current.accent))
-                                    .frame(width: geometry.size.width * CGFloat(min(100, max(0, value))) / 100)
+        if values.count == 5 && values.allSatisfy({ $0.isFinite && $0 >= 0 }) {
+            GeometryReader { geometry in
+                let side = min(geometry.size.width, geometry.size.height)
+                let center = CGPoint(x: geometry.size.width / 2, y: side / 2)
+                let radius = max(0, (side - 44) / 2)
+                ZStack {
+                    Circle().stroke(V5Palette.color(V5Palette.current.ornament).opacity(0.4), lineWidth: 0.7)
+                        .frame(width: radius * 2, height: radius * 2).position(center)
+                    Text("五行\n构成").font(.caption2).multilineTextAlignment(.center)
+                        .position(center).accessibilityHidden(true)
+                    ForEach(0..<5) { index in
+                        let angle = Double(index) * .pi * 2 / 5 - .pi / 2
+                        VStack(spacing: 1) {
+                            Text(names[index]).font(V5Typography.song(.caption, emphasis: true))
+                            Text(String(format: "%.1f%%", values[index])).font(.caption2.monospacedDigit())
+                        }.frame(width: 44, height: 44)
+                            .background {
+                                Circle().fill(V5Palette.color(V5Palette.current.surface))
+                                    .overlay(Circle().fill(KyV2.wuxingColors[index].opacity(0.10)))
                             }
-                        }
-                    }.frame(height: 5).accessibilityHidden(true)
-                    Text(value.isFinite ? String(format: "%.1f%%", value) : "未提供")
-                        .font(.caption2.monospacedDigit()).frame(minWidth: 42, alignment: .trailing)
-                }.accessibilityElement(children: .combine)
-            }
-        }
+                            .overlay(Circle().stroke(KyV2.wuxingColors[index].opacity(0.85), lineWidth: 1))
+                            .position(x: center.x + radius * CGFloat(cos(angle)), y: center.y + radius * CGFloat(sin(angle)))
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("\(names[index])，占比\(String(format: "%.1f", values[index]))百分比")
+                    }
+                }
+            }.frame(height: 154)
+        } else { V5FiveElementBars(values: values) }
     }
 }
 
