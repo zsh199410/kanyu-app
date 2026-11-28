@@ -33,8 +33,10 @@ struct V5PersonHero: View {
                     Button("建立档案") { creating = true }.font(.body.weight(.medium)).frame(minHeight: V5Metric.target)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
-            if !typeSize.isAccessibilitySize, let object = V5ArtworkRegistry.image(.personObject) {
+            if !typeSize.isAccessibilitySize {
+                V5ArtworkLayer(role: .personObject, theme: theme) { object in
                 Image(uiImage: object).resizable().scaledToFit().frame(width: 112, height: 126).accessibilityHidden(true)
+                }
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
@@ -42,7 +44,7 @@ struct V5PersonHero: View {
         .background {
             V5PanelSilhouette(theme: theme).fill(V5Palette.color(p.heroSurface))
                 .overlay {
-                    if let texture = V5ArtworkRegistry.image(.texture) {
+                    V5ArtworkLayer(role: .texture, theme: theme) { texture in
                         Image(uiImage: texture).resizable(resizingMode: .tile).opacity(0.10).clipShape(V5PanelSilhouette(theme: theme))
                     }
                 }

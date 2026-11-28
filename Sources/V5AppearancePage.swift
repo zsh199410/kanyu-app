@@ -22,10 +22,10 @@ struct V5AppearancePage: View {
         return VStack(alignment: .leading, spacing: 16) {
             ZStack(alignment: .bottomLeading) {
                 V5Palette.color(p.paper)
-                if let texture = V5ArtworkRegistry.image(.texture, theme: theme) {
+                V5ArtworkLayer(role: .texture, theme: theme) { texture in
                     Image(uiImage: texture).resizable(resizingMode: .tile).opacity(0.14)
                 }
-                if let scene = V5ArtworkRegistry.image(.landscape, theme: theme) { Image(uiImage: scene).resizable().scaledToFill() }
+                V5ArtworkLayer(role: .landscape, theme: theme) { scene in Image(uiImage: scene).resizable().scaledToFill() }
             }.frame(height: 110).clipped().accessibilityHidden(true)
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {

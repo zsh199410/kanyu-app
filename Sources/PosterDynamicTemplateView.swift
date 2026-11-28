@@ -340,6 +340,7 @@ struct PosterDynamicTemplateView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(renderingExport || previewImage == nil)
                     .accessibilityIdentifier("poster.dynamic.export")
+                    V5PosterPhotoAction(snapshot: snapshot)
                     Text("1080 px 高清 PNG · 在系统分享菜单保存图片、存储文件或分享")
                         .font(.caption).foregroundStyle(.secondary)
                 }
