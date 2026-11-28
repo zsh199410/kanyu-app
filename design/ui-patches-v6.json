@@ -2272,5 +2272,18 @@
     "before": "        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))\n    }\n}",
     "after": "        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Ky.line.opacity(0.9), lineWidth: 0.8))\n        .contentShape(Rectangle())\n    }\n}",
     "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "    CURRENT_PROJECT_VERSION: 707",
+    "after": "    CURRENT_PROJECT_VERSION: 708",
+    "count": 1
+  },
+  {
+    "path": "project.yml",
+    "before": "        SWIFT_VERSION: \"5.9\"",
+    "after": "        SWIFT_VERSION: \"5.9\"\n        COMPRESS_PNG_FILES: NO\n        STRIP_PNG_TEXT: NO",
+    "reason": "Preserve original artwork PNG bytes inside the app so release provenance SHA checks remain exact.",
+    "count": 1
   }
 ]

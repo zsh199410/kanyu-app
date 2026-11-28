@@ -15,7 +15,7 @@ packages:
     branch: master
 settings:
   base:
-    CURRENT_PROJECT_VERSION: 707
+    CURRENT_PROJECT_VERSION: 708
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
 targets:
@@ -36,6 +36,8 @@ targets:
         PRODUCT_NAME: Kanyu
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.9"
+        COMPRESS_PNG_FILES: NO
+        STRIP_PNG_TEXT: NO
     info:
       path: Sources/Info.plist
       properties:

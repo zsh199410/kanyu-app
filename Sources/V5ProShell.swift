@@ -90,15 +90,23 @@ enum V5Metric {
     static let target: CGFloat = 48
 }
 enum V5Route: Hashable { case bazi, ziwei, qimen, survey, palm, face, tools, settings, profileCenter, appearance, updates, tool(String) }
+/// Each native stack owns an observable path. Updating one stack must not publish
+/// a replacement dictionary to every sibling NavigationStack during a native pop.
+@MainActor final class V5RouteStack: ObservableObject {
+    @Published var routes: [V5Route] = []
+}
 @MainActor final class V5Router: ObservableObject {
     @Published var tab = 0
-    @Published var paths: [Int: [V5Route]] = [:]
+    private let stacks = (0..<4).map { _ in V5RouteStack() }
+    var paths: [Int: [V5Route]] { Dictionary(uniqueKeysWithValues: stacks.enumerated().map { ($0.offset, $0.element.routes) }) }
+    func stack(for tab: Int) -> V5RouteStack { stacks[tab] }
     func open(_ route: V5Route) {
         if case .tool(let id) = route { AllToolsData.recordRecent(tool: id) }
-        paths[tab, default: []].append(route)
+        stacks[tab].routes.append(route)
     }
     func path(for tab: Int) -> Binding<[V5Route]> {
-        Binding(get: { self.paths[tab] ?? [] }, set: { self.paths[tab] = $0 })
+        let stack = stacks[tab]
+        return Binding(get: { stack.routes }, set: { stack.routes = $0 })
     }
     var path: Binding<[V5Route]> { path(for: tab) }
     /// Old feature views keep their semantic destinations; old tab numbers never select V5 tabs directly.
@@ -147,10 +155,19 @@ struct V5ProShell: View {
         if let art = V5ArtworkRegistry.tabImage(role) { return Image(uiImage: art).renderingMode(.original) }
         return Image(systemName: symbol)
     }
-    // Sibling stacks share typed routing; each tab owns its native title/search
-    // preferences and stable path binding. There is no stack nested around TabView.
-    private func root<Content: View>(_ tab: Int, @ViewBuilder content: () -> Content) -> some View {
-        NavigationStack(path: router.path(for: tab)) {
+    private func root<Content: View>(_ tab: Int, @ViewBuilder content: @escaping () -> Content) -> some View {
+        V5NativeNavigationRoot(stack: router.stack(for: tab), content: content)
+    }
+}
+/// Observe only the path belonging to this native stack. The system back button
+/// and interactive swipe write directly through its stable published binding.
+private struct V5NativeNavigationRoot<Content: View>: View {
+    @ObservedObject var stack: V5RouteStack
+    @EnvironmentObject private var router: V5Router
+    @EnvironmentObject private var people: PeopleStore
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        NavigationStack(path: $stack.routes) {
             content()
             .navigationDestination(for: V5Route.self) { route in
                 switch route {

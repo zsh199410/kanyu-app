@@ -22,6 +22,6 @@ for group in manifest:
             axes[1].set_title('Actual native app | fixed fixture | NOT approved')
             fig.tight_layout();fig.savefig(a.output/f'{theme}-side-by-side.png',dpi=160);plt.close(fig)
         index.append(dict(theme=theme,screen=screen,file=dest.name,visualApproval=False))
-(a.output/'index.json').write_text(json.dumps(dict(screenshots=index,visualApproval=False,score=None,reason='Artwork and GPT-reviewed measurement bounds pending'),indent=2)+'\n')
+(a.output/'index.json').write_text(json.dumps(dict(screenshots=index,visualApproval=False,score=None,reason='Aesthetic approval and reviewed measurement bounds pending; asset readiness is verified separately'),indent=2)+'\n')
 assert len(index)==24,f'Expected 24 actual screenshots, got {len(index)}'
 print('Actual screenshots packaged:',len(index),'No fidelity score inferred.')
