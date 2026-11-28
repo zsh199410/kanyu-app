@@ -13,8 +13,8 @@
         800
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "4e3ca7687a151832c8e4dbf3f67a71a9448af46b6faec653c6fd3b81b8f0d0bd"
     },
     {
       "theme": "song",
@@ -25,8 +25,8 @@
         512
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "e03b9770232ec97e23c4955a5e7e19ef8394eb651dede48acaf299c36b25909d"
     },
     {
       "theme": "song",
@@ -37,8 +37,8 @@
         1000
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "25fb0892b5bab530fab2064c25a33747a304c2766e3c0a2a7f9990ecfa8b9d71"
     },
     {
       "theme": "song",
@@ -49,8 +49,8 @@
         1200
       ],
       "alphaRequired": false,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "bb02ec5ecc03d7e114a1f8d7115757c44d7469cad359406a84fe1eba00b730a3"
     },
     {
       "theme": "song",
@@ -61,8 +61,8 @@
         512
       ],
       "alphaRequired": false,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "902a8c9a80724ea1f8f304ece454370c871e9a22149a0bc90c97517dd3c436be"
     },
     {
       "theme": "song",
@@ -73,8 +73,8 @@
         360
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "e474b0e7b1c0ebdfe3e8c721925b2a5587766ec8c1dd995e95cc493063baa453"
     },
     {
       "theme": "song",
@@ -85,8 +85,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "b3f39a7ca0aa8665d143b81e05a2edb7e6029556ae9dcbbe0aff2ae772e1897e"
     },
     {
       "theme": "song",
@@ -97,8 +97,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "ab58a577423ab42e129827ba7dfe20ceb3239baff370b60502ea834455a22e87"
     },
     {
       "theme": "song",
@@ -109,8 +109,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "1298099a9f368bb00a3134fec7e12889f45b2030be3ccbc83b7ec967944588e2"
     },
     {
       "theme": "song",
@@ -121,8 +121,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "2e4a543af379875a47a9a26fbf3caf2eed710c212d4dd1376207adc39e1eb894"
     },
     {
       "theme": "song",
@@ -133,8 +133,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "2ce525f5bb5e8a4725df371de90229871aa933582d31c20c39e065103a063dbb"
     },
     {
       "theme": "song",
@@ -145,8 +145,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "6a16b2dc4e9360d4aded38c88219001aa3c7d96388ddfd0dce630591ab2de8b5"
     },
     {
       "theme": "song",
@@ -157,8 +157,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "df6d4907877b18b19d7d4832f72371ae6e54323d90ea6698b5b550cfb1b82908"
     },
     {
       "theme": "song",
@@ -169,8 +169,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "a3acafd1c9944e1fe2a6b62101940f6a2fc9636cd8febb8ba45f5e790f4a996a"
     },
     {
       "theme": "song",
@@ -181,8 +181,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "22990a77426e85aa93332c51280eedc6e6f0399b08b05262dae0b506778afb7b"
     },
     {
       "theme": "night",
@@ -193,8 +193,8 @@
         800
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "b37380ad19e375affb28c9e5cf53380ed4c5efef6c13e8088dfe22621c33ad6e"
     },
     {
       "theme": "night",
@@ -205,8 +205,8 @@
         512
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "4310fdd87fa8014d6b4739d8c23f2eb626f4b4b9c78751029ef9d4ec6614a35d"
     },
     {
       "theme": "night",
@@ -217,8 +217,8 @@
         1000
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "b648746c680f7745ad363b6ede29f40e33509b2309e203c1ffe8993081ae7baa"
     },
     {
       "theme": "night",
@@ -229,8 +229,8 @@
         1200
       ],
       "alphaRequired": false,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "11effae21132cd4713e2602fce7794bbef9044ad8a3896fddbdd7b96eabf1f09"
     },
     {
       "theme": "night",
@@ -241,8 +241,8 @@
         512
       ],
       "alphaRequired": false,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "1998d3527f271819fa182757d4587c6e73917d92329d0b48306a6487b588c996"
     },
     {
       "theme": "night",
@@ -253,8 +253,8 @@
         360
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "5dc5220aca6c019f281b433bf7c542fa4ad0ac8bfb52052092360330a64b1779"
     },
     {
       "theme": "night",
@@ -265,8 +265,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "b71db3608aa65a63440b8d3f1f3c1a69ba67871a17be0315c57a04274f44acbf"
     },
     {
       "theme": "night",
@@ -277,8 +277,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "ae47a81dd46174b0a8903941f1908444287869b05541a8108077461ed8adef65"
     },
     {
       "theme": "night",
@@ -289,8 +289,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "1381d2c1faf30cce6ac563025a49b78f978eddcb6af5a70a9d909dabd7e37117"
     },
     {
       "theme": "night",
@@ -301,8 +301,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "ecf39fb157c064f3ad7cd7d014f4ecc3b50ea1a3482cfbda39b056aab98a7a53"
     },
     {
       "theme": "night",
@@ -313,8 +313,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "05cef5430ef173d1806e1f1236cf892709fa12fff7d89f5f709326814c357f35"
     },
     {
       "theme": "night",
@@ -325,8 +325,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "7ae43c6f6be017bc7df65d73807f512defaea48ad7d3f424fdf25b95b5a3cd7c"
     },
     {
       "theme": "night",
@@ -337,8 +337,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "cfb88c61ba77d53dec4228e21a6ab7b241af4ec131e3967d0e5d174b9774e1a6"
     },
     {
       "theme": "night",
@@ -349,8 +349,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "373d65b8f57ef4fb2ed256526928ccf8db08d198a2b8758cc74c3c645a1b25be"
     },
     {
       "theme": "night",
@@ -361,8 +361,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "fec68e838abb2ecaeb0b3315b9a11aeb5e5370e84d520914635374c9c6e05c23"
     },
     {
       "theme": "celadon",
@@ -373,8 +373,8 @@
         800
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "4819fdd4627985d81c9776259d4500f80dc3d07386407ad45220a338d50fc4a1"
     },
     {
       "theme": "celadon",
@@ -385,8 +385,8 @@
         512
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "e4bda965e29014ebf00ff607b2b9b0a6e94a8894a85f6ed458edc42839202336"
     },
     {
       "theme": "celadon",
@@ -397,8 +397,8 @@
         1000
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "e11edae47afed48f0d73846d30fac6030ba208c4965bdaf1e01db50e99b9446e"
     },
     {
       "theme": "celadon",
@@ -409,8 +409,8 @@
         1200
       ],
       "alphaRequired": false,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "ba41614afebe64500d40ae1ce69ec98df331300c6882aeef7621df9efa1ec397"
     },
     {
       "theme": "celadon",
@@ -421,8 +421,8 @@
         512
       ],
       "alphaRequired": false,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "9c5f2d0578bd04b5abd089ccc47c46b1db077ad710da40030edf8677d2cbbd6c"
     },
     {
       "theme": "celadon",
@@ -433,8 +433,8 @@
         360
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "01df72e33574ba24faf39b97e60cd265a102b3efe63f3f9c44bc21c63f9ef13f"
     },
     {
       "theme": "celadon",
@@ -445,8 +445,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "5701418271fc59a59393fbf50d83430f7495348bad6593448fe8b9d9604ab6a2"
     },
     {
       "theme": "celadon",
@@ -457,8 +457,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "56d5b305671f7c7aab3f9113abeacb7bd7bab91131e3494c534a4a49f546d3de"
     },
     {
       "theme": "celadon",
@@ -469,8 +469,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "da045349a3c1768e34349210b47019ce1224f9264c3fe3e2859e07a50a4c7d56"
     },
     {
       "theme": "celadon",
@@ -481,8 +481,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "90d864559196f2dbd291534083394823b0075ab5ba79a94bf01b36dbfd7e3a07"
     },
     {
       "theme": "celadon",
@@ -493,8 +493,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "2a4d79931a039d34f6117202bf89bcc46a40a7e01923decadd799f96e31e6f1d"
     },
     {
       "theme": "celadon",
@@ -505,8 +505,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "1723d50a9668130a36f851c57daaf0ae8aa2a261332663b00095201a4df59882"
     },
     {
       "theme": "celadon",
@@ -517,8 +517,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "42278afd410d0d69d108eea66b3e961ea63eae4c467af132f8d8314c5d4aeed1"
     },
     {
       "theme": "celadon",
@@ -529,8 +529,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "d2fdcc09888de969a57ac451528717652949e32c18f956d14db151c10ca8ce06"
     },
     {
       "theme": "celadon",
@@ -541,8 +541,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "e6cb00939d3241e84b624c217af3315d2be1d7bdb74bb381b87cc12628128501"
     },
     {
       "theme": "collection",
@@ -553,8 +553,8 @@
         800
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "37bd933a566e5800dd712adf5f21e246773cd3fbe1dfff737bfdaa3f47685ba6"
     },
     {
       "theme": "collection",
@@ -565,8 +565,8 @@
         512
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "c0a4120e8a357107b9df502618b73f0d45964437982b8c0a0bcfab735d14de90"
     },
     {
       "theme": "collection",
@@ -577,8 +577,8 @@
         1000
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "a44b52f261ecc946d58264d95932a4b6e496d06df274f98db73f9b6a128eb79f"
     },
     {
       "theme": "collection",
@@ -589,8 +589,8 @@
         1200
       ],
       "alphaRequired": false,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "3d5dc2f11f658c8fb6a44217d2da4b1a4e6f86e9904266881b2e3d410213000a"
     },
     {
       "theme": "collection",
@@ -601,8 +601,8 @@
         512
       ],
       "alphaRequired": false,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "1c4652a0d7e5083b35a095a5e89dc8295b52b374466d60dc25ab0b47f64fbb03"
     },
     {
       "theme": "collection",
@@ -613,8 +613,8 @@
         360
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "4d8f1d86917803906d373b9b22a0c4da3aa5c03627ea83420dec54619f35dec4"
     },
     {
       "theme": "collection",
@@ -625,8 +625,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "ee0ce32655413f9973e0eb5114e81855e70ae70c2c733109b38d59a3f2d7ed8f"
     },
     {
       "theme": "collection",
@@ -637,8 +637,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "15669dacc1a8442e29a649a289ea43526b9ce6c3eebff784e7a329af526e0444"
     },
     {
       "theme": "collection",
@@ -649,8 +649,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "e3cabad8f33d1b584699cc40e24fe81852795b4bd055f52a779b72a9bd81aca6"
     },
     {
       "theme": "collection",
@@ -661,8 +661,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "1f05e517252ba40cbbe64cc460098e83339ffd82fdeea77f9313ec5abdf617f9"
     },
     {
       "theme": "collection",
@@ -673,8 +673,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "10ef94293015aa4642f3be53ed4a04020ea468b97464fd9e1e555a889cab4f05"
     },
     {
       "theme": "collection",
@@ -685,8 +685,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "094bc161b430086d9ed7a649a749f12fe891be0236e4a1ad4adc650351a9cd49"
     },
     {
       "theme": "collection",
@@ -697,8 +697,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "b4b0f9ee777f648c6c8312333eef580b47d0c82d382f95882cf3750335a29de6"
     },
     {
       "theme": "collection",
@@ -709,8 +709,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "890386f6f57a8ce43920c00e4b95350e85ab1808f5a2cc213902e9b6cdb90fde"
     },
     {
       "theme": "collection",
@@ -721,8 +721,8 @@
         192
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "b16334cacb59cfe7265290b2a5c4afa1efb91b6c84c91f7d222d186f4f0fddc3"
     }
   ]
 }
