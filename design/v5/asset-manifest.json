@@ -13,8 +13,8 @@
         800
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "4e3ca7687a151832c8e4dbf3f67a71a9448af46b6faec653c6fd3b81b8f0d0bd"
     },
     {
       "theme": "song",
@@ -193,8 +193,8 @@
         800
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "b37380ad19e375affb28c9e5cf53380ed4c5efef6c13e8088dfe22621c33ad6e"
     },
     {
       "theme": "night",
@@ -373,8 +373,8 @@
         800
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "4819fdd4627985d81c9776259d4500f80dc3d07386407ad45220a338d50fc4a1"
     },
     {
       "theme": "celadon",
@@ -553,8 +553,8 @@
         800
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "37bd933a566e5800dd712adf5f21e246773cd3fbe1dfff737bfdaa3f47685ba6"
     },
     {
       "theme": "collection",
