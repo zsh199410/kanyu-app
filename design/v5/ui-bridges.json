@@ -48,6 +48,36 @@
       "before": "            context.scaleBy(x: scale, y: scale)\n            draw(context)",
       "after": "            // Fill the complete integer-pixel canvas before SwiftUI draws. A\n            // fractional point height can otherwise leave a partial-alpha final\n            // row, and flexible ZStack backgrounds can leave transparent margins.\n            context.setFillColor(UIColor(matte).cgColor)\n            context.fill(CGRect(x: 0, y: 0, width: width, height: height))\n            context.scaleBy(x: scale, y: scale)\n            draw(context)",
       "count": 1
+    },
+    {
+      "path": "Sources/PosterDynamicTemplateView.swift",
+      "before": "                    Text(\"1080 px 高清 PNG · 在系统分享菜单保存图片、存储文件或分享\")",
+      "after": "                    V5PosterPhotoAction(snapshot: snapshot)\n                    Text(\"1080 px 高清 PNG · 在系统分享菜单保存图片、存储文件或分享\")",
+      "count": 1
+    },
+    {
+      "path": "Sources/PosterDynamicTemplateView.swift",
+      "before": "    @State private var exportedURL: URL?",
+      "after": "    @State private var exportedFile: V5PosterSharePayload?",
+      "count": 1
+    },
+    {
+      "path": "Sources/PosterDynamicTemplateView.swift",
+      "before": "do { exportedURL = try PosterFamilyExport.image(snapshot: snapshot) }",
+      "after": "do { exportedFile = V5PosterSharePayload(url: try PosterFamilyExport.image(snapshot: snapshot)) }",
+      "count": 1
+    },
+    {
+      "path": "Sources/PosterDynamicTemplateView.swift",
+      "before": "        .sheet(isPresented: Binding(get: { exportedURL != nil }, set: { if !$0 { exportedURL = nil } })) {\n            if let url = exportedURL { PosterFamilyShareSheet(url: url) }\n        }",
+      "after": "        .sheet(item: $exportedFile) { file in\n            PosterFamilyShareSheet(url: file.url, title: snapshot.kind.title)\n        }",
+      "count": 1
+    },
+    {
+      "path": "Sources/PosterFamilyExport.swift",
+      "before": "struct PosterFamilyShareSheet: UIViewControllerRepresentable {\n    let url: URL\n    func makeUIViewController(context: Context) -> UIActivityViewController {\n        UIActivityViewController(activityItems: [url], applicationActivities: nil)\n    }\n    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}\n}",
+      "after": "struct PosterFamilyShareSheet: UIViewControllerRepresentable {\n    let url: URL\n    var title: String = \"命盘海报\"\n    @Environment(\\.dismiss) private var dismiss\n    func makeUIViewController(context: Context) -> UIActivityViewController {\n        let controller = UIActivityViewController(activityItems: [V5PosterShareItem(url: url, title: title)], applicationActivities: nil)\n        controller.completionWithItemsHandler = { _, _, _, _ in\n            DispatchQueue.main.async { dismiss() }\n        }\n        return controller\n    }\n    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}\n}",
+      "count": 1
     }
   ]
 }

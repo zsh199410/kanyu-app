@@ -6,10 +6,10 @@ struct V5SceneBackground: View {
     var body: some View {
         ZStack(alignment: theme == .celadon ? .bottom : .top) {
             V5Palette.color(theme.palette.paper)
-            if let image = V5ArtworkRegistry.image(.texture) {
+            V5ArtworkLayer(role: .texture, theme: theme) { image in
                 Image(uiImage: image).resizable(resizingMode: .tile).opacity(theme.scheme == .dark ? 0.12 : 0.18)
             }
-            if let landscape = V5ArtworkRegistry.image(.landscape) {
+            V5ArtworkLayer(role: .landscape, theme: theme) { landscape in
                 Image(uiImage: landscape).resizable().scaledToFill()
                     .frame(maxWidth: .infinity).frame(height: theme == .collection ? 300 : 280).clipped()
                     .mask(LinearGradient(colors: theme == .celadon ? [.clear, .white] : [.white, .clear], startPoint: .top, endPoint: .bottom))
@@ -61,13 +61,13 @@ struct V5Surface: View {
         V5PanelSilhouette(theme: theme)
             .fill(V5Palette.color(p.surface))
             .overlay {
-                if let texture = V5ArtworkRegistry.image(.texture) {
+                V5ArtworkLayer(role: .texture, theme: theme) { texture in
                     Image(uiImage: texture).resizable(resizingMode: .tile).opacity(0.07)
                         .clipShape(V5PanelSilhouette(theme: theme))
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                if let flourish = V5ArtworkRegistry.image(.flourish) {
+                V5ArtworkLayer(role: .flourish, theme: theme) { flourish in
                     Image(uiImage: flourish).resizable().scaledToFit().frame(width: 160, height: 42)
                         .opacity(0.2).padding(6).clipShape(V5PanelSilhouette(theme: theme))
                 }
@@ -87,8 +87,10 @@ struct V5BrandHero: View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
         layout {
             HStack(spacing: 10) {
-                if !typeSize.isAccessibilitySize, let emblem = V5ArtworkRegistry.image(.emblem) {
+                if !typeSize.isAccessibilitySize {
+                    V5ArtworkLayer(role: .emblem, theme: theme) { emblem in
                     Image(uiImage: emblem).resizable().scaledToFit().frame(width: 42, height: 42).accessibilityHidden(true)
+                    }
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text("三术合参").font(V5Typography.song(.title2, emphasis: true)).tracking(2)
@@ -124,7 +126,7 @@ struct V5BookCover: View {
                     .overlay(alignment: .trailing) { Rectangle().fill(V5Palette.color(p.ink).opacity(0.25)).frame(width: 1) }
                 ZStack {
                     V5Palette.color(theme == .collection ? p.heroSurface : p.surface)
-                    if let art = V5ArtworkRegistry.image(.bookCoverArt) {
+                    V5ArtworkLayer(role: .bookCoverArt, theme: theme) { art in
                         Image(uiImage: art).resizable().scaledToFill().clipped()
                     }
                     Rectangle().stroke(V5Palette.color(p.ornament).opacity(0.65), lineWidth: 0.7).padding(5)
