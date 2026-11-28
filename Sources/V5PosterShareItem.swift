@@ -16,6 +16,7 @@ final class V5PosterShareItem: NSObject, UIActivityItemSource {
     let url: URL
     let title: String
     let thumbnail: UIImage?
+    var contentTypeIdentifier: String { UTType.png.identifier }
     private static let previewDecoder = V5ArtworkStore(byteLimit: 0)
     init(url: URL, title: String) {
         self.url = url; self.title = title
@@ -28,10 +29,11 @@ final class V5PosterShareItem: NSObject, UIActivityItemSource {
     func activityViewController(_ activityViewController: UIActivityViewController,
                                 itemForActivityType activityType: UIActivity.ActivityType?) -> Any? { url }
     func activityViewController(_ activityViewController: UIActivityViewController,
-                                dataTypeIdentifierForActivityType activityType: UIActivity.ActivityType?) -> String { UTType.png.identifier }
+                                dataTypeIdentifierForActivityType activityType: UIActivity.ActivityType?) -> String { contentTypeIdentifier }
     func activityViewController(_ activityViewController: UIActivityViewController,
                                 subjectForActivityType activityType: UIActivity.ActivityType?) -> String { title }
-    func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? {
+    func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? { makeMetadata() }
+    func makeMetadata() -> LPLinkMetadata {
         let metadata = LPLinkMetadata()
         metadata.title = title
         metadata.url = url; metadata.originalURL = url

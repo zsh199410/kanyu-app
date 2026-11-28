@@ -14,14 +14,14 @@ final class V5PosterShareItemTests: XCTestCase {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
         try data.write(to: file); defer { try? FileManager.default.removeItem(at: file) }
         let item = V5PosterShareItem(url: file, title: "八字古风长卷")
-        let controller = UIActivityViewController(activityItems: [item], applicationActivities: nil)
-        XCTAssertEqual(item.activityViewControllerPlaceholderItem(controller) as? URL, file)
-        XCTAssertEqual(item.activityViewController(controller, itemForActivityType: .saveToCameraRoll) as? URL, file)
-        XCTAssertEqual(item.activityViewController(controller, dataTypeIdentifierForActivityType: .saveToCameraRoll), UTType.png.identifier)
+        // Unit tests must not launch system ShareSheet/LaunchServices while
+        // inspecting data. The UI suite verifies the actual controller and PNG attachment.
+        XCTAssertEqual(item.url, file)
+        XCTAssertEqual(item.contentTypeIdentifier, UTType.png.identifier)
         let preview = try XCTUnwrap(item.thumbnail?.cgImage)
         XCTAssertLessThanOrEqual(max(preview.width, preview.height), 320)
         XCTAssertEqual(Double(preview.width)/Double(preview.height), 1080.0/6000.0, accuracy: 0.01)
-        let metadata = try XCTUnwrap(item.activityViewControllerLinkMetadata(controller))
+        let metadata = item.makeMetadata()
         XCTAssertEqual(metadata.title, "八字古风长卷")
         XCTAssertNotNil(metadata.imageProvider); XCTAssertNotNil(metadata.iconProvider)
         XCTAssertEqual(try Data(contentsOf: file), data, "A share preview must not resize or rewrite the actual export")

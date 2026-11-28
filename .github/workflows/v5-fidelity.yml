@@ -41,19 +41,34 @@ jobs:
           mkdir -p "$CONTAINER/Documents"
           cp design/v5/visual-fixture.json "$CONTAINER/Documents/people.json"
           cp design/v5/visual-fixture.json build/fixture.json
-      - name: Verify artwork decoding and real four-tab photo/share flow
+      - name: Verify isolated artwork and formal export units
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEST=$(cat build/destination.txt)
+          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/FidelityUnits.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5PosterShareItemTests -only-testing:KanyuTests/V5ArtworkStoreTests -only-testing:KanyuTests/V5FormalPDFExportTests -only-testing:KanyuTests/PosterFamilyExportPathTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/units.log
+      - name: Verify real four-tab Photos and system share lifecycle
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 5
         shell: bash
         run: |
           set -euo pipefail
           DEST=$(cat build/destination.txt)
           xcrun simctl privacy "$DEST" grant photos-add com.kanyu.survey
-          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Fidelity.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5PosterShareItemTests -only-testing:KanyuTests/V5ArtworkStoreTests -only-testing:KanyuTests/V5FormalPDFExportTests -only-testing:KanyuTests/PosterFamilyExportPathTests -only-testing:KanyuUITests/V5PosterSharingUITests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/fidelity.log
+          xcrun simctl spawn "$DEST" log stream --style compact --level info --predicate 'process == "Kanyu" OR subsystem CONTAINS "ShareSheet" OR process CONTAINS "ShareSheet" OR process == "sharingd"' > build/sharing-system.log 2>&1 &
+          DIAGNOSTIC_PID=$!
+          trap 'kill "$DIAGNOSTIC_PID" 2>/dev/null || true' EXIT
+          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/FidelityUI.xcresult -parallel-testing-enabled NO -only-testing:KanyuUITests/V5PosterSharingUITests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/ui.log
       - name: Preserve original evidence and actual asset readiness
         if: always()
         run: |
-          if [ -d build/Fidelity.xcresult ]; then
-            xcrun xcresulttool export attachments --path build/Fidelity.xcresult --output-path build/attachments/Fidelity
-          fi
+          for RESULT in FidelityUnits FidelityUI; do
+            if [ -d "build/$RESULT.xcresult" ]; then
+              xcrun xcresulttool export attachments --path "build/$RESULT.xcresult" --output-path "build/attachments/$RESULT" || true
+              xcrun xcresulttool export diagnostics --path "build/$RESULT.xcresult" --output-path "build/diagnostics/$RESULT" || true
+            fi
+          done
           python3 design/v5/verify_artwork.py --output build/artwork-readiness.json
       - uses: actions/upload-artifact@v4
         if: always()
@@ -64,6 +79,8 @@ jobs:
             build/*.json
             build/commit.txt
             build/destination.txt
-            build/Fidelity.xcresult
+            build/FidelityUnits.xcresult
+            build/FidelityUI.xcresult
+            build/diagnostics
             build/attachments
           retention-days: 14
