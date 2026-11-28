@@ -19,7 +19,7 @@ struct V5PersonHero: View {
                 }.foregroundStyle(V5Palette.color(p.heroSecondary))
                 if let person = people.currentPerson {
                     HStack(alignment: .center, spacing: 4) {
-                        Text(person.name).font(V5Typography.song(.title2, emphasis: true))
+                        Text(person.name).font(V5Typography.song(.title, emphasis: true))
                             .fixedSize(horizontal: false, vertical: true)
                         V5PersonPickerButton { Image(systemName: "chevron.down").font(.caption).frame(width: 48, height: 48) }
                     }

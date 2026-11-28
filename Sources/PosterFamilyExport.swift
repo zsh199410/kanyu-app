@@ -243,6 +243,7 @@ private struct PosterFamilyExportCanvas: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
+                V5PosterBrandMark(kind: snapshot.kind)
                 Text("三 术 合 参").font(.system(size: 26, weight: .medium, design: .serif))
                 Spacer(minLength: 16)
                 Text(isPremium ? "尊享" : "个人").font(.system(size: 25, weight: .bold, design: .serif))
@@ -261,6 +262,7 @@ private struct PosterFamilyExportCanvas: View {
         .padding(38)
         .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(snapshot.kind == .palm ? Color(red: 0.98, green: 0.94, blue: 0.82) : palette.ink)
+        .background { V5PosterHeaderArt(kind: snapshot.kind) }
         .background(snapshot.kind == .palm ? palette.ink : palette.panel)
         .background { PosterFamilyOrnament(kind: snapshot.kind, tint: palette.line) }
         .overlay(alignment: .bottom) {

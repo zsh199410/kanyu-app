@@ -88,7 +88,7 @@ private struct V5CalculationMainEntry: View {
             HStack(alignment: .center) {
                 Text(title).font(V5Typography.song(.title2, emphasis: true))
                 Spacer(minLength: 6)
-                V5FeatureGlyph(kind: kind, size: 42)
+                V5FeatureGlyph(kind: kind, size: 52)
             }
             Text(detail).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
                 .fixedSize(horizontal: false, vertical: true)
@@ -108,7 +108,7 @@ private struct V5CalculationObservationEntry: View {
     let title: String; let detail: String; let kind: V5FeatureKind
     var body: some View {
         VStack(spacing: 7) {
-            V5FeatureGlyph(kind: kind, size: 34)
+            V5FeatureGlyph(kind: kind, size: 38)
             Text(title).font(V5Typography.song(.headline, emphasis: true))
             Text(detail).font(.caption).foregroundStyle(V5Palette.color(V5Palette.current.secondary))
         }.multilineTextAlignment(.center).padding(.vertical, 12).padding(.horizontal, 4)

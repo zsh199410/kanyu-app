@@ -238,13 +238,7 @@ struct V5ProfilesPage: View {
         return VStack(alignment: .leading, spacing: 10) {
             NavigationLink { PersonDetailView(person: person, store: people) } label: {
                 HStack(alignment: .top, spacing: 12) {
-                    Text(person.name.isEmpty ? "人" : String(person.name.prefix(1)))
-                        .font(.system(size: 23, weight: .medium))
-                        .foregroundStyle(V5Palette.color(V5Palette.current.accent))
-                        .frame(width: 48, height: 48)
-                        .background(V5Palette.color(V5Palette.current.accent).opacity(0.1), in: Circle())
-                        .overlay(Circle().stroke(V5Palette.color(V5Palette.current.accent).opacity(current ? 0.7 : 0), lineWidth: 1.5))
-                        .accessibilityHidden(true)
+                    V5ProfileMonogram(initial: person.name.isEmpty ? "人" : String(person.name.prefix(1)), selected: current)
                     VStack(alignment: .leading, spacing: 6) {
                         Text(person.name).font(.headline).fixedSize(horizontal: false, vertical: true)
                         ViewThatFits(in: .horizontal) {

@@ -40,6 +40,7 @@ enum V5Theme: String, CaseIterable, Identifiable {
 struct V5Palette {
     let paper: UInt32, surface: UInt32, ink: UInt32, secondary: UInt32, accent: UInt32, ornament: UInt32
     var isDark: Bool { paper == 0x101C29 || paper == 0x151411 }
+    var seal: UInt32 { 0xA52F24 }
     var heroSurface: UInt32 { paper == 0x151411 ? 0x641B18 : surface }
     var heroInk: UInt32 { paper == 0x151411 ? 0xF5DCAF : ink }
     var heroSecondary: UInt32 { paper == 0x151411 ? 0xDBC296 : secondary }
@@ -221,7 +222,7 @@ struct V5HomeView: View {
         }
         .accessibilityIdentifier("home.scroll")
         }
-        .background { V5SceneBackground() }
+        .background { V5SceneBackground(showLandscape: false) }
         .foregroundStyle(V5Palette.color(V5Palette.current.ink))
         .navigationTitle("首页").navigationBarTitleDisplayMode(.inline)
         .toolbar {

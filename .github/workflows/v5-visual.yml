@@ -1,7 +1,7 @@
 name: V5 actual native UI evidence (visual approval separate)
 on:
   push:
-    branches: [codex/v5-oriental-pro-redesign]
+    branches: [codex/v5-oriental-pro-redesign, codex/v5-artwork-integration-20261128]
   workflow_dispatch:
     inputs:
       scope:
@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           DEST=$(cat build/destination.txt)
-          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5WorkThumbnailTests -only-testing:KanyuTests/V5TypographyTests -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
+          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/PDF.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5BundledArtworkTests -only-testing:KanyuTests/V5WorkThumbnailTests -only-testing:KanyuTests/V5TypographyTests -only-testing:KanyuTests/V5PublicationStyleTests -only-testing:KanyuTests/V5FormalPDFExportTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/pdf.log
       - name: Capture actual four-theme screens on identical data
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' && inputs.scope != 'publication' && !startsWith(github.event.head_commit.message, '[publication]') }}
         shell: bash
