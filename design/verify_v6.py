@@ -172,6 +172,7 @@ for path in files:
 # Permit only these independently reviewed, newly added regression tests.
 # Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
 new_test_blobs = {
+    'Tests/V5PosterShareItemTests.swift': '1c4db140dbffe77f00a24c5adfae620479a16519',
     'UITests/V5PosterSharingUITests.swift': 'ad24618c66359c58a7b7dfcabc5af91da3cc0446',
     'Tests/V5ArtworkStoreTests.swift': 'f5754442804c258b10685e628c999d37375e1729',
     'Tests/V5TypographyTests.swift': '23e893251767b083e343f5f07b3aca165b4fcaae',

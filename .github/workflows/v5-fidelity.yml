@@ -47,7 +47,7 @@ jobs:
           set -euo pipefail
           DEST=$(cat build/destination.txt)
           xcrun simctl privacy "$DEST" grant photos-add com.kanyu.survey
-          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Fidelity.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5ArtworkStoreTests -only-testing:KanyuTests/V5FormalPDFExportTests -only-testing:KanyuTests/PosterFamilyExportPathTests -only-testing:KanyuUITests/V5PosterSharingUITests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/fidelity.log
+          xcodebuild test-without-building -project Kanyu.xcodeproj -scheme Kanyu -destination "platform=iOS Simulator,id=$DEST" -derivedDataPath build/DD -clonedSourcePackagesDirPath build/SourcePackages -resultBundlePath build/Fidelity.xcresult -parallel-testing-enabled NO -only-testing:KanyuTests/V5PosterShareItemTests -only-testing:KanyuTests/V5ArtworkStoreTests -only-testing:KanyuTests/V5FormalPDFExportTests -only-testing:KanyuTests/PosterFamilyExportPathTests -only-testing:KanyuUITests/V5PosterSharingUITests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | tee build/fidelity.log
       - name: Preserve original evidence and actual asset readiness
         if: always()
         run: |

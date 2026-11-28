@@ -270,7 +270,7 @@ struct PosterDynamicSnapshot {
 }
 struct PosterDynamicTemplateView: View {
     let snapshot: PosterDynamicSnapshot
-    @State private var exportedURL: URL?
+    @State private var exportedFile: V5PosterSharePayload?
     @State private var exportError: String?
     @State private var previewImage: UIImage?
     @State private var previewError: String?
@@ -330,7 +330,7 @@ struct PosterDynamicTemplateView: View {
                         renderingExport = true
                         Task { @MainActor in
                             defer { renderingExport = false }
-                            do { exportedURL = try PosterFamilyExport.image(snapshot: snapshot) }
+                            do { exportedFile = V5PosterSharePayload(url: try PosterFamilyExport.image(snapshot: snapshot)) }
                             catch { exportError = error.localizedDescription }
                         }
                     } label: {
@@ -385,8 +385,8 @@ struct PosterDynamicTemplateView: View {
             .frame(maxWidth: .infinity)
         }
         .task { if previewImage == nil { generatePreview() } }
-        .sheet(isPresented: Binding(get: { exportedURL != nil }, set: { if !$0 { exportedURL = nil } })) {
-            if let url = exportedURL { PosterFamilyShareSheet(url: url) }
+        .sheet(item: $exportedFile) { file in
+            PosterFamilyShareSheet(url: file.url, title: snapshot.kind.title)
         }
         .alert("导出失败", isPresented: Binding(
             get: { exportError != nil },

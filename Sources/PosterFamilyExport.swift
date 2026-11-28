@@ -515,8 +515,14 @@ private struct PosterFamilyExportCanvas: View {
 
 struct PosterFamilyShareSheet: UIViewControllerRepresentable {
     let url: URL
+    var title: String = "命盘海报"
+    @Environment(\.dismiss) private var dismiss
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: [V5PosterShareItem(url: url, title: title)], applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, _, _, _ in
+            DispatchQueue.main.async { dismiss() }
+        }
+        return controller
     }
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
