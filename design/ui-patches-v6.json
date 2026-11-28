@@ -2291,5 +2291,11 @@
     "before": "options: [], attributes: sealAttr",
     "after": "options: [.usesLineFragmentOrigin], attributes: sealAttr",
     "count": 2
+  },
+  {
+    "path": "project.yml",
+    "before": "CURRENT_PROJECT_VERSION: 708",
+    "after": "CURRENT_PROJECT_VERSION: 709",
+    "count": 1
   }
 ]
