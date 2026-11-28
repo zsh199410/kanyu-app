@@ -1,0 +1,3 @@
+# Build-time authoring only; no Swift/iOS runtime dependency.
+# Official source https://github.com/Kozea/CairoSVG, LGPL-3.0-or-later.
+CairoSVG==2.8.2

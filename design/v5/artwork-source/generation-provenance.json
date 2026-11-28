@@ -72,6 +72,126 @@
       "ref": "01-approved-song-pro.png",
       "transparent": true,
       "prompt": "Original Song green-jade and brass armillary instrument with magnolia; 1024x1536 transparent, no text or data. Full prompt recorded in the image-generation tool transcript."
+    },
+    {
+      "name": "v5-song-glyph-bazi",
+      "path": "/workspace/generated_images/exec-bd576c2a-37c0-42d9-b1da-f278f56d531b.png",
+      "sha256": "36231859d4aeed191a9265d83a6698fb4861c4a0cb8abb4acb469b5196d64fbe",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-song-glyph-ziwei",
+      "path": "/workspace/generated_images/exec-83a3a95c-437c-4b96-9064-5d09ccef4bba.png",
+      "sha256": "476f00e8518a848f46fa8e9fb9e4859332eaa538d63c71bb255dea370ecc46bc",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-song-glyph-palm",
+      "path": "/workspace/generated_images/exec-bb8874d8-ea04-4ffd-b8dc-5cc0f8bc9173.png",
+      "sha256": "29773280234971fad08e1a2fdc54d2a57ab8de5dd852256225f65aeba5283a77",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-song-glyph-face",
+      "path": "/workspace/generated_images/exec-2c1db5be-7b82-4b41-a677-6da0dde5c85f.png",
+      "sha256": "718fa15dec032e42cc79416876ecbe571918159cd4dd96954ef32dd79fca7a3a",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-song-glyph-survey",
+      "path": "/workspace/generated_images/exec-d0918c0d-808a-4983-8cd2-b9652997e05a.png",
+      "sha256": "77a0fd0c29f2cc591c6181e5f7547a0a1e6e582ec602d2e3cc9b5f34ca8969a2",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-texture",
+      "path": "/workspace/generated_images/exec-458fd47b-d1d2-4a2f-8bdd-047fbd9eaf36.png",
+      "sha256": "1f436ce7caf925947f05ec8c575f986fc75989c6c1f8581b583059c72694d2d4",
+      "ref": "02-approved-night-pro.png",
+      "transparent": false,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-bazi",
+      "path": "/workspace/generated_images/exec-47cf66f3-32b9-4c12-8dc8-82d549c07747.png",
+      "sha256": "e3ae9f74f5b56654874caa70248b86581d1a2af11aa1cb332ac59734a6910efc",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-ziwei",
+      "path": "/workspace/generated_images/exec-bf81d39f-18f8-4b4d-9438-ac25116977ac.png",
+      "sha256": "7ba8b16d3035a9f461a1e0b1e0d4ca9e5cdf389190e9c7df126c1d243ca3024f",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-palm",
+      "path": "/workspace/generated_images/exec-fa458668-f682-46e0-ac41-9095a25e79e6.png",
+      "sha256": "1b74706c2eddfd4d34fd4ac2c17d94ae5e05ea2283f62c535ce4ef8613127629",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-face",
+      "path": "/workspace/generated_images/exec-d7d53578-6d33-49e6-a4a7-80f8a8e3b194.png",
+      "sha256": "e92d41e58755823755057f8ffcf9729136a5c07198d266653274da77ceff2801",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-night-glyph-survey",
+      "path": "/workspace/generated_images/exec-a5c7a198-1b1f-4a71-a029-1f097b28f9a7.png",
+      "sha256": "a357f7935f4af6f20d8ea08fa75ea7b01a3bc79b5f43f5866292df110e26b264",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-celadon-texture",
+      "path": "/workspace/generated_images/exec-348317ec-31b0-44c9-9c84-fcd3d5b4f22e.png",
+      "sha256": "764e637a5141fa28debcd2c6a3f3af1b64aa8c5e1a5a784c59ed9b25314720ca",
+      "ref": "03-celadon-earlier-reference.png",
+      "transparent": false,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-celadon-glyph-bazi",
+      "path": "/workspace/generated_images/exec-1caf0579-5338-40e5-b4f7-cc7b82d714aa.png",
+      "sha256": "3c0ddbceec0f3520c71e972d98d56514221c0fd1afb0fb0fbfa66dc39b90fd26",
+      "ref": "03-celadon-earlier-reference.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-celadon-glyph-ziwei",
+      "path": "/workspace/generated_images/exec-b3ef912a-1545-4ba7-9131-e11dff8d6ab2.png",
+      "sha256": "43e0796311460b53f4e861438da89c2535d009608448ec4a942127cb5bd4e973",
+      "ref": "03-celadon-earlier-reference.png",
+      "transparent": true,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
+    },
+    {
+      "name": "v5-collection-texture",
+      "path": "/workspace/generated_images/exec-bd76239f-7429-40a2-b283-d2108eaf8d31.png",
+      "sha256": "fedbe224d8f0062b458e2ff70699fec26e85a290c8a96291d0139814c7790d41",
+      "ref": "04-collection-earlier-reference.png",
+      "transparent": false,
+      "promptRecord": "Exact image_gen prompt is in the task conversation tool transcript; local raw original recovered by byte-identical SHA256, not regenerated."
     }
   ]
 }
