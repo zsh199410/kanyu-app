@@ -2285,5 +2285,11 @@
     "after": "        SWIFT_VERSION: \"5.9\"\n        COMPRESS_PNG_FILES: NO\n        STRIP_PNG_TEXT: NO",
     "reason": "Preserve original artwork PNG bytes inside the app so release provenance SHA checks remain exact.",
     "count": 1
+  },
+  {
+    "path": "Sources/ReportModule.swift",
+    "before": "options: [], attributes: sealAttr",
+    "after": "options: [.usesLineFragmentOrigin], attributes: sealAttr",
+    "count": 2
   }
 ]
