@@ -1,0 +1,77 @@
+{
+  "tool": "image_gen.imagegen",
+  "handoffSHA": "57b5b81973b60f862bee6f49a719ff0093d35f54",
+  "engineeringBase": "6c752065c1bcdcde493e465d0f0539e1bccfabcd",
+  "generated": [
+    {
+      "name": "v5-song-book-cover-art",
+      "ref": "01-approved-song-pro.png",
+      "transparent": false,
+      "prompt": "1024x1536 portrait original fine-art front-cover illustration, opaque edge-to-edge warm ivory rice paper. Song dynasty blue-green landscape painting: layered jade mountains, a tiny elegant waterside pavilion, curling river and pale gold mist, sparse magnolia at a lower corner, delicate gilded mountain contour lines, naturally aged xuan-paper texture. Exquisite refined Chinese museum publication, quiet luminous daylight, real painterly depth and handmade mineral pigment. Cover artwork ONLY, flat 2D front illustration, NOT a physical book, no mockup. Composition: landscape occupies lower two-thirds, spacious pale upper sky and right edge leave room for live SwiftUI typography. No letters, numbers, names, seals with writing, charts, sample data, title panel or any text. Reference is art direction only; never reproduce the app interface. Full-bleed rectangle, no border frame, no rounded corners, no transparency.",
+      "path": "/workspace/generated_images/exec-c5ab82b5-ad9f-43ca-ba28-627a8e7f1ee4.png"
+    },
+    {
+      "name": "v5-night-book-cover-art",
+      "ref": "02-approved-night-pro.png",
+      "transparent": false,
+      "prompt": "1024x1536 portrait original luxury celestial atlas cover ART ONLY, opaque full bleed. Deep midnight navy and indigo, a luminous crescent moon above an ancient Chinese mountain observatory on a sheer cliff, finely etched gold orbital arcs and sparse original star constellations around it, silver-blue mist and layered night mountains below. Tactile midnight silk texture and very fine gold foil details. High-end Eastern astronomical codex with dramatic depth yet refined quiet balance. This must be a genuinely different composition from a daytime landscape: vertical moon halo, cliffside observatory, diagonal stellar sweep, blue glass-like atmospheric depth. Flat 2D cover illustration, NOT a book mockup. Upper right and upper third remain relatively calm for separately rendered live title. Absolutely no writing, labels, invented characters, numbers, chart values, UI, frames, title plaques, seals containing text, sample people or static data. Reference only informs art, not UI. No transparency.",
+      "path": "/workspace/generated_images/exec-3dad4164-46b5-450f-9a92-2b8010a3cb67.png"
+    },
+    {
+      "name": "v5-night-person-object",
+      "ref": "02-approved-night-pro.png",
+      "transparent": true,
+      "prompt": "1024x1536 portrait PNG with genuine transparent alpha. Original luxury celestial armillary instrument for a premium Eastern night-sky app. Use the attached approved reference only for the artistic direction, NOT its text or interface. A complex 3D antique gold/brass astronomical sphere with several oblique elliptical rings, a clear deep-blue glass celestial globe holding delicate golden star points and orbital threads, small moon suspended inside, dark lapis/black lacquer circular pedestal with fine gold cloud engraving. Sharper sculptural concentric architecture than a jade daylight instrument. Entire silhouette fits within canvas with clear transparent margins. Warm gold precise highlights, tactile metal, sapphire glass, cinematic yet restrained light. Isolated OBJECT ONLY: no background scene, no UI, no words, no numerals, no letters, no pseudo-writing, no zodiac names, no chart or sample data. No clipping. This will sit on the right of a native dynamic person card.",
+      "path": "/workspace/generated_images/exec-d22c5ff3-a921-44ac-bae6-26eec68ef44b.png"
+    },
+    {
+      "name": "v5-collection-book-cover-art",
+      "ref": "04-collection-earlier-reference.png",
+      "prompt": "1024x1536 portrait original collector's edition Chinese lacquer codex FRONT ART, flat 2D full-bleed opaque, not a book mockup. Rich deep cinnabar-red lacquer and black brocade, an exceptionally elegant antique gold dragon and phoenix following two distinct curling cloud ribbons diagonally through the lower two-thirds, a tiny gold moon and distant imperial pavilion subtly woven into the bottom. Hand-tooled fine gold foil engraving, tactile aged silk brocade, mineral-red lacquer, restrained luxurious highlights. The upper right is relatively calm dark vermilion for separately rendered live book title. A bold imperial archival language distinct from pale jade florals and blue astronomical landscapes. This is an independent original illustration, not a recolor of another cover. Absolutely no words, pseudo-writing, characters, numbers, seals with lettering, UI, badges, title plaques, sample people or charts. Full rectangle to all edges, no transparency. Reference informs only the color/material language.",
+      "path": "/workspace/generated_images/exec-129419f0-8e5f-4a91-9a74-01ed4a0abbf1.png",
+      "transparent": false
+    },
+    {
+      "name": "v5-celadon-book-cover-art",
+      "ref": "03-celadon-earlier-reference.png",
+      "prompt": "1024x1536 portrait original full-bleed opaque fine-art book cover illustration for a white-jade celadon Chinese Pro app. Flat front artwork only, NOT a physical book. A luminous white-jade lotus blossom carved in low relief beside a sinuous celadon river ribbon, slender bamboo leaves and translucent porcelain cloud curls, pale jade mountains with one delicate waterfall receding into pearl-white mist below. Superbly refined Song celadon ceramic crackle and white jade translucency, tiny restrained brushed-gold inlay along the lotus and river contours. Independent composition distinct from a navy astronomy cover or ochre mountain panorama: asymmetrical flowing lotus-and-bamboo relief moving from bottom left to upper left with calm pearl-white upper right for live typography. Subtle porcelain surface, soft white daylight, exquisite Eastern material realism. No text, lettering, characters, numerals, seals, labels, title boxes, UI frames or invented charts/data. Do not reproduce any interface or sample person in the reference. Edge-to-edge rectangular artwork, no borders or transparency.",
+      "path": "/workspace/generated_images/exec-62dc5059-b4f1-45b2-81d3-fa9ec7d16d44.png",
+      "transparent": false
+    },
+    {
+      "name": "v5-song-emblem",
+      "ref": "01-approved-song-pro.png",
+      "prompt": "1024x1024 transparent PNG production brand emblem for Song-dynasty jade Eastern app. A single round polished emerald jade-and-gold medallion, finely inlaid contour mountains, one warm ivory sun above a tiny traditional pavilion and flowing river, elegant asymmetric mountain silhouettes, no lettering. Antique gilt rim with subtle hand-crafted bevel, realistic translucent dark green nephrite and warm brass, refined museum jewelry rather than flat clipart. Centered whole emblem, clear transparent margin 12%, pure real alpha outside circular silhouette, no surrounding scene or background, no UI, no text, numerals, symbols resembling writing, chart data or square icon tile. Original composition inspired only by the attached approved reference's brand motif.",
+      "path": "/workspace/generated_images/exec-b9c8a3f6-af34-45e2-8eb4-42f8ea8a97df.png",
+      "transparent": true
+    },
+    {
+      "name": "v5-celadon-emblem",
+      "ref": "03-celadon-earlier-reference.png",
+      "prompt": "1024x1024 transparent PNG original celadon Pro app emblem. One luminous circular white-jade and celadon porcelain medallion carved with three flowing sculptural cloud waves around a negative-space curl and tiny lotus bud, subtle crackle glaze, milky translucent edges, fine restrained brushed-gold outer ring. A distinct fluid sculptural carving, not a recolored dark green mountain logo, not a yin-yang stock icon. Exquisite precious jade artifact with soft daylight and natural highlights. Centered complete circular object with transparent 12% margins and genuine alpha outside. Absolutely no letters, numerals, Chinese writing, labels, seals, UI boxes, static data or background scene. Match the refined white-jade material direction of the reference, never reproduce its interface.",
+      "path": "/workspace/generated_images/exec-ab4d887f-20bd-45d4-8afe-ad001e9db446.png",
+      "transparent": true
+    },
+    {
+      "name": "v5-collection-emblem",
+      "ref": "04-collection-earlier-reference.png",
+      "transparent": true,
+      "prompt": "1024x1024 transparent PNG original premium Chinese collector app emblem, a circular deep cinnabar lacquer medallion with a crisply engraved antique gold dragon curling around a small cloud-shaped opening. Intricate gold scales and fine cloud filigree, black lacquer inner accents, narrow precious gilt rim with bevel. Independent imperial archival composition, NOT a recolor of a green mountain or white-jade emblem. The dragon is clearly a mythological animal, not a character or logo letter. Exquisite museum jewelry craftsmanship, warm controlled light, elegant compact silhouette. Entire round medallion visible with transparent clear 10% margins, genuine alpha outside. No text, glyphs, numerals, fake seal writing, UI tile, badge or surrounding background. Match the reference's red lacquer / gold engraving vocabulary only.",
+      "path": "/workspace/generated_images/exec-a80233c0-3f40-4380-a627-1b0ff9db19be.png"
+    },
+    {
+      "name": "v5-song-texture",
+      "ref": "01-approved-song-pro.png",
+      "transparent": false,
+      "prompt": "1024x1024 original seamless tileable material texture, pure flat front-facing macro of exquisite warm ivory Song dynasty handmade xuan rice paper. Very fine interwoven natural plant fibers and faint warm cream mineral flecks, sophisticated barely-visible warm beige grain, extremely low contrast so black/green native text stays clear. No stains, no vignette, no shadows, no lighting gradient, no borders, no focal objects, no landscape, no floral motifs, no characters or writing, no UI. Opaque full frame, edge-to-edge physically plausible paper microtexture, edges visually seamless. This is a subtle premium reading surface, not a painting or parchment scroll. Use the reference only for the quiet ivory material tone.",
+      "path": "/workspace/generated_images/exec-132b4310-05b7-4778-957f-dc4e3844c6cc.png"
+    },
+    {
+      "name": "v5-song-person-object",
+      "path": "/workspace/generated_images/exec-5324b695-eaee-4c57-8d4a-0bc6e3743192.png",
+      "ref": "01-approved-song-pro.png",
+      "transparent": true,
+      "prompt": "Original Song green-jade and brass armillary instrument with magnolia; 1024x1536 transparent, no text or data. Full prompt recorded in the image-generation tool transcript."
+    }
+  ]
+}
