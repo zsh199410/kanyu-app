@@ -126,7 +126,7 @@ struct V5BookCover: View {
                     .overlay(alignment: .trailing) { Rectangle().fill(V5Palette.color(p.ink).opacity(0.25)).frame(width: 1) }
                 ZStack {
                     V5Palette.color(theme == .collection ? p.heroSurface : p.surface)
-                    if let art = V5ArtworkRegistry.image(.bookCoverArt) {
+                    V5ArtworkLayer(role: .bookCoverArt, theme: theme) { art in
                         Image(uiImage: art).resizable().scaledToFill().clipped()
                     }
                     Rectangle().stroke(V5Palette.color(p.ornament).opacity(0.65), lineWidth: 0.7).padding(5)

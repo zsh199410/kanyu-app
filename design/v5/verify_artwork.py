@@ -22,7 +22,9 @@ def verify(root, manifest):
                     item['status'] = 'TOO_SMALL'
                 elif asset['alphaRequired'] and not item['alphaChannel']:
                     item['status'] = 'ALPHA_CHANNEL_MISSING'
-                elif asset.get('sha256') and sha != asset['sha256']:
+                elif not asset.get('sha256'):
+                    item['status'] = 'SHA256_NOT_PINNED'
+                elif sha != asset['sha256']:
                     item['status'] = 'SHA256_MISMATCH'
                 elif sha in seen or item['pixelSHA256'] in pixels_seen:
                     item.update(status='DUPLICATE_ARTWORK', duplicateOf=seen.get(sha) or pixels_seen[item['pixelSHA256']])

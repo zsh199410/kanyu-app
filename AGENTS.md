@@ -26,4 +26,4 @@
 - 707原Profile深AX专项46078351198在c60f11c通过，原完整生命周期断言保留；随后仅追加本约束并锁同SHA完整RC/全原生/正式导出/未签名IPA。0/60艺术素材门禁及真机验收状态不得随工程通过而放宽。
 
 - 2026-11-28高保真收尾独立分支codex/v5-pro-fidelity-20261128以707 ba90c494为基线。GPT独占Resources/V5Artwork/**和asset-manifest.json；Codex独占该分支Swift布局/缓存/导出桥接及新增回归/工程门禁；Muse仅传输/取证。Issue20评论7231914622登记，跨文件协作先交接。旧PR138及稳定707冻结。
-- 运行时艺术层只后台有界解码，缓存按实际bytesPerRow×height计费；正式导出不得依赖SwiftUI异步加载生命周期。工程PNG完整性、XCTest、素材实际60/60、GPT审美批准、真机验收独立记录。
+- 运行时大幅艺术层只后台有界解码，缓存按实际bytesPerRow×height计费；正式导出不得依赖SwiftUI异步加载生命周期。工程PNG完整性、XCTest、素材实际60/60、GPT审美批准、真机验收独立记录。

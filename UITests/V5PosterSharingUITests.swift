@@ -38,20 +38,27 @@ final class V5PosterSharingUITests: XCTestCase {
         XCTAssertTrue(receipt.waitForExistence(timeout: 30))
         XCTAssertEqual(receipt.label, "已存入相册", "Photo permission is pre-granted by CI; a real Photos completion must succeed")
         export.tap()
-        let popover = app.popovers.firstMatch, sheet = app.sheets.firstMatch
-        XCTAssertTrue(popover.waitForExistence(timeout: 15) || sheet.waitForExistence(timeout: 2))
+        // Captured xcresult hierarchy identifies iOS 26's actual remote activity
+        // controller as Other/ActivityListView, not XCUIElementTypeSheet/Popover.
+        // Require the real system controller, PNG attachment and dismiss control.
+        let activity = app.otherElements["ActivityListView"]
+        let close = app.buttons["header.closeButton"]
+        XCTAssertTrue(activity.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["UIActivityContentView"].exists)
+        let fileType = app.otherElements["LP.CaptionBar.BottomCaption"]
+        XCTAssertTrue(fileType.exists)
+        XCTAssertTrue(fileType.label.contains("PNG"))
+        XCTAssertTrue(close.exists && close.isHittable)
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "v5-formal-bazi-real-system-share"; shot.lifetime = .keepAlways; add(shot)
-        for _ in 0..<2 {
-            if !popover.exists && !sheet.exists { break }
-            if app.buttons["取消"].exists { app.buttons["取消"].tap() }
-            else if app.otherElements["PopoverDismissRegion"].firstMatch.exists { app.otherElements["PopoverDismissRegion"].firstMatch.tap() }
-            else if popover.exists { popover.swipeDown() }
-            else { sheet.swipeDown() }
-        }
-        XCTAssertTrue(popover.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(export.exists && export.isEnabled)
+        close.tap()
+        XCTAssertTrue(activity.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(export.exists && export.isEnabled && export.isHittable)
+        // A second export must present a fresh controller and dismiss cleanly too.
+        export.tap()
+        XCTAssertTrue(activity.waitForExistence(timeout: 15))
+        XCTAssertTrue(close.exists && close.isHittable); close.tap()
+        XCTAssertTrue(activity.waitForNonExistence(timeout: 5))
         app.tabBars.buttons["首页"].tap()
         XCTAssertTrue(selected.waitForExistence(timeout: 10))
         XCTAssertEqual(selected.value as? String, owner)

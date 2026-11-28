@@ -7,6 +7,12 @@ import UIKit
 final class V5ArtworkStore: @unchecked Sendable {
     static let shared = V5ArtworkStore(byteLimit: 32 * 1024 * 1024)
     private struct Entry { let image: UIImage; let cost: Int; var access: UInt64 }
+    private final class Cancellation: @unchecked Sendable {
+        private let lock = NSLock()
+        private var cancelled = false
+        func cancel() { lock.lock(); cancelled = true; lock.unlock() }
+        var isCancelled: Bool { lock.lock(); defer { lock.unlock() }; return cancelled }
+    }
     private let lock = NSLock()
     private let worker = DispatchQueue(label: "com.kanyu.artwork.decode", qos: .userInitiated)
     private let byteLimit: Int
@@ -53,10 +59,18 @@ final class V5ArtworkStore: @unchecked Sendable {
         guard !Task.isCancelled, (1...8192).contains(maximumPixelSize) else { return nil }
         let key = key(url, maximumPixelSize)
         if let image = cached(key) { return image }
-        let image: UIImage? = await withCheckedContinuation { continuation in
-            worker.async { [self] in
-                continuation.resume(returning: load(at: url, maximumPixelSize: maximumPixelSize, key: key))
+        let cancellation = Cancellation()
+        let image: UIImage? = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                worker.async { [self] in
+                    // A fast theme/page change must not leave dozens of obsolete large
+                    // decodes queued ahead of the current scene or a formal export.
+                    guard !cancellation.isCancelled else { continuation.resume(returning: nil); return }
+                    continuation.resume(returning: load(at: url, maximumPixelSize: maximumPixelSize, key: key))
+                }
             }
+        } onCancel: {
+            cancellation.cancel()
         }
         return Task.isCancelled ? nil : image
     }

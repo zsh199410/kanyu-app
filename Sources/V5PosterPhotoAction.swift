@@ -1,5 +1,5 @@
 import SwiftUI
-import UIKit
+import Photos
 
 /// The saved image uses the same owner-checked formal renderer as file sharing.
 /// This control never substitutes the low-resolution on-screen preview.
@@ -28,21 +28,27 @@ struct V5PosterPhotoAction: View {
         guard !saving, snapshot.canArchive else { return }
         saving = true; message = nil
         Task { @MainActor in
-            var temporary: URL?
+            // Request add-only access before rasterizing a long image. Denial must not
+            // allocate the formal bitmap, and no read access to family photos is needed.
+            let authorization = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+            guard authorization == .authorized || authorization == .limited else {
+                message = "保存失败：请在系统设置中允许添加照片后重试。"; saving = false
+                return
+            }
             do {
-                let image: UIImage = try autoreleasepool {
-                    let url = try PosterFamilyExport.image(snapshot: snapshot)
-                    temporary = url
-                    guard let image = UIImage(contentsOfFile: url.path) else { throw PosterFamilyExport.Failure.renderingFailed }
-                    return image
-                }
-                let file = temporary
-                PosterPhotoSaver.save(image) { result in
-                    if let file { try? FileManager.default.removeItem(at: file) }
-                    message = result; saving = false
+                let file = try autoreleasepool { try PosterFamilyExport.image(snapshot: snapshot) }
+                // Import the original PNG bytes. Avoid a second full-size UIImage decode
+                // and Photos' UIImage re-encoding; keep the file until Photos has copied it.
+                PHPhotoLibrary.shared().performChanges({
+                    PHAssetCreationRequest.forAsset().addResource(with: .photo, fileURL: file, options: nil)
+                }) { success, error in
+                    DispatchQueue.main.async {
+                        try? FileManager.default.removeItem(at: file)
+                        message = success ? "已存入相册" : "保存失败：\(error?.localizedDescription ?? "未知原因，请检查相册权限后重试")"
+                        saving = false
+                    }
                 }
             } catch {
-                if let temporary { try? FileManager.default.removeItem(at: temporary) }
                 message = "保存失败：\(error.localizedDescription)"; saving = false
             }
         }

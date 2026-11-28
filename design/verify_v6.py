@@ -172,7 +172,7 @@ for path in files:
 # Permit only these independently reviewed, newly added regression tests.
 # Their exact Git blob hashes are pinned; all baseline files remain byte-identical.
 new_test_blobs = {
-    'UITests/V5PosterSharingUITests.swift': 'ac31faf9f04906423372621a92afa5f874dd39fe',
+    'UITests/V5PosterSharingUITests.swift': 'ad24618c66359c58a7b7dfcabc5af91da3cc0446',
     'Tests/V5ArtworkStoreTests.swift': 'f5754442804c258b10685e628c999d37375e1729',
     'Tests/V5TypographyTests.swift': '23e893251767b083e343f5f07b3aca165b4fcaae',
     'Resources/Fonts/LICENSE-NotoSerifCJK.txt': 'd952d62c065f3f35fb83a173496e90b21525aef3',
@@ -212,13 +212,31 @@ new_test_blobs = {
     'Resources/PosterDesignPreviews/PosterConceptPremium.jpg': '0cbf272c127ff4e9c26e65757efdf83ad1c4a092',
     'Resources/PosterDesignPreviews/PosterConceptZiwei.jpg': 'ef4432dc0f9948ebf7922a14356e3d7207275357',
 }
+# GPT supplies immutable art files on its separate branch. Permit only the 60 exact
+# role paths with a matching manifest SHA256; this never exempts existing resources.
+import hashlib
+art_manifest = json.loads((ROOT/'design/v5/asset-manifest.json').read_text())
+art_roles = {'landscape', 'emblem', 'person-object', 'book-cover-art', 'texture', 'flourish',
+             'glyph-bazi', 'glyph-ziwei', 'glyph-palm', 'glyph-face', 'glyph-survey',
+             'nav-home', 'nav-measure', 'nav-reports', 'nav-profiles'}
+expected_art = {f'Resources/V5Artwork/v5-{theme}-{role}.png'
+                for theme in ['song', 'night', 'celadon', 'collection'] for role in art_roles}
+assert len(art_manifest['assets']) == 60 and {a['path'] for a in art_manifest['assets']} == expected_art, 'Artwork role/path contract drift'
+verified_art = set()
+for asset in art_manifest['assets']:
+    assert asset['path'] == f"Resources/V5Artwork/v5-{asset['theme']}-{asset['role']}.png", 'Artwork theme/role mismatch'
+    path = ROOT/asset['path']
+    if path.exists():
+        assert path.is_file() and not path.is_symlink(), 'Artwork must be a regular bundled file'
+        assert asset.get('sha256') == hashlib.sha256(path.read_bytes()).hexdigest(), 'Artwork SHA must be pinned by GPT: ' + asset['path']
+        verified_art.add(asset['path'])
 for folder in ['Tests','UITests','Resources']:
     tracked = {x for x in files if x.startswith(folder+'/')}
     actual = {str(x.relative_to(ROOT)) for x in (ROOT/folder).rglob('*') if x.is_file()}
     extras = actual - tracked
-    permitted = {path for path in new_test_blobs if path.startswith(folder+'/')}
+    permitted = {path for path in new_test_blobs if path.startswith(folder+'/')} | (verified_art if folder == 'Resources' else set())
     assert extras <= permitted and tracked <= actual, f'Protected folder file list changed: {folder}'
-    for path in extras:
+    for path in extras - verified_art:
         actual_blob = subprocess.check_output(['git', 'hash-object', path], cwd=ROOT, text=True).strip()
         assert actual_blob == new_test_blobs[path], f'Unreviewed new test content: {path}'
 tokens = json.loads((ROOT/'design/tokens-v6.json').read_text())

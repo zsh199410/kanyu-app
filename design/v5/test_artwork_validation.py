@@ -45,9 +45,13 @@ class ArtworkValidationTests(unittest.TestCase):
             (root/'a.png').write_bytes(png()); (root/'b.png').write_bytes(png(1,9))
             assets = [dict(path=x,theme='song',role='emblem',minimumPixels=[2,1],alphaRequired=True,sha256=None)
                       for x in ['a.png','b.png','missing.png']]
+            assets[0]['sha256'] = hashlib.sha256(png()).hexdigest()
+            assets[1]['sha256'] = hashlib.sha256(png(1,9)).hexdigest()
             receipt = verify(root,dict(assets=assets))
             self.assertFalse(receipt['visualApproval']); self.assertEqual(receipt['blocked'],2)
             self.assertEqual(receipt['assets'][1]['status'],'DUPLICATE_ARTWORK')
+            assets[0]['sha256'] = None
+            self.assertEqual(verify(root,dict(assets=assets))['assets'][0]['status'],'SHA256_NOT_PINNED')
             assets[0]['sha256'] = '0'*64
             self.assertEqual(verify(root,dict(assets=assets))['assets'][0]['status'],'SHA256_MISMATCH')
 
