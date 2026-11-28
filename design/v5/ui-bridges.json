@@ -90,12 +90,6 @@
       "before": "        .background(snapshot.kind == .palm ? palette.ink : palette.panel)\n        .background { PosterFamilyOrnament",
       "after": "        .background { V5PosterHeaderArt(kind: snapshot.kind) }\n        .background(snapshot.kind == .palm ? palette.ink : palette.panel)\n        .background { PosterFamilyOrnament",
       "count": 1
-    },
-    {
-      "path": "Sources/ReportModule.swift",
-      "before": "options: [], attributes: sealAttr",
-      "after": "options: [.usesLineFragmentOrigin], attributes: sealAttr",
-      "count": 2
     }
   ]
 }
