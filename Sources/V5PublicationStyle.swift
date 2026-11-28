@@ -33,8 +33,10 @@ struct V5PublicationStyle {
         let size = CGSize(width: cover.size.width * scale, height: cover.size.height * scale)
         context.saveGState()
         UIGraphicsPushContext(context)
-        context.setAlpha(palette.isDark ? 0.22 : 0.38)
-        cover.draw(in: CGRect(x: area.midX-size.width/2, y: area.midY-size.height/2, width: size.width, height: size.height))
+        // UIImage's convenience draw uses alpha=1 and overrides a prior CGContext
+        // alpha. Pass the intended artwork opacity into the drawing operation.
+        cover.draw(in: CGRect(x: area.midX-size.width/2, y: area.midY-size.height/2, width: size.width, height: size.height),
+                   blendMode: .normal, alpha: palette.isDark ? 0.22 : 0.38)
         context.setAlpha(0.65)
         context.setStrokeColor(coverAccent.cgColor);context.setLineWidth(0.7)
         context.stroke(pageRect.insetBy(dx: 32, dy: 40))
