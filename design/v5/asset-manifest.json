@@ -469,8 +469,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "b695a922e8fe963e9d69b09bf0348b8cd5c6971f89668a6a0db9df47e13095eb"
     },
     {
       "theme": "celadon",
@@ -481,8 +481,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "24ea7a4bcea77c86598064c8e2d76d652f7b6edc78d4074cb8bddcdbf9e76188"
     },
     {
       "theme": "celadon",
@@ -493,8 +493,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "b98c722823aad33feb38ec0dbe73194ee6d0e28ecf92cab9a32e7b8178f77f0b"
     },
     {
       "theme": "celadon",
@@ -625,8 +625,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "aa390ea9f87fd58c131f01380abcee1f1eb9da953a1747f008c6f71b3933e746"
     },
     {
       "theme": "collection",
@@ -637,8 +637,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "f759b399a4ad82b1c242aa49a93a21bb2551394cddf658d9c0cdd275284b8609"
     },
     {
       "theme": "collection",
@@ -649,8 +649,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "7b4a6829f3373a0591ed9f5dc509009d6ae3aa9c50b3bd0cb05ee3daf5b027a3"
     },
     {
       "theme": "collection",
@@ -661,8 +661,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "dadfaf02a090e597a6cf864880dd7184042661e4222524e89d2dbb1b0e5eccab"
     },
     {
       "theme": "collection",
@@ -673,8 +673,8 @@
         256
       ],
       "alphaRequired": true,
-      "status": "MISSING",
-      "sha256": null
+      "status": "PRESENT_PENDING_GPT_REVIEW",
+      "sha256": "8e7fdddbc89013b6c2c8948920c972bd5979d674f052645bf7873f52e15d05e8"
     },
     {
       "theme": "collection",
